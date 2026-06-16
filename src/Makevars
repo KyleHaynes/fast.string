@@ -1,0 +1,3 @@
+CXX_STD = CXX14
+PKG_CPPFLAGS = -I. -I./re2 -DNDEBUG
+PKG_LIBS = -lpcre2-8
