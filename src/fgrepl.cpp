@@ -56,7 +56,7 @@ struct PCRE2GrepWorker : public Worker {
 LogicalVector fast_grepl_impl(const std::string& pattern,
                                const StringVector& x,
                                bool ignore_case) {
-    uint32_t opts = PCRE2_DOTALL | (ignore_case ? PCRE2_CASELESS : 0);
+    uint32_t opts = ignore_case ? PCRE2_CASELESS : 0;
     int errcode;
     PCRE2_SIZE erroffset;
     pcre2_code* code = pcre2_compile(
@@ -174,6 +174,216 @@ LogicalVector fast_fixed_impl(const std::string& pattern,
     for (R_xlen_t i = 0; i < n; ++i) {
         if (raw[i] == NA_INTEGER) result[i] = NA_LOGICAL;
         else result[i] = raw[i] != 0;
+    }
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// String substitution — parallel workers write to std::vector<std::string>
+// (no R API in threads), main thread converts to CharacterVector afterwards.
+// NA elements: worker marks with empty string, main thread restores NA_STRING.
+// ---------------------------------------------------------------------------
+
+struct PCRE2SubWorker : public Worker {
+    SEXP x_sexp;
+    pcre2_code* code;
+    const uint8_t* repl_data;
+    PCRE2_SIZE repl_len;
+    uint32_t sub_flags;
+    std::vector<std::string>& results;
+
+    PCRE2SubWorker(SEXP x_sexp, pcre2_code* code,
+                   const uint8_t* repl_data, PCRE2_SIZE repl_len,
+                   uint32_t sub_flags, std::vector<std::string>& results)
+        : x_sexp(x_sexp), code(code),
+          repl_data(repl_data), repl_len(repl_len),
+          sub_flags(sub_flags), results(results) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        pcre2_match_data* mdata = pcre2_match_data_create_from_pattern(code, NULL);
+        for (std::size_t i = begin; i < end; ++i) {
+            SEXP elem = STRING_ELT(x_sexp, i);
+            if (elem == NA_STRING) { results[i] = ""; continue; }
+            const char* s = CHAR(elem);
+            PCRE2_SIZE len = (PCRE2_SIZE)LENGTH(elem);
+            PCRE2_SIZE outlen = std::max((PCRE2_SIZE)64,
+                                         len * 2 + repl_len * 16 + 4);
+            std::vector<uint8_t> buf(outlen + 1);
+            int rc = pcre2_substitute(
+                code, (PCRE2_SPTR8)s, len, 0,
+                sub_flags | PCRE2_SUBSTITUTE_OVERFLOW_LENGTH,
+                mdata, NULL, repl_data, repl_len, buf.data(), &outlen);
+            if (rc == PCRE2_ERROR_NOMEMORY) {
+                buf.resize(outlen + 1);
+                PCRE2_SIZE outlen2 = (PCRE2_SIZE)buf.size();
+                pcre2_substitute(code, (PCRE2_SPTR8)s, len, 0, sub_flags,
+                                 mdata, NULL, repl_data, repl_len,
+                                 buf.data(), &outlen2);
+                outlen = outlen2;
+            }
+            results[i].assign((char*)buf.data(), outlen);
+        }
+        pcre2_match_data_free(mdata);
+    }
+};
+
+// [[Rcpp::export]]
+CharacterVector fast_regex_sub_impl(const std::string& pattern,
+                                     const std::string& replacement,
+                                     const StringVector& x,
+                                     bool ignore_case,
+                                     bool global) {
+    uint32_t opts = ignore_case ? PCRE2_CASELESS : 0;
+    int errcode;
+    PCRE2_SIZE erroffset;
+    pcre2_code* code = pcre2_compile(
+        (PCRE2_SPTR8)pattern.c_str(), pattern.size(),
+        opts, &errcode, &erroffset, NULL);
+    if (!code) {
+        PCRE2_UCHAR8 msg[256];
+        pcre2_get_error_message(errcode, msg, sizeof(msg));
+        stop("Invalid PCRE2 pattern: %s", (const char*)msg);
+    }
+    pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
+
+    const R_xlen_t n = x.size();
+    std::vector<std::string> results((std::size_t)n);
+    // PCRE2_SUBSTITUTE_EXTENDED enables \1-\9 backreference syntax in
+    // replacement strings (same convention as base R's gsub replacement).
+    uint32_t sub_flags = (global ? PCRE2_SUBSTITUTE_GLOBAL : 0)
+                       | PCRE2_SUBSTITUTE_EXTENDED;
+
+    PCRE2SubWorker worker(x, code, (const uint8_t*)replacement.c_str(),
+                          (PCRE2_SIZE)replacement.size(), sub_flags, results);
+    if (n >= 10000) parallelFor(0, (std::size_t)n, worker);
+    else            worker(0, (std::size_t)n);
+
+    pcre2_code_free(code);
+
+    CharacterVector result(n);
+    for (R_xlen_t i = 0; i < n; ++i) {
+        if (STRING_ELT(x, i) == NA_STRING)
+            SET_STRING_ELT(result, i, NA_STRING);
+        else
+            SET_STRING_ELT(result, i,
+                Rf_mkCharCE(results[(std::size_t)i].c_str(), CE_UTF8));
+    }
+    return result;
+}
+
+struct FixedSubWorker : public Worker {
+    SEXP x_sexp;
+    re2::StringPiece needle;
+    const std::string& replacement;
+    bool global;
+    std::vector<std::string>& results;
+
+    FixedSubWorker(SEXP x_sexp, const std::string& needle_str,
+                   const std::string& replacement, bool global,
+                   std::vector<std::string>& results)
+        : x_sexp(x_sexp), needle(needle_str),
+          replacement(replacement), global(global), results(results) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        for (std::size_t i = begin; i < end; ++i) {
+            SEXP elem = STRING_ELT(x_sexp, i);
+            if (elem == NA_STRING) { results[i] = ""; continue; }
+            const char* s = CHAR(elem);
+            std::size_t len = (std::size_t)LENGTH(elem);
+            std::size_t nl = needle.size();
+            std::size_t pos = 0;
+            std::string out;
+            re2::StringPiece hay(s, len);
+            std::size_t found;
+            while ((found = hay.find(needle)) != re2::StringPiece::npos) {
+                out.append(s + pos, found);
+                out.append(replacement);
+                pos += found + nl;
+                hay.remove_prefix(found + nl);
+                if (!global) break;
+            }
+            if (out.empty() && pos == 0) {
+                results[i].assign(s, len);
+            } else {
+                out.append(s + pos, len - pos);
+                results[i] = std::move(out);
+            }
+        }
+    }
+};
+
+struct FixedCaseSubWorker : public Worker {
+    SEXP x_sexp;
+    std::string needle_lower;
+    const std::string& replacement;
+    bool global;
+    std::vector<std::string>& results;
+
+    FixedCaseSubWorker(SEXP x_sexp, const std::string& needle_lower,
+                       const std::string& replacement, bool global,
+                       std::vector<std::string>& results)
+        : x_sexp(x_sexp), needle_lower(needle_lower),
+          replacement(replacement), global(global), results(results) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        for (std::size_t i = begin; i < end; ++i) {
+            SEXP elem = STRING_ELT(x_sexp, i);
+            if (elem == NA_STRING) { results[i] = ""; continue; }
+            const char* s = CHAR(elem);
+            std::size_t len = (std::size_t)LENGTH(elem);
+            std::string lower(len, '\0');
+            for (std::size_t j = 0; j < len; ++j)
+                lower[j] = (char)std::tolower((unsigned char)s[j]);
+            std::size_t nl = needle_lower.size();
+            std::size_t pos = 0;
+            std::string out;
+            std::size_t found;
+            while ((found = lower.find(needle_lower, pos)) != std::string::npos) {
+                out.append(s + pos, found - pos);
+                out.append(replacement);
+                pos = found + nl;
+                if (!global) break;
+            }
+            if (out.empty() && pos == 0) {
+                results[i].assign(s, len);
+            } else {
+                out.append(s + pos, len - pos);
+                results[i] = std::move(out);
+            }
+        }
+    }
+};
+
+// [[Rcpp::export]]
+CharacterVector fast_fixed_sub_impl(const std::string& pattern,
+                                     const std::string& replacement,
+                                     const StringVector& x,
+                                     bool ignore_case,
+                                     bool global) {
+    const R_xlen_t n = x.size();
+    std::vector<std::string> results((std::size_t)n);
+    const bool go_parallel = (n >= 10000);
+
+    if (ignore_case) {
+        std::string needle_lower(pattern.size(), '\0');
+        std::transform(pattern.begin(), pattern.end(), needle_lower.begin(),
+                       [](unsigned char c) { return (char)std::tolower(c); });
+        FixedCaseSubWorker worker(x, needle_lower, replacement, global, results);
+        if (go_parallel) parallelFor(0, (std::size_t)n, worker);
+        else             worker(0, (std::size_t)n);
+    } else {
+        FixedSubWorker worker(x, pattern, replacement, global, results);
+        if (go_parallel) parallelFor(0, (std::size_t)n, worker);
+        else             worker(0, (std::size_t)n);
+    }
+
+    CharacterVector result(n);
+    for (R_xlen_t i = 0; i < n; ++i) {
+        if (STRING_ELT(x, i) == NA_STRING)
+            SET_STRING_ELT(result, i, NA_STRING);
+        else
+            SET_STRING_ELT(result, i,
+                Rf_mkCharCE(results[(std::size_t)i].c_str(), CE_UTF8));
     }
     return result;
 }

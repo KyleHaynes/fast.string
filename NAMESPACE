@@ -3,4 +3,7 @@
 useDynLib(fgrepl, .registration = TRUE)
 importFrom(Rcpp, evalCpp)
 importFrom(RcppParallel, setThreadOptions)
-export(fast_grepl)
+export(grepl)
+export(grep)
+export(sub)
+export(gsub)

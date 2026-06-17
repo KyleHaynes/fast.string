@@ -1,56 +1,47 @@
-#' Fast parallel string matching using RE2 and RcppParallel
+#' Fast parallel string matching (masks base::grepl)
 #'
-#' A drop-in replacement for [base::grepl()] that uses Google's RE2 regex
-#' engine (linear-time, no catastrophic backtracking) parallelised across all
-#' CPU cores via Intel TBB through RcppParallel.  Typically 5–50x faster than
-#' `grepl()` on large character vectors.
+#' Drop-in replacement for [base::grepl()] using PCRE2 and Intel TBB.
+#' Typically 5–20x faster on large character vectors.
 #'
-#' **RE2 vs PCRE differences**: RE2 does not support backreferences
-#' (`\1`, `(?P=name)`) or lookahead/lookbehind assertions (`(?=...)`,
-#' `(?!...)`).  All other common regex syntax works identically.
-#' Use `grepl()` for patterns that require those PCRE-only features.
+#' Patterns using PCRE-only syntax (lookaheads, lookbehinds, atomic groups,
+#' possessive quantifiers, named backreferences) are automatically detected
+#' when `perl = FALSE` and delegated to [base::grepl()] with `perl = TRUE`,
+#' so results are always correct.
 #'
-#' @param pattern Character scalar. The pattern to search for.
-#'   When `fixed = FALSE` this is an RE2 regular expression.
-#'   When `fixed = TRUE` it is a literal string.
-#' @param x Character vector to search in. `NA` elements return `NA`.
-#' @param fixed Logical (default `FALSE`). If `TRUE`, treat `pattern` as a
-#'   literal string — no regex parsing, maximum speed.
-#' @param ignore.case Logical (default `FALSE`). Case-insensitive matching.
-#'   For `fixed = TRUE` this applies ASCII case-folding only.
-#' @param nthreads Integer or `NULL`. Number of threads to use.
-#'   `NULL` (default) uses all available cores via
-#'   [RcppParallel::defaultNumThreads()].
+#' @param pattern Character scalar. Pattern to search for.
+#' @param x Character vector. `NA` elements return `NA`.
+#' @param ignore.case Logical. Case-insensitive matching.
+#' @param perl Logical. If `TRUE`, skip the PCRE-only syntax check and run
+#'   the parallel PCRE2 engine directly.
+#' @param fixed Logical. Treat `pattern` as a literal string (fastest path).
+#' @param useBytes Logical. Ignored; included for signature compatibility.
+#' @param verbose Logical. Show a one-time message that base functions are
+#'   masked. Defaults to `getOption("fgrepl.verbose", TRUE)`.
+#' @param nthreads Integer or `NULL`. Thread count; `NULL` uses all cores.
 #'
-#' @return A logical vector the same length as `x`.
-#'
-#' @seealso [base::grepl()], [RcppParallel::setThreadOptions()]
-#'
-#' @examples
-#' x <- c("hello world", "foo bar", NA, "test pattern here")
-#' fast_grepl("pattern", x)
-#' fast_grepl("PATTERN", x, ignore.case = TRUE)
-#' fast_grepl("foo", x, fixed = TRUE)
-#'
+#' @return Logical vector the same length as `x`.
+#' @seealso [base::grepl()]
 #' @export
-fast_grepl <- function(pattern, x, fixed = FALSE, ignore.case = FALSE,
-                       nthreads = NULL) {
-    if (!is.character(pattern) || length(pattern) != 1L) {
+grepl <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
+                  fixed = FALSE, useBytes = FALSE,
+                  verbose = getOption("fgrepl.verbose", TRUE),
+                  nthreads = NULL) {
+    if (isTRUE(verbose)) .show_mask_msg_once()
+
+    if (!is.character(pattern) || length(pattern) != 1L)
         stop("`pattern` must be a single character string.")
-    }
     if (!is.character(x)) {
-        if (all(is.na(x))) {
-            x <- as.character(x)
-        } else {
-            stop("`x` must be a character vector.")
-        }
+        if (all(is.na(x))) x <- as.character(x)
+        else stop("`x` must be a character vector.")
     }
-    if (!is.null(nthreads)) {
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
+    if (!is.null(nthreads)) RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
+
+    if (isTRUE(fixed)) return(fast_fixed_impl(pattern, x, isTRUE(ignore.case)))
+
+    if (!isTRUE(perl) && .has_pcre_only_syntax(pattern)) {
+        cli::cli_inform("Pattern has PCRE-only syntax; delegating to {.fn base::grepl} with {.code perl = TRUE}.")
+        return(base::grepl(pattern, x, ignore.case = ignore.case, perl = TRUE))
     }
-    if (isTRUE(fixed)) {
-        fast_fixed_impl(pattern, x, isTRUE(ignore.case))
-    } else {
-        fast_grepl_impl(pattern, x, isTRUE(ignore.case))
-    }
+
+    fast_grepl_impl(pattern, x, isTRUE(ignore.case))
 }

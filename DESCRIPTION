@@ -1,18 +1,18 @@
 Package: fgrepl
 Type: Package
-Title: Fast Parallel String Matching via RE2 and RcppParallel
-Version: 0.1.0
+Title: Fast Parallel String Functions via PCRE2, RE2 and RcppParallel
+Version: 0.2.0
 Authors@R: person("Kyle", "Haynes", email = "kyle@kylehaynes.com.au", role = c("aut", "cre"))
-Description: Provides a drop-in replacement for grepl() that uses Google's RE2
-    regex engine (linear-time, no catastrophic backtracking) parallelised across
-    all CPU cores via Intel TBB through RcppParallel. Typically 10-50x faster
-    than base grepl() on large character vectors. Note: RE2 does not support
-    PCRE-only features such as backreferences or lookahead/lookbehind assertions.
+Description: Drop-in replacements for grepl(), grep(), sub(), and gsub() that
+    use PCRE2 (regex) and RE2 StringPiece (fixed strings), parallelised across
+    all CPU cores via Intel TBB through RcppParallel. Typically 5-40x faster
+    than the equivalent base R functions on large character vectors.
 License: Apache License (>= 2.0)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports:
+    cli (>= 3.0.0),
     Rcpp (>= 1.0.0),
     RcppParallel (>= 5.0.0)
 LinkingTo:

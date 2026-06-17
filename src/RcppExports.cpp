@@ -36,10 +36,42 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_regex_sub_impl
+CharacterVector fast_regex_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global);
+RcppExport SEXP _fgrepl_fast_regex_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type replacement(replacementSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< bool >::type global(globalSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_regex_sub_impl(pattern, replacement, x, ignore_case, global));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_fixed_sub_impl
+CharacterVector fast_fixed_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global);
+RcppExport SEXP _fgrepl_fast_fixed_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type replacement(replacementSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< bool >::type global(globalSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fixed_sub_impl(pattern, replacement, x, ignore_case, global));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fgrepl_fast_grepl_impl", (DL_FUNC) &_fgrepl_fast_grepl_impl, 3},
     {"_fgrepl_fast_fixed_impl", (DL_FUNC) &_fgrepl_fast_fixed_impl, 3},
+    {"_fgrepl_fast_regex_sub_impl", (DL_FUNC) &_fgrepl_fast_regex_sub_impl, 5},
+    {"_fgrepl_fast_fixed_sub_impl", (DL_FUNC) &_fgrepl_fast_fixed_sub_impl, 5},
     {NULL, NULL, 0}
 };
 

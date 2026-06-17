@@ -9,3 +9,11 @@ fast_fixed_impl <- function(pattern, x, ignore_case) {
     .Call(`_fgrepl_fast_fixed_impl`, pattern, x, ignore_case)
 }
 
+fast_regex_sub_impl <- function(pattern, replacement, x, ignore_case, global) {
+    .Call(`_fgrepl_fast_regex_sub_impl`, pattern, replacement, x, ignore_case, global)
+}
+
+fast_fixed_sub_impl <- function(pattern, replacement, x, ignore_case, global) {
+    .Call(`_fgrepl_fast_fixed_sub_impl`, pattern, replacement, x, ignore_case, global)
+}
+
