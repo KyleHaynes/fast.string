@@ -4,53 +4,23 @@ cat("=== Correctness Tests ===\n")
 
 library(stringi)
 
-# 1 million random 10-character strings
-x <- stri_rand_strings(
+# 7M random 3-40 character strings
+x_large <- stri_rand_strings(
   n = 7e6,
   length = 3:40,
   pattern = "[A-Z0-9 ]"
 )
 
-# Basic regex (use identical() carefully — NA != NA with ==, so use isTRUE(all.equal()))
-cat("regex match:\n")
-cat("  grepl:      ", paste(grepl("pattern", x), collapse=", "), "\n")
-cat("  fast_grepl: ", paste(fast_grepl("pattern", x), collapse=", "), "\n")
-cat("  match:", isTRUE(all.equal(grepl("pattern", x), fast_grepl("pattern", x))), "\n\n")
-
-# ignore.case
-cat("ignore.case:\n")
-cat("  grepl:      ", paste(grepl("hello", x, ignore.case=TRUE), collapse=", "), "\n")
-cat("  fast_grepl: ", paste(fast_grepl("hello", x, ignore.case=TRUE), collapse=", "), "\n")
-cat("  match:", isTRUE(all.equal(grepl("hello", x, ignore.case=TRUE), fast_grepl("hello", x, ignore.case=TRUE))), "\n\n")
-
-# fixed
-cat("fixed:\n")
-cat("  grepl:      ", paste(grepl("foo", x, fixed=TRUE), collapse=", "), "\n")
-cat("  fast_grepl: ", paste(fast_grepl("foo", x, fixed=TRUE), collapse=", "), "\n")
-cat("  match:", isTRUE(all.equal(grepl("foo", x, fixed=TRUE), fast_grepl("foo", x, fixed=TRUE))), "\n\n")
-
-# NA propagation
-cat("NA handling:\n")
-cat("  grepl NA:      ", grepl("x", NA_character_), "\n")
-cat("  fast_grepl NA: ", fast_grepl("x", NA_character_), "\n")
-cat("  both NA:", is.na(fast_grepl("x", NA_character_)), "\n\n")
-
-# Anchors
-cat("anchors test (^foo):", identical(grepl("^foo", x), fast_grepl("^foo", x)), "\n")
-cat("char class (\\\\d+):", identical(grepl("\\d+", c("abc123", "xyz"), perl=TRUE),
-                                       fast_grepl("\\d+", c("abc123", "xyz"))), "\n\n")
 
 cat("=== Benchmark ===\n")
-x_large <- rep(c("hello world", "foo bar", "test pattern here", "HELLO WORLD"), 250000)
-cat("Vector length:", length(x_large), "\n\n")
 
 library(microbenchmark)
 
 cat("--- Simple pattern ('pattern') ---\n")
 mb1 <- microbenchmark(
-    base_grepl       = grepl("pattern", x_large),
-    fast_grepl_regex = fast_grepl("pattern", x_large),
-    fast_grepl_fixed = fast_grepl("pattern", x_large, fixed=TRUE),
+    base_grepl       = base::grepl("pattern", x_large),
+    fast_grepl_regex = fgrepl::grepl("pattern", x_large),
+    fast_grepl_fixed = fgrepl::grepl("pattern", x_large, fixed=TRUE),
     times = 2
 )
 print(mb1)
@@ -61,8 +31,8 @@ cat("Speedup vs base grepl: regex=", round(med1[1]/med1[2], 1), "x  fixed=",
 cat("--- Complex alternation ('(hello|world|foo|bar|test|HELLO|pattern)') ---\n")
 complex_pat <- "(hello|world|foo|bar|test|HELLO|pattern)"
 mb2 <- microbenchmark(
-    base_grepl       = grepl(complex_pat, x_large, perl=TRUE),
-    fast_grepl_regex = fast_grepl(complex_pat, x_large),
+    base_grepl       = base::grepl(complex_pat, x_large, perl=TRUE),
+    fast_grepl_regex = fgrepl::grepl(complex_pat, x_large),
     times = 2
 )
 print(mb2)
@@ -71,9 +41,9 @@ cat("Speedup vs base grepl:", round(med2[1]/med2[2], 1), "x\n\n")
 
 cat("--- Case-insensitive ('hello', ignore.case=TRUE) ---\n")
 mb3 <- microbenchmark(
-    base_grepl       = grepl("hello", x_large, ignore.case=TRUE),
-    fast_grepl_regex = fast_grepl("hello", x_large, ignore.case=TRUE),
-    fast_grepl_fixed = fast_grepl("hello", x_large, ignore.case=TRUE, fixed=TRUE),
+    base_grepl       = base::grepl("hello", x_large, ignore.case=TRUE),
+    fast_grepl_regex = fgrepl::grepl("hello", x_large, ignore.case=TRUE),
+    fast_grepl_fixed = fgrepl::grepl("hello", x_large, ignore.case=TRUE, fixed=TRUE),
     times = 2
 )
 print(mb3)
@@ -83,27 +53,73 @@ cat("Speedup vs base grepl: regex=", round(med3[1]/med3[2], 1), "x  fixed=",
 
 cat("Thread count:", RcppParallel::defaultNumThreads(), "\n")
 
-cat("\n=== fast_grep / fast_sub / fast_gsub Correctness ===\n")
+cat("\n=== grep / sub / gsub Correctness ===\n")
 y <- c("hello world", "foo bar", NA, "test123", "HELLO WORLD")
-cat("grep match:   ", identical(grep("foo", y), fast_grep("foo", y)), "\n")
-cat("grep value:   ", identical(grep("foo", y, value=TRUE), fast_grep("foo", y, value=TRUE)), "\n")
-cat("sub match:    ", identical(sub("(\\w+)", "[\\1]", y), fast_sub("(\\w+)", "[\\1]", y)), "\n")
-cat("gsub match:   ", identical(gsub("(\\w+)", "[\\1]", y), fast_gsub("(\\w+)", "[\\1]", y)), "\n")
-cat("fixed gsub:   ", identical(gsub("o", "0", y, fixed=TRUE), fast_gsub("o", "0", y, fixed=TRUE)), "\n")
-cat("fixed sub:    ", identical(sub("o", "0", y, fixed=TRUE), fast_sub("o", "0", y, fixed=TRUE)), "\n")
-cat("gsub NA:      ", is.na(fast_gsub("x", "y", NA_character_)), "\n")
-cat("icase regex:  ", identical(gsub("hello","HI",y,ignore.case=TRUE), fast_gsub("hello","HI",y,ignore.case=TRUE)), "\n")
-cat("NOTE: fixed+ignore.case: fast_gsub supports it; base R ignores ignore.case (and warns)\n\n")
+cat("grep match:   ", identical(base::grep("foo", y), fgrepl::grep("foo", y)), "\n")
+cat("grep value:   ", identical(base::grep("foo", y, value=TRUE), fgrepl::grep("foo", y, value=TRUE)), "\n")
+cat("sub match:    ", identical(base::sub("(\\w+)", "[\\1]", y), fgrepl::sub("(\\w+)", "[\\1]", y)), "\n")
+cat("gsub match:   ", identical(base::gsub("(\\w+)", "[\\1]", y), fgrepl::gsub("(\\w+)", "[\\1]", y)), "\n")
+cat("fixed gsub:   ", identical(base::gsub("o", "0", y, fixed=TRUE), fgrepl::gsub("o", "0", y, fixed=TRUE)), "\n")
+cat("fixed sub:    ", identical(base::sub("o", "0", y, fixed=TRUE), fgrepl::sub("o", "0", y, fixed=TRUE)), "\n")
+cat("gsub NA:      ", is.na(fgrepl::gsub("x", "y", NA_character_)), "\n")
+cat("icase regex:  ", identical(base::gsub("hello","HI",y,ignore.case=TRUE), fgrepl::gsub("hello","HI",y,ignore.case=TRUE)), "\n")
+cat("NOTE: fixed+ignore.case: fgrepl supports it; base R ignores ignore.case (and warns)\n\n")
 
 cat("--- gsub benchmark ---\n")
 mb4 <- microbenchmark(
-    base_gsub       = gsub("(\\w+)", "[\\1]", x_large),
-    fast_gsub_regex = fast_gsub("(\\w+)", "[\\1]", x_large),
-    base_gsub_fixed = gsub("o", "0", x_large, fixed=TRUE),
-    fast_gsub_fixed = fast_gsub("o", "0", x_large, fixed=TRUE),
+    base_gsub       = base::gsub("(\\w+)", "[\\1]", x_large),
+    fast_gsub_regex = fgrepl::gsub("(\\w+)", "[\\1]", x_large),
+    base_gsub_fixed = base::gsub("O", "0", x_large, fixed=TRUE),
+    fast_gsub_fixed = fgrepl::gsub("O", "0", x_large, fixed=TRUE),
     times = 2
 )
 print(mb4)
 med4 <- summary(mb4)$median
 cat("Speedup regex gsub:", round(med4[1]/med4[2], 1), "x\n")
 cat("Speedup fixed gsub:", round(med4[3]/med4[4], 1), "x\n")
+
+
+# ---------------------------------------------------------------------------
+# gsub_all benchmark — 3M strings, system.time
+# ---------------------------------------------------------------------------
+
+cat("\n=== gsub_all Benchmark (3M strings) ===\n")
+x3m <- stri_rand_strings(3e6, 3:40, "[A-Z0-9 ]")
+
+patterns <- c("THE", "AND", "FOR", "YOU", "ARE")
+repls    <- c("the", "and", "for", "you", "are")
+
+cat("\nBase R for-loop (fixed, sequential):\n")
+print(system.time({
+    x_base <- x3m
+    for (i in seq_along(patterns))
+        x_base <- base::gsub(patterns[i], repls[i], x_base, fixed = TRUE)
+}))
+
+cat("gsub_all fixed sequential (default):\n")
+print(system.time(
+    x_seq <- fgrepl::gsub_all(patterns, repls, x3m, fixed = TRUE, sequential = TRUE)
+))
+
+cat("gsub_all fixed single-scan (sequential=FALSE):\n")
+print(system.time(
+    x_par <- fgrepl::gsub_all(patterns, repls, x3m, fixed = TRUE, sequential = FALSE)
+))
+
+cat("\nCorrectness (sequential matches base R loop):", identical(x_seq, x_base), "\n")
+
+cat("\n--- Regex gsub_all vs lapply + gsub ---\n")
+pat_rx  <- c("\\bTHE\\b", "\\bAND\\b", "\\bFOR\\b")
+repl_rx <- c("the", "and", "for")
+
+cat("Base R lapply+gsub (regex):\n")
+print(system.time({
+    x_base_rx <- x3m
+    for (i in seq_along(pat_rx))
+        x_base_rx <- base::gsub(pat_rx[i], repl_rx[i], x_base_rx, perl = TRUE)
+}))
+
+cat("gsub_all regex sequential:\n")
+print(system.time(
+    fgrepl::gsub_all(pat_rx, repl_rx, x3m, sequential = TRUE)
+))

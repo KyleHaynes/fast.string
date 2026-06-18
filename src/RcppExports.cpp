@@ -51,6 +51,36 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_fixed_gsub_all_impl
+CharacterVector fast_fixed_gsub_all_impl(const StringVector& patterns, const StringVector& replacements, const StringVector& x, bool ignore_case, bool sequential);
+RcppExport SEXP _fgrepl_fast_fixed_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP sequentialSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type patterns(patternsSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type replacements(replacementsSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< bool >::type sequential(sequentialSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fixed_gsub_all_impl(patterns, replacements, x, ignore_case, sequential));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_regex_gsub_all_impl
+CharacterVector fast_regex_gsub_all_impl(const StringVector& patterns, const StringVector& replacements, const StringVector& x, bool ignore_case, bool sequential);
+RcppExport SEXP _fgrepl_fast_regex_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP sequentialSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type patterns(patternsSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type replacements(replacementsSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< bool >::type sequential(sequentialSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_regex_gsub_all_impl(patterns, replacements, x, ignore_case, sequential));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_fixed_sub_impl
 CharacterVector fast_fixed_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global);
 RcppExport SEXP _fgrepl_fast_fixed_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP) {
@@ -71,6 +101,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fgrepl_fast_grepl_impl", (DL_FUNC) &_fgrepl_fast_grepl_impl, 3},
     {"_fgrepl_fast_fixed_impl", (DL_FUNC) &_fgrepl_fast_fixed_impl, 3},
     {"_fgrepl_fast_regex_sub_impl", (DL_FUNC) &_fgrepl_fast_regex_sub_impl, 5},
+    {"_fgrepl_fast_fixed_gsub_all_impl", (DL_FUNC) &_fgrepl_fast_fixed_gsub_all_impl, 5},
+    {"_fgrepl_fast_regex_gsub_all_impl", (DL_FUNC) &_fgrepl_fast_regex_gsub_all_impl, 5},
     {"_fgrepl_fast_fixed_sub_impl", (DL_FUNC) &_fgrepl_fast_fixed_sub_impl, 5},
     {NULL, NULL, 0}
 };

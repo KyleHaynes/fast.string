@@ -13,6 +13,14 @@ fast_regex_sub_impl <- function(pattern, replacement, x, ignore_case, global) {
     .Call(`_fgrepl_fast_regex_sub_impl`, pattern, replacement, x, ignore_case, global)
 }
 
+fast_fixed_gsub_all_impl <- function(patterns, replacements, x, ignore_case, sequential) {
+    .Call(`_fgrepl_fast_fixed_gsub_all_impl`, patterns, replacements, x, ignore_case, sequential)
+}
+
+fast_regex_gsub_all_impl <- function(patterns, replacements, x, ignore_case, sequential) {
+    .Call(`_fgrepl_fast_regex_gsub_all_impl`, patterns, replacements, x, ignore_case, sequential)
+}
+
 fast_fixed_sub_impl <- function(pattern, replacement, x, ignore_case, global) {
     .Call(`_fgrepl_fast_fixed_sub_impl`, pattern, replacement, x, ignore_case, global)
 }
