@@ -4,7 +4,7 @@
 .show_mask_msg_once <- function() {
     if (!.fgrepl_env$mask_msg_shown) {
         cli::cli_inform(c(
-            "i" = "{.pkg fgrepl}: {.fn grepl}, {.fn grep}, {.fn sub}, and {.fn gsub} are masking {.pkg base} functions.",
+            "i" = "{.pkg fgrepl}: {.fn grepl}, {.fn grep}, {.fn sub}, {.fn gsub}, {.fn trimws}, {.fn substr}, {.fn nchar}, and {.fn chartr} are masking {.pkg base} functions.",
             "i" = "Suppress with {.code options(fgrepl.verbose = FALSE)}."
         ))
         .fgrepl_env$mask_msg_shown <- TRUE

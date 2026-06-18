@@ -96,6 +96,106 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_format_date_impl
+CharacterVector fast_format_date_impl(const NumericVector& x, int format_code);
+RcppExport SEXP _fgrepl_fast_format_date_impl(SEXP xSEXP, SEXP format_codeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type format_code(format_codeSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_format_date_impl(x, format_code));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_date_parts_impl
+List fast_date_parts_impl(const NumericVector& x);
+RcppExport SEXP _fgrepl_fast_date_parts_impl(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_date_parts_impl(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_jaro_winkler_impl
+NumericVector fast_jaro_winkler_impl(const StringVector& a, const StringVector& b, double p);
+RcppExport SEXP _fgrepl_fast_jaro_winkler_impl(SEXP aSEXP, SEXP bSEXP, SEXP pSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< double >::type p(pSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_jaro_winkler_impl(a, b, p));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_jaro_winkler_matrix_impl
+NumericMatrix fast_jaro_winkler_matrix_impl(const StringVector& a, const StringVector& b, double p);
+RcppExport SEXP _fgrepl_fast_jaro_winkler_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP pSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< double >::type p(pSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_jaro_winkler_matrix_impl(a, b, p));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_trimws_impl
+CharacterVector fast_trimws_impl(const StringVector& x, int which);
+RcppExport SEXP _fgrepl_fast_trimws_impl(SEXP xSEXP, SEXP whichSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type which(whichSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_trimws_impl(x, which));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_substr_impl
+CharacterVector fast_substr_impl(const StringVector& x, const IntegerVector& start, const IntegerVector& stop);
+RcppExport SEXP _fgrepl_fast_substr_impl(SEXP xSEXP, SEXP startSEXP, SEXP stopSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type start(startSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type stop(stopSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_substr_impl(x, start, stop));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_nchar_impl
+IntegerVector fast_nchar_impl(const StringVector& x, int type, bool allow_na);
+RcppExport SEXP _fgrepl_fast_nchar_impl(SEXP xSEXP, SEXP typeSEXP, SEXP allow_naSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< bool >::type allow_na(allow_naSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_nchar_impl(x, type, allow_na));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_chartr_impl
+CharacterVector fast_chartr_impl(const std::string& old_chars, const std::string& new_chars, const StringVector& x);
+RcppExport SEXP _fgrepl_fast_chartr_impl(SEXP old_charsSEXP, SEXP new_charsSEXP, SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type old_chars(old_charsSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type new_chars(new_charsSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_chartr_impl(old_chars, new_chars, x));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fgrepl_fast_grepl_impl", (DL_FUNC) &_fgrepl_fast_grepl_impl, 3},
@@ -104,6 +204,14 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fgrepl_fast_fixed_gsub_all_impl", (DL_FUNC) &_fgrepl_fast_fixed_gsub_all_impl, 5},
     {"_fgrepl_fast_regex_gsub_all_impl", (DL_FUNC) &_fgrepl_fast_regex_gsub_all_impl, 5},
     {"_fgrepl_fast_fixed_sub_impl", (DL_FUNC) &_fgrepl_fast_fixed_sub_impl, 5},
+    {"_fgrepl_fast_format_date_impl", (DL_FUNC) &_fgrepl_fast_format_date_impl, 2},
+    {"_fgrepl_fast_date_parts_impl", (DL_FUNC) &_fgrepl_fast_date_parts_impl, 1},
+    {"_fgrepl_fast_jaro_winkler_impl", (DL_FUNC) &_fgrepl_fast_jaro_winkler_impl, 3},
+    {"_fgrepl_fast_jaro_winkler_matrix_impl", (DL_FUNC) &_fgrepl_fast_jaro_winkler_matrix_impl, 3},
+    {"_fgrepl_fast_trimws_impl", (DL_FUNC) &_fgrepl_fast_trimws_impl, 2},
+    {"_fgrepl_fast_substr_impl", (DL_FUNC) &_fgrepl_fast_substr_impl, 3},
+    {"_fgrepl_fast_nchar_impl", (DL_FUNC) &_fgrepl_fast_nchar_impl, 3},
+    {"_fgrepl_fast_chartr_impl", (DL_FUNC) &_fgrepl_fast_chartr_impl, 3},
     {NULL, NULL, 0}
 };
 

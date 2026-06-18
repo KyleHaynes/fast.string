@@ -25,3 +25,35 @@ fast_fixed_sub_impl <- function(pattern, replacement, x, ignore_case, global) {
     .Call(`_fgrepl_fast_fixed_sub_impl`, pattern, replacement, x, ignore_case, global)
 }
 
+fast_format_date_impl <- function(x, format_code) {
+    .Call(`_fgrepl_fast_format_date_impl`, x, format_code)
+}
+
+fast_date_parts_impl <- function(x) {
+    .Call(`_fgrepl_fast_date_parts_impl`, x)
+}
+
+fast_jaro_winkler_impl <- function(a, b, p) {
+    .Call(`_fgrepl_fast_jaro_winkler_impl`, a, b, p)
+}
+
+fast_jaro_winkler_matrix_impl <- function(a, b, p) {
+    .Call(`_fgrepl_fast_jaro_winkler_matrix_impl`, a, b, p)
+}
+
+fast_trimws_impl <- function(x, which) {
+    .Call(`_fgrepl_fast_trimws_impl`, x, which)
+}
+
+fast_substr_impl <- function(x, start, stop) {
+    .Call(`_fgrepl_fast_substr_impl`, x, start, stop)
+}
+
+fast_nchar_impl <- function(x, type, allow_na) {
+    .Call(`_fgrepl_fast_nchar_impl`, x, type, allow_na)
+}
+
+fast_chartr_impl <- function(old_chars, new_chars, x) {
+    .Call(`_fgrepl_fast_chartr_impl`, old_chars, new_chars, x)
+}
+
