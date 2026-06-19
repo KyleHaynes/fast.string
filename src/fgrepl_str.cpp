@@ -11,8 +11,14 @@ using namespace RcppParallel;
 // ---------------------------------------------------------------------------
 // trimws
 // which: 0=both, 1=left, 2=right
-// Strips ASCII whitespace (space, tab, CR, LF) matching base R's default.
+// Strips exactly the bytes matched by the R wrapper's default whitespace
+// regex "[ \t\r\n]". Deliberately narrower than std::isspace(), which also
+// treats \v and \f as whitespace and would diverge from base::trimws().
 // ---------------------------------------------------------------------------
+
+static inline bool is_trim_ws(unsigned char c) {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
 
 struct TrimWorker : public Worker {
     SEXP x_sexp;
@@ -29,9 +35,9 @@ struct TrimWorker : public Worker {
             const char* s = CHAR(elem);
             std::size_t start = 0, stop = (std::size_t)LENGTH(elem);
             if (which != 2)  // left or both
-                while (start < stop && std::isspace((unsigned char)s[start])) ++start;
+                while (start < stop && is_trim_ws((unsigned char)s[start])) ++start;
             if (which != 1)  // right or both
-                while (stop > start && std::isspace((unsigned char)s[stop-1])) --stop;
+                while (stop > start && is_trim_ws((unsigned char)s[stop-1])) --stop;
             results[i].assign(s + start, stop - start);
         }
     }

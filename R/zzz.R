@@ -1,3 +1,8 @@
+#' @useDynLib fgrepl, .registration = TRUE
+#' @importFrom Rcpp evalCpp
+#' @importFrom RcppParallel setThreadOptions
+NULL
+
 .fgrepl_env <- new.env(parent = emptyenv())
 .fgrepl_env$mask_msg_shown <- FALSE
 

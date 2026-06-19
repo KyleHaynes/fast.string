@@ -41,6 +41,14 @@ fast_jaro_winkler_matrix_impl <- function(a, b, p) {
     .Call(`_fgrepl_fast_jaro_winkler_matrix_impl`, a, b, p)
 }
 
+fast_soundex_impl <- function(x) {
+    .Call(`_fgrepl_fast_soundex_impl`, x)
+}
+
+fast_nysiis_impl <- function(x) {
+    .Call(`_fgrepl_fast_nysiis_impl`, x)
+}
+
 fast_trimws_impl <- function(x, which) {
     .Call(`_fgrepl_fast_trimws_impl`, x, which)
 }

@@ -3,6 +3,8 @@
 #' @param x A `Date` object or numeric vector of days since 1970-01-01.
 #' @param format One of `"iso"` (YYYY-MM-DD), `"compact"` (YYYYMMDD),
 #'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
+#' @return Character vector the same length as `x`.
+#' @export
 format_date <- function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
     format <- match.arg(format)
     if (inherits(x, "Date")) x <- unclass(x)
@@ -16,6 +18,7 @@ format_date <- function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
 #'
 #' @param x A `Date` object or numeric vector of days since 1970-01-01.
 #' @return A data.frame with integer columns `year`, `month`, `day`.
+#' @export
 date_parts <- function(x) {
     if (inherits(x, "Date")) x <- unclass(x)
     if (!is.numeric(x))

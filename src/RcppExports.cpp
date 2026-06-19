@@ -145,6 +145,28 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_soundex_impl
+CharacterVector fast_soundex_impl(const StringVector& x);
+RcppExport SEXP _fgrepl_fast_soundex_impl(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_soundex_impl(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_nysiis_impl
+CharacterVector fast_nysiis_impl(const StringVector& x);
+RcppExport SEXP _fgrepl_fast_nysiis_impl(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_nysiis_impl(x));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_trimws_impl
 CharacterVector fast_trimws_impl(const StringVector& x, int which);
 RcppExport SEXP _fgrepl_fast_trimws_impl(SEXP xSEXP, SEXP whichSEXP) {
@@ -208,6 +230,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fgrepl_fast_date_parts_impl", (DL_FUNC) &_fgrepl_fast_date_parts_impl, 1},
     {"_fgrepl_fast_jaro_winkler_impl", (DL_FUNC) &_fgrepl_fast_jaro_winkler_impl, 3},
     {"_fgrepl_fast_jaro_winkler_matrix_impl", (DL_FUNC) &_fgrepl_fast_jaro_winkler_matrix_impl, 3},
+    {"_fgrepl_fast_soundex_impl", (DL_FUNC) &_fgrepl_fast_soundex_impl, 1},
+    {"_fgrepl_fast_nysiis_impl", (DL_FUNC) &_fgrepl_fast_nysiis_impl, 1},
     {"_fgrepl_fast_trimws_impl", (DL_FUNC) &_fgrepl_fast_trimws_impl, 2},
     {"_fgrepl_fast_substr_impl", (DL_FUNC) &_fgrepl_fast_substr_impl, 3},
     {"_fgrepl_fast_nchar_impl", (DL_FUNC) &_fgrepl_fast_nchar_impl, 3},
