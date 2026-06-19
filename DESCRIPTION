@@ -1,4 +1,4 @@
-Package: fgrepl
+Package: fast.string
 Type: Package
 Title: Fast Parallel String Functions via PCRE2, RE2 and RcppParallel
 Version: 0.2.0

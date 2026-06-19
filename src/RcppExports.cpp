@@ -12,7 +12,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // fast_grepl_impl
 LogicalVector fast_grepl_impl(const std::string& pattern, const StringVector& x, bool ignore_case);
-RcppExport SEXP _fgrepl_fast_grepl_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP) {
+RcppExport SEXP _fast_string_fast_grepl_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -25,7 +25,7 @@ END_RCPP
 }
 // fast_fixed_impl
 LogicalVector fast_fixed_impl(const std::string& pattern, const StringVector& x, bool ignore_case);
-RcppExport SEXP _fgrepl_fast_fixed_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP) {
+RcppExport SEXP _fast_string_fast_fixed_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -38,7 +38,7 @@ END_RCPP
 }
 // fast_regex_sub_impl
 CharacterVector fast_regex_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global);
-RcppExport SEXP _fgrepl_fast_regex_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP) {
+RcppExport SEXP _fast_string_fast_regex_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -53,7 +53,7 @@ END_RCPP
 }
 // fast_fixed_gsub_all_impl
 CharacterVector fast_fixed_gsub_all_impl(const StringVector& patterns, const StringVector& replacements, const StringVector& x, bool ignore_case, bool sequential);
-RcppExport SEXP _fgrepl_fast_fixed_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP sequentialSEXP) {
+RcppExport SEXP _fast_string_fast_fixed_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP sequentialSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -68,7 +68,7 @@ END_RCPP
 }
 // fast_regex_gsub_all_impl
 CharacterVector fast_regex_gsub_all_impl(const StringVector& patterns, const StringVector& replacements, const StringVector& x, bool ignore_case, bool sequential);
-RcppExport SEXP _fgrepl_fast_regex_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP sequentialSEXP) {
+RcppExport SEXP _fast_string_fast_regex_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP sequentialSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -83,7 +83,7 @@ END_RCPP
 }
 // fast_fixed_sub_impl
 CharacterVector fast_fixed_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global);
-RcppExport SEXP _fgrepl_fast_fixed_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP) {
+RcppExport SEXP _fast_string_fast_fixed_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -98,7 +98,7 @@ END_RCPP
 }
 // fast_format_date_impl
 CharacterVector fast_format_date_impl(const NumericVector& x, int format_code);
-RcppExport SEXP _fgrepl_fast_format_date_impl(SEXP xSEXP, SEXP format_codeSEXP) {
+RcppExport SEXP _fast_string_fast_format_date_impl(SEXP xSEXP, SEXP format_codeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -108,9 +108,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_parse_date_impl
+NumericVector fast_parse_date_impl(const StringVector& x, int format_code);
+RcppExport SEXP _fast_string_fast_parse_date_impl(SEXP xSEXP, SEXP format_codeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type format_code(format_codeSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_parse_date_impl(x, format_code));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_date_parts_impl
 List fast_date_parts_impl(const NumericVector& x);
-RcppExport SEXP _fgrepl_fast_date_parts_impl(SEXP xSEXP) {
+RcppExport SEXP _fast_string_fast_date_parts_impl(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -121,7 +133,7 @@ END_RCPP
 }
 // fast_jaro_winkler_impl
 NumericVector fast_jaro_winkler_impl(const StringVector& a, const StringVector& b, double p);
-RcppExport SEXP _fgrepl_fast_jaro_winkler_impl(SEXP aSEXP, SEXP bSEXP, SEXP pSEXP) {
+RcppExport SEXP _fast_string_fast_jaro_winkler_impl(SEXP aSEXP, SEXP bSEXP, SEXP pSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -134,7 +146,7 @@ END_RCPP
 }
 // fast_jaro_winkler_matrix_impl
 NumericMatrix fast_jaro_winkler_matrix_impl(const StringVector& a, const StringVector& b, double p);
-RcppExport SEXP _fgrepl_fast_jaro_winkler_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP pSEXP) {
+RcppExport SEXP _fast_string_fast_jaro_winkler_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP pSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -147,7 +159,7 @@ END_RCPP
 }
 // fast_soundex_impl
 CharacterVector fast_soundex_impl(const StringVector& x);
-RcppExport SEXP _fgrepl_fast_soundex_impl(SEXP xSEXP) {
+RcppExport SEXP _fast_string_fast_soundex_impl(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -158,7 +170,7 @@ END_RCPP
 }
 // fast_nysiis_impl
 CharacterVector fast_nysiis_impl(const StringVector& x);
-RcppExport SEXP _fgrepl_fast_nysiis_impl(SEXP xSEXP) {
+RcppExport SEXP _fast_string_fast_nysiis_impl(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -169,7 +181,7 @@ END_RCPP
 }
 // fast_trimws_impl
 CharacterVector fast_trimws_impl(const StringVector& x, int which);
-RcppExport SEXP _fgrepl_fast_trimws_impl(SEXP xSEXP, SEXP whichSEXP) {
+RcppExport SEXP _fast_string_fast_trimws_impl(SEXP xSEXP, SEXP whichSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -181,7 +193,7 @@ END_RCPP
 }
 // fast_substr_impl
 CharacterVector fast_substr_impl(const StringVector& x, const IntegerVector& start, const IntegerVector& stop);
-RcppExport SEXP _fgrepl_fast_substr_impl(SEXP xSEXP, SEXP startSEXP, SEXP stopSEXP) {
+RcppExport SEXP _fast_string_fast_substr_impl(SEXP xSEXP, SEXP startSEXP, SEXP stopSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -194,7 +206,7 @@ END_RCPP
 }
 // fast_nchar_impl
 IntegerVector fast_nchar_impl(const StringVector& x, int type, bool allow_na);
-RcppExport SEXP _fgrepl_fast_nchar_impl(SEXP xSEXP, SEXP typeSEXP, SEXP allow_naSEXP) {
+RcppExport SEXP _fast_string_fast_nchar_impl(SEXP xSEXP, SEXP typeSEXP, SEXP allow_naSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -207,7 +219,7 @@ END_RCPP
 }
 // fast_chartr_impl
 CharacterVector fast_chartr_impl(const std::string& old_chars, const std::string& new_chars, const StringVector& x);
-RcppExport SEXP _fgrepl_fast_chartr_impl(SEXP old_charsSEXP, SEXP new_charsSEXP, SEXP xSEXP) {
+RcppExport SEXP _fast_string_fast_chartr_impl(SEXP old_charsSEXP, SEXP new_charsSEXP, SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -220,26 +232,27 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_fgrepl_fast_grepl_impl", (DL_FUNC) &_fgrepl_fast_grepl_impl, 3},
-    {"_fgrepl_fast_fixed_impl", (DL_FUNC) &_fgrepl_fast_fixed_impl, 3},
-    {"_fgrepl_fast_regex_sub_impl", (DL_FUNC) &_fgrepl_fast_regex_sub_impl, 5},
-    {"_fgrepl_fast_fixed_gsub_all_impl", (DL_FUNC) &_fgrepl_fast_fixed_gsub_all_impl, 5},
-    {"_fgrepl_fast_regex_gsub_all_impl", (DL_FUNC) &_fgrepl_fast_regex_gsub_all_impl, 5},
-    {"_fgrepl_fast_fixed_sub_impl", (DL_FUNC) &_fgrepl_fast_fixed_sub_impl, 5},
-    {"_fgrepl_fast_format_date_impl", (DL_FUNC) &_fgrepl_fast_format_date_impl, 2},
-    {"_fgrepl_fast_date_parts_impl", (DL_FUNC) &_fgrepl_fast_date_parts_impl, 1},
-    {"_fgrepl_fast_jaro_winkler_impl", (DL_FUNC) &_fgrepl_fast_jaro_winkler_impl, 3},
-    {"_fgrepl_fast_jaro_winkler_matrix_impl", (DL_FUNC) &_fgrepl_fast_jaro_winkler_matrix_impl, 3},
-    {"_fgrepl_fast_soundex_impl", (DL_FUNC) &_fgrepl_fast_soundex_impl, 1},
-    {"_fgrepl_fast_nysiis_impl", (DL_FUNC) &_fgrepl_fast_nysiis_impl, 1},
-    {"_fgrepl_fast_trimws_impl", (DL_FUNC) &_fgrepl_fast_trimws_impl, 2},
-    {"_fgrepl_fast_substr_impl", (DL_FUNC) &_fgrepl_fast_substr_impl, 3},
-    {"_fgrepl_fast_nchar_impl", (DL_FUNC) &_fgrepl_fast_nchar_impl, 3},
-    {"_fgrepl_fast_chartr_impl", (DL_FUNC) &_fgrepl_fast_chartr_impl, 3},
+    {"_fast_string_fast_grepl_impl", (DL_FUNC) &_fast_string_fast_grepl_impl, 3},
+    {"_fast_string_fast_fixed_impl", (DL_FUNC) &_fast_string_fast_fixed_impl, 3},
+    {"_fast_string_fast_regex_sub_impl", (DL_FUNC) &_fast_string_fast_regex_sub_impl, 5},
+    {"_fast_string_fast_fixed_gsub_all_impl", (DL_FUNC) &_fast_string_fast_fixed_gsub_all_impl, 5},
+    {"_fast_string_fast_regex_gsub_all_impl", (DL_FUNC) &_fast_string_fast_regex_gsub_all_impl, 5},
+    {"_fast_string_fast_fixed_sub_impl", (DL_FUNC) &_fast_string_fast_fixed_sub_impl, 5},
+    {"_fast_string_fast_format_date_impl", (DL_FUNC) &_fast_string_fast_format_date_impl, 2},
+    {"_fast_string_fast_parse_date_impl", (DL_FUNC) &_fast_string_fast_parse_date_impl, 2},
+    {"_fast_string_fast_date_parts_impl", (DL_FUNC) &_fast_string_fast_date_parts_impl, 1},
+    {"_fast_string_fast_jaro_winkler_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_impl, 3},
+    {"_fast_string_fast_jaro_winkler_matrix_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_matrix_impl, 3},
+    {"_fast_string_fast_soundex_impl", (DL_FUNC) &_fast_string_fast_soundex_impl, 1},
+    {"_fast_string_fast_nysiis_impl", (DL_FUNC) &_fast_string_fast_nysiis_impl, 1},
+    {"_fast_string_fast_trimws_impl", (DL_FUNC) &_fast_string_fast_trimws_impl, 2},
+    {"_fast_string_fast_substr_impl", (DL_FUNC) &_fast_string_fast_substr_impl, 3},
+    {"_fast_string_fast_nchar_impl", (DL_FUNC) &_fast_string_fast_nchar_impl, 3},
+    {"_fast_string_fast_chartr_impl", (DL_FUNC) &_fast_string_fast_chartr_impl, 3},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_fgrepl(DllInfo *dll) {
+RcppExport void R_init_fast_string(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

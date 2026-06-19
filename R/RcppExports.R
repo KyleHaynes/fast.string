@@ -2,66 +2,70 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 fast_grepl_impl <- function(pattern, x, ignore_case) {
-    .Call(`_fgrepl_fast_grepl_impl`, pattern, x, ignore_case)
+    .Call(`_fast_string_fast_grepl_impl`, pattern, x, ignore_case)
 }
 
 fast_fixed_impl <- function(pattern, x, ignore_case) {
-    .Call(`_fgrepl_fast_fixed_impl`, pattern, x, ignore_case)
+    .Call(`_fast_string_fast_fixed_impl`, pattern, x, ignore_case)
 }
 
 fast_regex_sub_impl <- function(pattern, replacement, x, ignore_case, global) {
-    .Call(`_fgrepl_fast_regex_sub_impl`, pattern, replacement, x, ignore_case, global)
+    .Call(`_fast_string_fast_regex_sub_impl`, pattern, replacement, x, ignore_case, global)
 }
 
 fast_fixed_gsub_all_impl <- function(patterns, replacements, x, ignore_case, sequential) {
-    .Call(`_fgrepl_fast_fixed_gsub_all_impl`, patterns, replacements, x, ignore_case, sequential)
+    .Call(`_fast_string_fast_fixed_gsub_all_impl`, patterns, replacements, x, ignore_case, sequential)
 }
 
 fast_regex_gsub_all_impl <- function(patterns, replacements, x, ignore_case, sequential) {
-    .Call(`_fgrepl_fast_regex_gsub_all_impl`, patterns, replacements, x, ignore_case, sequential)
+    .Call(`_fast_string_fast_regex_gsub_all_impl`, patterns, replacements, x, ignore_case, sequential)
 }
 
 fast_fixed_sub_impl <- function(pattern, replacement, x, ignore_case, global) {
-    .Call(`_fgrepl_fast_fixed_sub_impl`, pattern, replacement, x, ignore_case, global)
+    .Call(`_fast_string_fast_fixed_sub_impl`, pattern, replacement, x, ignore_case, global)
 }
 
 fast_format_date_impl <- function(x, format_code) {
-    .Call(`_fgrepl_fast_format_date_impl`, x, format_code)
+    .Call(`_fast_string_fast_format_date_impl`, x, format_code)
+}
+
+fast_parse_date_impl <- function(x, format_code) {
+    .Call(`_fast_string_fast_parse_date_impl`, x, format_code)
 }
 
 fast_date_parts_impl <- function(x) {
-    .Call(`_fgrepl_fast_date_parts_impl`, x)
+    .Call(`_fast_string_fast_date_parts_impl`, x)
 }
 
 fast_jaro_winkler_impl <- function(a, b, p) {
-    .Call(`_fgrepl_fast_jaro_winkler_impl`, a, b, p)
+    .Call(`_fast_string_fast_jaro_winkler_impl`, a, b, p)
 }
 
 fast_jaro_winkler_matrix_impl <- function(a, b, p) {
-    .Call(`_fgrepl_fast_jaro_winkler_matrix_impl`, a, b, p)
+    .Call(`_fast_string_fast_jaro_winkler_matrix_impl`, a, b, p)
 }
 
 fast_soundex_impl <- function(x) {
-    .Call(`_fgrepl_fast_soundex_impl`, x)
+    .Call(`_fast_string_fast_soundex_impl`, x)
 }
 
 fast_nysiis_impl <- function(x) {
-    .Call(`_fgrepl_fast_nysiis_impl`, x)
+    .Call(`_fast_string_fast_nysiis_impl`, x)
 }
 
 fast_trimws_impl <- function(x, which) {
-    .Call(`_fgrepl_fast_trimws_impl`, x, which)
+    .Call(`_fast_string_fast_trimws_impl`, x, which)
 }
 
 fast_substr_impl <- function(x, start, stop) {
-    .Call(`_fgrepl_fast_substr_impl`, x, start, stop)
+    .Call(`_fast_string_fast_substr_impl`, x, start, stop)
 }
 
 fast_nchar_impl <- function(x, type, allow_na) {
-    .Call(`_fgrepl_fast_nchar_impl`, x, type, allow_na)
+    .Call(`_fast_string_fast_nchar_impl`, x, type, allow_na)
 }
 
 fast_chartr_impl <- function(old_chars, new_chars, x) {
-    .Call(`_fgrepl_fast_chartr_impl`, old_chars, new_chars, x)
+    .Call(`_fast_string_fast_chartr_impl`, old_chars, new_chars, x)
 }
 

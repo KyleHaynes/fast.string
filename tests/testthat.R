@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(fgrepl)
+library(fast.string)
 
-test_check("fgrepl")
+test_check("fast.string")

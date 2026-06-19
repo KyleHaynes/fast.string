@@ -1,4 +1,4 @@
-#' @useDynLib fgrepl, .registration = TRUE
+#' @useDynLib fast.string, .registration = TRUE
 #' @importFrom Rcpp evalCpp
 #' @importFrom RcppParallel setThreadOptions
 NULL

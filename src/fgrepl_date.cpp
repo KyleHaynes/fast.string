@@ -99,6 +99,96 @@ CharacterVector fast_format_date_impl(const NumericVector& x, int format_code) {
     return result;
 }
 
+// ---------------------------------------------------------------------------
+// fas.Date — fixed-format date parsing (inverse of format_date()'s 4
+// formats). NOT a drop-in for base::as.Date(): no locale/strptime/format
+// auto-detection, exactly one fixed format per call, minimal validation
+// (length, digit/separator positions, month 1-12, day 1-31 — no
+// days-in-month/leap-year check). Malformed elements become NA.
+// ---------------------------------------------------------------------------
+
+static inline bool is_digit_ascii(char c) { return c >= '0' && c <= '9'; }
+
+// Fliegel & Van Flandern algorithm — Gregorian (y,m,d) -> Julian Day Number,
+// using ordinary truncating integer division. Verified against the epoch
+// constant used by jdn_to_ymd() above: ymd_to_jdn(1970,1,1) == 2440588.
+static inline long ymd_to_jdn(int y, int m, int d) {
+    long a = (m - 14) / 12;
+    return (1461L * (y + 4800 + a)) / 4
+         + (367L  * (m - 2 - 12 * a)) / 12
+         - (3L    * ((y + 4900 + a) / 100)) / 4
+         + d - 32075;
+}
+
+static inline bool parse2(const char* s, int pos, int& out) {
+    if (!is_digit_ascii(s[pos]) || !is_digit_ascii(s[pos + 1])) return false;
+    out = (s[pos] - '0') * 10 + (s[pos + 1] - '0');
+    return true;
+}
+static inline bool parse4(const char* s, int pos, int& out) {
+    for (int k = 0; k < 4; ++k) if (!is_digit_ascii(s[pos + k])) return false;
+    out = (s[pos]-'0')*1000 + (s[pos+1]-'0')*100 + (s[pos+2]-'0')*10 + (s[pos+3]-'0');
+    return true;
+}
+
+// format_code: 0=YYYY-MM-DD  1=YYYYMMDD  2=DD/MM/YYYY  3=YYYY/MM/DD
+static bool parse_date(const char* s, int len, int format_code, double& out_days) {
+    int y = 0, m = 0, d = 0;
+    bool ok = false;
+    switch (format_code) {
+        case 0: // YYYY-MM-DD (10 chars)
+            ok = len == 10 && s[4] == '-' && s[7] == '-' &&
+                 parse4(s, 0, y) && parse2(s, 5, m) && parse2(s, 8, d);
+            break;
+        case 1: // YYYYMMDD (8 chars)
+            ok = len == 8 &&
+                 parse4(s, 0, y) && parse2(s, 4, m) && parse2(s, 6, d);
+            break;
+        case 2: // DD/MM/YYYY (10 chars)
+            ok = len == 10 && s[2] == '/' && s[5] == '/' &&
+                 parse2(s, 0, d) && parse2(s, 3, m) && parse4(s, 6, y);
+            break;
+        case 3: // YYYY/MM/DD (10 chars)
+            ok = len == 10 && s[4] == '/' && s[7] == '/' &&
+                 parse4(s, 0, y) && parse2(s, 5, m) && parse2(s, 8, d);
+            break;
+    }
+    if (!ok || m < 1 || m > 12 || d < 1 || d > 31) return false;
+    out_days = (double)(ymd_to_jdn(y, m, d) - 2440588L);
+    return true;
+}
+
+struct DateParseWorker : public Worker {
+    SEXP x_sexp;
+    int format_code;
+    RVector<double> out;
+
+    DateParseWorker(SEXP x, int fc, NumericVector& out)
+        : x_sexp(x), format_code(fc), out(out) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        for (std::size_t i = begin; i < end; ++i) {
+            SEXP elem = STRING_ELT(x_sexp, i);
+            if (elem == NA_STRING) { out[i] = NA_REAL; continue; }
+            double days;
+            if (parse_date(CHAR(elem), LENGTH(elem), format_code, days))
+                out[i] = days;
+            else
+                out[i] = NA_REAL;
+        }
+    }
+};
+
+// [[Rcpp::export]]
+NumericVector fast_parse_date_impl(const StringVector& x, int format_code) {
+    R_xlen_t n = x.size();
+    NumericVector result(n);
+    DateParseWorker worker(x, format_code, result);
+    if (n >= 10000) parallelFor(0, (std::size_t)n, worker);
+    else            worker(0, (std::size_t)n);
+    return result;
+}
+
 struct DatePartsWorker : public Worker {
     const double* dates;
     RVector<int> years;

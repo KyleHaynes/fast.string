@@ -2,6 +2,7 @@
 
 export(chartr)
 export(date_parts)
+export(fas.Date)
 export(format_date)
 export(grep)
 export(grepl)
@@ -17,4 +18,4 @@ export(substr)
 export(trimws)
 importFrom(Rcpp,evalCpp)
 importFrom(RcppParallel,setThreadOptions)
-useDynLib(fgrepl, .registration = TRUE)
+useDynLib(fast.string, .registration = TRUE)
