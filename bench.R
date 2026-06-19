@@ -123,3 +123,21 @@ cat("gsub_all regex sequential:\n")
 print(system.time(
     fgrepl::gsub_all(pat_rx, repl_rx, x3m, sequential = TRUE)
 ))
+
+
+## Soundex
+library(fgrepl)
+library(phonics)
+library(stringi)
+x_large <- stri_rand_strings(
+  n = 7e6,
+  length = 3:40,
+  pattern = "[A-Z]"
+)
+
+
+system.time({xx <- phonics::soundex(x_large)})
+system.time({yy <- fgrepl::soundex(x_large)})
+system.time({zz <- stringdist::phonetic(x_large)})
+
+
