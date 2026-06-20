@@ -1,4 +1,4 @@
-# fgrepl — String & Phonetic Benchmarks
+# fast.string — String & Phonetic Benchmarks
 
 `trimws()`, `substr()`, `nchar()`, and `chartr()` are drop-in replacements for
 their `base` equivalents, parallelised across all CPU cores via Intel TBB.
@@ -8,25 +8,34 @@ All four preserve `names(x)` and `NA` handling exactly like `base`.
 equivalent, intended as blocking keys alongside `jaro_winkler_matrix()`.
 
 ```r
-library(fgrepl)
+library(fast.string)
 library(stringi)
 library(microbenchmark)
-options(fgrepl.verbose = FALSE)
+options(fast.string.verbose = FALSE)
 
 set.seed(1)
 n    <- 1e6
 x    <- stri_rand_strings(n, sample(3:40, n, replace = TRUE), pattern = "[A-Z]")
 x_ws <- paste0("  ", x, "\t\n")          # padded, for trimws()
+
+
+system.time(xx <- jaro_winkler(x, rev(x)))
+system.time(yy <- RecordLinkage::jarowinkler(x, rev(x)))
+system.time(zz <- 1 - stringdist::stringdist(x, rev(x), "jw"))
+table(xx == yy)
+table(zz == xx)
+head
+
 ```
 
 ## trimws()
 
 ```r
-identical(base::trimws(x_ws), fgrepl::trimws(x_ws))
+identical(base::trimws(x_ws), fast.string::trimws(x_ws))
 
 microbenchmark(
     base   = base::trimws(x_ws),
-    fgrepl = fgrepl::trimws(x_ws),
+    fast.string = fast.string::trimws(x_ws),
     times = 5
 )
 ```
@@ -34,11 +43,11 @@ microbenchmark(
 ## substr()
 
 ```r
-identical(base::substr(x, 1, 10), fgrepl::substr(x, 1, 10))
+identical(base::substr(x, 1, 10), fast.string::substr(x, 1, 10))
 
 microbenchmark(
     base   = base::substr(x, 1, 10),
-    fgrepl = fgrepl::substr(x, 1, 10),
+    fast.string = fast.string::substr(x, 1, 10),
     times = 5
 )
 ```
@@ -46,11 +55,11 @@ microbenchmark(
 ## nchar()
 
 ```r
-identical(base::nchar(x), fgrepl::nchar(x))
+identical(base::nchar(x), fast.string::nchar(x))
 
 microbenchmark(
     base   = base::nchar(x),
-    fgrepl = fgrepl::nchar(x),
+    fast.string = fast.string::nchar(x),
     times = 5
 )
 ```
@@ -58,11 +67,11 @@ microbenchmark(
 ## chartr()
 
 ```r
-identical(base::chartr("AEIOU", "aeiou", x), fgrepl::chartr("AEIOU", "aeiou", x))
+identical(base::chartr("AEIOU", "aeiou", x), fast.string::chartr("AEIOU", "aeiou", x))
 
 microbenchmark(
     base   = base::chartr("AEIOU", "aeiou", x),
-    fgrepl = fgrepl::chartr("AEIOU", "aeiou", x),
+    fast.string = fast.string::chartr("AEIOU", "aeiou", x),
     times = 5
 )
 ```
@@ -90,7 +99,7 @@ microbenchmark(
 
 ## Observed (1M strings, 1 run, 8-core Windows machine — your numbers will vary)
 
-| Function  | base (median) | fgrepl (median) | Speedup |
+| Function  | base (median) | fast.string (median) | Speedup |
 |-----------|---------------:|-----------------:|--------:|
 | `trimws`  | 1049 ms        | 335 ms           | ~3x     |
 | `substr`  | 180 ms         | 195 ms           | ~1x (no win — base's substr is already cheap) |

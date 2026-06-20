@@ -13,7 +13,7 @@ grep(
   fixed = FALSE,
   useBytes = FALSE,
   invert = FALSE,
-  verbose = getOption("fgrepl.verbose", TRUE),
+  verbose = getOption("fast.string.verbose", TRUE),
   nthreads = NULL
 )
 }
@@ -35,7 +35,7 @@ grep(
 \item{invert}{Logical. Return non-matching indices/values.}
 
 \item{verbose}{Logical. One-time mask message. Defaults to
-\code{getOption("fgrepl.verbose", TRUE)}.}
+\code{getOption("fast.string.verbose", TRUE)}.}
 
 \item{nthreads}{Integer or \code{NULL}. Thread count.}
 }

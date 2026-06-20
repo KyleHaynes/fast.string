@@ -14,6 +14,40 @@ format_date <- function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
     fast_format_date_impl(as.double(x), code)
 }
 
+#' Concatenate separate year/month/day fields into a formatted date string.
+#'
+#' Pure string-building (zero-padding plus punctuation): no calendar math
+#' and no Date object involved, so it's faster than going through
+#' [base::as.Date()] or [sprintf()] just to assemble a string. This is the
+#' inverse of [date_parts()], which decomposes a Date into year/month/day
+#' columns.
+#'
+#' @param year,month,day Numeric vectors, recycled to a common length.
+#'   `NA`, non-integer-coercible, or out-of-width values (year outside
+#'   0-9999, or month/day outside 0-99) produce `NA` for that element.
+#'   There is no calendar validation — `month = 13` or `day = 99` are
+#'   formatted as given, as long as they fit the field width.
+#' @param format One of `"iso"` (YYYY-MM-DD), `"compact"` (YYYYMMDD),
+#'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
+#' @return Character vector recycled to the common length of `year`,
+#'   `month`, and `day`.
+#' @seealso [date_parts()] for the reverse direction.
+#' @export
+format_date_parts <- function(year, month, day,
+                              format = c("iso", "compact", "dmy", "ymd_slash")) {
+    if (!is.numeric(year) || !is.numeric(month) || !is.numeric(day))
+        stop("`year`, `month`, and `day` must be numeric vectors.")
+    format <- match.arg(format)
+    n <- max(length(year), length(month), length(day))
+    if (n > 0L) {
+        year  <- rep_len(year,  n)
+        month <- rep_len(month, n)
+        day   <- rep_len(day,   n)
+    }
+    code <- switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L)
+    fast_format_date_parts_impl(as.integer(year), as.integer(month), as.integer(day), code)
+}
+
 #' Decompose a Date vector into year, month, day integer columns.
 #'
 #' @param x A `Date` object or numeric vector of days since 1970-01-01.

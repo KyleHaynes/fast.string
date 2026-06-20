@@ -3,16 +3,16 @@
 #' @importFrom RcppParallel setThreadOptions
 NULL
 
-.fgrepl_env <- new.env(parent = emptyenv())
-.fgrepl_env$mask_msg_shown <- FALSE
+.fast.string_env <- new.env(parent = emptyenv())
+.fast.string_env$mask_msg_shown <- FALSE
 
 .show_mask_msg_once <- function() {
-    if (!.fgrepl_env$mask_msg_shown) {
+    if (!.fast.string_env$mask_msg_shown) {
         cli::cli_inform(c(
-            "i" = "{.pkg fgrepl}: {.fn grepl}, {.fn grep}, {.fn sub}, {.fn gsub}, {.fn trimws}, {.fn substr}, {.fn nchar}, and {.fn chartr} are masking {.pkg base} functions.",
-            "i" = "Suppress with {.code options(fgrepl.verbose = FALSE)}."
+            "i" = "{.pkg fast.string}: {.fn grepl}, {.fn grep}, {.fn sub}, {.fn gsub}, {.fn trimws}, {.fn substr}, {.fn nchar}, and {.fn chartr} are masking {.pkg base} functions.",
+            "i" = "Suppress with {.code options(fast.string.verbose = FALSE)}."
         ))
-        .fgrepl_env$mask_msg_shown <- TRUE
+        .fast.string_env$mask_msg_shown <- TRUE
     }
 }
 

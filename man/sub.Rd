@@ -12,7 +12,7 @@ sub(
   perl = FALSE,
   fixed = FALSE,
   useBytes = FALSE,
-  verbose = getOption("fgrepl.verbose", TRUE),
+  verbose = getOption("fast.string.verbose", TRUE),
   nthreads = NULL
 )
 }
@@ -32,7 +32,7 @@ sub(
 \item{useBytes}{Logical. Ignored; included for signature compatibility.}
 
 \item{verbose}{Logical. One-time mask message. Defaults to
-\code{getOption("fgrepl.verbose", TRUE)}.}
+\code{getOption("fast.string.verbose", TRUE)}.}
 
 \item{nthreads}{Integer or \code{NULL}. Thread count.}
 }

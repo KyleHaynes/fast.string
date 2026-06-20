@@ -1,10 +1,10 @@
-# Examples: Data Linkage Functions in fgrepl
+# Examples: Data Linkage Functions in fast.string
 # ============================================
 # All new functions mask their base R equivalents.
-# Use options(fgrepl.verbose = FALSE) to suppress the one-time mask message.
+# Use options(fast.string.verbose = FALSE) to suppress the one-time mask message.
 
-library(fgrepl)
-options(fgrepl.verbose = FALSE)
+library(fast.string)
+options(fast.string.verbose = FALSE)
 
 # ============================================================================
 # 1. FORMAT_DATE — Fast date formatting for blocking keys

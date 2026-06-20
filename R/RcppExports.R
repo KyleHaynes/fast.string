@@ -29,6 +29,10 @@ fast_format_date_impl <- function(x, format_code) {
     .Call(`_fast_string_fast_format_date_impl`, x, format_code)
 }
 
+fast_format_date_parts_impl <- function(year, month, day, format_code) {
+    .Call(`_fast_string_fast_format_date_parts_impl`, year, month, day, format_code)
+}
+
 fast_parse_date_impl <- function(x, format_code) {
     .Call(`_fast_string_fast_parse_date_impl`, x, format_code)
 }

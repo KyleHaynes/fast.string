@@ -108,6 +108,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_format_date_parts_impl
+CharacterVector fast_format_date_parts_impl(const IntegerVector& year, const IntegerVector& month, const IntegerVector& day, int format_code);
+RcppExport SEXP _fast_string_fast_format_date_parts_impl(SEXP yearSEXP, SEXP monthSEXP, SEXP daySEXP, SEXP format_codeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const IntegerVector& >::type year(yearSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type month(monthSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type day(daySEXP);
+    Rcpp::traits::input_parameter< int >::type format_code(format_codeSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_format_date_parts_impl(year, month, day, format_code));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_parse_date_impl
 NumericVector fast_parse_date_impl(const StringVector& x, int format_code);
 RcppExport SEXP _fast_string_fast_parse_date_impl(SEXP xSEXP, SEXP format_codeSEXP) {
@@ -239,6 +253,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_regex_gsub_all_impl", (DL_FUNC) &_fast_string_fast_regex_gsub_all_impl, 5},
     {"_fast_string_fast_fixed_sub_impl", (DL_FUNC) &_fast_string_fast_fixed_sub_impl, 5},
     {"_fast_string_fast_format_date_impl", (DL_FUNC) &_fast_string_fast_format_date_impl, 2},
+    {"_fast_string_fast_format_date_parts_impl", (DL_FUNC) &_fast_string_fast_format_date_parts_impl, 4},
     {"_fast_string_fast_parse_date_impl", (DL_FUNC) &_fast_string_fast_parse_date_impl, 2},
     {"_fast_string_fast_date_parts_impl", (DL_FUNC) &_fast_string_fast_date_parts_impl, 1},
     {"_fast_string_fast_jaro_winkler_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_impl, 3},

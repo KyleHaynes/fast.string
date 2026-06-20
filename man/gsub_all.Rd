@@ -11,7 +11,7 @@ gsub_all(
   fixed = FALSE,
   ignore.case = FALSE,
   sequential = TRUE,
-  verbose = getOption("fgrepl.verbose", TRUE),
+  verbose = getOption("fast.string.verbose", TRUE),
   nthreads = NULL
 )
 }
@@ -33,7 +33,7 @@ replacements). If \code{FALSE}, match all patterns in a single left-to-right
 scan (first pattern to match at each position wins).}
 
 \item{verbose}{Logical. One-time mask message. Defaults to
-\code{getOption("fgrepl.verbose", TRUE)}.}
+\code{getOption("fast.string.verbose", TRUE)}.}
 
 \item{nthreads}{Integer or \code{NULL}. Thread count.}
 }

@@ -24,7 +24,7 @@
 #' @param useBytes Logical. Ignored; included for signature compatibility.
 #' @param invert Logical. Return non-matching indices/values.
 #' @param verbose Logical. One-time mask message. Defaults to
-#'   `getOption("fgrepl.verbose", TRUE)`.
+#'   `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count.
 #' @return Integer vector of indices (or character when `value = TRUE`).
 #' @seealso [base::grep()]
@@ -32,7 +32,7 @@
 grep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
                  value = FALSE, fixed = FALSE, useBytes = FALSE,
                  invert = FALSE,
-                 verbose = getOption("fgrepl.verbose", TRUE),
+                 verbose = getOption("fast.string.verbose", TRUE),
                  nthreads = NULL) {
     if (isTRUE(verbose)) .show_mask_msg_once()
 
@@ -55,14 +55,14 @@ grep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
 #' @param fixed Logical. Treat `pattern` as a literal string.
 #' @param useBytes Logical. Ignored; included for signature compatibility.
 #' @param verbose Logical. One-time mask message. Defaults to
-#'   `getOption("fgrepl.verbose", TRUE)`.
+#'   `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count.
 #' @return Character vector the same length as `x`.
 #' @seealso [base::sub()], [gsub()]
 #' @export
 sub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
                 fixed = FALSE, useBytes = FALSE,
-                verbose = getOption("fgrepl.verbose", TRUE),
+                verbose = getOption("fast.string.verbose", TRUE),
                 nthreads = NULL) {
     if (isTRUE(verbose)) .show_mask_msg_once()
     x <- .validate_sub_args(pattern, replacement, x, nthreads)
@@ -91,14 +91,14 @@ sub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
 #' @param fixed Logical. Treat `pattern` as a literal string.
 #' @param useBytes Logical. Ignored; included for signature compatibility.
 #' @param verbose Logical. One-time mask message. Defaults to
-#'   `getOption("fgrepl.verbose", TRUE)`.
+#'   `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count.
 #' @return Character vector the same length as `x`.
 #' @seealso [base::gsub()], [sub()]
 #' @export
-gsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
+fgsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
                  fixed = FALSE, useBytes = FALSE,
-                 verbose = getOption("fgrepl.verbose", TRUE),
+                 verbose = getOption("fast.string.verbose", TRUE),
                  nthreads = NULL) {
     if (isTRUE(verbose)) .show_mask_msg_once()
     x <- .validate_sub_args(pattern, replacement, x, nthreads)

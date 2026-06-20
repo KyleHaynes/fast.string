@@ -15,14 +15,14 @@
 #'   replacements). If `FALSE`, match all patterns in a single left-to-right
 #'   scan (first pattern to match at each position wins).
 #' @param verbose Logical. One-time mask message. Defaults to
-#'   `getOption("fgrepl.verbose", TRUE)`.
+#'   `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count.
 #' @return Character vector the same length as `x`.
 #' @export
 gsub_all <- function(patterns, replacements, x,
                      fixed = FALSE, ignore.case = FALSE,
                      sequential = TRUE,
-                     verbose = getOption("fgrepl.verbose", TRUE),
+                     verbose = getOption("fast.string.verbose", TRUE),
                      nthreads = NULL) {
     if (isTRUE(verbose)) .show_mask_msg_once()
 

@@ -33,7 +33,37 @@ static inline void write4(char* p, int v) {
     p[3] = (char)('0' + v % 10);
 }
 
+// Writes y/m/day into buf per format_code, returns the length written.
 // format_code: 0=YYYY-MM-DD  1=YYYYMMDD  2=DD/MM/YYYY  3=YYYY/MM/DD
+// write2()/write4() assume 0<=v<=99 / 0<=v<=9999 respectively; callers must
+// range-check before calling (see ymd_in_range() below for the parts-based
+// entry point, where y/m/day come directly from user input).
+static inline int format_ymd(char* buf, int format_code, int y, int m, int day) {
+    switch (format_code) {
+        case 0:  // YYYY-MM-DD
+            write4(buf, y);    buf[4] = '-';
+            write2(buf+5, m);  buf[7] = '-';
+            write2(buf+8, day);
+            return 10;
+        case 1:  // YYYYMMDD
+            write4(buf, y);
+            write2(buf+4, m);
+            write2(buf+6, day);
+            return 8;
+        case 2:  // DD/MM/YYYY
+            write2(buf, day);   buf[2] = '/';
+            write2(buf+3, m);   buf[5] = '/';
+            write4(buf+6, y);
+            return 10;
+        case 3:  // YYYY/MM/DD
+            write4(buf, y);    buf[4] = '/';
+            write2(buf+5, m);  buf[7] = '/';
+            write2(buf+8, day);
+            return 10;
+    }
+    return 0;
+}
+
 struct DateFormatWorker : public Worker {
     const double* dates;
     int format_code;
@@ -49,32 +79,8 @@ struct DateFormatWorker : public Worker {
             if (std::isnan(d)) { results[i] = ""; continue; }
             int y, m, day;
             jdn_to_ymd((int)d + 2440588, y, m, day);
-            switch (format_code) {
-                case 0:  // YYYY-MM-DD
-                    write4(buf, y);    buf[4] = '-';
-                    write2(buf+5, m);  buf[7] = '-';
-                    write2(buf+8, day); buf[10] = '\0';
-                    results[i].assign(buf, 10);
-                    break;
-                case 1:  // YYYYMMDD
-                    write4(buf, y);
-                    write2(buf+4, m);
-                    write2(buf+6, day); buf[8] = '\0';
-                    results[i].assign(buf, 8);
-                    break;
-                case 2:  // DD/MM/YYYY
-                    write2(buf, day);   buf[2] = '/';
-                    write2(buf+3, m);   buf[5] = '/';
-                    write4(buf+6, y);   buf[10] = '\0';
-                    results[i].assign(buf, 10);
-                    break;
-                case 3:  // YYYY/MM/DD
-                    write4(buf, y);    buf[4] = '/';
-                    write2(buf+5, m);  buf[7] = '/';
-                    write2(buf+8, day); buf[10] = '\0';
-                    results[i].assign(buf, 10);
-                    break;
-            }
+            int len = format_ymd(buf, format_code, y, m, day);
+            results[i].assign(buf, (std::size_t)len);
         }
     }
 };
@@ -91,6 +97,71 @@ CharacterVector fast_format_date_impl(const NumericVector& x, int format_code) {
     CharacterVector result(n);
     for (R_xlen_t i = 0; i < n; ++i) {
         if (std::isnan(x[i]))
+            SET_STRING_ELT(result, i, NA_STRING);
+        else
+            SET_STRING_ELT(result, i,
+                Rf_mkCharCE(results[(std::size_t)i].c_str(), CE_UTF8));
+    }
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// format_date_parts — concatenate separate year/month/day fields into a
+// formatted date string. Pure string-building: no calendar math, no
+// Julian-Day conversion, just zero-padding and punctuation (the inverse of
+// date_parts(), which decomposes a Date into year/month/day columns).
+// Values outside write2()/write4()'s assumed width (year 0-9999, month/day
+// 0-99) would corrupt the fixed-width buffer, so they become NA instead.
+// ---------------------------------------------------------------------------
+
+static inline bool ymd_in_range(int y, int m, int d) {
+    return y >= 0 && y <= 9999 && m >= 0 && m <= 99 && d >= 0 && d <= 99;
+}
+
+struct PartsFormatWorker : public Worker {
+    const int* years;
+    const int* months;
+    const int* days;
+    int format_code;
+    std::vector<std::string>& results;
+    std::vector<uint8_t>& is_na;
+
+    PartsFormatWorker(const int* y, const int* m, const int* d, int fc,
+                       std::vector<std::string>& r, std::vector<uint8_t>& na)
+        : years(y), months(m), days(d), format_code(fc), results(r), is_na(na) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        char buf[11];
+        for (std::size_t i = begin; i < end; ++i) {
+            int y = years[i], m = months[i], d = days[i];
+            if (y == NA_INTEGER || m == NA_INTEGER || d == NA_INTEGER ||
+                !ymd_in_range(y, m, d)) {
+                is_na[i] = 1;
+                continue;
+            }
+            int len = format_ymd(buf, format_code, y, m, d);
+            results[i].assign(buf, (std::size_t)len);
+        }
+    }
+};
+
+// [[Rcpp::export]]
+CharacterVector fast_format_date_parts_impl(const IntegerVector& year,
+                                             const IntegerVector& month,
+                                             const IntegerVector& day,
+                                             int format_code) {
+    R_xlen_t n = year.size();
+    std::vector<std::string> results((std::size_t)n);
+    std::vector<uint8_t> is_na((std::size_t)n, 0);
+
+    PartsFormatWorker worker(year.begin(), month.begin(), day.begin(),
+                              format_code, results, is_na);
+    if (n >= 10000) parallelFor(0, (std::size_t)n, worker);
+    else            worker(0, (std::size_t)n);
+
+    CharacterVector result(n);
+    for (R_xlen_t i = 0; i < n; ++i) {
+        if (is_na[(std::size_t)i])
             SET_STRING_ELT(result, i, NA_STRING);
         else
             SET_STRING_ELT(result, i,

@@ -16,15 +16,15 @@
 #' @param fixed Logical. Treat `pattern` as a literal string (fastest path).
 #' @param useBytes Logical. Ignored; included for signature compatibility.
 #' @param verbose Logical. Show a one-time message that base functions are
-#'   masked. Defaults to `getOption("fgrepl.verbose", TRUE)`.
+#'   masked. Defaults to `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count; `NULL` uses all cores.
 #'
 #' @return Logical vector the same length as `x`.
 #' @seealso [base::grepl()]
 #' @export
-grepl <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
+fgrepl <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
                   fixed = FALSE, useBytes = FALSE,
-                  verbose = getOption("fgrepl.verbose", TRUE),
+                  verbose = getOption("fast.string.verbose", TRUE),
                   nthreads = NULL) {
     if (isTRUE(verbose)) .show_mask_msg_once()
 

@@ -17,14 +17,14 @@
 #'   Only the default `"[ \t\r\n]"` uses the fast path; any other value
 #'   delegates to [base::trimws()].
 #' @param verbose Logical. Show a one-time message that base functions are
-#'   masked. Defaults to `getOption("fgrepl.verbose", TRUE)`.
+#'   masked. Defaults to `getOption("fast.string.verbose", TRUE)`.
 #'
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::trimws()]
 #' @export
-trimws <- function(x, which = c("both", "left", "right"),
+ftrimws <- function(x, which = c("both", "left", "right"),
                    whitespace = "[ \t\r\n]",
-                   verbose = getOption("fgrepl.verbose", TRUE)) {
+                   verbose = getOption("fast.string.verbose", TRUE)) {
     if (isTRUE(verbose)) .show_mask_msg_once()
     if (!is.character(x)) {
         if (all(is.na(x))) x <- as.character(x)
@@ -47,13 +47,13 @@ trimws <- function(x, which = c("both", "left", "right"),
 #' @param start,stop Integer (or numeric, coerced via [as.integer()]) vectors
 #'   of length 1 or `length(x)`. `NA` in either produces `NA` for that element.
 #' @param verbose Logical. Show a one-time message that base functions are
-#'   masked. Defaults to `getOption("fgrepl.verbose", TRUE)`.
+#'   masked. Defaults to `getOption("fast.string.verbose", TRUE)`.
 #'
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::substr()]
 #' @export
-substr <- function(x, start, stop,
-                   verbose = getOption("fgrepl.verbose", TRUE)) {
+fsubstr <- function(x, start, stop,
+                   verbose = getOption("fast.string.verbose", TRUE)) {
     if (isTRUE(verbose)) .show_mask_msg_once()
     if (!is.character(x)) {
         if (all(is.na(x))) x <- as.character(x)
@@ -85,13 +85,13 @@ substr <- function(x, start, stop,
 #'   of the string `"NA"`), matching base R's legacy `keepNA = FALSE`
 #'   behaviour.
 #' @param verbose Logical. Show a one-time message that base functions are
-#'   masked. Defaults to `getOption("fgrepl.verbose", TRUE)`.
+#'   masked. Defaults to `getOption("fast.string.verbose", TRUE)`.
 #'
 #' @return Integer vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::nchar()]
 #' @export
-nchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA,
-                  verbose = getOption("fgrepl.verbose", TRUE)) {
+fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA,
+                  verbose = getOption("fast.string.verbose", TRUE)) {
     if (isTRUE(verbose)) .show_mask_msg_once()
     if (!is.character(x)) x <- as.character(x)
     type <- match.arg(type, c("bytes", "chars", "width"))
@@ -115,13 +115,13 @@ nchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA,
 #'   the corresponding character of `new`.
 #' @param x Character vector. `NA` elements return `NA`.
 #' @param verbose Logical. Show a one-time message that base functions are
-#'   masked. Defaults to `getOption("fgrepl.verbose", TRUE)`.
+#'   masked. Defaults to `getOption("fast.string.verbose", TRUE)`.
 #'
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::chartr()]
 #' @export
-chartr <- function(old, new, x,
-                   verbose = getOption("fgrepl.verbose", TRUE)) {
+fchartr <- function(old, new, x,
+                   verbose = getOption("fast.string.verbose", TRUE)) {
     if (isTRUE(verbose)) .show_mask_msg_once()
     if (!is.character(x)) {
         if (all(is.na(x))) x <- as.character(x)

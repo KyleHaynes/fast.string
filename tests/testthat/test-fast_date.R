@@ -52,6 +52,55 @@ test_that("date_parts returns a data.frame with the right shape", {
     expect_identical(names(parts), c("year", "month", "day"))
 })
 
+test_that("format_date_parts matches format_date via date_parts round-trip", {
+    d <- as.Date(c("1983-01-20", "2024-06-18", "1999-12-31", "2000-02-29"))
+    parts <- fast.string::date_parts(d)
+    for (fmt in c("iso", "compact", "dmy", "ymd_slash")) {
+        expect_identical(
+            fast.string::format_date_parts(parts$year, parts$month, parts$day, fmt),
+            fast.string::format_date(d, fmt)
+        )
+    }
+})
+
+test_that("format_date_parts matches the motivating example", {
+    expect_identical(fast.string::format_date_parts(1983, 1, 20, "iso"), "1983-01-20")
+})
+
+test_that("format_date_parts pads single digits and supports all 4 formats", {
+    expect_identical(fast.string::format_date_parts(5, 1, 2, "iso"), "0005-01-02")
+    expect_identical(fast.string::format_date_parts(1983, 1, 20, "compact"), "19830120")
+    expect_identical(fast.string::format_date_parts(1983, 1, 20, "dmy"), "20/01/1983")
+    expect_identical(fast.string::format_date_parts(1983, 1, 20, "ymd_slash"), "1983/01/20")
+})
+
+test_that("format_date_parts recycles shorter inputs", {
+    res <- fast.string::format_date_parts(1983, 1, c(1, 2, 3), "iso")
+    expect_identical(res, c("1983-01-01", "1983-01-02", "1983-01-03"))
+})
+
+test_that("format_date_parts returns NA for NA or out-of-width input, without erroring", {
+    res <- fast.string::format_date_parts(
+        year  = c(1983, NA,   10000, 1983),
+        month = c(1,    1,    1,     1),
+        day   = c(20,   20,   20,    100),
+        format = "iso"
+    )
+    expect_false(is.na(res[1]))
+    expect_true(is.na(res[2])) # NA year
+    expect_true(is.na(res[3])) # year out of 0-9999 width
+    expect_true(is.na(res[4])) # day out of 0-99 width
+})
+
+test_that("format_date_parts does not validate calendar correctness (documented trade-off)", {
+    # month=13, day=99 fit the field width and are formatted as-is.
+    expect_identical(fast.string::format_date_parts(2024, 13, 99, "iso"), "2024-13-99")
+})
+
+test_that("format_date_parts errors on non-numeric input", {
+    expect_error(fast.string::format_date_parts("1983", 1, 20), "numeric vectors")
+})
+
 test_that("fas.Date round-trips with format_date for all 4 formats", {
     d <- as.Date(c("1970-01-01", "2024-06-18", "1999-12-31", "2000-02-29"))
     for (fmt in c("iso", "compact", "dmy", "ymd_slash")) {

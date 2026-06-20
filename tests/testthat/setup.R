@@ -1,1 +1,1 @@
-options(fgrepl.verbose = FALSE)
+options(fast.string.verbose = FALSE)
