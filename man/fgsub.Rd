@@ -2,7 +2,7 @@
 % Please edit documentation in R/fast_gsub.R
 \name{fgsub}
 \alias{fgsub}
-\title{Fast parallel global substitution (masks base::gsub)}
+\title{Fast parallel global substitution}
 \usage{
 fgsub(
   pattern,
@@ -12,7 +12,6 @@ fgsub(
   perl = FALSE,
   fixed = FALSE,
   useBytes = FALSE,
-  verbose = getOption("fast.string.verbose", TRUE),
   nthreads = NULL
 )
 }
@@ -31,18 +30,15 @@ fgsub(
 
 \item{useBytes}{Logical. Ignored; included for signature compatibility.}
 
-\item{verbose}{Logical. One-time mask message. Defaults to
-\code{getOption("fast.string.verbose", TRUE)}.}
-
 \item{nthreads}{Integer or \code{NULL}. Thread count.}
 }
 \value{
 Character vector the same length as \code{x}.
 }
 \description{
-Drop-in replacement for \code{\link[base:grep]{base::gsub()}} using PCRE2 and Intel TBB.
-Supports \verb{\\\\1}–\verb{\\\\9} capture groups and \verb{\\\\U}/\verb{\\\\L}/\verb{\\\\E} case conversion.
+Equivalent to \code{\link[base:grep]{base::gsub()}}, using PCRE2 and Intel TBB. Supports
+\verb{\\\\1}-\verb{\\\\9} capture groups and \verb{\\\\U}/\verb{\\\\L}/\verb{\\\\E} case conversion.
 }
 \seealso{
-\code{\link[base:grep]{base::gsub()}}, \code{\link[=sub]{sub()}}
+\code{\link[base:grep]{base::gsub()}}, \code{\link[=fsub]{fsub()}}
 }

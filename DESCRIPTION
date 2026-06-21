@@ -3,7 +3,7 @@ Type: Package
 Title: Fast Parallel String Functions via PCRE2, RE2 and RcppParallel
 Version: 0.2.0
 Authors@R: person("Kyle", "Haynes", email = "kyle@kylehaynes.com.au", role = c("aut", "cre"))
-Description: Drop-in replacements for grepl(), grep(), sub(), and gsub() that
+Description: Fast equivalents of grepl(), grep(), sub(), and gsub() that
     use PCRE2 (regex) and RE2 StringPiece (fixed strings), parallelised across
     all CPU cores via Intel TBB through RcppParallel. Typically 5-40x faster
     than the equivalent base R functions on large character vectors.

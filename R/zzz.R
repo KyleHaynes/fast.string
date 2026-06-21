@@ -3,17 +3,38 @@
 #' @importFrom RcppParallel setThreadOptions
 NULL
 
-.fast.string_env <- new.env(parent = emptyenv())
-.fast.string_env$mask_msg_shown <- FALSE
+.fast.string_functions <- list(
+    fgrepl              = "grepl() equivalent (PCRE2 regex / RE2 fixed-string match)",
+    fgrep               = "grep() equivalent, returns matching indices or values",
+    fsub                = "sub() equivalent, first-match substitution",
+    fgsub               = "gsub() equivalent, global substitution",
+    gsub_all            = "multi-pattern substitution in a single pass",
+    ftrimws             = "trimws() equivalent",
+    fsubstr             = "substr() equivalent",
+    fnchar              = "nchar() equivalent",
+    fchartr             = "chartr() equivalent",
+    format_date         = "format a Date/integer-days vector as strings",
+    format_date_parts   = "assemble year/month/day fields into a date string",
+    date_parts          = "decompose a Date vector into year/month/day columns",
+    "fas.Date"          = "fast fixed-format date parsing",
+    jaro_winkler        = "pairwise Jaro-Winkler string similarity",
+    jaro_winkler_matrix = "all-pairs Jaro-Winkler similarity matrix",
+    soundex             = "Soundex phonetic code",
+    nysiis              = "NYSIIS phonetic code"
+)
 
-.show_mask_msg_once <- function() {
-    if (!.fast.string_env$mask_msg_shown) {
-        cli::cli_inform(c(
-            "i" = "{.pkg fast.string}: {.fn grepl}, {.fn grep}, {.fn sub}, {.fn gsub}, {.fn trimws}, {.fn substr}, {.fn nchar}, and {.fn chartr} are masking {.pkg base} functions.",
-            "i" = "Suppress with {.code options(fast.string.verbose = FALSE)}."
-        ))
-        .fast.string_env$mask_msg_shown <- TRUE
-    }
+.onAttach <- function(libname, pkgname) {
+    if (!isTRUE(getOption("fast.string.verbose", TRUE))) return(invisible())
+    bullets <- vapply(
+        names(.fast.string_functions),
+        function(nm) sprintf("  * %-20s %s", paste0(nm, "()"), .fast.string_functions[[nm]]),
+        character(1L)
+    )
+    packageStartupMessage(paste(c(
+        "fast.string: parallel string/date/phonetic functions (PCRE2 + RE2 + RcppParallel)",
+        bullets,
+        "Suppress this message with options(fast.string.verbose = FALSE)."
+    ), collapse = "\n"))
 }
 
 # Detects PCRE-specific syntax not present in the default TRE engine:

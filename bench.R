@@ -19,8 +19,8 @@ library(microbenchmark)
 cat("--- Simple pattern ('pattern') ---\n")
 mb1 <- microbenchmark(
     base_grepl       = base::grepl("pattern", x_large),
-    fast_grepl_regex = fast.string::grepl("pattern", x_large),
-    fast_grepl_fixed = fast.string::grepl("pattern", x_large, fixed=TRUE),
+    fast_grepl_regex = fast.string::fgrepl("pattern", x_large),
+    fast_grepl_fixed = fast.string::fgrepl("pattern", x_large, fixed=TRUE),
     times = 2
 )
 print(mb1)
@@ -32,7 +32,7 @@ cat("--- Complex alternation ('(hello|world|foo|bar|test|HELLO|pattern)') ---\n"
 complex_pat <- "(hello|world|foo|bar|test|HELLO|pattern)"
 mb2 <- microbenchmark(
     base_grepl       = base::grepl(complex_pat, x_large, perl=TRUE),
-    fast_grepl_regex = fast.string::grepl(complex_pat, x_large),
+    fast_grepl_regex = fast.string::fgrepl(complex_pat, x_large),
     times = 2
 )
 print(mb2)
@@ -42,8 +42,8 @@ cat("Speedup vs base grepl:", round(med2[1]/med2[2], 1), "x\n\n")
 cat("--- Case-insensitive ('hello', ignore.case=TRUE) ---\n")
 mb3 <- microbenchmark(
     base_grepl       = base::grepl("hello", x_large, ignore.case=TRUE),
-    fast_grepl_regex = fast.string::grepl("hello", x_large, ignore.case=TRUE),
-    fast_grepl_fixed = fast.string::grepl("hello", x_large, ignore.case=TRUE, fixed=TRUE),
+    fast_grepl_regex = fast.string::fgrepl("hello", x_large, ignore.case=TRUE),
+    fast_grepl_fixed = fast.string::fgrepl("hello", x_large, ignore.case=TRUE, fixed=TRUE),
     times = 2
 )
 print(mb3)
@@ -55,22 +55,22 @@ cat("Thread count:", RcppParallel::defaultNumThreads(), "\n")
 
 cat("\n=== grep / sub / gsub Correctness ===\n")
 y <- c("hello world", "foo bar", NA, "test123", "HELLO WORLD")
-cat("grep match:   ", identical(base::grep("foo", y), fast.string::grep("foo", y)), "\n")
-cat("grep value:   ", identical(base::grep("foo", y, value=TRUE), fast.string::grep("foo", y, value=TRUE)), "\n")
-cat("sub match:    ", identical(base::sub("(\\w+)", "[\\1]", y), fast.string::sub("(\\w+)", "[\\1]", y)), "\n")
-cat("gsub match:   ", identical(base::gsub("(\\w+)", "[\\1]", y), fast.string::gsub("(\\w+)", "[\\1]", y)), "\n")
-cat("fixed gsub:   ", identical(base::gsub("o", "0", y, fixed=TRUE), fast.string::gsub("o", "0", y, fixed=TRUE)), "\n")
-cat("fixed sub:    ", identical(base::sub("o", "0", y, fixed=TRUE), fast.string::sub("o", "0", y, fixed=TRUE)), "\n")
-cat("gsub NA:      ", is.na(fast.string::gsub("x", "y", NA_character_)), "\n")
-cat("icase regex:  ", identical(base::gsub("hello","HI",y,ignore.case=TRUE), fast.string::gsub("hello","HI",y,ignore.case=TRUE)), "\n")
+cat("grep match:   ", identical(base::grep("foo", y), fast.string::fgrep("foo", y)), "\n")
+cat("grep value:   ", identical(base::grep("foo", y, value=TRUE), fast.string::fgrep("foo", y, value=TRUE)), "\n")
+cat("sub match:    ", identical(base::sub("(\\w+)", "[\\1]", y), fast.string::fsub("(\\w+)", "[\\1]", y)), "\n")
+cat("gsub match:   ", identical(base::gsub("(\\w+)", "[\\1]", y), fast.string::fgsub("(\\w+)", "[\\1]", y)), "\n")
+cat("fixed gsub:   ", identical(base::gsub("o", "0", y, fixed=TRUE), fast.string::fgsub("o", "0", y, fixed=TRUE)), "\n")
+cat("fixed sub:    ", identical(base::sub("o", "0", y, fixed=TRUE), fast.string::fsub("o", "0", y, fixed=TRUE)), "\n")
+cat("gsub NA:      ", is.na(fast.string::fgsub("x", "y", NA_character_)), "\n")
+cat("icase regex:  ", identical(base::gsub("hello","HI",y,ignore.case=TRUE), fast.string::fgsub("hello","HI",y,ignore.case=TRUE)), "\n")
 cat("NOTE: fixed+ignore.case: fast.string supports it; base R ignores ignore.case (and warns)\n\n")
 
 cat("--- gsub benchmark ---\n")
 mb4 <- microbenchmark(
     base_gsub       = base::gsub("(\\w+)", "[\\1]", x_large),
-    fast_gsub_regex = fast.string::gsub("(\\w+)", "[\\1]", x_large),
+    fast_gsub_regex = fast.string::fgsub("(\\w+)", "[\\1]", x_large),
     base_gsub_fixed = base::gsub("O", "0", x_large, fixed=TRUE),
-    fast_gsub_fixed = fast.string::gsub("O", "0", x_large, fixed=TRUE),
+    fast_gsub_fixed = fast.string::fgsub("O", "0", x_large, fixed=TRUE),
     times = 2
 )
 print(mb4)

@@ -2,15 +2,9 @@
 % Please edit documentation in R/fast_str.R
 \name{fnchar}
 \alias{fnchar}
-\title{Fast parallel character/byte counting (masks base::nchar)}
+\title{Fast parallel character/byte counting}
 \usage{
-fnchar(
-  x,
-  type = "chars",
-  allowNA = FALSE,
-  keepNA = NA,
-  verbose = getOption("fast.string.verbose", TRUE)
-)
+fnchar(x, type = "chars", allowNA = FALSE, keepNA = NA)
 }
 \arguments{
 \item{x}{Vector, coerced to character via \code{\link[=as.character]{as.character()}} if needed.}
@@ -26,16 +20,13 @@ The fast path never raises an encoding error, regardless of this value.}
 elements of \code{x} return \code{NA}; if \code{FALSE}, they return \code{2L} (the length
 of the string \code{"NA"}), matching base R's legacy \code{keepNA = FALSE}
 behaviour.}
-
-\item{verbose}{Logical. Show a one-time message that base functions are
-masked. Defaults to \code{getOption("fast.string.verbose", TRUE)}.}
 }
 \value{
 Integer vector the same length as \code{x}, with \code{names(x)} preserved.
 }
 \description{
-Drop-in replacement for \code{\link[base:nchar]{base::nchar()}}, parallelised across all CPU
-cores via Intel TBB.
+Equivalent to \code{\link[base:nchar]{base::nchar()}}, parallelised across all CPU cores via
+Intel TBB.
 }
 \seealso{
 \code{\link[base:nchar]{base::nchar()}}

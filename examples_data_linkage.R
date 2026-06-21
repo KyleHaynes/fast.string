@@ -1,10 +1,10 @@
 # Examples: Data Linkage Functions in fast.string
 # ============================================
-# All new functions mask their base R equivalents.
-# Use options(fast.string.verbose = FALSE) to suppress the one-time mask message.
+# Use options(fast.string.verbose = FALSE) before library() to suppress the
+# package startup banner.
 
-library(fast.string)
 options(fast.string.verbose = FALSE)
+library(fast.string)
 
 # ============================================================================
 # 1. FORMAT_DATE — Fast date formatting for blocking keys
@@ -80,69 +80,69 @@ best_scores  <- apply(similarity_matrix, 1, max)
 # best_matches[1] = 4 (candidate A[1] best matches candidate B[4])
 
 # ============================================================================
-# 5. TRIMWS — Clean whitespace from names/addresses
+# 5. FTRIMWS — Clean whitespace from names/addresses
 # ============================================================================
 
 messy_names <- c("  JOHN SMITH  ", "\tMARY JONES\n", "ROBERT  BROWN", NA)
 
-trimws(messy_names)             # Remove both sides (default)
-trimws(messy_names, "left")     # Remove leading only
-trimws(messy_names, "right")    # Remove trailing only
+ftrimws(messy_names)             # Remove both sides (default)
+ftrimws(messy_names, "left")     # Remove leading only
+ftrimws(messy_names, "right")    # Remove trailing only
 
 # Use case: Normalize addresses before comparison
 addresses <- c("  123 Main St  ", "\t456 Oak Ave\n", "789 Pine Rd")
-clean_addresses <- trimws(addresses)
+clean_addresses <- ftrimws(addresses)
 
 # ============================================================================
-# 6. SUBSTR — Extract fixed-width fields from government records
+# 6. FSUBSTR — Extract fixed-width fields from government records
 # ============================================================================
 
 # Common scenario: fixed-width government data (e.g., tax records, benefits)
 # Field layout: Positions 1-3=State, 4-6=Category, 7-14=RecordID
 records <- c("NSWRECORD123456789", "VICPOL987654321AB", "QLDHEALTH00112233")
 
-state    <- substr(records, 1, 3)   # NSW, VIC, QLD
-category <- substr(records, 4, 6)   # REC, POL, HEA
-record_id <- substr(records, 7, 14) # RECORD12, 987654, HEALTH00
+state    <- fsubstr(records, 1, 3)   # NSW, VIC, QLD
+category <- fsubstr(records, 4, 6)   # REC, POL, HEA
+record_id <- fsubstr(records, 7, 14) # RECORD12, 987654, HEALTH00
 
 # Vectorised start/stop (same length as x, or scalar)
 starts <- c(1, 4, 7)
 stops  <- c(3, 6, 14)
-substr(records[1], starts, stops)  # Recycle to extract 3 fields at once
+fsubstr(records[1], starts, stops)  # Recycle to extract 3 fields at once
 
 # ============================================================================
-# 7. NCHAR — String length for validation/feature engineering
+# 7. FNCHAR — String length for validation/feature engineering
 # ============================================================================
 
 names_to_check <- c("JOHN", "MARY-JANE", "", NA)
 
-nchar(names_to_check)              # Bytes (same as "bytes" type)
-nchar(names_to_check, "bytes")     # Explicit: byte count
-nchar(names_to_check, "chars")     # UTF-8 codepoints (for accented names)
+fnchar(names_to_check)              # Bytes (same as "bytes" type)
+fnchar(names_to_check, "bytes")     # Explicit: byte count
+fnchar(names_to_check, "chars")     # UTF-8 codepoints (for accented names)
 
 # Use case: Name length as agreement feature
 postcode_field <- c("2000", "3141", "4000", NA)
-length_score <- (nchar(postcode_field) == 4)  # All valid Australian postcodes are 4 digits
+length_score <- (fnchar(postcode_field) == 4)  # All valid Australian postcodes are 4 digits
 
 # ============================================================================
-# 8. CHARTR — Normalize characters for blocking/matching
+# 8. FCHARTR — Normalize characters for blocking/matching
 # ============================================================================
 
 # Strip punctuation: useful for fuzzy name matching
 names_with_punct <- c("O'BRIEN", "SMITH-JONES", "MARY-ANN", NA)
-without_punct <- chartr("'-", "", names_with_punct)
+without_punct <- fchartr("'-", "", names_with_punct)
 # Result: c("OBRIEN", "SMITHJONES", "MARYANN", NA)
 
 # Map accented characters (e.g., for international records)
 accented_names <- c("CAFÉ", "NAÏVE", "JOSÉ", "FRANÇOIS")
-ascii_names <- chartr("ÀÄÉÏÖÜàäéïöüÑñ", "AAEIOUaaeiouNn", accented_names)
+ascii_names <- fchartr("ÀÄÉÏÖÜàäéïöüÑñ", "AAEIOUaaeiouNn", accented_names)
 # Maps accented → ASCII for comparison
 
 # Use case: Normalize both sides before jaro_winkler
 record_name <- "O'BRIEN"
 candidate_name <- "OBRIEN"
-normalized_record <- chartr("'- ", "", record_name)
-normalized_candidate <- chartr("'- ", "", candidate_name)
+normalized_record <- fchartr("'- ", "", record_name)
+normalized_candidate <- fchartr("'- ", "", candidate_name)
 jaro_winkler(normalized_record, normalized_candidate)
 
 # ============================================================================
@@ -166,14 +166,14 @@ reference <- data.frame(
 )
 
 # Step 1: Normalize incoming names
-incoming$name_clean <- chartr("'- ", "", trimws(incoming$name))
+incoming$name_clean <- fchartr("'- ", "", ftrimws(incoming$name))
 
 # Step 2: Normalize reference names
-reference$name_clean <- chartr("'- ", "", trimws(reference$name))
+reference$name_clean <- fchartr("'- ", "", ftrimws(reference$name))
 
 # Step 3: Create date-based blocking key (month-year)
-incoming$dob_block <- substr(format_date(incoming$dob, "compact"), 1, 6)  # YYYYMM
-reference$dob_block <- substr(format_date(reference$dob, "compact"), 1, 6)
+incoming$dob_block <- fsubstr(format_date(incoming$dob, "compact"), 1, 6)  # YYYYMM
+reference$dob_block <- fsubstr(format_date(reference$dob, "compact"), 1, 6)
 
 # Step 4: Within same month-year block, compute all name similarities
 block_1 <- which(incoming$dob_block == "198503")  # JOHN (block 198503)

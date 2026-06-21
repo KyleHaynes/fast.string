@@ -2,14 +2,9 @@
 % Please edit documentation in R/fast_str.R
 \name{ftrimws}
 \alias{ftrimws}
-\title{Fast parallel whitespace trimming (masks base::trimws)}
+\title{Fast parallel whitespace trimming}
 \usage{
-ftrimws(
-  x,
-  which = c("both", "left", "right"),
-  whitespace = "[ \\t\\r\\n]",
-  verbose = getOption("fast.string.verbose", TRUE)
-)
+ftrimws(x, which = c("both", "left", "right"), whitespace = "[ \\t\\r\\n]")
 }
 \arguments{
 \item{x}{Character vector. \code{NA} elements return \code{NA}.}
@@ -19,16 +14,13 @@ ftrimws(
 \item{whitespace}{Character scalar giving a regex of characters to strip.
 Only the default \code{"[ \\t\\r\\n]"} uses the fast path; any other value
 delegates to \code{\link[base:trimws]{base::trimws()}}.}
-
-\item{verbose}{Logical. Show a one-time message that base functions are
-masked. Defaults to \code{getOption("fast.string.verbose", TRUE)}.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)} preserved.
 }
 \description{
-Drop-in replacement for \code{\link[base:trimws]{base::trimws()}}, parallelised across all CPU
-cores via Intel TBB. Strips \code{" \\t\\r\\n"} from the ends of each string.
+Equivalent to \code{\link[base:trimws]{base::trimws()}}, parallelised across all CPU cores via
+Intel TBB. Strips \code{" \\t\\r\\n"} from the ends of each string.
 }
 \seealso{
 \code{\link[base:trimws]{base::trimws()}}

@@ -2,9 +2,9 @@
 % Please edit documentation in R/fast_str.R
 \name{fchartr}
 \alias{fchartr}
-\title{Fast parallel character translation (masks base::chartr)}
+\title{Fast parallel character translation}
 \usage{
-fchartr(old, new, x, verbose = getOption("fast.string.verbose", TRUE))
+fchartr(old, new, x)
 }
 \arguments{
 \item{old, new}{Single strings with the same number of characters (not
@@ -13,16 +13,13 @@ the character counts match). Each character of \code{old} is translated to
 the corresponding character of \code{new}.}
 
 \item{x}{Character vector. \code{NA} elements return \code{NA}.}
-
-\item{verbose}{Logical. Show a one-time message that base functions are
-masked. Defaults to \code{getOption("fast.string.verbose", TRUE)}.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)} preserved.
 }
 \description{
-Drop-in replacement for \code{\link[base:chartr]{base::chartr()}} using a flat 256-byte lookup
-table, parallelised across all CPU cores via Intel TBB.
+Equivalent to \code{\link[base:chartr]{base::chartr()}}, using a flat 256-byte lookup table,
+parallelised across all CPU cores via Intel TBB.
 }
 \seealso{
 \code{\link[base:chartr]{base::chartr()}}

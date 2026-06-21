@@ -1,6 +1,6 @@
-#' Fast parallel string matching (masks base::grepl)
+#' Fast parallel string matching
 #'
-#' Drop-in replacement for [base::grepl()] using PCRE2 and Intel TBB.
+#' Equivalent to [base::grepl()], using PCRE2 and Intel TBB.
 #' Typically 5–20x faster on large character vectors.
 #'
 #' Patterns using PCRE-only syntax (lookaheads, lookbehinds, atomic groups,
@@ -15,19 +15,13 @@
 #'   the parallel PCRE2 engine directly.
 #' @param fixed Logical. Treat `pattern` as a literal string (fastest path).
 #' @param useBytes Logical. Ignored; included for signature compatibility.
-#' @param verbose Logical. Show a one-time message that base functions are
-#'   masked. Defaults to `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count; `NULL` uses all cores.
 #'
 #' @return Logical vector the same length as `x`.
 #' @seealso [base::grepl()]
 #' @export
 fgrepl <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
-                  fixed = FALSE, useBytes = FALSE,
-                  verbose = getOption("fast.string.verbose", TRUE),
-                  nthreads = NULL) {
-    if (isTRUE(verbose)) .show_mask_msg_once()
-
+                  fixed = FALSE, useBytes = FALSE, nthreads = NULL) {
     if (!is.character(pattern) || length(pattern) != 1L)
         stop("`pattern` must be a single character string.")
     if (!is.character(x)) {

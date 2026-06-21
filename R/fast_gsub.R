@@ -11,9 +11,9 @@
     x
 }
 
-#' Fast parallel string matching returning indices or values (masks base::grep)
+#' Fast parallel string matching returning indices or values
 #'
-#' Drop-in replacement for [base::grep()] using PCRE2 and Intel TBB.
+#' Equivalent to [base::grep()], using PCRE2 and Intel TBB.
 #'
 #' @param pattern Character scalar. Pattern to search for.
 #' @param x Character vector.
@@ -23,29 +23,23 @@
 #' @param fixed Logical. Treat `pattern` as a literal string.
 #' @param useBytes Logical. Ignored; included for signature compatibility.
 #' @param invert Logical. Return non-matching indices/values.
-#' @param verbose Logical. One-time mask message. Defaults to
-#'   `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count.
 #' @return Integer vector of indices (or character when `value = TRUE`).
 #' @seealso [base::grep()]
 #' @export
-grep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
+fgrep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
                  value = FALSE, fixed = FALSE, useBytes = FALSE,
-                 invert = FALSE,
-                 verbose = getOption("fast.string.verbose", TRUE),
-                 nthreads = NULL) {
-    if (isTRUE(verbose)) .show_mask_msg_once()
-
-    m <- grepl(pattern, x, ignore.case = ignore.case, perl = perl,
-               fixed = fixed, verbose = FALSE, nthreads = nthreads)
+                 invert = FALSE, nthreads = NULL) {
+    m <- fgrepl(pattern, x, ignore.case = ignore.case, perl = perl,
+               fixed = fixed, nthreads = nthreads)
     keep <- if (isTRUE(invert)) is.na(m) | !m else !is.na(m) & m
     if (isTRUE(value)) x[keep] else which(keep)
 }
 
-#' Fast parallel first-match substitution (masks base::sub)
+#' Fast parallel first-match substitution
 #'
-#' Drop-in replacement for [base::sub()] using PCRE2 and Intel TBB.
-#' Supports `\\1`–`\\9` capture groups and `\\U`/`\\L`/`\\E` case conversion.
+#' Equivalent to [base::sub()], using PCRE2 and Intel TBB. Supports
+#' `\\1`-`\\9` capture groups and `\\U`/`\\L`/`\\E` case conversion.
 #'
 #' @param pattern Character scalar. Pattern to search for.
 #' @param replacement Character scalar. Replacement string.
@@ -54,17 +48,12 @@ grep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
 #' @param perl Logical. If `TRUE`, skip PCRE-only syntax check.
 #' @param fixed Logical. Treat `pattern` as a literal string.
 #' @param useBytes Logical. Ignored; included for signature compatibility.
-#' @param verbose Logical. One-time mask message. Defaults to
-#'   `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count.
 #' @return Character vector the same length as `x`.
-#' @seealso [base::sub()], [gsub()]
+#' @seealso [base::sub()], [fgsub()]
 #' @export
-sub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
-                fixed = FALSE, useBytes = FALSE,
-                verbose = getOption("fast.string.verbose", TRUE),
-                nthreads = NULL) {
-    if (isTRUE(verbose)) .show_mask_msg_once()
+fsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
+                fixed = FALSE, useBytes = FALSE, nthreads = NULL) {
     x <- .validate_sub_args(pattern, replacement, x, nthreads)
 
     if (isTRUE(fixed))
@@ -78,10 +67,10 @@ sub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
     fast_regex_sub_impl(pattern, replacement, x, isTRUE(ignore.case), FALSE)
 }
 
-#' Fast parallel global substitution (masks base::gsub)
+#' Fast parallel global substitution
 #'
-#' Drop-in replacement for [base::gsub()] using PCRE2 and Intel TBB.
-#' Supports `\\1`–`\\9` capture groups and `\\U`/`\\L`/`\\E` case conversion.
+#' Equivalent to [base::gsub()], using PCRE2 and Intel TBB. Supports
+#' `\\1`-`\\9` capture groups and `\\U`/`\\L`/`\\E` case conversion.
 #'
 #' @param pattern Character scalar. Pattern to search for.
 #' @param replacement Character scalar. Replacement string.
@@ -90,17 +79,12 @@ sub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
 #' @param perl Logical. If `TRUE`, skip PCRE-only syntax check.
 #' @param fixed Logical. Treat `pattern` as a literal string.
 #' @param useBytes Logical. Ignored; included for signature compatibility.
-#' @param verbose Logical. One-time mask message. Defaults to
-#'   `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count.
 #' @return Character vector the same length as `x`.
-#' @seealso [base::gsub()], [sub()]
+#' @seealso [base::gsub()], [fsub()]
 #' @export
 fgsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
-                 fixed = FALSE, useBytes = FALSE,
-                 verbose = getOption("fast.string.verbose", TRUE),
-                 nthreads = NULL) {
-    if (isTRUE(verbose)) .show_mask_msg_once()
+                 fixed = FALSE, useBytes = FALSE, nthreads = NULL) {
     x <- .validate_sub_args(pattern, replacement, x, nthreads)
 
     if (isTRUE(fixed))

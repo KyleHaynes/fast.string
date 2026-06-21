@@ -1,7 +1,7 @@
-#' Apply multiple substitutions in one pass (masks no base function)
+#' Apply multiple substitutions in one pass
 #'
 #' Replace several patterns in `x` either sequentially (one full pass per
-#' pattern, like chaining [gsub()] calls) or in a single combined scan
+#' pattern, like chaining [fgsub()] calls) or in a single combined scan
 #' (`sequential = FALSE`), parallelised across all CPU cores via Intel TBB.
 #'
 #' @param patterns Character vector of patterns to search for.
@@ -14,18 +14,13 @@
 #'   another (later patterns can match text introduced by earlier
 #'   replacements). If `FALSE`, match all patterns in a single left-to-right
 #'   scan (first pattern to match at each position wins).
-#' @param verbose Logical. One-time mask message. Defaults to
-#'   `getOption("fast.string.verbose", TRUE)`.
 #' @param nthreads Integer or `NULL`. Thread count.
 #' @return Character vector the same length as `x`.
 #' @export
 gsub_all <- function(patterns, replacements, x,
                      fixed = FALSE, ignore.case = FALSE,
                      sequential = TRUE,
-                     verbose = getOption("fast.string.verbose", TRUE),
                      nthreads = NULL) {
-    if (isTRUE(verbose)) .show_mask_msg_once()
-
     if (!is.character(patterns) || length(patterns) == 0L)
         stop("`patterns` must be a non-empty character vector.")
     if (!is.character(replacements) ||

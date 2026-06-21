@@ -2,26 +2,23 @@
 % Please edit documentation in R/fast_str.R
 \name{fsubstr}
 \alias{fsubstr}
-\title{Fast parallel substring extraction (masks base::substr)}
+\title{Fast parallel substring extraction}
 \usage{
-fsubstr(x, start, stop, verbose = getOption("fast.string.verbose", TRUE))
+fsubstr(x, start, stop)
 }
 \arguments{
 \item{x}{Character vector. \code{NA} elements return \code{NA}.}
 
 \item{start, stop}{Integer (or numeric, coerced via \code{\link[=as.integer]{as.integer()}}) vectors
 of length 1 or \code{length(x)}. \code{NA} in either produces \code{NA} for that element.}
-
-\item{verbose}{Logical. Show a one-time message that base functions are
-masked. Defaults to \code{getOption("fast.string.verbose", TRUE)}.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)} preserved.
 }
 \description{
-Drop-in replacement for \code{\link[base:substr]{base::substr()}}, parallelised across all CPU
-cores via Intel TBB. \code{start}/\code{stop} are 1-indexed, clamped to each
-string's bounds, and recycled to \code{length(x)}, matching base R semantics.
+Equivalent to \code{\link[base:substr]{base::substr()}}, parallelised across all CPU cores via
+Intel TBB. \code{start}/\code{stop} are 1-indexed, clamped to each string's bounds,
+and recycled to \code{length(x)}, matching base R semantics.
 }
 \seealso{
 \code{\link[base:substr]{base::substr()}}

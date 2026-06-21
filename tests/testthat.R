@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(fast.string)
+suppressPackageStartupMessages(library(fast.string))
 
 test_check("fast.string")

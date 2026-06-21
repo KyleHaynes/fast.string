@@ -2,7 +2,7 @@
 % Please edit documentation in R/fast_grepl.R
 \name{fgrepl}
 \alias{fgrepl}
-\title{Fast parallel string matching (masks base::grepl)}
+\title{Fast parallel string matching}
 \usage{
 fgrepl(
   pattern,
@@ -11,7 +11,6 @@ fgrepl(
   perl = FALSE,
   fixed = FALSE,
   useBytes = FALSE,
-  verbose = getOption("fast.string.verbose", TRUE),
   nthreads = NULL
 )
 }
@@ -29,16 +28,13 @@ the parallel PCRE2 engine directly.}
 
 \item{useBytes}{Logical. Ignored; included for signature compatibility.}
 
-\item{verbose}{Logical. Show a one-time message that base functions are
-masked. Defaults to \code{getOption("fast.string.verbose", TRUE)}.}
-
 \item{nthreads}{Integer or \code{NULL}. Thread count; \code{NULL} uses all cores.}
 }
 \value{
 Logical vector the same length as \code{x}.
 }
 \description{
-Drop-in replacement for \code{\link[base:grep]{base::grepl()}} using PCRE2 and Intel TBB.
+Equivalent to \code{\link[base:grep]{base::grepl()}}, using PCRE2 and Intel TBB.
 Typically 5–20x faster on large character vectors.
 }
 \details{

@@ -2,7 +2,7 @@
 % Please edit documentation in R/gsub_all.R
 \name{gsub_all}
 \alias{gsub_all}
-\title{Apply multiple substitutions in one pass (masks no base function)}
+\title{Apply multiple substitutions in one pass}
 \usage{
 gsub_all(
   patterns,
@@ -11,7 +11,6 @@ gsub_all(
   fixed = FALSE,
   ignore.case = FALSE,
   sequential = TRUE,
-  verbose = getOption("fast.string.verbose", TRUE),
   nthreads = NULL
 )
 }
@@ -32,9 +31,6 @@ another (later patterns can match text introduced by earlier
 replacements). If \code{FALSE}, match all patterns in a single left-to-right
 scan (first pattern to match at each position wins).}
 
-\item{verbose}{Logical. One-time mask message. Defaults to
-\code{getOption("fast.string.verbose", TRUE)}.}
-
 \item{nthreads}{Integer or \code{NULL}. Thread count.}
 }
 \value{
@@ -42,6 +38,6 @@ Character vector the same length as \code{x}.
 }
 \description{
 Replace several patterns in \code{x} either sequentially (one full pass per
-pattern, like chaining \code{\link[=gsub]{gsub()}} calls) or in a single combined scan
+pattern, like chaining \code{\link[=fgsub]{fgsub()}} calls) or in a single combined scan
 (\code{sequential = FALSE}), parallelised across all CPU cores via Intel TBB.
 }
