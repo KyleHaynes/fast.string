@@ -62,6 +62,8 @@ end (@tbl-summary), alongside every individual comparison inline.
 #| label: results-accumulator
 results <- list()
 record <- function(op, baseline, baseline_s, fast_s) {
+    baseline_s <- unname(baseline_s)
+    fast_s <- unname(fast_s)
     results[[length(results) + 1]] <<- data.frame(
         operation = op, baseline = baseline,
         baseline_s = baseline_s, fast_s = fast_s,
@@ -297,6 +299,7 @@ summary_df$fast_s     <- round(summary_df$fast_s, 3)
 summary_df$speedup    <- paste0(round(summary_df$speedup, 1), "x")
 knitr::kable(
     summary_df,
+    row.names = FALSE,
     col.names = c("Operation", "Baseline", "Baseline (s)", "fast.string (s)", "Speedup")
 )
 ```

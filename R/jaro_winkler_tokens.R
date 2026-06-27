@@ -90,8 +90,8 @@ jaro_winkler_tokens <- function(a, b, p = 0.1, ignore_case = FALSE,
         a <- fgsub(strip, "", a, nthreads = nthreads)
         b <- fgsub(strip, "", b, nthreads = nthreads)
     }
-    a <- ftrimws(gsub("[ \t\r\n]+", " ", a))
-    b <- ftrimws(gsub("[ \t\r\n]+", " ", b))
+    a <- ftrimws(fgsub("[ \t\r\n]+", " ", a, nthreads = nthreads))
+    b <- ftrimws(fgsub("[ \t\r\n]+", " ", b, nthreads = nthreads))
 
     if (!is.null(nthreads))
         RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
