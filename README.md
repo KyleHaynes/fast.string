@@ -1,5 +1,9 @@
 # fast.string
 
+[![R-CMD-check](https://github.com/KyleHaynes/graphfast/workflows/R-CMD-check/badge.svg)](https://github.com/KyleHaynes/graphfast/actions)
+[![Status](https://img.shields.io/badge/status-development-orange)](https://github.com/KyleHaynes/graphfast)
+
+
 Parallel string, date, and phonetic-matching functions for R, built on
 PCRE2 (regex), RE2 `StringPiece` (fixed strings), and RcppParallel (Intel
 TBB). Typically 5–40x faster than the equivalent base R functions on large

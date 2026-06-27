@@ -49,8 +49,8 @@ fast_jaro_winkler_matrix_impl <- function(a, b, p) {
     .Call(`_fast_string_fast_jaro_winkler_matrix_impl`, a, b, p)
 }
 
-fast_jaro_winkler_tokens_impl <- function(a, b, p, extra_penalty) {
-    .Call(`_fast_string_fast_jaro_winkler_tokens_impl`, a, b, p, extra_penalty)
+fast_jaro_winkler_tokens_impl <- function(a, b, p, extra_penalty, contractions) {
+    .Call(`_fast_string_fast_jaro_winkler_tokens_impl`, a, b, p, extra_penalty, contractions)
 }
 
 fast_soundex_impl <- function(x) {

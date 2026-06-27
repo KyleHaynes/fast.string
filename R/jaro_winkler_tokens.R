@@ -23,6 +23,32 @@
 #' default) are removed so that `"O'Brien"`, `"O-Brien"`, and `"OBrien"`
 #' tokenise and collapse identically.
 #'
+#' Set `contractions = TRUE` to also rescue tokens that are *split on one
+#' side but joined on the other* — `"KYLEJOHN HAYNES"` vs.
+#' `"KYLE JOHN HAYNES"` scores perfectly, because `"KYLEJOHN"` is recognised
+#' as `"KYLE"` + `"JOHN"` concatenated. This isn't limited to adjacent
+#' tokens: `"KYLEHAYNES JOHN"` vs. `"KYLE JOHN HAYNES"` also scores
+#' perfectly, because the two tokens that contracted (`"KYLE"`, `"HAYNES"`)
+#' don't need to be next to each other in the original — only in their
+#' original left-to-right order (so `"HAYNESKYLE"` would *not* match). Every
+#' pair of tokens on each side (not just adjacent ones) is tried as a
+#' candidate contraction.
+#'
+#' `contractions = TRUE` also catches the case where *both* sides already
+#' have two words fused into one token, just in opposite order —
+#' `"HAYNES JOHNKYLE"` vs. `"KYLEJOHN HAYNES"` scores highly, because
+#' `"JOHNKYLE"` and `"KYLEJOHN"` are equal-length and one is an exact cyclic
+#' rotation of the other (plain Jaro-Winkler can't see this: swapping two
+#' whole blocks moves every character further than its matching window
+#' tolerates). Every rotation of an equal-length candidate pair is tried and
+#' the best kept, so this needs no prior knowledge of where the fused word
+#' boundary was.
+#'
+#' Both contraction mechanisms try `O(n^2)` extra candidate comparisons per
+#' side, so `contractions = TRUE` is noticeably slower than the default —
+#' off by default for that reason, and most useful when names/addresses are
+#' known to have inconsistent word-splitting.
+#'
 #' By default, unmatched tokens are penalised by dividing the matched total
 #' by `max(n_tokens_a, n_tokens_b)` rather than the number actually matched.
 #' Set `extra_penalty` to a number to switch to a different scheme: unmatched
@@ -55,6 +81,11 @@
 #'   `extra_penalty` per unmatched token from that average, floored at 0 —
 #'   so unmatched tokens can be ignored (`0`) or lightly discounted (e.g.
 #'   `0.05`-`0.2`) instead of fully diluting the score.
+#' @param contractions Logical (default `FALSE`). If `TRUE`, also try every
+#'   pair of tokens on each side concatenated together (in their original
+#'   left-to-right order, not just adjacent pairs) as a candidate match for
+#'   a single token on the other side — see Details. Slower than the
+#'   default since it considers `O(n^2)` extra candidates per side.
 #' @param nthreads Integer or `NULL`. Thread count.
 #'
 #' @return Numeric vector of similarities in `[0, 1]`, `length(a)` long.
@@ -70,10 +101,20 @@
 #' # Extra/junk token ("ZZ") dropped instead of diluting the score.
 #' jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle",
 #'                     extra_penalty = 0)
+#'
+#' # Contractions: "KYLEJOHN" recognised as "KYLE" + "JOHN" (adjacent), and
+#' # "KYLEHAYNES" recognised as "KYLE" + "HAYNES" (non-adjacent, "JOHN" sits
+#' # between them in the original) — both score perfectly with contractions on.
+#' jaro_winkler_tokens("KYLEJOHN HAYNES", "KYLE JOHN HAYNES", contractions = TRUE)
+#' jaro_winkler_tokens("KYLEHAYNES JOHN", "KYLE JOHN HAYNES", contractions = TRUE)
+#'
+#' # Both sides already fused two words into one token, just in opposite
+#' # order ("JOHNKYLE" vs "KYLEJOHN") — rescued by the rotation check.
+#' jaro_winkler_tokens("HAYNES JOHNKYLE", "KYLEJOHN HAYNES", contractions = TRUE)
 #' @export
 jaro_winkler_tokens <- function(a, b, p = 0.1, ignore_case = FALSE,
                                  strip = "['’-]", extra_penalty = NULL,
-                                 nthreads = NULL) {
+                                 contractions = FALSE, nthreads = NULL) {
     if (!is.character(a) || !is.character(b))
         stop("`a` and `b` must be character vectors.")
     if (length(a) != length(b))
@@ -97,6 +138,7 @@ jaro_winkler_tokens <- function(a, b, p = 0.1, ignore_case = FALSE,
         RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
     fast_jaro_winkler_tokens_impl(
         a, b, as.double(p),
-        if (is.null(extra_penalty)) NA_real_ else as.double(extra_penalty)
+        if (is.null(extra_penalty)) NA_real_ else as.double(extra_penalty),
+        isTRUE(contractions)
     )
 }

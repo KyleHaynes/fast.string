@@ -11,6 +11,7 @@ jaro_winkler_tokens(
   ignore_case = FALSE,
   strip = "['’-]",
   extra_penalty = NULL,
+  contractions = FALSE,
   nthreads = NULL
 )
 }
@@ -34,6 +35,12 @@ only the matched tokens (\code{min(n_tokens_a, n_tokens_b)}) and subtracts
 \code{extra_penalty} per unmatched token from that average, floored at 0 —
 so unmatched tokens can be ignored (\code{0}) or lightly discounted (e.g.
 \code{0.05}-\code{0.2}) instead of fully diluting the score.}
+
+\item{contractions}{Logical (default \code{FALSE}). If \code{TRUE}, also try every
+pair of tokens on each side concatenated together (in their original
+left-to-right order, not just adjacent pairs) as a candidate match for
+a single token on the other side — see Details. Slower than the
+default since it considers \code{O(n^2)} extra candidates per side.}
 
 \item{nthreads}{Integer or \code{NULL}. Thread count.}
 }
@@ -68,6 +75,32 @@ Before either framing, \code{strip} characters (apostrophes and hyphens by
 default) are removed so that \code{"O'Brien"}, \code{"O-Brien"}, and \code{"OBrien"}
 tokenise and collapse identically.
 
+Set \code{contractions = TRUE} to also rescue tokens that are \emph{split on one
+side but joined on the other} — \code{"KYLEJOHN HAYNES"} vs.
+\code{"KYLE JOHN HAYNES"} scores perfectly, because \code{"KYLEJOHN"} is recognised
+as \code{"KYLE"} + \code{"JOHN"} concatenated. This isn't limited to adjacent
+tokens: \code{"KYLEHAYNES JOHN"} vs. \code{"KYLE JOHN HAYNES"} also scores
+perfectly, because the two tokens that contracted (\code{"KYLE"}, \code{"HAYNES"})
+don't need to be next to each other in the original — only in their
+original left-to-right order (so \code{"HAYNESKYLE"} would \emph{not} match). Every
+pair of tokens on each side (not just adjacent ones) is tried as a
+candidate contraction.
+
+\code{contractions = TRUE} also catches the case where \emph{both} sides already
+have two words fused into one token, just in opposite order —
+\code{"HAYNES JOHNKYLE"} vs. \code{"KYLEJOHN HAYNES"} scores highly, because
+\code{"JOHNKYLE"} and \code{"KYLEJOHN"} are equal-length and one is an exact cyclic
+rotation of the other (plain Jaro-Winkler can't see this: swapping two
+whole blocks moves every character further than its matching window
+tolerates). Every rotation of an equal-length candidate pair is tried and
+the best kept, so this needs no prior knowledge of where the fused word
+boundary was.
+
+Both contraction mechanisms try \code{O(n^2)} extra candidate comparisons per
+side, so \code{contractions = TRUE} is noticeably slower than the default —
+off by default for that reason, and most useful when names/addresses are
+known to have inconsistent word-splitting.
+
 By default, unmatched tokens are penalised by dividing the matched total
 by \code{max(n_tokens_a, n_tokens_b)} rather than the number actually matched.
 Set \code{extra_penalty} to a number to switch to a different scheme: unmatched
@@ -95,6 +128,16 @@ jaro_winkler_tokens("John Smith", "John Smith Jones")
 # Extra/junk token ("ZZ") dropped instead of diluting the score.
 jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle",
                     extra_penalty = 0)
+
+# Contractions: "KYLEJOHN" recognised as "KYLE" + "JOHN" (adjacent), and
+# "KYLEHAYNES" recognised as "KYLE" + "HAYNES" (non-adjacent, "JOHN" sits
+# between them in the original) — both score perfectly with contractions on.
+jaro_winkler_tokens("KYLEJOHN HAYNES", "KYLE JOHN HAYNES", contractions = TRUE)
+jaro_winkler_tokens("KYLEHAYNES JOHN", "KYLE JOHN HAYNES", contractions = TRUE)
+
+# Both sides already fused two words into one token, just in opposite
+# order ("JOHNKYLE" vs "KYLEJOHN") — rescued by the rotation check.
+jaro_winkler_tokens("HAYNES JOHNKYLE", "KYLEJOHN HAYNES", contractions = TRUE)
 }
 \seealso{
 \code{\link[=jaro_winkler]{jaro_winkler()}}, \code{\link[=jaro_winkler_matrix]{jaro_winkler_matrix()}}

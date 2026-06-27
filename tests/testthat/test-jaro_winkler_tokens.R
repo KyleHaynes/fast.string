@@ -82,3 +82,57 @@ test_that("jaro_winkler_tokens validates extra_penalty", {
     expect_error(fast.string::jaro_winkler_tokens("a", "b", extra_penalty = c(0, 1)), "non-negative")
     expect_error(fast.string::jaro_winkler_tokens("a", "b", extra_penalty = "x"), "non-negative")
 })
+
+test_that("contractions rescues a non-adjacent split-vs-joined token pair", {
+    # "JOHN" sits between "KYLE" and "HAYNES" in the original, so this case
+    # is NOT covered by the collapsed (whole-string) framing alone.
+    without <- fast.string::jaro_winkler_tokens("KYLEHAYNES JOHN", "KYLE JOHN HAYNES")
+    with <- fast.string::jaro_winkler_tokens("KYLEHAYNES JOHN", "KYLE JOHN HAYNES",
+                                               contractions = TRUE)
+    expect_lt(without, 1.0)
+    expect_equal(with, 1.0)
+})
+
+test_that("contractions rescues an adjacent split-vs-joined token pair", {
+    expect_equal(
+        fast.string::jaro_winkler_tokens("KYLEJOHN HAYNES", "KYLE JOHN HAYNES",
+                                          contractions = TRUE),
+        1.0
+    )
+})
+
+test_that("contractions only matches tokens in their original left-to-right order", {
+    # "HAYNESKYLE" is KYLE+HAYNES reversed, which must NOT be treated as a
+    # valid contraction of "KYLE ... HAYNES".
+    res <- fast.string::jaro_winkler_tokens("HAYNESKYLE JOHN", "KYLE JOHN HAYNES",
+                                              contractions = TRUE)
+    expect_lt(res, 1.0)
+})
+
+test_that("contractions does not change scores when no merge is beneficial", {
+    pairs <- list(
+        c("Kyle John Haynes", "John Kylie Haynes"),
+        c("SMITH", "SMYTH"),
+        c("John Smith", "John Smith Jones"),
+        c("", ""), c("", "A")
+    )
+    for (pr in pairs) {
+        expect_equal(
+            fast.string::jaro_winkler_tokens(pr[1], pr[2], contractions = FALSE),
+            fast.string::jaro_winkler_tokens(pr[1], pr[2], contractions = TRUE)
+        )
+    }
+})
+
+test_that("contractions composes with extra_penalty and is NA-aware/vectorised", {
+    res <- fast.string::jaro_winkler_tokens(
+        c("KYLEHAYNES JOHN", NA, "John Smith"),
+        c("KYLE JOHN HAYNES", "x", "John Smith"),
+        contractions = TRUE
+    )
+    expect_equal(res, c(1, NA, 1))
+
+    score <- fast.string::jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle",
+                                                extra_penalty = 0, contractions = TRUE)
+    expect_gt(score, 0.95)
+})
