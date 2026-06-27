@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>5&nbsp; Function reference – fast.string</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./06-benchmarks.html" rel="next">
+<link href="./04-record-linkage-workflow.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-90da5b13ae942b47784375143f8d2ef3.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-25db13ffafacac8718dcb08e13c69784.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-90da5b13ae942b47784375143f8d2ef3.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-adc770f3e85a40ed08f857da2325632e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-5da3d176e6a07b8a932cd584db14f99f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-adc770f3e85a40ed08f857da2325632e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light"><script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script><style>html{ scroll-behavior: smooth; }</style>
+</head>
+<body class="nav-sidebar docked quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top"><nav class="quarto-secondary-nav"><div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./05-function-reference.html">Reference</a></li><li class="breadcrumb-item"><a href="./05-function-reference.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Function reference</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav></header><!-- content --><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">fast.string</a> 
+        <div class="sidebar-tools-main tools-wide">
+    <a href="https://github.com/KyleHaynes/anthropic_fast" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">Getting started</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-about.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">About fast.string</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-quickstart.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Quickstart</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">Under the hood</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+    </ul>
+</div>
+</nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+<li>
+<a href="#matching-substitution" id="toc-matching-substitution" class="nav-link active" data-scroll-target="#matching-substitution"><span class="header-section-number">5.1</span> Matching &amp; substitution</a>
+  <ul class="collapse">
+<li><a href="#fgrepl" id="toc-fgrepl" class="nav-link" data-scroll-target="#fgrepl"><code>fgrepl()</code></a></li>
+  <li><a href="#fgrep" id="toc-fgrep" class="nav-link" data-scroll-target="#fgrep"><code>fgrep()</code></a></li>
+  <li><a href="#fsub" id="toc-fsub" class="nav-link" data-scroll-target="#fsub"><code>fsub()</code></a></li>
+  <li><a href="#fgsub" id="toc-fgsub" class="nav-link" data-scroll-target="#fgsub"><code>fgsub()</code></a></li>
+  <li><a href="#gsub_all" id="toc-gsub_all" class="nav-link" data-scroll-target="#gsub_all"><code>gsub_all()</code></a></li>
+  </ul>
+</li>
+  <li>
+<a href="#string-utilities" id="toc-string-utilities" class="nav-link" data-scroll-target="#string-utilities"><span class="header-section-number">5.2</span> String utilities</a>
+  <ul class="collapse">
+<li><a href="#ftrimws" id="toc-ftrimws" class="nav-link" data-scroll-target="#ftrimws"><code>ftrimws()</code></a></li>
+  <li><a href="#fsubstr" id="toc-fsubstr" class="nav-link" data-scroll-target="#fsubstr"><code>fsubstr()</code></a></li>
+  <li><a href="#fnchar" id="toc-fnchar" class="nav-link" data-scroll-target="#fnchar"><code>fnchar()</code></a></li>
+  <li><a href="#fchartr" id="toc-fchartr" class="nav-link" data-scroll-target="#fchartr"><code>fchartr()</code></a></li>
+  </ul>
+</li>
+  <li>
+<a href="#dates" id="toc-dates" class="nav-link" data-scroll-target="#dates"><span class="header-section-number">5.3</span> Dates</a>
+  <ul class="collapse">
+<li><a href="#format_date" id="toc-format_date" class="nav-link" data-scroll-target="#format_date"><code>format_date()</code></a></li>
+  <li><a href="#format_date_parts" id="toc-format_date_parts" class="nav-link" data-scroll-target="#format_date_parts"><code>format_date_parts()</code></a></li>
+  <li><a href="#date_parts" id="toc-date_parts" class="nav-link" data-scroll-target="#date_parts"><code>date_parts()</code></a></li>
+  <li><a href="#fas.date" id="toc-fas.date" class="nav-link" data-scroll-target="#fas.date"><code>fas.Date()</code></a></li>
+  </ul>
+</li>
+  <li>
+<a href="#phonetic-blocking-keys" id="toc-phonetic-blocking-keys" class="nav-link" data-scroll-target="#phonetic-blocking-keys"><span class="header-section-number">5.4</span> Phonetic blocking keys</a>
+  <ul class="collapse">
+<li><a href="#soundex" id="toc-soundex" class="nav-link" data-scroll-target="#soundex"><code>soundex()</code></a></li>
+  <li><a href="#nysiis" id="toc-nysiis" class="nav-link" data-scroll-target="#nysiis"><code>nysiis()</code></a></li>
+  </ul>
+</li>
+  <li>
+<a href="#fuzzy-string-similarity" id="toc-fuzzy-string-similarity" class="nav-link" data-scroll-target="#fuzzy-string-similarity"><span class="header-section-number">5.5</span> Fuzzy string similarity</a>
+  <ul class="collapse">
+<li><a href="#jaro_winkler" id="toc-jaro_winkler" class="nav-link" data-scroll-target="#jaro_winkler"><code>jaro_winkler()</code></a></li>
+  <li><a href="#jaro_winkler_matrix" id="toc-jaro_winkler_matrix" class="nav-link" data-scroll-target="#jaro_winkler_matrix"><code>jaro_winkler_matrix()</code></a></li>
+  <li><a href="#jaro_winkler_tokens" id="toc-jaro_winkler_tokens" class="nav-link" data-scroll-target="#jaro_winkler_tokens"><code>jaro_winkler_tokens()</code></a></li>
+  </ul>
+</li>
+  </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/anthropic_fast/edit/main/05-function-reference.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/anthropic_fast/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./05-function-reference.html">Reference</a></li><li class="breadcrumb-item"><a href="./05-function-reference.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Function reference</span></a></li></ol></nav><div class="quarto-title">
+<h1 class="title"><span id="sec-reference" class="quarto-section-identifier"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Function reference</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header><p>Every exported function, grouped the same way as the README. Each entry gives the signature, every argument, the return value, and at least one runnable example. This chapter is the detailed reference; <a href="02-quickstart.html" class="quarto-xref"><span>Chapter 2</span></a> is the faster tour.</p>
+<section id="matching-substitution" class="level2" data-number="5.1"><h2 data-number="5.1" class="anchored" data-anchor-id="matching-substitution">
+<span class="header-section-number">5.1</span> Matching &amp; substitution</h2>
+<section id="fgrepl" class="level3"><h3 class="anchored" data-anchor-id="fgrepl"><code>fgrepl()</code></h3>
+<p>Equivalent to <code><a href="https://rdrr.io/r/base/grep.html">base::grepl()</a></code>, using PCRE2 and Intel TBB. Typically 5-20x faster on large character vectors. See <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the automatic PCRE-only-syntax fallback to <code>base::grepl(perl = TRUE)</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgrepl</span><span class="op">(</span><span class="va">pattern</span>, <span class="va">x</span>, ignore.case <span class="op">=</span> <span class="cn">FALSE</span>, perl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>       fixed <span class="op">=</span> <span class="cn">FALSE</span>, useBytes <span class="op">=</span> <span class="cn">FALSE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>pattern</code></td>
+<td>Character scalar. Pattern to search for.</td>
+</tr>
+<tr class="even">
+<td><code>x</code></td>
+<td>Character vector. <code>NA</code> elements return <code>NA</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>ignore.case</code></td>
+<td>Logical. Case-insensitive matching.</td>
+</tr>
+<tr class="even">
+<td><code>perl</code></td>
+<td>Logical. If <code>TRUE</code>, skip the PCRE-only syntax check and run the parallel PCRE2 engine directly.</td>
+</tr>
+<tr class="odd">
+<td><code>fixed</code></td>
+<td>Logical. Treat <code>pattern</code> as a literal string (fastest path — uses RE2).</td>
+</tr>
+<tr class="even">
+<td><code>useBytes</code></td>
+<td>Logical. Ignored; kept for signature compatibility with <code><a href="https://rdrr.io/r/base/grep.html">base::grepl()</a></code>.</td>
+</tr>
+<tr class="odd">
+<td><code>nthreads</code></td>
+<td>Integer or <code>NULL</code>. Thread count; <code>NULL</code> uses all cores.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> logical vector the same length as <code>x</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgrepl</span><span class="op">(</span><span class="st">"^inv"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"invoice"</span>, <span class="st">"Invoice"</span>, <span class="st">"credit"</span><span class="op">)</span>, ignore.case <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1]  TRUE  TRUE FALSE</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgrepl</span><span class="op">(</span><span class="st">"a.b"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"axb"</span>, <span class="st">"ab"</span><span class="op">)</span>, fixed <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>  <span class="co"># literal "a.b" — no match for "axb"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] FALSE FALSE</code></pre>
+</div>
+</div>
+</section><section id="fgrep" class="level3"><h3 class="anchored" data-anchor-id="fgrep"><code>fgrep()</code></h3>
+<p>Equivalent to <code><a href="https://rdrr.io/r/base/grep.html">base::grep()</a></code>: wraps <code>fgrepl()</code> and returns indices or values.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgrep</span><span class="op">(</span><span class="va">pattern</span>, <span class="va">x</span>, ignore.case <span class="op">=</span> <span class="cn">FALSE</span>, perl <span class="op">=</span> <span class="cn">FALSE</span>, value <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      fixed <span class="op">=</span> <span class="cn">FALSE</span>, useBytes <span class="op">=</span> <span class="cn">FALSE</span>, invert <span class="op">=</span> <span class="cn">FALSE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>pattern</code>, <code>x</code>, <code>ignore.case</code>, <code>perl</code>, <code>fixed</code>, <code>useBytes</code>, <code>nthreads</code>
+</td>
+<td>Same as <code>fgrepl()</code>.</td>
+</tr>
+<tr class="even">
+<td><code>value</code></td>
+<td>Logical. Return matching elements instead of indices.</td>
+</tr>
+<tr class="odd">
+<td><code>invert</code></td>
+<td>Logical. Return non-matching indices/values instead.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> integer vector of indices, or a character vector when <code>value = TRUE</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgrep</span><span class="op">(</span><span class="st">"^inv"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"invoice"</span>, <span class="st">"credit"</span>, <span class="st">"invoice2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgrep</span><span class="op">(</span><span class="st">"^inv"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"invoice"</span>, <span class="st">"credit"</span>, <span class="st">"invoice2"</span><span class="op">)</span>, value <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "invoice"  "invoice2"</code></pre>
+</div>
+</div>
+</section><section id="fsub" class="level3"><h3 class="anchored" data-anchor-id="fsub"><code>fsub()</code></h3>
+<p>Equivalent to <code><a href="https://rdrr.io/r/base/grep.html">base::sub()</a></code>: first-match substitution. Supports <code>\\1</code>-<code>\\9</code> capture groups and <code>\\U</code>/<code>\\L</code>/<code>\\E</code> case conversion in <code>replacement</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fsub</span><span class="op">(</span><span class="va">pattern</span>, <span class="va">replacement</span>, <span class="va">x</span>, ignore.case <span class="op">=</span> <span class="cn">FALSE</span>, perl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>     fixed <span class="op">=</span> <span class="cn">FALSE</span>, useBytes <span class="op">=</span> <span class="cn">FALSE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>pattern</code></td>
+<td>Character scalar. Pattern to search for.</td>
+</tr>
+<tr class="even">
+<td><code>replacement</code></td>
+<td>Character scalar. Replacement string.</td>
+</tr>
+<tr class="odd">
+<td><code>x</code></td>
+<td>Character vector. <code>NA</code> elements return <code>NA</code>.</td>
+</tr>
+<tr class="even">
+<td>
+<code>ignore.case</code>, <code>perl</code>, <code>fixed</code>, <code>useBytes</code>, <code>nthreads</code>
+</td>
+<td>Same as <code>fgrepl()</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> character vector the same length as <code>x</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fsub</span><span class="op">(</span><span class="st">"-([0-9]+)$"</span>, <span class="st">"_\\1"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"invoice-001"</span>, <span class="st">"invoice-002"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "invoice_001" "invoice_002"</code></pre>
+</div>
+</div>
+</section><section id="fgsub" class="level3"><h3 class="anchored" data-anchor-id="fgsub"><code>fgsub()</code></h3>
+<p>Equivalent to <code><a href="https://rdrr.io/r/base/grep.html">base::gsub()</a></code>: global substitution. Same capture-group and case-conversion support as <code>fsub()</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgsub</span><span class="op">(</span><span class="va">pattern</span>, <span class="va">replacement</span>, <span class="va">x</span>, ignore.case <span class="op">=</span> <span class="cn">FALSE</span>, perl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      fixed <span class="op">=</span> <span class="cn">FALSE</span>, useBytes <span class="op">=</span> <span class="cn">FALSE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Arguments are identical to <code>fsub()</code>. <strong>Returns:</strong> character vector the same length as <code>x</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgsub</span><span class="op">(</span><span class="st">"[aeiou]"</span>, <span class="st">"_"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"hello world"</span>, <span class="st">"fast string"</span><span class="op">)</span>, ignore.case <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "h_ll_ w_rld" "f_st str_ng"</code></pre>
+</div>
+</div>
+</section><section id="gsub_all" class="level3"><h3 class="anchored" data-anchor-id="gsub_all"><code>gsub_all()</code></h3>
+<p>No base R equivalent: applies several patterns in a single function call, either sequentially (chained, like repeated <code>fgsub()</code> calls — later patterns can match text introduced by earlier replacements) or as one combined left-to-right scan (<code>sequential = FALSE</code> — the first pattern to match at each position wins; later replacements never see earlier ones’ output).</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">gsub_all</span><span class="op">(</span><span class="va">patterns</span>, <span class="va">replacements</span>, <span class="va">x</span>, fixed <span class="op">=</span> <span class="cn">FALSE</span>, ignore.case <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>          sequential <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>patterns</code></td>
+<td>Character vector of patterns to search for.</td>
+</tr>
+<tr class="even">
+<td><code>replacements</code></td>
+<td>Character scalar or vector the same length as <code>patterns</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>x</code></td>
+<td>Character vector. <code>NA</code> elements return <code>NA</code>.</td>
+</tr>
+<tr class="even">
+<td><code>fixed</code></td>
+<td>Logical. Treat each pattern as a literal string.</td>
+</tr>
+<tr class="odd">
+<td><code>ignore.case</code></td>
+<td>Logical. Case-insensitive matching.</td>
+</tr>
+<tr class="even">
+<td><code>sequential</code></td>
+<td>Logical (default <code>TRUE</code>). <code>TRUE</code> = chained passes; <code>FALSE</code> = single combined scan.</td>
+</tr>
+<tr class="odd">
+<td><code>nthreads</code></td>
+<td>Integer or <code>NULL</code>. Thread count.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> character vector the same length as <code>x</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">gsub_all</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Mr\\."</span>, <span class="st">"Mrs\\."</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Mister"</span>, <span class="st">"Missus"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Mr. Smith"</span>, <span class="st">"Mrs. Jones"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Mister Smith" "Missus Jones"</code></pre>
+</div>
+</div>
+</section></section><section id="string-utilities" class="level2" data-number="5.2"><h2 data-number="5.2" class="anchored" data-anchor-id="string-utilities">
+<span class="header-section-number">5.2</span> String utilities</h2>
+<p>All four functions in this group preserve <code>names(x)</code> and <code>NA</code> handling exactly like their base R equivalents.</p>
+<section id="ftrimws" class="level3"><h3 class="anchored" data-anchor-id="ftrimws"><code>ftrimws()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">ftrimws</span><span class="op">(</span><span class="va">x</span>, which <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"both"</span>, <span class="st">"left"</span>, <span class="st">"right"</span><span class="op">)</span>, whitespace <span class="op">=</span> <span class="st">"[ \t\r\n]"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>x</code></td>
+<td>Character vector. <code>NA</code> elements return <code>NA</code>.</td>
+</tr>
+<tr class="even">
+<td><code>which</code></td>
+<td>One of <code>"both"</code>, <code>"left"</code>, <code>"right"</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>whitespace</code></td>
+<td>Regex of characters to strip. Only the default <code>"[ \t\r\n]"</code> uses the fast path; any other value delegates to <code><a href="https://rdrr.io/r/base/trimws.html">base::trimws()</a></code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> character vector the same length as <code>x</code>, with <code>names(x)</code> preserved.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">ftrimws</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"  padded  "</span>, <span class="st">"\ttabbed\n"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "padded" "tabbed"</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">ftrimws</span><span class="op">(</span><span class="st">"  left only"</span>, which <span class="op">=</span> <span class="st">"left"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "left only"</code></pre>
+</div>
+</div>
+</section><section id="fsubstr" class="level3"><h3 class="anchored" data-anchor-id="fsubstr"><code>fsubstr()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fsubstr</span><span class="op">(</span><span class="va">x</span>, <span class="va">start</span>, <span class="va">stop</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>x</code></td>
+<td>Character vector. <code>NA</code> elements return <code>NA</code>.</td>
+</tr>
+<tr class="even">
+<td>
+<code>start</code>, <code>stop</code>
+</td>
+<td>Integer (or numeric) vectors of length 1 or <code>length(x)</code>, 1-indexed, clamped to each string’s bounds, recycled to <code>length(x)</code>. <code>NA</code> in either produces <code>NA</code> for that element.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> character vector the same length as <code>x</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fsubstr</span><span class="op">(</span><span class="st">"NSWREC123456789"</span>, <span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "NSW"</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fsubstr</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="st">"ABCDEFGH"</span>, <span class="fl">3</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">7</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">6</span>, <span class="fl">8</span><span class="op">)</span><span class="op">)</span>  <span class="co"># vectorised start/stop</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "ABC" "DEF" "GH" </code></pre>
+</div>
+</div>
+</section><section id="fnchar" class="level3"><h3 class="anchored" data-anchor-id="fnchar"><code>fnchar()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fnchar</span><span class="op">(</span><span class="va">x</span>, type <span class="op">=</span> <span class="st">"chars"</span>, allowNA <span class="op">=</span> <span class="cn">FALSE</span>, keepNA <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>x</code></td>
+<td>Vector, coerced to character via <code><a href="https://rdrr.io/r/base/character.html">as.character()</a></code> if needed.</td>
+</tr>
+<tr class="even">
+<td><code>type</code></td>
+<td>One of <code>"bytes"</code>, <code>"chars"</code>, or <code>"width"</code>. <code>"width"</code> delegates to <code><a href="https://rdrr.io/r/base/nchar.html">base::nchar()</a></code> (display width isn’t parallelised).</td>
+</tr>
+<tr class="odd">
+<td><code>allowNA</code></td>
+<td>Logical. Ignored; the fast path never raises an encoding error regardless.</td>
+</tr>
+<tr class="even">
+<td><code>keepNA</code></td>
+<td>Logical or <code>NA</code> (default). <code>NA</code>/<code>TRUE</code>: <code>NA</code> elements of <code>x</code> return <code>NA</code>. <code>FALSE</code>: they return <code>2L</code> (length of the string <code>"NA"</code>), matching base R’s legacy behaviour.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> integer vector the same length as <code>x</code>, with <code>names(x)</code> preserved.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fnchar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"café"</span>, <span class="st">"abc"</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1]  4  3 NA</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fnchar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"café"</span>, <span class="st">"abc"</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"bytes"</span><span class="op">)</span>  <span class="co"># "é" is 2 bytes in UTF-8</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 5 3</code></pre>
+</div>
+</div>
+</section><section id="fchartr" class="level3"><h3 class="anchored" data-anchor-id="fchartr"><code>fchartr()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fchartr</span><span class="op">(</span><span class="va">old</span>, <span class="va">new</span>, <span class="va">x</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>old</code>, <code>new</code>
+</td>
+<td>Single strings with the same number of characters. Each character of <code>old</code> maps to the corresponding character of <code>new</code>.</td>
+</tr>
+<tr class="even">
+<td><code>x</code></td>
+<td>Character vector. <code>NA</code> elements return <code>NA</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> character vector the same length as <code>x</code>. Falls back to <code><a href="https://rdrr.io/r/base/chartr.html">base::chartr()</a></code> automatically when <code>old</code>/<code>new</code> contain multi-byte characters (the fast path is a flat byte lookup table, valid only for single-byte/ASCII characters).</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fchartr</span><span class="op">(</span><span class="st">"'-"</span>, <span class="st">"  "</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"O'Brien"</span>, <span class="st">"Smith-Jones"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "O Brien"     "Smith Jones"</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fchartr</span><span class="op">(</span><span class="st">"aeiou"</span>, <span class="st">"AEIOU"</span>, <span class="st">"fast string"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "fAst strIng"</code></pre>
+</div>
+</div>
+</section></section><section id="dates" class="level2" data-number="5.3"><h2 data-number="5.3" class="anchored" data-anchor-id="dates">
+<span class="header-section-number">5.3</span> Dates</h2>
+<section id="format_date" class="level3"><h3 class="anchored" data-anchor-id="format_date"><code>format_date()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">format_date</span><span class="op">(</span><span class="va">x</span>, format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"iso"</span>, <span class="st">"compact"</span>, <span class="st">"dmy"</span>, <span class="st">"ymd_slash"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>x</code></td>
+<td>A <code>Date</code> object or numeric vector of days since 1970-01-01.</td>
+</tr>
+<tr class="even">
+<td><code>format</code></td>
+<td>
+<code>"iso"</code> (<code>YYYY-MM-DD</code>), <code>"compact"</code> (<code>YYYYMMDD</code>), <code>"dmy"</code> (<code>DD/MM/YYYY</code>), or <code>"ymd_slash"</code> (<code>YYYY/MM/DD</code>).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> character vector the same length as <code>x</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">format_date</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"2024-06-18"</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span>, <span class="st">"compact"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "20240618" NA        </code></pre>
+</div>
+</div>
+</section><section id="format_date_parts" class="level3"><h3 class="anchored" data-anchor-id="format_date_parts"><code>format_date_parts()</code></h3>
+<p>Pure string-building (zero-padding plus punctuation, no calendar math, no <code>Date</code> object) — the inverse of <code>date_parts()</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">format_date_parts</span><span class="op">(</span><span class="va">year</span>, <span class="va">month</span>, <span class="va">day</span>, format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"iso"</span>, <span class="st">"compact"</span>, <span class="st">"dmy"</span>, <span class="st">"ymd_slash"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>year</code>, <code>month</code>, <code>day</code>
+</td>
+<td>Numeric vectors, recycled to a common length. <code>NA</code>, non-integer-coercible, or out-of-width values (year outside 0-9999, month/day outside 0-99) produce <code>NA</code> for that element. No calendar validation — <code>month = 13</code> formats as given if it fits the field width.</td>
+</tr>
+<tr class="even">
+<td><code>format</code></td>
+<td>Same four options as <code>format_date()</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> character vector recycled to the common length of <code>year</code>, <code>month</code>, <code>day</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">format_date_parts</span><span class="op">(</span><span class="fl">2024</span>, <span class="fl">6</span>, <span class="fl">18</span>, <span class="st">"iso"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2024-06-18"</code></pre>
+</div>
+</div>
+</section><section id="date_parts" class="level3"><h3 class="anchored" data-anchor-id="date_parts"><code>date_parts()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">date_parts</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td><code>x</code></td>
+<td>A <code>Date</code> object or numeric vector of days since 1970-01-01.</td>
+</tr></tbody>
+</table>
+<p><strong>Returns:</strong> a <code>data.frame</code> with integer columns <code>year</code>, <code>month</code>, <code>day</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">date_parts</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"2024-06-18"</span>, <span class="st">"1999-12-31"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  year month day
+1 2024     6  18
+2 1999    12  31</code></pre>
+</div>
+</div>
+</section><section id="fas.date" class="level3"><h3 class="anchored" data-anchor-id="fas.date"><code>fas.Date()</code></h3>
+<p>Not a drop-in for <code><a href="https://rdrr.io/r/base/as.Date.html">base::as.Date()</a></code> — see <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the speed/ strictness trade-off (no days-in-month or leap-year validation).</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.Date</span><span class="op">(</span><span class="va">x</span>, format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"iso"</span>, <span class="st">"compact"</span>, <span class="st">"dmy"</span>, <span class="st">"ymd_slash"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>x</code></td>
+<td>Character vector. <code>NA</code> elements, and elements that don’t match <code>format</code> exactly (wrong length/separators/non-digits) or have an out-of-range month/day, become <code>NA</code>.</td>
+</tr>
+<tr class="even">
+<td><code>format</code></td>
+<td>Same four options as <code>format_date()</code>; <code>x</code> must be in exactly this one format.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> a <code>Date</code> vector the same length as <code>x</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb50"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.Date</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"18/06/2024"</span>, <span class="st">"31/12/1999"</span>, <span class="st">"not-a-date"</span><span class="op">)</span>, <span class="st">"dmy"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2024-06-18" "1999-12-31" NA          </code></pre>
+</div>
+</div>
+</section></section><section id="phonetic-blocking-keys" class="level2" data-number="5.4"><h2 data-number="5.4" class="anchored" data-anchor-id="phonetic-blocking-keys">
+<span class="header-section-number">5.4</span> Phonetic blocking keys</h2>
+<p>Both functions have no base R equivalent and are intended as blocking keys ahead of fuzzy name matching (<a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>, <a href="04-record-linkage-workflow.html" class="quarto-xref"><span>Chapter 4</span></a>).</p>
+<section id="soundex" class="level3"><h3 class="anchored" data-anchor-id="soundex"><code>soundex()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb52"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">soundex</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td><code>x</code></td>
+<td>Character vector (coerced via <code><a href="https://rdrr.io/r/base/character.html">as.character()</a></code> if not already character — e.g.&nbsp;a factor read from CSV). <code>NA</code> elements, and elements with no alphabetic characters, return <code>NA</code>.</td>
+</tr></tbody>
+</table>
+<p><strong>Returns:</strong> character vector the same length as <code>x</code>, with <code>names(x)</code> preserved; each element either <code>NA</code> or exactly 4 characters.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb53"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">soundex</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Robert"</span>, <span class="st">"Rupert"</span>, <span class="st">"Ashcraft"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "R163" "R163" "A261"</code></pre>
+</div>
+</div>
+</section><section id="nysiis" class="level3"><h3 class="anchored" data-anchor-id="nysiis"><code>nysiis()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb55"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">nysiis</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td><code>x</code></td>
+<td>Character vector (coerced via <code><a href="https://rdrr.io/r/base/character.html">as.character()</a></code> if needed). <code>NA</code> elements, and elements with no alphabetic characters, return <code>NA</code>.</td>
+</tr></tbody>
+</table>
+<p><strong>Returns:</strong> character vector the same length as <code>x</code>, with <code>names(x)</code> preserved; each element either <code>NA</code> or up to 6 characters.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb56"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">nysiis</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Robert"</span>, <span class="st">"Rupert"</span>, <span class="st">"Ashcraft"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "RABAD"  "RAPAD"  "ASCRAF"</code></pre>
+</div>
+</div>
+</section></section><section id="fuzzy-string-similarity" class="level2" data-number="5.5"><h2 data-number="5.5" class="anchored" data-anchor-id="fuzzy-string-similarity">
+<span class="header-section-number">5.5</span> Fuzzy string similarity</h2>
+<section id="jaro_winkler" class="level3"><h3 class="anchored" data-anchor-id="jaro_winkler"><code>jaro_winkler()</code></h3>
+<p>Vectorised pairwise Jaro-Winkler similarity. See <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the algorithm and the bit-parallel implementation.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb58"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>a</code>, <code>b</code>
+</td>
+<td>Equal-length character vectors.</td>
+</tr>
+<tr class="even">
+<td><code>p</code></td>
+<td>Prefix scaling factor (default <code>0.1</code>, the standard value).</td>
+</tr>
+<tr class="odd">
+<td><code>nthreads</code></td>
+<td>Integer or <code>NULL</code>. Thread count.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> numeric vector of similarities in <code>[0, 1]</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb59"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARTHA"</span>, <span class="st">"DWAYNE"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARHTA"</span>, <span class="st">"DUANE"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.9611111 0.8400000</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb61"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, p <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>    <span class="co"># no prefix bonus</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.8666667</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb63"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, p <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span>  <span class="co"># standard prefix bonus</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.8933333</code></pre>
+</div>
+</div>
+</section><section id="jaro_winkler_matrix" class="level3"><h3 class="anchored" data-anchor-id="jaro_winkler_matrix"><code>jaro_winkler_matrix()</code></h3>
+<p>All-pairs Jaro-Winkler similarity — every element of <code>a</code> against every element of <code>b</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_matrix</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>a</code></td>
+<td>Character vector of length n (rows).</td>
+</tr>
+<tr class="even">
+<td><code>b</code></td>
+<td>Character vector of length m (columns).</td>
+</tr>
+<tr class="odd">
+<td>
+<code>p</code>, <code>nthreads</code>
+</td>
+<td>Same as <code>jaro_winkler()</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> numeric matrix of dimensions n × m.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb66"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_matrix</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN SMITH"</span>, <span class="st">"MARY JONES"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JON SMYTH"</span>, <span class="st">"MARY JONES"</span>, <span class="st">"JOHN SMITH"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          [,1]      [,2]      [,3]
+[1,] 0.9170370 0.4222222 1.0000000
+[2,] 0.3074074 1.0000000 0.4222222</code></pre>
+</div>
+</div>
+</section><section id="jaro_winkler_tokens" class="level3"><h3 class="anchored" data-anchor-id="jaro_winkler_tokens"><code>jaro_winkler_tokens()</code></h3>
+<p>Token-reorder- and punctuation-aware Jaro-Winkler similarity. Full mechanics in <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb68"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, ignore_case <span class="op">=</span> <span class="cn">FALSE</span>, strip <span class="op">=</span> <span class="st">"['’-]"</span>,</span>
+<span>                     extra_penalty <span class="op">=</span> <span class="cn">NULL</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>a</code>, <code>b</code>
+</td>
+<td>Equal-length character vectors.</td>
+</tr>
+<tr class="even">
+<td><code>p</code></td>
+<td>Prefix scaling factor (default <code>0.1</code>).</td>
+</tr>
+<tr class="odd">
+<td><code>ignore_case</code></td>
+<td>Logical (default <code>FALSE</code>). Uppercase both sides before comparing.</td>
+</tr>
+<tr class="even">
+<td><code>strip</code></td>
+<td>Single regex string matching punctuation to remove before tokenising, or <code>NULL</code> to skip. Default <code>"['’-]"</code> strips straight/curly apostrophes and hyphens.</td>
+</tr>
+<tr class="odd">
+<td><code>extra_penalty</code></td>
+<td>
+<code>NULL</code> (default) or a non-negative numeric scalar. <code>NULL</code>: unmatched tokens dilute the average (divide by <code>max(n_tokens_a, n_tokens_b)</code>). A number: average over only matched tokens, then subtract <code>extra_penalty</code> per unmatched token (floored at 0) — <code>0</code> ignores extra tokens outright.</td>
+</tr>
+<tr class="even">
+<td><code>nthreads</code></td>
+<td>Integer or <code>NULL</code>. Thread count.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> numeric vector of similarities in <code>[0, 1]</code>. <code>NA</code> if either side of a pair is <code>NA</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb69"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Reordered tokens, one near-miss — rescued relative to plain jaro_winkler()</span></span>
+<span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.9844444</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb71"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.8970588</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb73"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Punctuation/spacing variants of the same name</span></span>
+<span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"OBrien"</span>, <span class="st">"OBrien"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"O Brien"</span>, <span class="st">"O'Brien"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1 1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb75"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># A stray extra token, penalised by default...</span></span>
+<span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kylie John ZZ Haynes"</span>, <span class="st">"Haynes John Kyle"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.7383333</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb77"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># ...vs. ignored outright with extra_penalty = 0</span></span>
+<span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kylie John ZZ Haynes"</span>, <span class="st">"Haynes John Kyle"</span>, extra_penalty <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.9844444</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb79"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># ...vs. lightly discounted</span></span>
+<span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kylie John ZZ Haynes"</span>, <span class="st">"Haynes John Kyle"</span>, extra_penalty <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.8844444</code></pre>
+</div>
+</div>
+
+
+</section></section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
+      <a href="./04-record-linkage-workflow.html" class="pagination-link" aria-label="A worked record-linkage pipeline">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./06-benchmarks.html" class="pagination-link" aria-label="Benchmarks at scale">
+        <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer"><div class="nav-footer">
+    <div class="nav-footer-left">
+<p>fast.string — PCRE2 + RE2 + RcppParallel for R</p>
+</div>   
+    <div class="nav-footer-center">
+      &nbsp;
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/KyleHaynes/anthropic_fast/edit/main/05-function-reference.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/anthropic_fast/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+<p>Built with Quarto</p>
+</div>
+  </div>
+</footer>
+
+
+<script src="site_libs/quarto-html/zenscroll-min.js"></script>
+</body></html>

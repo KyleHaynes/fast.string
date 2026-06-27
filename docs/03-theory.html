@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>3&nbsp; Algorithms under the hood – fast.string</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./04-record-linkage-workflow.html" rel="next">
+<link href="./02-quickstart.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-90da5b13ae942b47784375143f8d2ef3.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-25db13ffafacac8718dcb08e13c69784.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-90da5b13ae942b47784375143f8d2ef3.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-adc770f3e85a40ed08f857da2325632e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-5da3d176e6a07b8a932cd584db14f99f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-adc770f3e85a40ed08f857da2325632e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light"><script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script><style>html{ scroll-behavior: smooth; }</style>
+<script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script><script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+</head>
+<body class="nav-sidebar docked quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top"><nav class="quarto-secondary-nav"><div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./03-theory.html"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav></header><!-- content --><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">fast.string</a> 
+        <div class="sidebar-tools-main tools-wide">
+    <a href="https://github.com/KyleHaynes/anthropic_fast" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">Getting started</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-about.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">About fast.string</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-quickstart.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Quickstart</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Under the hood</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-theory.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+    </ul>
+</div>
+</nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+<li><a href="#two-regex-engines-and-a-safety-net" id="toc-two-regex-engines-and-a-safety-net" class="nav-link active" data-scroll-target="#two-regex-engines-and-a-safety-net"><span class="header-section-number">3.1</span> Two regex engines, and a safety net</a></li>
+  <li><a href="#parallelism-rcppparallel-not-parallelfuture" id="toc-parallelism-rcppparallel-not-parallelfuture" class="nav-link" data-scroll-target="#parallelism-rcppparallel-not-parallelfuture"><span class="header-section-number">3.2</span> Parallelism: RcppParallel, not <code>parallel</code>/<code>future</code></a></li>
+  <li>
+<a href="#jaro-and-jaro-winkler-similarity" id="toc-jaro-and-jaro-winkler-similarity" class="nav-link" data-scroll-target="#jaro-and-jaro-winkler-similarity"><span class="header-section-number">3.3</span> Jaro and Jaro-Winkler similarity</a>
+  <ul class="collapse">
+<li><a href="#the-bit-parallel-trick" id="toc-the-bit-parallel-trick" class="nav-link" data-scroll-target="#the-bit-parallel-trick">The bit-parallel trick</a></li>
+  <li><a href="#token-aware-comparison-jaro_winkler_tokens" id="toc-token-aware-comparison-jaro_winkler_tokens" class="nav-link" data-scroll-target="#token-aware-comparison-jaro_winkler_tokens">Token-aware comparison: <code>jaro_winkler_tokens()</code></a></li>
+  </ul>
+</li>
+  <li><a href="#soundex-and-nysiis" id="toc-soundex-and-nysiis" class="nav-link" data-scroll-target="#soundex-and-nysiis"><span class="header-section-number">3.4</span> Soundex and NYSIIS</a></li>
+  <li><a href="#fast-fixed-format-dates" id="toc-fast-fixed-format-dates" class="nav-link" data-scroll-target="#fast-fixed-format-dates"><span class="header-section-number">3.5</span> Fast, fixed-format dates</a></li>
+  </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/anthropic_fast/edit/main/03-theory.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/anthropic_fast/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./03-theory.html"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></a></li></ol></nav><div class="quarto-title">
+<h1 class="title"><span id="sec-theory" class="quarto-section-identifier"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header><p>This chapter explains <em>why</em> the package is built the way it is, not just <em>what</em> each function does (that’s <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 5</span></a>). Skip it if you just want to call functions; read it if a benchmark number surprises you, or if you’re deciding whether to trust the package’s behaviour on a pattern or input shape you care about.</p>
+<section id="two-regex-engines-and-a-safety-net" class="level2" data-number="3.1"><h2 data-number="3.1" class="anchored" data-anchor-id="two-regex-engines-and-a-safety-net">
+<span class="header-section-number">3.1</span> Two regex engines, and a safety net</h2>
+<p>R’s default regex engine is TRE, which doesn’t support lookaround, possessive quantifiers, or atomic groups. <code>perl = TRUE</code> switches to PCRE, which does — at the cost of being a backtracking engine, which means certain patterns (nested quantifiers over ambiguous alternations, mainly) can exhibit catastrophic exponential-time backtracking on adversarial input.</p>
+<p><code>fast.string</code> uses <strong>PCRE2</strong> for regex (full modern syntax, via Rcpp, not <code>base::grepl(perl = TRUE)</code>) and <strong>RE2’s <code>StringPiece</code></strong> for the <code>fixed = TRUE</code> literal-matching path. RE2 is built on a Thompson NFA construction with no backtracking at all — its matching time is <em>guaranteed</em> linear in the input, regardless of pattern. For literal strings (no regex metacharacters), that guarantee comes for free, so <code>fixed = TRUE</code> always takes the RE2 path.</p>
+<p>The catch with PCRE2: it’s still a backtracking engine, so the catastrophic-backtracking risk that motivated using RE2 for fixed strings doesn’t disappear for genuine regex patterns. What <code>fast.string</code> adds is a <strong>syntax safety net</strong>, not a backtracking guarantee: every regex-accepting function scans the pattern for PCRE-only syntax before taking the fast path —</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">.has_pcre_only_syntax</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">pattern</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu">base</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">grepl</a></span><span class="op">(</span></span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span></span>
+<span>            <span class="st">"\\(\\?[=!]"</span>,       <span class="co"># (?= lookahead   (?! negative lookahead</span></span>
+<span>            <span class="st">"|\\(\\?&lt;[=!]"</span>,     <span class="co"># (?&lt;= lookbehind  (?&lt;! negative lookbehind</span></span>
+<span>            <span class="st">"|\\(\\?&gt;"</span>,         <span class="co"># (?&gt; atomic group</span></span>
+<span>            <span class="st">"|[*+?]\\+"</span>,        <span class="co"># *+  ++  ?+  possessive quantifiers</span></span>
+<span>            <span class="st">"|\\(\\?P[=&lt;]"</span>,     <span class="co"># (?P=  (?P&lt;  named backref / group</span></span>
+<span>            <span class="st">"|\\\\k[&lt;']"</span>,       <span class="co"># \k&lt;name&gt;  \k'name'  named backreference</span></span>
+<span>            <span class="st">"|\\(\\?R\\)"</span>,      <span class="co"># (?R) full-pattern recursion</span></span>
+<span>            <span class="st">"|\\(\\?[0-9]"</span>,     <span class="co"># (?1) (?2) … numbered group recursion</span></span>
+<span>            <span class="st">"|\\(\\?&amp;"</span>          <span class="co"># (?&amp;name) named group recursion</span></span>
+<span>        <span class="op">)</span>,</span>
+<span>        <span class="va">pattern</span>, perl <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>    <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>— and if it finds any, and the caller didn’t explicitly pass <code>perl = TRUE</code>, the call transparently delegates to <code><a href="https://rdrr.io/r/base/grep.html">base::grepl()</a></code>/ <code><a href="https://rdrr.io/r/base/grep.html">base::gsub()</a></code> with <code>perl = TRUE</code> instead of running it through <code>fast.string</code>’s own PCRE2 path, with a <code><a href="https://cli.r-lib.org/reference/cli_abort.html">cli::cli_inform()</a></code> notice explaining why:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgrepl</span><span class="op">(</span><span class="st">"(?&lt;=foo)bar"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"foobar"</span>, <span class="st">"bazbar"</span><span class="op">)</span>, perl <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1]  TRUE FALSE</code></pre>
+</div>
+</div>
+<p>This exists because <code>fast.string</code>’s PCRE2 binding and base R’s PCRE binding are two different code paths with two different sets of supported constructs at the edges — the safety net means a pattern either runs correctly on the fast path, or falls back to a path R has already battle- tested for that exact syntax. It never silently mismatches.</p>
+</section><section id="parallelism-rcppparallel-not-parallelfuture" class="level2" data-number="3.2"><h2 data-number="3.2" class="anchored" data-anchor-id="parallelism-rcppparallel-not-parallelfuture">
+<span class="header-section-number">3.2</span> Parallelism: RcppParallel, not <code>parallel</code>/<code>future</code>
+</h2>
+<p><code><a href="https://rdrr.io/r/parallel/mcdummies.html">parallel::mclapply()</a></code> and <code>future::plan(multisession)</code> parallelise across <strong>R processes</strong>: each worker is a separate R session, so every call pays process-management and (for anything that isn’t fork-based) serialisation overhead — typically milliseconds at minimum, often more. That’s negligible if each task takes seconds; it dominates if each task is “trim this one string.”</p>
+<p><code>fast.string</code> instead uses <a href="https://rcppcore.github.io/RcppParallel/">RcppParallel</a>’s <code>parallelFor</code>, which partitions a single C++ loop across an Intel TBB thread pool <strong>inside one R call</strong>, with no process boundary and no serialisation step — the per-call dispatch overhead is microseconds, not milliseconds. The trade-off is that this parallelism lives entirely inside the C++ implementation: it’s not something you can apply to arbitrary R code, only to the specific loops this package has written in C++.</p>
+<p>Because even microsecond dispatch overhead isn’t free, every parallel function applies a size threshold before bothering: typically <code>n &gt;= 1000</code> elements for pairwise vector operations, <code>n * m &gt;= 10000</code> cells for matrix operations (<code>jaro_winkler_matrix()</code>). Below the threshold, the function just runs the loop on the calling thread — measurably faster than paying thread-pool dispatch cost for, say, ten comparisons. <a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> shows this crossover explicitly with small-<code>n</code> timings.</p>
+<p>Thread count is controlled the same way wherever it’s exposed: the regex family (<code>fgrepl()</code>, <code>fgrep()</code>, <code>fsub()</code>, <code>fgsub()</code>, <code>gsub_all()</code>) and the Jaro-Winkler family (<code>jaro_winkler()</code>, <code>jaro_winkler_matrix()</code>, <code>jaro_winkler_tokens()</code>) take an <code>nthreads</code> argument (<code>NULL</code> = let TBB use all available cores), which calls <code>RcppParallel::setThreadOptions(numThreads = nthreads)</code> before dispatch. The string-utility, date, and phonetic functions don’t expose <code>nthreads</code> — they always run at whatever the process-wide TBB thread count currently is, which matters because <code>setThreadOptions()</code> is a <em>process-wide</em> setting that outlives the call that set it (<a href="07-troubleshooting.html" class="quarto-xref"><span>Chapter 7</span></a>).</p>
+</section><section id="jaro-and-jaro-winkler-similarity" class="level2" data-number="3.3"><h2 data-number="3.3" class="anchored" data-anchor-id="jaro-and-jaro-winkler-similarity">
+<span class="header-section-number">3.3</span> Jaro and Jaro-Winkler similarity</h2>
+<p>Jaro similarity between strings <span class="math inline">\(s_1\)</span> (length <span class="math inline">\(l_1\)</span>) and <span class="math inline">\(s_2\)</span> (length <span class="math inline">\(l_2\)</span>) is:</p>
+<p><span class="math display">\[
+\text{Jaro}(s_1, s_2) = \frac{1}{3}\left(\frac{m}{l_1} + \frac{m}{l_2} + \frac{m - t}{m}\right)
+\]</span></p>
+<p>where <span class="math inline">\(m\)</span> is the number of <em>matching</em> characters — characters common to both strings within a sliding window of <span class="math inline">\(\lfloor \max(l_1, l_2)/2 \rfloor - 1\)</span> positions — and <span class="math inline">\(t\)</span> is the number of <em>transpositions</em> (matched characters that appear in a different relative order) divided by two. Jaro-Winkler adds a bonus for a shared prefix (up to 4 characters), scaled by <code>p</code> (default <code>0.1</code>, the standard value):</p>
+<p><span class="math display">\[
+\text{JW}(s_1, s_2) = \text{Jaro}(s_1, s_2) + \ell \cdot p \cdot (1 - \text{Jaro}(s_1, s_2))
+\]</span></p>
+<p>where <span class="math inline">\(\ell\)</span> is the length of the common prefix, capped at 4. This is why <code>jaro_winkler("SMITH", "SMYTH", p = 0.1)</code> scores higher than the same pair with <code>p = 0</code> — <code>SM</code> is a shared prefix that the Winkler boost rewards, on the reasoning that people are more likely to make typos later in a word than at the start.</p>
+<section id="the-bit-parallel-trick" class="level3"><h3 class="anchored" data-anchor-id="the-bit-parallel-trick">The bit-parallel trick</h3>
+<p>The textbook Jaro algorithm, for each character in <span class="math inline">\(s_1\)</span>, linearly scans the matching window in <span class="math inline">\(s_2\)</span> for the first unclaimed equal character — an <span class="math inline">\(O(l_1 \times \text{window})\)</span> double loop. <code>fast.string</code> instead maintains, per worker thread, a 256-entry table of 64-bit bitmasks: <code>char_mask[c]</code> has bit <span class="math inline">\(j\)</span> set if <code>s2[j] == c</code>. Finding the first unclaimed match for <code>s1[i]</code> then becomes:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="dt">uint64_t</span> cand <span class="op">=</span> char_mask<span class="op">[(</span><span class="dt">unsigned</span> <span class="dt">char</span><span class="op">)</span>s1<span class="op">[</span>i<span class="op">]]</span> <span class="op">&amp;</span> window_mask <span class="op">&amp;</span> <span class="op">~</span>used_mask<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>cand<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> j <span class="op">=</span> ctz64<span class="op">(</span>cand<span class="op">);</span>  <span class="co">// lowest set bit = leftmost match</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>— a handful of bitwise operations and one count-trailing-zeros instruction, replacing the inner linear scan entirely. This turns the <span class="math inline">\(O(l_1 \times \text{window})\)</span> comparison into <span class="math inline">\(O(l_1 + l_2)\)</span>, and applies to any pair of strings up to 64 bytes each (covering the overwhelming majority of names and addresses). Longer strings fall back to a straightforward <code>bool[]</code>-array scalar implementation — still correct, just without the bitmask speedup.</p>
+<p>The <code>char_mask</code> table itself is <code>thread_local</code> and persists across calls within a worker thread (only the handful of bytes actually touched per call get cleared afterward), so the steady-state per-call setup cost is <span class="math inline">\(O(l_2)\)</span>, not <span class="math inline">\(O(256)\)</span>.</p>
+</section><section id="token-aware-comparison-jaro_winkler_tokens" class="level3"><h3 class="anchored" data-anchor-id="token-aware-comparison-jaro_winkler_tokens">Token-aware comparison: <code>jaro_winkler_tokens()</code>
+</h3>
+<p>Plain Jaro-Winkler compares strings as one ordered sequence of characters, so <code>"Kyle John Haynes"</code> vs.&nbsp;<code>"John Kylie Haynes"</code> scores badly — the <em>characters</em> moved, even though the <em>words</em> are almost all present. <code>jaro_winkler_tokens()</code> scores every pair two different ways and keeps whichever is higher:</p>
+<ol type="1">
+<li>
+<strong>Token alignment.</strong> Split both strings on whitespace, score every token in <code>a</code> against every token in <code>b</code>, then greedily pair off tokens in descending order of similarity (repeatedly pick the best remaining unused pair). This is a cheap approximation of an optimal bipartite assignment — not guaranteed optimal in the general case, but for the 2-5 tokens typical of a name or address, it agrees with the true optimum for all but pathological inputs. By default, the summed score divides by <code>max(n_tokens_a, n_tokens_b)</code>, so missing/extra tokens dilute the result; the <code>extra_penalty</code> argument switches to a scheme that instead averages over only the <em>matched</em> tokens and subtracts a fixed penalty per unmatched token — see <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 5</span></a> for the worked example with a stray middle initial.</li>
+<li>
+<strong>Collapsed.</strong> Both strings with whitespace removed, compared as one string. This catches cases where the <em>only</em> difference is where the token boundary falls — <code>"OBrien"</code> vs.&nbsp;<code>"O Brien"</code> — which token alignment alone would under-score (one token vs.&nbsp;two, diluting the average) even though they’re clearly the same name.</li>
+</ol>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span>  <span class="co"># token alignment wins</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.9844444</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"OBrien"</span>, <span class="st">"O Brien"</span><span class="op">)</span>                      <span class="co"># collapsed framing wins</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1</code></pre>
+</div>
+</div>
+<p>Both framings reuse the same underlying Jaro-Winkler primitive and the same parallelised, per-row execution as <code>jaro_winkler()</code> itself — tokenising, building the token similarity matrix, the greedy assignment, and the collapsed comparison all happen in one C++ pass over the whole input vector.</p>
+</section></section><section id="soundex-and-nysiis" class="level2" data-number="3.4"><h2 data-number="3.4" class="anchored" data-anchor-id="soundex-and-nysiis">
+<span class="header-section-number">3.4</span> Soundex and NYSIIS</h2>
+<p>Both are <strong>phonetic encoding</strong> schemes: they map a name to a short code such that names that <em>sound</em> alike (even if spelled differently) tend to map to the same code. They’re used as <strong>blocking keys</strong> — group records by phonetic code first, then only run the expensive Jaro-Winkler comparison <em>within</em> a group, instead of against every other record in the dataset.</p>
+<p><strong>Soundex</strong> (American/Census Bureau rules, implemented here) keeps the first letter verbatim, then maps the remaining consonants to digits (<code>B,F,P,V → 1</code>; <code>C,G,J,K,Q,S,X,Z → 2</code>; <code>D,T → 3</code>; <code>L → 4</code>; <code>M,N → 5</code>; <code>R → 6</code>), drops vowels, and pads/truncates to exactly 4 characters. Adjacent letters mapping to the <em>same</em> digit collapse to one — and <code>H</code>/<code>W</code> are <strong>transparent</strong> for that adjacency check, not just dropped. That transparency rule is the entire reason <code>"Ashcraft"</code> encodes as <code>A261</code> and not <code>A2261</code>: the <code>S</code> and <code>C</code> are separated by an <code>H</code>, but <code>H</code> doesn’t break their adjacency, so they collapse to a single <code>2</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">soundex</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Ashcraft"</span>, <span class="st">"Ashcroft"</span>, <span class="st">"Robert"</span>, <span class="st">"Rupert"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "A261" "A261" "R163" "R163"</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"fast.string::soundex:  "</span>, <span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/soundex.html">soundex</a></span><span class="op">(</span><span class="st">"Ashcraft"</span><span class="op">)</span>, <span class="st">"(treats H as transparent)\n"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>fast.string::soundex:   A261 (treats H as transparent)</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"RecordLinkage::soundex:"</span>, <span class="fu">RecordLinkage</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/RecordLinkage/man/phonetics.html">soundex</a></span><span class="op">(</span><span class="st">"Ashcraft"</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>RecordLinkage::soundex: A226 </code></pre>
+</div>
+</div>
+<p>This H/W-transparency rule is exactly the kind of edge case where Soundex <em>implementations</em> genuinely disagree — some treat <code>H</code>/<code>W</code> as transparent (the canonical Census Bureau / Knuth <em>TAOCP</em> rule, and what <code>fast.string</code> follows), others drop them like any other consonant-adjacent vowel and get a different code for words like <code>"Ashcraft"</code>. Neither is “more correct” in any normative sense — Soundex was never formally standardised down to this level of detail — but it’s worth knowing which rule a given package follows before assuming two Soundex columns from different tools are comparable.</p>
+<p><strong>NYSIIS</strong> is more aggressive: it applies leading/trailing letter transforms first (e.g.&nbsp;a name starting with <code>MAC</code> becomes <code>MCC</code>, one ending in a vowel + <code>Y</code> drops the <code>Y</code>), then a per-letter substitution table with adjacent-duplicate collapsing, then truncates to 6 characters. It tends to produce fewer false-positive collisions than Soundex on typical English surnames, at the cost of a heavier per-element rule table — which is the direct explanation for why <code>nysiis()</code> benchmarks slower than <code>soundex()</code> in <a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> despite both running through the same parallel dispatch.</p>
+</section><section id="fast-fixed-format-dates" class="level2" data-number="3.5"><h2 data-number="3.5" class="anchored" data-anchor-id="fast-fixed-format-dates">
+<span class="header-section-number">3.5</span> Fast, fixed-format dates</h2>
+<p><code>format_date()</code>/<code>fas.Date()</code> deliberately don’t replicate <code><a href="https://rdrr.io/r/base/as.Date.html">base::format.Date()</a></code>/<code><a href="https://rdrr.io/r/base/as.Date.html">base::as.Date()</a></code>’s full generality. Base R’s date functions go through <code><a href="https://rdrr.io/r/base/strptime.html">strptime()</a></code>/<code><a href="https://rdrr.io/r/base/strptime.html">strftime()</a></code>, which are locale-aware and support arbitrary <code>%</code>-format strings — flexibility that costs real time when you’re formatting the same fixed shape (say, ISO <code>YYYY-MM-DD</code>) for five million rows. <code>fast.string</code>’s date functions instead support exactly four fixed formats (<code>iso</code>, <code>compact</code>, <code>dmy</code>, <code>ymd_slash</code>) implemented as direct digit-to-character writes with zero-padding — no locale lookup, no calendar-math beyond what’s needed to validate month (1-12) and day (1-31) ranges. There’s deliberately <em>no</em> days-in-month or leap-year check, so <code>fas.Date("2024-02-30", "iso")</code> parses without error — trading strictness for speed, on the assumption that upstream data has already been validated or that downstream code will catch the implausible date some other way. If you need full calendar validation, <code><a href="https://rdrr.io/r/base/as.Date.html">base::as.Date()</a></code> is still the right tool; <code>fas.Date()</code> is for when you already trust the input shape and just want it parsed fast.</p>
+
+
+</section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
+      <a href="./02-quickstart.html" class="pagination-link" aria-label="Quickstart">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Quickstart</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./04-record-linkage-workflow.html" class="pagination-link" aria-label="A worked record-linkage pipeline">
+        <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer"><div class="nav-footer">
+    <div class="nav-footer-left">
+<p>fast.string — PCRE2 + RE2 + RcppParallel for R</p>
+</div>   
+    <div class="nav-footer-center">
+      &nbsp;
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/KyleHaynes/anthropic_fast/edit/main/03-theory.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/anthropic_fast/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+<p>Built with Quarto</p>
+</div>
+  </div>
+</footer>
+
+
+<script src="site_libs/quarto-html/zenscroll-min.js"></script>
+</body></html>

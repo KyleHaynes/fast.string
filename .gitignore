@@ -4,8 +4,3 @@
 *.dll
 .Rproj.user
 
-# Quarto render output (regenerate with `quarto render` or `quarto publish`)
-/.quarto/
-*.html
-*_files/
-*.knit.md
