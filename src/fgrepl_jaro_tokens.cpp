@@ -189,11 +189,23 @@ double token_alignment_score_contractions(TokenScratch& sc, double p, double ext
     int nb = (int)sc.cand_b.size();
 
     sc.sim.assign((std::size_t)na * (std::size_t)nb, 0.0);
-    for (int r = 0; r < na; ++r)
-        for (int c = 0; c < nb; ++c)
+    for (int r = 0; r < na; ++r) {
+        // Rotation tolerance only applies between two genuine, untouched
+        // original tokens (single-bit mask) — never to a contraction
+        // candidate, where the left-to-right order of the tokens it fused
+        // is exactly what must stay meaningful (it's what tells "Kyle
+        // Haynes" apart from the wrong-order "Haynes Kyle" contraction).
+        bool a_single = (sc.cand_a[r].mask & (sc.cand_a[r].mask - 1)) == 0;
+        for (int c = 0; c < nb; ++c) {
+            bool b_single = (sc.cand_b[c].mask & (sc.cand_b[c].mask - 1)) == 0;
             sc.sim[(std::size_t)r * nb + c] =
-                jaro_winkler_sim_best(sc.cand_a[r].ptr, sc.cand_a[r].len,
-                                      sc.cand_b[c].ptr, sc.cand_b[c].len, p, sc.rot_buf);
+                (a_single && b_single)
+                    ? jaro_winkler_sim_best(sc.cand_a[r].ptr, sc.cand_a[r].len,
+                                            sc.cand_b[c].ptr, sc.cand_b[c].len, p, sc.rot_buf)
+                    : jaro_winkler_sim(sc.cand_a[r].ptr, sc.cand_a[r].len,
+                                       sc.cand_b[c].ptr, sc.cand_b[c].len, p);
+        }
+    }
 
     sc.order.resize((std::size_t)na * (std::size_t)nb);
     for (std::size_t idx = 0; idx < sc.order.size(); ++idx) sc.order[idx] = (int)idx;

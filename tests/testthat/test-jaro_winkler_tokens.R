@@ -109,6 +109,33 @@ test_that("contractions only matches tokens in their original left-to-right orde
     expect_lt(res, 1.0)
 })
 
+test_that("contractions catches two already-fused tokens in swapped order", {
+    # Neither side has a space to split here: "JOHNKYLE" and "KYLEJOHN" are
+    # both single tokens, equal length, and one is an exact cyclic rotation
+    # of the other -- plain Jaro-Winkler's matching window can't see past a
+    # whole-block swap like this.
+    without <- fast.string::jaro_winkler_tokens("HAYNES JOHNKYLE", "KYLEJOHN HAYNES")
+    with <- fast.string::jaro_winkler_tokens("HAYNES JOHNKYLE", "KYLEJOHN HAYNES",
+                                               contractions = TRUE)
+    expect_lt(without, 1.0)
+    expect_equal(with, 1.0)
+})
+
+test_that("the swapped-token rotation check never rescues a wrong-order contraction", {
+    # "HAYNESKYLE" (single fused token) happens to be an exact rotation of
+    # the *contraction candidate* "KYLEHAYNES" (KYLE+HAYNES merged from
+    # separate tokens) -- rotation tolerance must not apply to contraction
+    # candidates, only to genuine untouched single tokens, or this would
+    # silently undo the order-preservation guarantee above.
+    res <- fast.string::jaro_winkler_tokens("HAYNESKYLE JOHN", "KYLE JOHN HAYNES",
+                                              contractions = TRUE)
+    expect_lt(res, 1.0)
+    expect_equal(
+        res,
+        fast.string::jaro_winkler_tokens("HAYNESKYLE JOHN", "KYLE JOHN HAYNES")
+    )
+})
+
 test_that("contractions does not change scores when no merge is beneficial", {
     pairs <- list(
         c("Kyle John Haynes", "John Kylie Haynes"),
