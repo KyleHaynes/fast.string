@@ -10,7 +10,7 @@ suppressPackageStartupMessages(library(stringi))
 ## Installation
 
 ```r
-remotes::install_github("KyleHaynes/anthropic_fast")
+remotes::install_github("KyleHaynes/fast.string")
 ```
 
 This compiles C++ source on install, so you need a working toolchain:

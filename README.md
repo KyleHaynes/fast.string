@@ -9,7 +9,7 @@ that grep/sub/clean millions of strings at once.
 ## Installation
 
 ```r
-remotes::install_github("KyleHaynes/anthropic_fast")
+remotes::install_github("KyleHaynes/fast.string")
 ```
 
 ## Functions
