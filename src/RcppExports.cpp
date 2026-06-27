@@ -171,6 +171,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_jaro_winkler_tokens_impl
+NumericVector fast_jaro_winkler_tokens_impl(const StringVector& a, const StringVector& b, double p, double extra_penalty);
+RcppExport SEXP _fast_string_fast_jaro_winkler_tokens_impl(SEXP aSEXP, SEXP bSEXP, SEXP pSEXP, SEXP extra_penaltySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< double >::type p(pSEXP);
+    Rcpp::traits::input_parameter< double >::type extra_penalty(extra_penaltySEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_jaro_winkler_tokens_impl(a, b, p, extra_penalty));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_soundex_impl
 CharacterVector fast_soundex_impl(const StringVector& x);
 RcppExport SEXP _fast_string_fast_soundex_impl(SEXP xSEXP) {
@@ -258,6 +272,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_date_parts_impl", (DL_FUNC) &_fast_string_fast_date_parts_impl, 1},
     {"_fast_string_fast_jaro_winkler_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_impl, 3},
     {"_fast_string_fast_jaro_winkler_matrix_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_matrix_impl, 3},
+    {"_fast_string_fast_jaro_winkler_tokens_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_tokens_impl, 4},
     {"_fast_string_fast_soundex_impl", (DL_FUNC) &_fast_string_fast_soundex_impl, 1},
     {"_fast_string_fast_nysiis_impl", (DL_FUNC) &_fast_string_fast_nysiis_impl, 1},
     {"_fast_string_fast_trimws_impl", (DL_FUNC) &_fast_string_fast_trimws_impl, 2},

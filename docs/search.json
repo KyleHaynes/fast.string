@@ -1,0 +1,503 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "fast.string",
+    "section": "",
+    "text": "Preface\nfast.string is an R package of drop-in-faster equivalents for the string, date, and phonetic-matching functions that show up constantly in record linkage and ETL work — grepl(), grep(), sub(), gsub(), trimws(), substr(), nchar(), chartr(), plus a handful of functions base R simply doesn’t have at all: Soundex/NYSIIS phonetic codes, and vectorised Jaro-Winkler similarity (including a token-reorder/punctuation-aware variant for multi-word names).\nEverything is parallelised across every CPU core via Intel TBB (through RcppParallel), with PCRE2 doing the regex work and RE2’s StringPiece handling fixed/literal matching. Typical speedups over base R are 5-40x on large character vectors; some operations (parallel Jaro-Winkler, multi-pattern substitution in one pass) have no base R equivalent at all.",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "index.html#why-this-exists",
+    "href": "index.html#why-this-exists",
+    "title": "fast.string",
+    "section": "Why this exists",
+    "text": "Why this exists\nRecord linkage and data-cleaning pipelines spend a surprising fraction of their wall-clock time in string operations that look trivial in isolation — trimws() on a column, a gsub() to strip punctuation, grepl() to flag a pattern — but get called over and over on multi-million-row name/address files. Individually each call is fast; in aggregate, on a 5M-row file, they add up to minutes of CPU time spent doing work a single core could be doing across eight or sixteen instead.\nThree things are conspicuously not one function each in base R, despite being everywhere in this kind of pipeline:\n\n\nPhonetic blocking keys (Soundex, NYSIIS) — used to group probably-same names before running an expensive pairwise comparison within each group, rather than comparing every record against every other record.\n\nFuzzy string similarity (Jaro-Winkler) — base R has no notion of “how similar are these two strings,” only exact (==) or pattern (grepl()) matching.\n\nMulti-token name comparison — \"Kyle John Haynes\" and \"John Kylie Haynes\" are obviously the same person with two tokens swapped, but a plain character-by-character comparison scores that badly.\n\nfast.string exists to make all of the above fast enough to run unblinkingly on real-sized data, and to package the boring-but-essential 80% (trimming, substitution, date parsing) so a project doesn’t need five different dependencies for five different speed problems.",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "index.html#what-this-is-not",
+    "href": "index.html#what-this-is-not",
+    "title": "fast.string",
+    "section": "What this is not\n",
+    "text": "What this is not\n\nTo set expectations: fast.string is a toolbox of vectorised primitives, not a record-linkage framework. It doesn’t do blocking-strategy selection, EM-based match probability estimation, or persistence of a linked dataset — for that end of the problem, pair it with something like RecordLinkage or reclin2, and use fast.string for the per-string comparison work those packages call underneath. 6  Benchmarks at scale compares fast.string’s comparison primitives directly against the equivalent functions in RecordLinkage and stringdist at scale.",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "index.html#how-this-book-is-organised",
+    "href": "index.html#how-this-book-is-organised",
+    "title": "fast.string",
+    "section": "How this book is organised",
+    "text": "How this book is organised\n\n\nGetting started — what fast.string is for and how it’s positioned against base R, stringi/stringr, stringdist, and RecordLinkage (1  About fast.string), then a hands-on tour of every function group (2  Quickstart).\n\nUnder the hood — the algorithms (3  Algorithms under the hood): why two regex engines, how the bit-parallel Jaro-Winkler implementation works, how multi-token name comparison resolves reordered tokens — followed by a full worked record-linkage pipeline (4  A worked record-linkage pipeline) putting the pieces together.\n\nReference — an exhaustive per-function reference with every argument and runnable examples (5  Function reference); the heavy benchmark chapter at 3 million strings, with base, stringi, stringdist, and RecordLinkage as comparison baselines (6  Benchmarks at scale); and a troubleshooting/FAQ chapter (7  Troubleshooting & FAQ).",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "index.html#a-quick-taste",
+    "href": "index.html#a-quick-taste",
+    "title": "fast.string",
+    "section": "A quick taste",
+    "text": "A quick taste\n\nn &lt;- 2e5\nx &lt;- sprintf(\"%s-%04d\", sample(c(\"John Smith\", \"Mary O'Brien\", \"Kyle Haynes\"), n, TRUE), sample(9999, n, TRUE))\n\nsystem.time(base::grepl(\"Smith\", x))\n\n   user  system elapsed \n   0.03    0.00    0.03 \n\nsystem.time(fast.string::fgrepl(\"Smith\", x))\n\n   user  system elapsed \n      0       0       0 \n\nround(fast.string::jaro_winkler_tokens(\"Kyle John Haynes\", \"John Kylie Haynes\"), 3)\n\n[1] 0.984\n\n\nThat last call is the headline example for the multi-token comparison function: two names with reordered tokens and one typo still score above 0.95. The full story — including why it also handles \"O'Brien\" vs. \"O Brien\" vs. \"OBrien\" — is in 3  Algorithms under the hood and 5  Function reference.",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "01-about.html",
+    "href": "01-about.html",
+    "title": "1  About fast.string",
+    "section": "",
+    "text": "1.1 Where it sits\nThere’s no shortage of fast string packages for R. fast.string doesn’t try to replace any of them — it overlaps with each on one axis and fills a gap none of them cover on another:\nA few things worth calling out explicitly:\nChapter 6 puts numbers behind every row in that table at 3-million-row scale.",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>About fast.string</span>"
+    ]
+  },
+  {
+    "objectID": "01-about.html#where-it-sits",
+    "href": "01-about.html#where-it-sits",
+    "title": "1  About fast.string",
+    "section": "",
+    "text": "Capability\nbase R\nstringi / stringr\nstringdist\nRecordLinkage\nfast.string\n\n\n\n\nRegex matching/substitution\nyes (TRE/PCRE)\nyes (ICU)\n—\n—\nyes (PCRE2)\n\n\nParallelised across cores\nno\nno\npartial (nthread)\nno\nyes (TBB)\n\n\nLiteral/fixed-string fast path\nno\nyes\n—\n—\nyes (RE2)\n\n\nMulti-pattern substitution in one scan\nno\nno\n—\n—\nyes (gsub_all())\n\n\nFast fixed-format date parse/format\nno\nno\n—\n—\nyes\n\n\nSoundex / NYSIIS phonetic codes\nno\nno\nphonetic()/soundex\nsoundex()\nyes, parallelised\n\n\nJaro-Winkler similarity\nno\nno\nstringdist(method=\"jw\")\njarowinkler()\nyes, parallelised\n\n\nToken-reorder-aware name comparison\nno\nno\nno\nno\nyes (jaro_winkler_tokens())\n\n\n\n\n\nstringi/stringr are excellent, mature, and already parallel-friendly at the C level for many operations via ICU — but ICU’s regex engine and fast.string’s PCRE2 path land in similar performance territory for regex. Where fast.string pulls ahead is parallelism (stringi’s core loops are single-threaded; this package’s are TBB-parallel) and the data-linkage-specific functions stringi doesn’t have at all.\nstringdist is the closest relative for the fuzzy-matching half of this package, and is a fine choice if that’s all you need — it supports more distance metrics (Levenshtein, OSA, cosine, q-gram, …) than fast.string does. What it doesn’t have is the regex/substitution side, phonetic codes, or token-reorder-aware comparison.\nRecordLinkage is a full record-linkage framework (blocking, EM-based classification, training), not a string-function library. Its soundex()/jarowinkler() are useful comparison points (used directly in Chapter 6) but solve a much narrower problem than the package itself.",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>About fast.string</span>"
+    ]
+  },
+  {
+    "objectID": "01-about.html#architecture",
+    "href": "01-about.html#architecture",
+    "title": "1  About fast.string",
+    "section": "1.2 Architecture",
+    "text": "1.2 Architecture\nThe package is a thin R layer over compiled code; almost no decision logic lives in R beyond argument validation and dispatch:\n\n\n\n\n\nflowchart LR\n    A[\"R wrapper\\n(fgrepl, ftrimws, jaro_winkler, ...)\"] --&gt; B{Argument\\nvalidation}\n    B --&gt;|fixed = TRUE| C[\"RE2 StringPiece\\n(literal scan)\"]\n    B --&gt;|regex, PCRE-only syntax| D[\"base::grepl/gsub\\n(perl = TRUE fallback)\"]\n    B --&gt;|regex, PCRE2-compatible| E[\"PCRE2\\n(via Rcpp)\"]\n    B --&gt;|trim/substr/nchar/chartr/\\ndate/phonetic/jaro-winkler| F[\"Custom C++\\n(via Rcpp)\"]\n    E --&gt; G[\"RcppParallel\\n(Intel TBB parallelFor)\"]\n    F --&gt; G\n    C --&gt; G\n    G --&gt; H[Result vector]\n\n\n\n\n\n\nThree design decisions explain most of the package’s behaviour:\nTwo regex engines, chosen automatically. PCRE2 supports the full modern regex feature set (lookaround, atomic groups, possessive quantifiers, named backreferences) that R’s default TRE engine doesn’t. But PCRE2 still walks a backtracking NFA, so pathological patterns can exhibit the catastrophic-backtracking blowup TRE and RE2 are immune to. For the common case — fixed/literal patterns with no regex metacharacters at all (fixed = TRUE) — the package instead uses RE2’s StringPiece, which guarantees linear-time matching with no backtracking risk. Every regex-accepting function (fgrepl(), fsub(), fgsub(), gsub_all()) also runs a syntax check (.has_pcre_only_syntax()) before taking the fast path: if a pattern uses PCRE-only syntax and the caller didn’t explicitly set perl = TRUE, the call transparently falls back to base::grepl()/ base::gsub() with perl = TRUE rather than risk wrong results. See Chapter 3 for why this matters in practice.\nParallelism via Intel TBB, not parallel/future. Forking R processes (parallel::mclapply) or spinning up a cluster (future) carries fixed overhead per call — serialising data to workers, process startup, gathering results back — that swamps the actual work for anything shorter than seconds. RcppParallel’s parallelFor instead splits one C++-level loop across a TBB thread pool within a single R call, with no serialisation step and microsecond-scale dispatch overhead. Every parallel function in this package applies a size threshold before bothering to parallelise at all (typically n &gt;= 1000 for vectors, n*m &gt;= 10000 for matrix operations) — below that, the thread-pool dispatch overhead would exceed the time saved, so the package just runs the loop on the calling thread.\nThread-local scratch buffers, not per-call allocation. The performance-sensitive C++ (the bit-parallel Jaro similarity, the token alignment in jaro_winkler_tokens()) reuses thread_local buffers across rows within a worker thread instead of allocating fresh memory for every string pair. The buffers grow to a high-water mark and then stop reallocating, so the steady-state cost of comparing the one-millionth pair is the same as the thousandth.",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>About fast.string</span>"
+    ]
+  },
+  {
+    "objectID": "01-about.html#who-this-is-for",
+    "href": "01-about.html#who-this-is-for",
+    "title": "1  About fast.string",
+    "section": "1.3 Who this is for",
+    "text": "1.3 Who this is for\nIf you’re doing record linkage, deduplication, ETL, or any other pipeline that processes name/address/free-text columns with hundreds of thousands to tens of millions of rows, and you’ve profiled your pipeline and found string operations are a meaningful fraction of the runtime, this package is squarely aimed at you.\nIf your data is a few thousand rows, or your bottleneck is somewhere else entirely (I/O, a join, a model fit), the speedups here won’t be the thing that matters, and the simpler base R/stringi call is the right choice — fewer dependencies, identical behaviour, and the performance difference won’t be visible at that scale. Chapter 6 shows this explicitly: at small n, the parallel-dispatch overhead can make fast.string functions slower than their base R/stringi equivalents.",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>About fast.string</span>"
+    ]
+  },
+  {
+    "objectID": "02-quickstart.html",
+    "href": "02-quickstart.html",
+    "title": "2  Quickstart",
+    "section": "",
+    "text": "2.1 Installation\nThis compiles C++ source on install, so you need a working toolchain: Rtools on Windows, Xcode command-line tools on macOS, or build-essential + libpcre2-dev on Linux. See Chapter 7 if the install fails.\nlibrary(fast.string)\nLoading the package prints a one-time startup banner listing every exported function; suppress it with options(fast.string.verbose = FALSE) set before library(), or with suppressPackageStartupMessages().\nThe rest of this chapter is a guided tour through every function group, using small inputs so it renders fast — Chapter 6 is where the same functions get pushed to 3 million rows.",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Quickstart</span>"
+    ]
+  },
+  {
+    "objectID": "02-quickstart.html#installation",
+    "href": "02-quickstart.html#installation",
+    "title": "2  Quickstart",
+    "section": "",
+    "text": "remotes::install_github(\"KyleHaynes/anthropic_fast\")",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Quickstart</span>"
+    ]
+  },
+  {
+    "objectID": "02-quickstart.html#matching-substitution",
+    "href": "02-quickstart.html#matching-substitution",
+    "title": "2  Quickstart",
+    "section": "\n2.2 Matching & substitution",
+    "text": "2.2 Matching & substitution\nfgrepl(), fgrep(), fsub(), and fgsub() are argument-compatible with base::grepl()/grep()/sub()/gsub() — same defaults, same NA handling — just parallelised.\n\nx &lt;- c(\"invoice-2024-001\", \"invoice-2024-002\", \"credit-note-001\", NA)\n\nfgrepl(\"^invoice\", x)\n\n[1]  TRUE  TRUE FALSE    NA\n\nfgrep(\"^invoice\", x, value = TRUE)\n\n[1] \"invoice-2024-001\" \"invoice-2024-002\"\n\nfsub(\"-([0-9]+)$\", \"_\\\\1\", x)\n\n[1] \"invoice-2024_001\" \"invoice-2024_002\" \"credit-note_001\"  NA                \n\nfgsub(\"[0-9]\", \"#\", x)\n\n[1] \"invoice-####-###\" \"invoice-####-###\" \"credit-note-###\"  NA                \n\n\ngsub_all() has no base R equivalent: it applies several patterns in one pass, either sequentially (chained, like calling gsub() repeatedly) or as a single combined left-to-right scan where the first matching pattern at each position wins.\n\npatterns &lt;- c(\"Mr\\\\.\", \"Mrs\\\\.\", \"Dr\\\\.\")\nrepls    &lt;- c(\"Mister\", \"Missus\", \"Doctor\")\ngsub_all(patterns, repls, c(\"Mr. Smith\", \"Dr. Jones\"), fixed = FALSE)\n\n[1] \"Mister Smith\" \"Doctor Jones\"",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Quickstart</span>"
+    ]
+  },
+  {
+    "objectID": "02-quickstart.html#string-utilities",
+    "href": "02-quickstart.html#string-utilities",
+    "title": "2  Quickstart",
+    "section": "\n2.3 String utilities",
+    "text": "2.3 String utilities\nftrimws(), fsubstr(), fnchar(), and fchartr() mirror their base equivalents exactly, including names(x) preservation.\n\nmessy &lt;- c(\"  John Smith  \", \"\\tMary Jones\\n\", NA)\nftrimws(messy)\n\n[1] \"John Smith\" \"Mary Jones\" NA          \n\nrecords &lt;- c(\"NSWREC123456789\", \"VICPOL987654321\")\nfsubstr(records, 1, 3)   # state code\n\n[1] \"NSW\" \"VIC\"\n\nfsubstr(records, 4, 6)   # category code\n\n[1] \"REC\" \"POL\"\n\nfnchar(c(\"café\", NA, \"\"), type = \"chars\")\n\n[1]  4 NA  0\n\nfchartr(\"'-\", \"  \", c(\"O'Brien\", \"Smith-Jones\"))\n\n[1] \"O Brien\"     \"Smith Jones\"",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Quickstart</span>"
+    ]
+  },
+  {
+    "objectID": "02-quickstart.html#dates",
+    "href": "02-quickstart.html#dates",
+    "title": "2  Quickstart",
+    "section": "\n2.4 Dates",
+    "text": "2.4 Dates\nformat_date()/fas.Date() trade base::as.Date()’s locale-aware, multi-format flexibility for speed on one fixed format at a time. date_parts() decomposes a Date vector into year/month/day columns in a single pass — useful for building blocking keys.\n\ndates &lt;- as.Date(c(\"2024-06-18\", \"1999-12-31\", NA))\nformat_date(dates, \"compact\")\n\n[1] \"20240618\" \"19991231\" NA        \n\ndate_parts(dates)\n\n  year month day\n1 2024     6  18\n2 1999    12  31\n3   NA    NA  NA\n\nfas.Date(c(\"18/06/2024\", \"31/12/1999\"), \"dmy\")\n\n[1] \"2024-06-18\" \"1999-12-31\"",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Quickstart</span>"
+    ]
+  },
+  {
+    "objectID": "02-quickstart.html#phonetic-blocking-keys",
+    "href": "02-quickstart.html#phonetic-blocking-keys",
+    "title": "2  Quickstart",
+    "section": "\n2.5 Phonetic blocking keys",
+    "text": "2.5 Phonetic blocking keys\nsoundex() and nysiis() have no base R equivalent. They’re typically used to group records that sound alike before running a more expensive pairwise comparison only within each group, rather than comparing every record against every other record.\n\nnames_x &lt;- c(\"Robert\", \"Rupert\", \"Ashcraft\", \"Ashcroft\", \"Smith\", \"Smyth\")\ndata.frame(\n    name    = names_x,\n    soundex = soundex(names_x),\n    nysiis  = nysiis(names_x)\n)\n\n      name soundex nysiis\n1   Robert    R163  RABAD\n2   Rupert    R163  RAPAD\n3 Ashcraft    A261 ASCRAF\n4 Ashcroft    A261 ASCRAF\n5    Smith    S530   SNAT\n6    Smyth    S530   SNYT\n\n\n\"Ashcraft\"/\"Ashcroft\" sharing a Soundex code (A261) despite differing spelling is the textbook example of why Soundex exists — and a known point of disagreement between implementations of Soundex, covered in Chapter 3.",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Quickstart</span>"
+    ]
+  },
+  {
+    "objectID": "02-quickstart.html#fuzzy-string-similarity",
+    "href": "02-quickstart.html#fuzzy-string-similarity",
+    "title": "2  Quickstart",
+    "section": "\n2.6 Fuzzy string similarity",
+    "text": "2.6 Fuzzy string similarity\nThree functions, three shapes of comparison:\n\n\njaro_winkler(a, b) — pairwise, equal-length vectors. a[i] vs. b[i] for every i.\n\njaro_winkler_matrix(a, b) — all-pairs. Every element of a against every element of b, returned as an n × m matrix.\n\njaro_winkler_tokens(a, b) — pairwise like the first, but tolerant of token reordering and punctuation/spacing differences within a token.\n\n\njaro_winkler(c(\"SMITH\", \"DWAYNE\"), c(\"SMYTH\", \"DUANE\"))\n\n[1] 0.8933333 0.8400000\n\ncandidates_a &lt;- c(\"John Smith\", \"Mary Jones\")\ncandidates_b &lt;- c(\"Jon Smith\", \"Mary-Anne Jones\", \"Someone Else\")\njaro_winkler_matrix(candidates_a, candidates_b)\n\n          [,1]      [,2]      [,3]\n[1,] 0.9733333 0.4444444 0.4722222\n[2,] 0.4037037 0.8833333 0.5388889\n\n# Token reordering — two of three tokens match exactly, the third is close\njaro_winkler_tokens(\"Kyle John Haynes\", \"John Kylie Haynes\")\n\n[1] 0.9844444\n\n# Punctuation/spacing variants of the same name\njaro_winkler_tokens(c(\"OBrien\", \"OBrien\"), c(\"O Brien\", \"O'Brien\"))\n\n[1] 1 1\n\n\nThe full mechanics of how jaro_winkler_tokens() resolves reordered tokens — and the extra_penalty argument for handling a stray extra token — are in Chapter 3 and the function reference (Chapter 5).",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Quickstart</span>"
+    ]
+  },
+  {
+    "objectID": "02-quickstart.html#putting-it-together",
+    "href": "02-quickstart.html#putting-it-together",
+    "title": "2  Quickstart",
+    "section": "\n2.7 Putting it together",
+    "text": "2.7 Putting it together\nA typical pipeline normalises with fchartr()/ftrimws(), builds a blocking key with soundex()/nysiis()/format_date(), then scores candidates within each block with jaro_winkler_matrix() or jaro_winkler_tokens(). Chapter 4 walks through exactly that, end to end, on a small linkage example.",
+    "crumbs": [
+      "Getting started",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Quickstart</span>"
+    ]
+  },
+  {
+    "objectID": "03-theory.html",
+    "href": "03-theory.html",
+    "title": "3  Algorithms under the hood",
+    "section": "",
+    "text": "3.1 Two regex engines, and a safety net\nThis chapter explains why the package is built the way it is, not just what each function does (that’s Chapter 5). Skip it if you just want to call functions; read it if a benchmark number surprises you, or if you’re deciding whether to trust the package’s behaviour on a pattern or input shape you care about.\nR’s default regex engine is TRE, which doesn’t support lookaround, possessive quantifiers, or atomic groups. perl = TRUE switches to PCRE, which does — at the cost of being a backtracking engine, which means certain patterns (nested quantifiers over ambiguous alternations, mainly) can exhibit catastrophic exponential-time backtracking on adversarial input.\nfast.string uses PCRE2 for regex (full modern syntax, via Rcpp, not base::grepl(perl = TRUE)) and RE2’s StringPiece for the fixed = TRUE literal-matching path. RE2 is built on a Thompson NFA construction with no backtracking at all — its matching time is guaranteed linear in the input, regardless of pattern. For literal strings (no regex metacharacters), that guarantee comes for free, so fixed = TRUE always takes the RE2 path.\nThe catch with PCRE2: it’s still a backtracking engine, so the catastrophic-backtracking risk that motivated using RE2 for fixed strings doesn’t disappear for genuine regex patterns. What fast.string adds is a syntax safety net, not a backtracking guarantee: every regex-accepting function scans the pattern for PCRE-only syntax before taking the fast path —\n.has_pcre_only_syntax &lt;- function(pattern) {\n    base::grepl(\n        paste0(\n            \"\\\\(\\\\?[=!]\",       # (?= lookahead   (?! negative lookahead\n            \"|\\\\(\\\\?&lt;[=!]\",     # (?&lt;= lookbehind  (?&lt;! negative lookbehind\n            \"|\\\\(\\\\?&gt;\",         # (?&gt; atomic group\n            \"|[*+?]\\\\+\",        # *+  ++  ?+  possessive quantifiers\n            \"|\\\\(\\\\?P[=&lt;]\",     # (?P=  (?P&lt;  named backref / group\n            \"|\\\\\\\\k[&lt;']\",       # \\k&lt;name&gt;  \\k'name'  named backreference\n            \"|\\\\(\\\\?R\\\\)\",      # (?R) full-pattern recursion\n            \"|\\\\(\\\\?[0-9]\",     # (?1) (?2) … numbered group recursion\n            \"|\\\\(\\\\?&\"          # (?&name) named group recursion\n        ),\n        pattern, perl = TRUE\n    )\n}\n— and if it finds any, and the caller didn’t explicitly pass perl = TRUE, the call transparently delegates to base::grepl()/ base::gsub() with perl = TRUE instead of running it through fast.string’s own PCRE2 path, with a cli::cli_inform() notice explaining why:\nfgrepl(\"(?&lt;=foo)bar\", c(\"foobar\", \"bazbar\"), perl = FALSE)\n\n[1]  TRUE FALSE\nThis exists because fast.string’s PCRE2 binding and base R’s PCRE binding are two different code paths with two different sets of supported constructs at the edges — the safety net means a pattern either runs correctly on the fast path, or falls back to a path R has already battle- tested for that exact syntax. It never silently mismatches.",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Algorithms under the hood</span>"
+    ]
+  },
+  {
+    "objectID": "03-theory.html#parallelism-rcppparallel-not-parallelfuture",
+    "href": "03-theory.html#parallelism-rcppparallel-not-parallelfuture",
+    "title": "3  Algorithms under the hood",
+    "section": "\n3.2 Parallelism: RcppParallel, not parallel/future\n",
+    "text": "3.2 Parallelism: RcppParallel, not parallel/future\n\nparallel::mclapply() and future::plan(multisession) parallelise across R processes: each worker is a separate R session, so every call pays process-management and (for anything that isn’t fork-based) serialisation overhead — typically milliseconds at minimum, often more. That’s negligible if each task takes seconds; it dominates if each task is “trim this one string.”\nfast.string instead uses RcppParallel’s parallelFor, which partitions a single C++ loop across an Intel TBB thread pool inside one R call, with no process boundary and no serialisation step — the per-call dispatch overhead is microseconds, not milliseconds. The trade-off is that this parallelism lives entirely inside the C++ implementation: it’s not something you can apply to arbitrary R code, only to the specific loops this package has written in C++.\nBecause even microsecond dispatch overhead isn’t free, every parallel function applies a size threshold before bothering: typically n &gt;= 1000 elements for pairwise vector operations, n * m &gt;= 10000 cells for matrix operations (jaro_winkler_matrix()). Below the threshold, the function just runs the loop on the calling thread — measurably faster than paying thread-pool dispatch cost for, say, ten comparisons. Chapter 6 shows this crossover explicitly with small-n timings.\nThread count is controlled the same way wherever it’s exposed: the regex family (fgrepl(), fgrep(), fsub(), fgsub(), gsub_all()) and the Jaro-Winkler family (jaro_winkler(), jaro_winkler_matrix(), jaro_winkler_tokens()) take an nthreads argument (NULL = let TBB use all available cores), which calls RcppParallel::setThreadOptions(numThreads = nthreads) before dispatch. The string-utility, date, and phonetic functions don’t expose nthreads — they always run at whatever the process-wide TBB thread count currently is, which matters because setThreadOptions() is a process-wide setting that outlives the call that set it (Chapter 7).",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Algorithms under the hood</span>"
+    ]
+  },
+  {
+    "objectID": "03-theory.html#jaro-and-jaro-winkler-similarity",
+    "href": "03-theory.html#jaro-and-jaro-winkler-similarity",
+    "title": "3  Algorithms under the hood",
+    "section": "\n3.3 Jaro and Jaro-Winkler similarity",
+    "text": "3.3 Jaro and Jaro-Winkler similarity\nJaro similarity between strings \\(s_1\\) (length \\(l_1\\)) and \\(s_2\\) (length \\(l_2\\)) is:\n\\[\n\\text{Jaro}(s_1, s_2) = \\frac{1}{3}\\left(\\frac{m}{l_1} + \\frac{m}{l_2} + \\frac{m - t}{m}\\right)\n\\]\nwhere \\(m\\) is the number of matching characters — characters common to both strings within a sliding window of \\(\\lfloor \\max(l_1, l_2)/2 \\rfloor - 1\\) positions — and \\(t\\) is the number of transpositions (matched characters that appear in a different relative order) divided by two. Jaro-Winkler adds a bonus for a shared prefix (up to 4 characters), scaled by p (default 0.1, the standard value):\n\\[\n\\text{JW}(s_1, s_2) = \\text{Jaro}(s_1, s_2) + \\ell \\cdot p \\cdot (1 - \\text{Jaro}(s_1, s_2))\n\\]\nwhere \\(\\ell\\) is the length of the common prefix, capped at 4. This is why jaro_winkler(\"SMITH\", \"SMYTH\", p = 0.1) scores higher than the same pair with p = 0 — SM is a shared prefix that the Winkler boost rewards, on the reasoning that people are more likely to make typos later in a word than at the start.\nThe bit-parallel trick\nThe textbook Jaro algorithm, for each character in \\(s_1\\), linearly scans the matching window in \\(s_2\\) for the first unclaimed equal character — an \\(O(l_1 \\times \\text{window})\\) double loop. fast.string instead maintains, per worker thread, a 256-entry table of 64-bit bitmasks: char_mask[c] has bit \\(j\\) set if s2[j] == c. Finding the first unclaimed match for s1[i] then becomes:\nuint64_t cand = char_mask[(unsigned char)s1[i]] & window_mask & ~used_mask;\nif (cand) {\n    int j = ctz64(cand);  // lowest set bit = leftmost match\n    ...\n}\n— a handful of bitwise operations and one count-trailing-zeros instruction, replacing the inner linear scan entirely. This turns the \\(O(l_1 \\times \\text{window})\\) comparison into \\(O(l_1 + l_2)\\), and applies to any pair of strings up to 64 bytes each (covering the overwhelming majority of names and addresses). Longer strings fall back to a straightforward bool[]-array scalar implementation — still correct, just without the bitmask speedup.\nThe char_mask table itself is thread_local and persists across calls within a worker thread (only the handful of bytes actually touched per call get cleared afterward), so the steady-state per-call setup cost is \\(O(l_2)\\), not \\(O(256)\\).\nToken-aware comparison: jaro_winkler_tokens()\n\nPlain Jaro-Winkler compares strings as one ordered sequence of characters, so \"Kyle John Haynes\" vs. \"John Kylie Haynes\" scores badly — the characters moved, even though the words are almost all present. jaro_winkler_tokens() scores every pair two different ways and keeps whichever is higher:\n\n\nToken alignment. Split both strings on whitespace, score every token in a against every token in b, then greedily pair off tokens in descending order of similarity (repeatedly pick the best remaining unused pair). This is a cheap approximation of an optimal bipartite assignment — not guaranteed optimal in the general case, but for the 2-5 tokens typical of a name or address, it agrees with the true optimum for all but pathological inputs. By default, the summed score divides by max(n_tokens_a, n_tokens_b), so missing/extra tokens dilute the result; the extra_penalty argument switches to a scheme that instead averages over only the matched tokens and subtracts a fixed penalty per unmatched token — see Chapter 5 for the worked example with a stray middle initial.\n\nCollapsed. Both strings with whitespace removed, compared as one string. This catches cases where the only difference is where the token boundary falls — \"OBrien\" vs. \"O Brien\" — which token alignment alone would under-score (one token vs. two, diluting the average) even though they’re clearly the same name.\n\n\njaro_winkler_tokens(\"Kyle John Haynes\", \"John Kylie Haynes\")  # token alignment wins\n\n[1] 0.9844444\n\njaro_winkler_tokens(\"OBrien\", \"O Brien\")                      # collapsed framing wins\n\n[1] 1\n\n\nBoth framings reuse the same underlying Jaro-Winkler primitive and the same parallelised, per-row execution as jaro_winkler() itself — tokenising, building the token similarity matrix, the greedy assignment, and the collapsed comparison all happen in one C++ pass over the whole input vector.",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Algorithms under the hood</span>"
+    ]
+  },
+  {
+    "objectID": "03-theory.html#soundex-and-nysiis",
+    "href": "03-theory.html#soundex-and-nysiis",
+    "title": "3  Algorithms under the hood",
+    "section": "\n3.4 Soundex and NYSIIS",
+    "text": "3.4 Soundex and NYSIIS\nBoth are phonetic encoding schemes: they map a name to a short code such that names that sound alike (even if spelled differently) tend to map to the same code. They’re used as blocking keys — group records by phonetic code first, then only run the expensive Jaro-Winkler comparison within a group, instead of against every other record in the dataset.\nSoundex (American/Census Bureau rules, implemented here) keeps the first letter verbatim, then maps the remaining consonants to digits (B,F,P,V → 1; C,G,J,K,Q,S,X,Z → 2; D,T → 3; L → 4; M,N → 5; R → 6), drops vowels, and pads/truncates to exactly 4 characters. Adjacent letters mapping to the same digit collapse to one — and H/W are transparent for that adjacency check, not just dropped. That transparency rule is the entire reason \"Ashcraft\" encodes as A261 and not A2261: the S and C are separated by an H, but H doesn’t break their adjacency, so they collapse to a single 2.\n\nsoundex(c(\"Ashcraft\", \"Ashcroft\", \"Robert\", \"Rupert\"))\n\n[1] \"A261\" \"A261\" \"R163\" \"R163\"\n\n\n\ncat(\"fast.string::soundex:  \", fast.string::soundex(\"Ashcraft\"), \"(treats H as transparent)\\n\")\n\nfast.string::soundex:   A261 (treats H as transparent)\n\ncat(\"RecordLinkage::soundex:\", RecordLinkage::soundex(\"Ashcraft\"), \"\\n\")\n\nRecordLinkage::soundex: A226 \n\n\nThis H/W-transparency rule is exactly the kind of edge case where Soundex implementations genuinely disagree — some treat H/W as transparent (the canonical Census Bureau / Knuth TAOCP rule, and what fast.string follows), others drop them like any other consonant-adjacent vowel and get a different code for words like \"Ashcraft\". Neither is “more correct” in any normative sense — Soundex was never formally standardised down to this level of detail — but it’s worth knowing which rule a given package follows before assuming two Soundex columns from different tools are comparable.\nNYSIIS is more aggressive: it applies leading/trailing letter transforms first (e.g. a name starting with MAC becomes MCC, one ending in a vowel + Y drops the Y), then a per-letter substitution table with adjacent-duplicate collapsing, then truncates to 6 characters. It tends to produce fewer false-positive collisions than Soundex on typical English surnames, at the cost of a heavier per-element rule table — which is the direct explanation for why nysiis() benchmarks slower than soundex() in Chapter 6 despite both running through the same parallel dispatch.",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Algorithms under the hood</span>"
+    ]
+  },
+  {
+    "objectID": "03-theory.html#fast-fixed-format-dates",
+    "href": "03-theory.html#fast-fixed-format-dates",
+    "title": "3  Algorithms under the hood",
+    "section": "\n3.5 Fast, fixed-format dates",
+    "text": "3.5 Fast, fixed-format dates\nformat_date()/fas.Date() deliberately don’t replicate base::format.Date()/base::as.Date()’s full generality. Base R’s date functions go through strptime()/strftime(), which are locale-aware and support arbitrary %-format strings — flexibility that costs real time when you’re formatting the same fixed shape (say, ISO YYYY-MM-DD) for five million rows. fast.string’s date functions instead support exactly four fixed formats (iso, compact, dmy, ymd_slash) implemented as direct digit-to-character writes with zero-padding — no locale lookup, no calendar-math beyond what’s needed to validate month (1-12) and day (1-31) ranges. There’s deliberately no days-in-month or leap-year check, so fas.Date(\"2024-02-30\", \"iso\") parses without error — trading strictness for speed, on the assumption that upstream data has already been validated or that downstream code will catch the implausible date some other way. If you need full calendar validation, base::as.Date() is still the right tool; fas.Date() is for when you already trust the input shape and just want it parsed fast.",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Algorithms under the hood</span>"
+    ]
+  },
+  {
+    "objectID": "04-record-linkage-workflow.html",
+    "href": "04-record-linkage-workflow.html",
+    "title": "4  A worked record-linkage pipeline",
+    "section": "",
+    "text": "4.1 The data\nThis chapter strings every piece from Chapter 2 together into a single, realistic linkage pipeline: an incoming batch of records needs to be matched against a reference database. It’s the same shape of problem examples_data_linkage.R in the repo demonstrates, written out here as a narrative.\nincoming &lt;- data.frame(\n    id   = 1:4,\n    name = c(\"  JOHN O'BRIEN  \", \"MARY-JANE SMITH\", \"ROBERT BROWN\", \"Kyle John Haynes\"),\n    dob  = as.Date(c(\"1985-03-15\", \"1990-07-22\", \"1975-12-01\", \"1988-01-05\")),\n    stringsAsFactors = FALSE\n)\n\nreference &lt;- data.frame(\n    ref_id = 101:105,\n    name   = c(\"JON OBRIEN\", \"MARYANN SMITH\", \"ROB BROWN\", \"JOHN BRIEN\", \"Haynes John Kyle\"),\n    dob    = as.Date(c(\"1985-03-14\", \"1990-07-20\", \"1975-12-02\", \"1985-03-15\", \"1988-01-05\")),\n    stringsAsFactors = FALSE\n)\n\nincoming\n\n  id             name        dob\n1  1   JOHN O'BRIEN   1985-03-15\n2  2  MARY-JANE SMITH 1990-07-22\n3  3     ROBERT BROWN 1975-12-01\n4  4 Kyle John Haynes 1988-01-05\n\nreference\n\n  ref_id             name        dob\n1    101       JON OBRIEN 1985-03-14\n2    102    MARYANN SMITH 1990-07-20\n3    103        ROB BROWN 1975-12-02\n4    104       JOHN BRIEN 1985-03-15\n5    105 Haynes John Kyle 1988-01-05\nFour incoming records, five reference records, deliberately messy: inconsistent casing, stray whitespace, punctuation, typos, one straight-up near-duplicate (\"JOHN BRIEN\" vs. \"JOHN O'BRIEN\"), and one fully reordered multi-token name (\"Kyle John Haynes\" vs. \"Haynes John Kyle\").",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>A worked record-linkage pipeline</span>"
+    ]
+  },
+  {
+    "objectID": "04-record-linkage-workflow.html#step-1-normalise",
+    "href": "04-record-linkage-workflow.html#step-1-normalise",
+    "title": "4  A worked record-linkage pipeline",
+    "section": "\n4.2 Step 1: normalise",
+    "text": "4.2 Step 1: normalise\nStrip punctuation and whitespace inconsistencies before comparing, so the comparison step measures genuine name similarity rather than formatting noise.\n\nincoming$name_clean  &lt;- fchartr(\"'-\", \"  \", ftrimws(incoming$name))\nreference$name_clean &lt;- fchartr(\"'-\", \"  \", ftrimws(reference$name))\n\nincoming$name_clean\n\n[1] \"JOHN O BRIEN\"     \"MARY JANE SMITH\"  \"ROBERT BROWN\"     \"Kyle John Haynes\"\n\nreference$name_clean\n\n[1] \"JON OBRIEN\"       \"MARYANN SMITH\"    \"ROB BROWN\"        \"JOHN BRIEN\"       \"Haynes John Kyle\"\n\n\n(jaro_winkler_tokens() does its own internal punctuation stripping and case-folding — see Chapter 5 — but normalising up front keeps this example explicit, and matters for jaro_winkler()/jaro_winkler_matrix(), which don’t.)",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>A worked record-linkage pipeline</span>"
+    ]
+  },
+  {
+    "objectID": "04-record-linkage-workflow.html#step-2-block",
+    "href": "04-record-linkage-workflow.html#step-2-block",
+    "title": "4  A worked record-linkage pipeline",
+    "section": "\n4.3 Step 2: block",
+    "text": "4.3 Step 2: block\nComparing every incoming record against every reference record is \\(O(n \\times m)\\) — fine at this toy scale, prohibitive at millions of rows. Blocking groups records by a cheap, coarse key first (here: a month-year DOB key) and only compares records within the same block, cutting the number of pairwise comparisons by orders of magnitude in practice.\n\nincoming$dob_block  &lt;- fsubstr(format_date(incoming$dob,  \"compact\"), 1, 6)\nreference$dob_block &lt;- fsubstr(format_date(reference$dob, \"compact\"), 1, 6)\n\nincoming[, c(\"id\", \"name\", \"dob_block\")]\n\n  id             name dob_block\n1  1   JOHN O'BRIEN      198503\n2  2  MARY-JANE SMITH    199007\n3  3     ROBERT BROWN    197512\n4  4 Kyle John Haynes    198801\n\nreference[, c(\"ref_id\", \"name\", \"dob_block\")]\n\n  ref_id             name dob_block\n1    101       JON OBRIEN    198503\n2    102    MARYANN SMITH    199007\n3    103        ROB BROWN    197512\n4    104       JOHN BRIEN    198503\n5    105 Haynes John Kyle    198801\n\n\nSoundex/NYSIIS codes (Chapter 3) are the other common blocking key, typically used together with a coarse date block — block on soundex(last_name) + birth year, for instance — to keep block sizes manageable while still catching records where the date itself has a typo.",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>A worked record-linkage pipeline</span>"
+    ]
+  },
+  {
+    "objectID": "04-record-linkage-workflow.html#step-3-score-within-each-block",
+    "href": "04-record-linkage-workflow.html#step-3-score-within-each-block",
+    "title": "4  A worked record-linkage pipeline",
+    "section": "\n4.4 Step 3: score within each block",
+    "text": "4.4 Step 3: score within each block\nFor each incoming record, find reference records sharing its block, then score name similarity only among those candidates. jaro_winkler_tokens() is used uniformly rather than switching between it and plain jaro_winkler(): it degenerates exactly to ordinary Jaro-Winkler when both names happen to have the same token count and order (Chapter 3), so there’s no accuracy cost on the “normal” records — and it correctly survives the one record (\"Kyle John Haynes\") where the tokens are fully reordered, which plain jaro_winkler() would score badly.\n\nmatch_one &lt;- function(rec) {\n    candidates &lt;- reference[reference$dob_block == rec$dob_block, ]\n    if (nrow(candidates) == 0L) return(NULL)\n    scores &lt;- jaro_winkler_tokens(rep(rec$name_clean, nrow(candidates)), candidates$name_clean)\n    candidates$score &lt;- scores\n    candidates[order(-candidates$score), c(\"ref_id\", \"name\", \"score\")]\n}\n\nresults &lt;- lapply(seq_len(nrow(incoming)), function(i) {\n    res &lt;- match_one(incoming[i, ])\n    if (is.null(res)) return(NULL)\n    cbind(incoming_id = incoming$id[i], incoming_name = incoming$name[i], res)\n})\ndo.call(rbind, results)\n\n  incoming_id    incoming_name ref_id             name     score\n4           1   JOHN O'BRIEN      104       JOHN BRIEN 0.9800000\n1           1   JOHN O'BRIEN      101       JON OBRIEN 0.9733333\n2           2  MARY-JANE SMITH    102    MARYANN SMITH 0.9525641\n3           3     ROBERT BROWN    103        ROB BROWN 0.9416667\n5           4 Kyle John Haynes    105 Haynes John Kyle 1.0000000",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>A worked record-linkage pipeline</span>"
+    ]
+  },
+  {
+    "objectID": "04-record-linkage-workflow.html#step-4-threshold",
+    "href": "04-record-linkage-workflow.html#step-4-threshold",
+    "title": "4  A worked record-linkage pipeline",
+    "section": "\n4.5 Step 4: threshold",
+    "text": "4.5 Step 4: threshold\nApply a similarity cutoff to decide which candidate pairs are accepted as links. 0.85 is a common starting point for Jaro-Winkler on names; the right value depends on your data and how costly false positives/negatives are relative to each other — tune it against a labelled sample if you have one.\n\nall_results &lt;- do.call(rbind, results)\nthreshold &lt;- 0.85\nlinks &lt;- all_results[all_results$score &gt;= threshold, ]\nlinks[!duplicated(links$incoming_id), ]  # best link per incoming record\n\n  incoming_id    incoming_name ref_id             name     score\n4           1   JOHN O'BRIEN      104       JOHN BRIEN 0.9800000\n2           2  MARY-JANE SMITH    102    MARYANN SMITH 0.9525641\n3           3     ROBERT BROWN    103        ROB BROWN 0.9416667\n5           4 Kyle John Haynes    105 Haynes John Kyle 1.0000000\n\n\nEvery incoming record links to its obvious match, including the fully reordered \"Kyle John Haynes\" → \"Haynes John Kyle\" pair — the one case in this dataset where plain jaro_winkler() would have scored well below threshold and jaro_winkler_tokens() is doing real work, not just matching what character-level comparison already would have.\nChapter 6 now scales the comparison step of this exact pipeline shape up to 3 million rows.",
+    "crumbs": [
+      "Under the hood",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>A worked record-linkage pipeline</span>"
+    ]
+  },
+  {
+    "objectID": "05-function-reference.html",
+    "href": "05-function-reference.html",
+    "title": "5  Function reference",
+    "section": "",
+    "text": "5.1 Matching & substitution\nEvery exported function, grouped the same way as the README. Each entry gives the signature, every argument, the return value, and at least one runnable example. This chapter is the detailed reference; Chapter 2 is the faster tour.",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Function reference</span>"
+    ]
+  },
+  {
+    "objectID": "05-function-reference.html#matching-substitution",
+    "href": "05-function-reference.html#matching-substitution",
+    "title": "5  Function reference",
+    "section": "",
+    "text": "fgrepl()\nEquivalent to base::grepl(), using PCRE2 and Intel TBB. Typically 5-20x faster on large character vectors. See Chapter 3 for the automatic PCRE-only-syntax fallback to base::grepl(perl = TRUE).\nfgrepl(pattern, x, ignore.case = FALSE, perl = FALSE,\n       fixed = FALSE, useBytes = FALSE, nthreads = NULL)\n\n\n\n\n\n\nArgument\nDescription\n\n\n\npattern\nCharacter scalar. Pattern to search for.\n\n\nx\nCharacter vector. NA elements return NA.\n\n\nignore.case\nLogical. Case-insensitive matching.\n\n\nperl\nLogical. If TRUE, skip the PCRE-only syntax check and run the parallel PCRE2 engine directly.\n\n\nfixed\nLogical. Treat pattern as a literal string (fastest path — uses RE2).\n\n\nuseBytes\nLogical. Ignored; kept for signature compatibility with base::grepl().\n\n\nnthreads\nInteger or NULL. Thread count; NULL uses all cores.\n\n\n\nReturns: logical vector the same length as x.\n\nfgrepl(\"^inv\", c(\"invoice\", \"Invoice\", \"credit\"), ignore.case = TRUE)\n\n[1]  TRUE  TRUE FALSE\n\nfgrepl(\"a.b\", c(\"axb\", \"ab\"), fixed = TRUE)  # literal \"a.b\" — no match for \"axb\"\n\n[1] FALSE FALSE\n\n\nfgrep()\nEquivalent to base::grep(): wraps fgrepl() and returns indices or values.\nfgrep(pattern, x, ignore.case = FALSE, perl = FALSE, value = FALSE,\n      fixed = FALSE, useBytes = FALSE, invert = FALSE, nthreads = NULL)\n\n\n\n\n\n\nArgument\nDescription\n\n\n\n\npattern, x, ignore.case, perl, fixed, useBytes, nthreads\n\nSame as fgrepl().\n\n\nvalue\nLogical. Return matching elements instead of indices.\n\n\ninvert\nLogical. Return non-matching indices/values instead.\n\n\n\nReturns: integer vector of indices, or a character vector when value = TRUE.\n\nfgrep(\"^inv\", c(\"invoice\", \"credit\", \"invoice2\"))\n\n[1] 1 3\n\nfgrep(\"^inv\", c(\"invoice\", \"credit\", \"invoice2\"), value = TRUE)\n\n[1] \"invoice\"  \"invoice2\"\n\n\nfsub()\nEquivalent to base::sub(): first-match substitution. Supports \\\\1-\\\\9 capture groups and \\\\U/\\\\L/\\\\E case conversion in replacement.\nfsub(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,\n     fixed = FALSE, useBytes = FALSE, nthreads = NULL)\n\n\n\n\n\n\nArgument\nDescription\n\n\n\npattern\nCharacter scalar. Pattern to search for.\n\n\nreplacement\nCharacter scalar. Replacement string.\n\n\nx\nCharacter vector. NA elements return NA.\n\n\n\nignore.case, perl, fixed, useBytes, nthreads\n\nSame as fgrepl().\n\n\n\nReturns: character vector the same length as x.\n\nfsub(\"-([0-9]+)$\", \"_\\\\1\", c(\"invoice-001\", \"invoice-002\"))\n\n[1] \"invoice_001\" \"invoice_002\"\n\n\nfgsub()\nEquivalent to base::gsub(): global substitution. Same capture-group and case-conversion support as fsub().\nfgsub(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,\n      fixed = FALSE, useBytes = FALSE, nthreads = NULL)\nArguments are identical to fsub(). Returns: character vector the same length as x.\n\nfgsub(\"[aeiou]\", \"_\", c(\"hello world\", \"fast string\"), ignore.case = TRUE)\n\n[1] \"h_ll_ w_rld\" \"f_st str_ng\"\n\n\ngsub_all()\nNo base R equivalent: applies several patterns in a single function call, either sequentially (chained, like repeated fgsub() calls — later patterns can match text introduced by earlier replacements) or as one combined left-to-right scan (sequential = FALSE — the first pattern to match at each position wins; later replacements never see earlier ones’ output).\ngsub_all(patterns, replacements, x, fixed = FALSE, ignore.case = FALSE,\n          sequential = TRUE, nthreads = NULL)\n\n\n\n\n\n\nArgument\nDescription\n\n\n\npatterns\nCharacter vector of patterns to search for.\n\n\nreplacements\nCharacter scalar or vector the same length as patterns.\n\n\nx\nCharacter vector. NA elements return NA.\n\n\nfixed\nLogical. Treat each pattern as a literal string.\n\n\nignore.case\nLogical. Case-insensitive matching.\n\n\nsequential\nLogical (default TRUE). TRUE = chained passes; FALSE = single combined scan.\n\n\nnthreads\nInteger or NULL. Thread count.\n\n\n\nReturns: character vector the same length as x.\n\ngsub_all(c(\"Mr\\\\.\", \"Mrs\\\\.\"), c(\"Mister\", \"Missus\"), c(\"Mr. Smith\", \"Mrs. Jones\"))\n\n[1] \"Mister Smith\" \"Missus Jones\"",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Function reference</span>"
+    ]
+  },
+  {
+    "objectID": "05-function-reference.html#string-utilities",
+    "href": "05-function-reference.html#string-utilities",
+    "title": "5  Function reference",
+    "section": "\n5.2 String utilities",
+    "text": "5.2 String utilities\nAll four functions in this group preserve names(x) and NA handling exactly like their base R equivalents.\nftrimws()\nftrimws(x, which = c(\"both\", \"left\", \"right\"), whitespace = \"[ \\t\\r\\n]\")\n\n\n\n\n\n\nArgument\nDescription\n\n\n\nx\nCharacter vector. NA elements return NA.\n\n\nwhich\nOne of \"both\", \"left\", \"right\".\n\n\nwhitespace\nRegex of characters to strip. Only the default \"[ \\t\\r\\n]\" uses the fast path; any other value delegates to base::trimws().\n\n\n\nReturns: character vector the same length as x, with names(x) preserved.\n\nftrimws(c(\"  padded  \", \"\\ttabbed\\n\"))\n\n[1] \"padded\" \"tabbed\"\n\nftrimws(\"  left only\", which = \"left\")\n\n[1] \"left only\"\n\n\nfsubstr()\nfsubstr(x, start, stop)\n\n\n\n\n\n\nArgument\nDescription\n\n\n\nx\nCharacter vector. NA elements return NA.\n\n\n\nstart, stop\n\nInteger (or numeric) vectors of length 1 or length(x), 1-indexed, clamped to each string’s bounds, recycled to length(x). NA in either produces NA for that element.\n\n\n\nReturns: character vector the same length as x.\n\nfsubstr(\"NSWREC123456789\", 1, 3)\n\n[1] \"NSW\"\n\nfsubstr(rep(\"ABCDEFGH\", 3), c(1, 4, 7), c(3, 6, 8))  # vectorised start/stop\n\n[1] \"ABC\" \"DEF\" \"GH\" \n\n\nfnchar()\nfnchar(x, type = \"chars\", allowNA = FALSE, keepNA = NA)\n\n\n\n\n\n\nArgument\nDescription\n\n\n\nx\nVector, coerced to character via as.character() if needed.\n\n\ntype\nOne of \"bytes\", \"chars\", or \"width\". \"width\" delegates to base::nchar() (display width isn’t parallelised).\n\n\nallowNA\nLogical. Ignored; the fast path never raises an encoding error regardless.\n\n\nkeepNA\nLogical or NA (default). NA/TRUE: NA elements of x return NA. FALSE: they return 2L (length of the string \"NA\"), matching base R’s legacy behaviour.\n\n\n\nReturns: integer vector the same length as x, with names(x) preserved.\n\nfnchar(c(\"café\", \"abc\", NA))\n\n[1]  4  3 NA\n\nfnchar(c(\"café\", \"abc\"), type = \"bytes\")  # \"é\" is 2 bytes in UTF-8\n\n[1] 5 3\n\n\nfchartr()\nfchartr(old, new, x)\n\n\n\n\n\n\nArgument\nDescription\n\n\n\n\nold, new\n\nSingle strings with the same number of characters. Each character of old maps to the corresponding character of new.\n\n\nx\nCharacter vector. NA elements return NA.\n\n\n\nReturns: character vector the same length as x. Falls back to base::chartr() automatically when old/new contain multi-byte characters (the fast path is a flat byte lookup table, valid only for single-byte/ASCII characters).\n\nfchartr(\"'-\", \"  \", c(\"O'Brien\", \"Smith-Jones\"))\n\n[1] \"O Brien\"     \"Smith Jones\"\n\nfchartr(\"aeiou\", \"AEIOU\", \"fast string\")\n\n[1] \"fAst strIng\"",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Function reference</span>"
+    ]
+  },
+  {
+    "objectID": "05-function-reference.html#dates",
+    "href": "05-function-reference.html#dates",
+    "title": "5  Function reference",
+    "section": "\n5.3 Dates",
+    "text": "5.3 Dates\nformat_date()\nformat_date(x, format = c(\"iso\", \"compact\", \"dmy\", \"ymd_slash\"))\n\n\n\n\n\n\nArgument\nDescription\n\n\n\nx\nA Date object or numeric vector of days since 1970-01-01.\n\n\nformat\n\n\"iso\" (YYYY-MM-DD), \"compact\" (YYYYMMDD), \"dmy\" (DD/MM/YYYY), or \"ymd_slash\" (YYYY/MM/DD).\n\n\n\nReturns: character vector the same length as x.\n\nformat_date(as.Date(c(\"2024-06-18\", NA)), \"compact\")\n\n[1] \"20240618\" NA        \n\n\nformat_date_parts()\nPure string-building (zero-padding plus punctuation, no calendar math, no Date object) — the inverse of date_parts().\nformat_date_parts(year, month, day, format = c(\"iso\", \"compact\", \"dmy\", \"ymd_slash\"))\n\n\n\n\n\n\nArgument\nDescription\n\n\n\n\nyear, month, day\n\nNumeric vectors, recycled to a common length. NA, non-integer-coercible, or out-of-width values (year outside 0-9999, month/day outside 0-99) produce NA for that element. No calendar validation — month = 13 formats as given if it fits the field width.\n\n\nformat\nSame four options as format_date().\n\n\n\nReturns: character vector recycled to the common length of year, month, day.\n\nformat_date_parts(2024, 6, 18, \"iso\")\n\n[1] \"2024-06-18\"\n\n\ndate_parts()\ndate_parts(x)\n\n\nArgument\nDescription\n\n\nx\nA Date object or numeric vector of days since 1970-01-01.\n\n\nReturns: a data.frame with integer columns year, month, day.\n\ndate_parts(as.Date(c(\"2024-06-18\", \"1999-12-31\")))\n\n  year month day\n1 2024     6  18\n2 1999    12  31\n\n\nfas.Date()\nNot a drop-in for base::as.Date() — see Chapter 3 for the speed/ strictness trade-off (no days-in-month or leap-year validation).\nfas.Date(x, format = c(\"iso\", \"compact\", \"dmy\", \"ymd_slash\"))\n\n\n\n\n\n\nArgument\nDescription\n\n\n\nx\nCharacter vector. NA elements, and elements that don’t match format exactly (wrong length/separators/non-digits) or have an out-of-range month/day, become NA.\n\n\nformat\nSame four options as format_date(); x must be in exactly this one format.\n\n\n\nReturns: a Date vector the same length as x.\n\nfas.Date(c(\"18/06/2024\", \"31/12/1999\", \"not-a-date\"), \"dmy\")\n\n[1] \"2024-06-18\" \"1999-12-31\" NA",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Function reference</span>"
+    ]
+  },
+  {
+    "objectID": "05-function-reference.html#phonetic-blocking-keys",
+    "href": "05-function-reference.html#phonetic-blocking-keys",
+    "title": "5  Function reference",
+    "section": "\n5.4 Phonetic blocking keys",
+    "text": "5.4 Phonetic blocking keys\nBoth functions have no base R equivalent and are intended as blocking keys ahead of fuzzy name matching (Chapter 3, Chapter 4).\nsoundex()\nsoundex(x)\n\n\n\n\n\n\nArgument\nDescription\n\n\nx\nCharacter vector (coerced via as.character() if not already character — e.g. a factor read from CSV). NA elements, and elements with no alphabetic characters, return NA.\n\n\nReturns: character vector the same length as x, with names(x) preserved; each element either NA or exactly 4 characters.\n\nsoundex(c(\"Robert\", \"Rupert\", \"Ashcraft\"))\n\n[1] \"R163\" \"R163\" \"A261\"\n\n\nnysiis()\nnysiis(x)\n\n\n\n\n\n\nArgument\nDescription\n\n\nx\nCharacter vector (coerced via as.character() if needed). NA elements, and elements with no alphabetic characters, return NA.\n\n\nReturns: character vector the same length as x, with names(x) preserved; each element either NA or up to 6 characters.\n\nnysiis(c(\"Robert\", \"Rupert\", \"Ashcraft\"))\n\n[1] \"RABAD\"  \"RAPAD\"  \"ASCRAF\"",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Function reference</span>"
+    ]
+  },
+  {
+    "objectID": "05-function-reference.html#fuzzy-string-similarity",
+    "href": "05-function-reference.html#fuzzy-string-similarity",
+    "title": "5  Function reference",
+    "section": "\n5.5 Fuzzy string similarity",
+    "text": "5.5 Fuzzy string similarity\njaro_winkler()\nVectorised pairwise Jaro-Winkler similarity. See Chapter 3 for the algorithm and the bit-parallel implementation.\njaro_winkler(a, b, p = 0.1, nthreads = NULL)\n\n\nArgument\nDescription\n\n\n\n\na, b\n\nEqual-length character vectors.\n\n\np\nPrefix scaling factor (default 0.1, the standard value).\n\n\nnthreads\nInteger or NULL. Thread count.\n\n\n\nReturns: numeric vector of similarities in [0, 1].\n\njaro_winkler(c(\"MARTHA\", \"DWAYNE\"), c(\"MARHTA\", \"DUANE\"))\n\n[1] 0.9611111 0.8400000\n\njaro_winkler(\"SMITH\", \"SMYTH\", p = 0)    # no prefix bonus\n\n[1] 0.8666667\n\njaro_winkler(\"SMITH\", \"SMYTH\", p = 0.1)  # standard prefix bonus\n\n[1] 0.8933333\n\n\njaro_winkler_matrix()\nAll-pairs Jaro-Winkler similarity — every element of a against every element of b.\njaro_winkler_matrix(a, b, p = 0.1, nthreads = NULL)\n\n\nArgument\nDescription\n\n\n\na\nCharacter vector of length n (rows).\n\n\nb\nCharacter vector of length m (columns).\n\n\n\np, nthreads\n\nSame as jaro_winkler().\n\n\n\nReturns: numeric matrix of dimensions n × m.\n\njaro_winkler_matrix(c(\"JOHN SMITH\", \"MARY JONES\"), c(\"JON SMYTH\", \"MARY JONES\", \"JOHN SMITH\"))\n\n          [,1]      [,2]      [,3]\n[1,] 0.9170370 0.4222222 1.0000000\n[2,] 0.3074074 1.0000000 0.4222222\n\n\njaro_winkler_tokens()\nToken-reorder- and punctuation-aware Jaro-Winkler similarity. Full mechanics in Chapter 3.\njaro_winkler_tokens(a, b, p = 0.1, ignore_case = FALSE, strip = \"['’-]\",\n                     extra_penalty = NULL, nthreads = NULL)\n\n\n\n\n\n\nArgument\nDescription\n\n\n\n\na, b\n\nEqual-length character vectors.\n\n\np\nPrefix scaling factor (default 0.1).\n\n\nignore_case\nLogical (default FALSE). Uppercase both sides before comparing.\n\n\nstrip\nSingle regex string matching punctuation to remove before tokenising, or NULL to skip. Default \"['’-]\" strips straight/curly apostrophes and hyphens.\n\n\nextra_penalty\n\nNULL (default) or a non-negative numeric scalar. NULL: unmatched tokens dilute the average (divide by max(n_tokens_a, n_tokens_b)). A number: average over only matched tokens, then subtract extra_penalty per unmatched token (floored at 0) — 0 ignores extra tokens outright.\n\n\nnthreads\nInteger or NULL. Thread count.\n\n\n\nReturns: numeric vector of similarities in [0, 1]. NA if either side of a pair is NA.\n\n# Reordered tokens, one near-miss — rescued relative to plain jaro_winkler()\njaro_winkler_tokens(\"Kyle John Haynes\", \"John Kylie Haynes\")\n\n[1] 0.9844444\n\njaro_winkler(\"Kyle John Haynes\", \"John Kylie Haynes\")\n\n[1] 0.8970588\n\n# Punctuation/spacing variants of the same name\njaro_winkler_tokens(c(\"OBrien\", \"OBrien\"), c(\"O Brien\", \"O'Brien\"))\n\n[1] 1 1\n\n# A stray extra token, penalised by default...\njaro_winkler_tokens(\"Kylie John ZZ Haynes\", \"Haynes John Kyle\")\n\n[1] 0.7383333\n\n# ...vs. ignored outright with extra_penalty = 0\njaro_winkler_tokens(\"Kylie John ZZ Haynes\", \"Haynes John Kyle\", extra_penalty = 0)\n\n[1] 0.9844444\n\n# ...vs. lightly discounted\njaro_winkler_tokens(\"Kylie John ZZ Haynes\", \"Haynes John Kyle\", extra_penalty = 0.1)\n\n[1] 0.8844444",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Function reference</span>"
+    ]
+  },
+  {
+    "objectID": "06-benchmarks.html",
+    "href": "06-benchmarks.html",
+    "title": "6  Benchmarks at scale",
+    "section": "",
+    "text": "6.1 Matching & substitution\nEvery other chapter uses small inputs so the page renders quickly. This chapter doesn’t: every benchmark below runs on 3 million strings, because this package is built for exactly that scale — record linkage and ETL pipelines where a “small” file is already six figures of rows. If a function is only 10% faster at 3M rows, that’s a real, honestly-reported result, not a number picked to flatter the package.\nComparison baselines, used wherever they have a real equivalent:\nA results table accumulates through the chapter and prints in full at the end (Table 6.1), alongside every individual comparison inline.\nt_base &lt;- system.time(base::grepl(\"[0-9]{2}\", x))[\"elapsed\"]\nt_fast &lt;- system.time(fast.string::fgrepl(\"[0-9]{2}\", x))[\"elapsed\"]\nt_stri &lt;- system.time(stri_detect_regex(x, \"[0-9]{2}\"))[\"elapsed\"]\ncat(sprintf(\"base::grepl       %.3fs\\nstringi::stri_detect_regex %.3fs\\nfast.string::fgrepl %.3fs\\n\", t_base, t_stri, t_fast))\n\nbase::grepl       0.700s\nstringi::stri_detect_regex 0.860s\nfast.string::fgrepl 0.050s\n\nrecord(\"fgrepl (regex)\", \"base::grepl\", t_base, t_fast)\nt_base &lt;- system.time(base::gsub(\"[0-9]+\", \"#\", x, perl = TRUE))[\"elapsed\"]\nt_fast &lt;- system.time(fast.string::fgsub(\"[0-9]+\", \"#\", x))[\"elapsed\"]\nt_stri &lt;- system.time(stri_replace_all_regex(x, \"[0-9]+\", \"#\"))[\"elapsed\"]\ncat(sprintf(\"base::gsub        %.3fs\\nstringi::stri_replace_all_regex %.3fs\\nfast.string::fgsub %.3fs\\n\", t_base, t_stri, t_fast))\n\nbase::gsub        5.070s\nstringi::stri_replace_all_regex 3.570s\nfast.string::fgsub 1.280s\n\nrecord(\"fgsub (regex)\", \"base::gsub\", t_base, t_fast)\npatterns &lt;- c(\"a\", \"e\", \"i\", \"o\", \"u\")\nrepls    &lt;- c(\"4\", \"3\", \"1\", \"0\", \"*\")\nt_base &lt;- system.time({\n    y &lt;- x\n    for (i in seq_along(patterns)) y &lt;- base::gsub(patterns[i], repls[i], y, fixed = TRUE)\n})[\"elapsed\"]\nt_fast &lt;- system.time(fast.string::gsub_all(patterns, repls, x, fixed = TRUE, sequential = TRUE))[\"elapsed\"]\ncat(sprintf(\"base (5x chained gsub)  %.3fs\\nfast.string::gsub_all   %.3fs\\n\", t_base, t_fast))\n\nbase (5x chained gsub)  6.330s\nfast.string::gsub_all   1.170s\n\nrecord(\"gsub_all (5 patterns)\", \"base (chained gsub)\", t_base, t_fast)",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Benchmarks at scale</span>"
+    ]
+  },
+  {
+    "objectID": "06-benchmarks.html#string-utilities",
+    "href": "06-benchmarks.html#string-utilities",
+    "title": "6  Benchmarks at scale",
+    "section": "\n6.2 String utilities",
+    "text": "6.2 String utilities\n\nx_ws &lt;- ifelse(is.na(x), NA_character_, paste0(\"  \", x, \"\\t\\n\"))\n\nt_base &lt;- system.time(base::trimws(x_ws))[\"elapsed\"]\nt_fast &lt;- system.time(fast.string::ftrimws(x_ws))[\"elapsed\"]\nt_stri &lt;- system.time(stri_trim_both(x_ws))[\"elapsed\"]\ncat(sprintf(\"base::trimws      %.3fs\\nstringi::stri_trim_both %.3fs\\nfast.string::ftrimws %.3fs\\n\", t_base, t_stri, t_fast))\n\nbase::trimws      3.880s\nstringi::stri_trim_both 0.840s\nfast.string::ftrimws 0.780s\n\nrecord(\"ftrimws\", \"base::trimws\", t_base, t_fast)\n\nt_base &lt;- system.time(base::substr(x, 1, 10))[\"elapsed\"]\nt_fast &lt;- system.time(fast.string::fsubstr(x, 1, 10))[\"elapsed\"]\ncat(sprintf(\"base::substr      %.3fs\\nfast.string::fsubstr %.3fs\\n\", t_base, t_fast))\n\nbase::substr      1.080s\nfast.string::fsubstr 1.050s\n\nrecord(\"fsubstr\", \"base::substr\", t_base, t_fast)\n\nt_base &lt;- system.time(base::nchar(x, \"chars\"))[\"elapsed\"]\nt_fast &lt;- system.time(fast.string::fnchar(x, \"chars\"))[\"elapsed\"]\nt_stri &lt;- system.time(stri_length(x))[\"elapsed\"]\ncat(sprintf(\"base::nchar       %.3fs\\nstringi::stri_length %.3fs\\nfast.string::fnchar %.3fs\\n\", t_base, t_stri, t_fast))\n\nbase::nchar       0.570s\nstringi::stri_length 0.030s\nfast.string::fnchar 0.020s\n\nrecord(\"fnchar\", \"base::nchar\", t_base, t_fast)\n\nt_base &lt;- system.time(base::chartr(\"aeiou\", \"AEIOU\", x))[\"elapsed\"]\nt_fast &lt;- system.time(fast.string::fchartr(\"aeiou\", \"AEIOU\", x))[\"elapsed\"]\ncat(sprintf(\"base::chartr      %.3fs\\nfast.string::fchartr %.3fs\\n\", t_base, t_fast))\n\nbase::chartr      3.590s\nfast.string::fchartr 1.280s\n\nrecord(\"fchartr\", \"base::chartr\", t_base, t_fast)\n\nfsubstr is the one operation in this whole chapter where parallelism doesn’t help: base R’s substr() is already close to memcpy speed for a fixed-width extraction, so there’s little headroom — consistent with the ~1x result in Table 6.1. The win shows up on operations with real per-element branching cost (trimws, chartr) or where base R’s implementation does something surprisingly expensive (nchar).",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Benchmarks at scale</span>"
+    ]
+  },
+  {
+    "objectID": "06-benchmarks.html#dates",
+    "href": "06-benchmarks.html#dates",
+    "title": "6  Benchmarks at scale",
+    "section": "\n6.3 Dates",
+    "text": "6.3 Dates\n\ndates &lt;- as.Date(sample(seq(as.Date(\"1950-01-01\"), as.Date(\"2024-12-31\"), by = \"day\"), n, replace = TRUE))\ndates[na_idx] &lt;- NA\ndate_strings_iso &lt;- fast.string::format_date(dates, \"iso\")\n\nt_base &lt;- system.time(format(dates, \"%Y-%m-%d\"))[\"elapsed\"]\nt_fast &lt;- system.time(fast.string::format_date(dates, \"iso\"))[\"elapsed\"]\ncat(sprintf(\"base format.Date  %.3fs\\nfast.string::format_date %.3fs\\n\", t_base, t_fast))\n\nbase format.Date  30.480s\nfast.string::format_date 0.170s\n\nrecord(\"format_date\", \"format.Date\", t_base, t_fast)\n\nt_base &lt;- system.time(base::as.Date(date_strings_iso, format = \"%Y-%m-%d\"))[\"elapsed\"]\nt_fast &lt;- system.time(fast.string::fas.Date(date_strings_iso, \"iso\"))[\"elapsed\"]\ncat(sprintf(\"base::as.Date     %.3fs\\nfast.string::fas.Date %.3fs\\n\", t_base, t_fast))\n\nbase::as.Date     12.240s\nfast.string::fas.Date 0.000s\n\nrecord(\"fas.Date\", \"as.Date\", t_base, t_fast)",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Benchmarks at scale</span>"
+    ]
+  },
+  {
+    "objectID": "06-benchmarks.html#phonetic-blocking-keys",
+    "href": "06-benchmarks.html#phonetic-blocking-keys",
+    "title": "6  Benchmarks at scale",
+    "section": "\n6.4 Phonetic blocking keys",
+    "text": "6.4 Phonetic blocking keys\nsoundex()/nysiis() have no base R equivalent; RecordLinkage::soundex() is the closest comparison (algorithm details and why the two can disagree on specific inputs are in Chapter 3). RecordLinkage::soundex() runs a single timed pass rather than microbenchmark’s repeated runs — at 3M rows it’s the single slowest operation in this chapter, and repeating it five times buys little additional statistical confidence for a lot of extra render time.\n\nnames_x &lt;- stri_rand_strings(n, sample(3:15, n, replace = TRUE), pattern = \"[A-Z]\")\nnames_x[na_idx] &lt;- NA_character_\n\nt_fast_sx &lt;- system.time(fast.string::soundex(names_x))[\"elapsed\"]\nt_fast_ny &lt;- system.time(fast.string::nysiis(names_x))[\"elapsed\"]\ncat(sprintf(\"fast.string::soundex %.3fs\\nfast.string::nysiis  %.3fs\\n\", t_fast_sx, t_fast_ny))\n\nfast.string::soundex 0.120s\nfast.string::nysiis  1.120s\n\nif (has_recordlinkage) {\n    t_rl_sx &lt;- system.time(RecordLinkage::soundex(names_x))[\"elapsed\"]\n    cat(sprintf(\"RecordLinkage::soundex %.3fs\\n\", t_rl_sx))\n    record(\"soundex\", \"RecordLinkage::soundex\", t_rl_sx, t_fast_sx)\n} else {\n    cat(\"RecordLinkage not installed — skipping cross-package soundex comparison.\\n\")\n}\n\nRecordLinkage::soundex 5.010s\n\n\nnysiis() is consistently slower than soundex() here — not a parallelism gap (both run through the same dispatch), but because NYSIIS’s rule table is genuinely heavier per element (leading/trailing transforms plus a stateful per-letter pass, vs. Soundex’s single fixed lookup), as described in Chapter 3.",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Benchmarks at scale</span>"
+    ]
+  },
+  {
+    "objectID": "06-benchmarks.html#fuzzy-string-similarity",
+    "href": "06-benchmarks.html#fuzzy-string-similarity",
+    "title": "6  Benchmarks at scale",
+    "section": "\n6.5 Fuzzy string similarity",
+    "text": "6.5 Fuzzy string similarity\n\nt_fast &lt;- system.time(fast.string::jaro_winkler(names_x, rev(names_x)))[\"elapsed\"]\ncat(sprintf(\"fast.string::jaro_winkler %.3fs (%s pairs, no base equivalent)\\n\",\n            t_fast, format(n, big.mark = \",\", scientific = FALSE)))\n\nfast.string::jaro_winkler 0.100s (3,000,000 pairs, no base equivalent)\n\nif (has_stringdist) {\n    t_sd &lt;- system.time(1 - stringdist::stringdist(names_x, rev(names_x), method = \"jw\", p = 0.1))[\"elapsed\"]\n    cat(sprintf(\"stringdist::stringdist(jw, p=0.1) %.3fs\\n\", t_sd))\n    record(\"jaro_winkler\", \"stringdist::stringdist(jw)\", t_sd, t_fast)\n}\n\nstringdist::stringdist(jw, p=0.1) 0.320s\n\nif (has_recordlinkage) {\n    t_rl &lt;- system.time(RecordLinkage::jarowinkler(names_x, rev(names_x)))[\"elapsed\"]\n    cat(sprintf(\"RecordLinkage::jarowinkler %.3fs\\n\", t_rl))\n    record(\"jaro_winkler\", \"RecordLinkage::jarowinkler\", t_rl, t_fast)\n}\n\nRecordLinkage::jarowinkler 4.300s\n\n\n\n# All three should agree numerically (RecordLinkage's defaults and\n# stringdist with p = 0.1 both implement the same standard Jaro-Winkler).\na3 &lt;- c(\"MARTHA\", \"DWAYNE\", \"DIXON\")\nb3 &lt;- c(\"MARHTA\", \"DUANE\", \"DICKSONX\")\nfast.string::jaro_winkler(a3, b3)\n\n[1] 0.9611111 0.8400000 0.8133333\n\nif (has_recordlinkage) RecordLinkage::jarowinkler(a3, b3)\n\n[1] 0.9611111 0.8400000 0.8133333\n\nif (has_stringdist) 1 - stringdist::stringdist(a3, b3, method = \"jw\", p = 0.1)\n\n[1] 0.9611111 0.8400000 0.8133333\n\n\njaro_winkler_matrix() is \\(O(n \\times m)\\) by construction, so a 3M x 3M matrix is neither a realistic workload nor something most machines could hold in memory — a 3,000 x 3,000 block (9M cell comparisons) is a more representative blocking-table size:\n\nm &lt;- 3000\na_small &lt;- names_x[seq_len(m)]\nb_small &lt;- names_x[(n - m + 1):n]\nt_fast &lt;- system.time(fast.string::jaro_winkler_matrix(a_small, b_small))[\"elapsed\"]\ncat(sprintf(\"fast.string::jaro_winkler_matrix: %s x %s (%s cells) in %.3fs\\n\",\n            m, m, format(m * m, big.mark = \",\"), t_fast))\n\nfast.string::jaro_winkler_matrix: 3000 x 3000 (9e+06 cells) in 0.120s\n\n\njaro_winkler_tokens() does more work per pair (tokenising, an internal similarity matrix per row, greedy assignment, plus the collapsed comparison — Chapter 3) than plain jaro_winkler(), so it’s meaningfully slower per comparison. No package in this comparison set has a token-reorder-aware equivalent, so this is absolute throughput only:\n\ncap1 &lt;- function(s) paste0(toupper(substr(s, 1, 1)), substr(s, 2, nchar(s)))\nmake_multitoken_names &lt;- function(n) {\n    paste(\n        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = \"[a-z]\")),\n        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = \"[a-z]\")),\n        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = \"[a-z]\"))\n    )\n}\ntok_a &lt;- make_multitoken_names(n)\ntok_b &lt;- make_multitoken_names(n)\nt_plain  &lt;- system.time(fast.string::jaro_winkler(tok_a, tok_b))[\"elapsed\"]\nt_tokens &lt;- system.time(fast.string::jaro_winkler_tokens(tok_a, tok_b))[\"elapsed\"]\ncat(sprintf(\"fast.string::jaro_winkler        %.3fs (%s pairs)\\n\", t_plain, format(n, big.mark = \",\", scientific = FALSE)))\n\nfast.string::jaro_winkler        0.090s (3,000,000 pairs)\n\ncat(sprintf(\"fast.string::jaro_winkler_tokens %.3fs (%.1fx the plain-comparison cost)\\n\", t_tokens, t_tokens / t_plain))\n\nfast.string::jaro_winkler_tokens 268.940s (2988.2x the plain-comparison cost)",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Benchmarks at scale</span>"
+    ]
+  },
+  {
+    "objectID": "06-benchmarks.html#the-small-n-crossover",
+    "href": "06-benchmarks.html#the-small-n-crossover",
+    "title": "6  Benchmarks at scale",
+    "section": "\n6.6 The small-n crossover",
+    "text": "6.6 The small-n crossover\nChapter 3 claims every parallel function applies a size threshold and falls back to single-threaded execution below it, because thread-pool dispatch overhead would otherwise exceed the time saved. Here’s that claim checked directly, at n = 20 — small enough that the claim predicts fast.string will be no faster, possibly slower than base R:\n\nsmall &lt;- stri_rand_strings(20, sample(5:15, 20, replace = TRUE))\nprint(microbenchmark(\n    base = base::grepl(\"[0-9]\", small),\n    fast = fast.string::fgrepl(\"[0-9]\", small),\n    times = 50\n))\n\nUnit: microseconds\n expr  min   lq   mean median   uq   max neval\n base  5.9  6.4  8.034   6.65  8.2  33.2    50\n fast 55.5 56.2 60.972  57.00 59.7 201.5    50\n\n\nAt this scale the two are within noise of each other (sometimes base R even wins outright) — exactly what the size-threshold design predicts, and the reason the rest of this chapter uses 3M rows rather than 20: the benefit this package offers only shows up once there’s enough work to amortise parallel dispatch.",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Benchmarks at scale</span>"
+    ]
+  },
+  {
+    "objectID": "06-benchmarks.html#summary",
+    "href": "06-benchmarks.html#summary",
+    "title": "6  Benchmarks at scale",
+    "section": "\n6.7 Summary",
+    "text": "6.7 Summary\n\nsummary_df &lt;- do.call(rbind, results)\nsummary_df$baseline_s &lt;- round(summary_df$baseline_s, 3)\nsummary_df$fast_s     &lt;- round(summary_df$fast_s, 3)\nsummary_df$speedup    &lt;- paste0(round(summary_df$speedup, 1), \"x\")\nknitr::kable(\n    summary_df,\n    col.names = c(\"Operation\", \"Baseline\", \"Baseline (s)\", \"fast.string (s)\", \"Speedup\")\n)\n\n\nTable 6.1: Observed speedups, n = 3,000,000, 16 cores, 1 run per cell unless noted (this machine — yours will vary).\n\n\n\n\n\n\n\n\n\n\n\n\n\nOperation\nBaseline\nBaseline (s)\nfast.string (s)\nSpeedup\n\n\n\nelapsed\nfgrepl (regex)\nbase::grepl\n0.70\n0.05\n14x\n\n\nelapsed1\nfgsub (regex)\nbase::gsub\n5.07\n1.28\n4x\n\n\nelapsed2\ngsub_all (5 patterns)\nbase (chained gsub)\n6.33\n1.17\n5.4x\n\n\nelapsed3\nftrimws\nbase::trimws\n3.88\n0.78\n5x\n\n\nelapsed4\nfsubstr\nbase::substr\n1.08\n1.05\n1x\n\n\nelapsed5\nfnchar\nbase::nchar\n0.57\n0.02\n28.5x\n\n\nelapsed6\nfchartr\nbase::chartr\n3.59\n1.28\n2.8x\n\n\nelapsed7\nformat_date\nformat.Date\n30.48\n0.17\n179.3x\n\n\nelapsed8\nfas.Date\nas.Date\n12.24\n0.00\nInfx\n\n\nelapsed9\nsoundex\nRecordLinkage::soundex\n5.01\n0.12\n41.7x\n\n\nelapsed10\njaro_winkler\nstringdist::stringdist(jw)\n0.32\n0.10\n3.2x\n\n\nelapsed11\njaro_winkler\nRecordLinkage::jarowinkler\n4.30\n0.10\n43x\n\n\n\n\n\n\n\n\nA few patterns worth drawing out explicitly:\n\nThe biggest wins are on operations with real per-element work — regex matching/substitution, trimming, phonetic encoding — where parallelising actual computation pays off directly.\nThe smallest (or negative) wins are on operations base R already does close to optimally for a single core (substr()); parallelism helps least when there’s least work to spread around.\nCross-package comparisons (stringdist, RecordLinkage) confirm correctness (the Jaro-Winkler numbers agree to floating-point precision) as much as they confirm speed — agreement there is the more important result, since a faster-but-wrong implementation isn’t a useful trade.",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Benchmarks at scale</span>"
+    ]
+  },
+  {
+    "objectID": "07-troubleshooting.html",
+    "href": "07-troubleshooting.html",
+    "title": "7  Troubleshooting & FAQ",
+    "section": "",
+    "text": "7.1 Installation",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Troubleshooting & FAQ</span>"
+    ]
+  },
+  {
+    "objectID": "07-troubleshooting.html#installation",
+    "href": "07-troubleshooting.html#installation",
+    "title": "7  Troubleshooting & FAQ",
+    "section": "",
+    "text": "“could not find tools necessary to compile a package” / install fails\nfast.string compiles C++ source on install (PCRE2 bindings, RE2, RcppParallel). You need a working toolchain:\n\n\nWindows: install Rtools matching your R version, and make sure it’s on PATH (the Rtools installer offers to do this). Verify with pkgbuild::has_build_tools(debug = TRUE).\n\nmacOS: install Xcode command-line tools (xcode-select --install).\n\nLinux: a C++14-capable compiler (gcc/clang) plus the PCRE2 development headers — libpcre2-dev on Debian/Ubuntu, pcre2-devel on Fedora/RHEL.\n\nIf pkgbuild::has_build_tools(debug = TRUE) returns FALSE, the underlying compiler invocation it prints is the fastest way to see exactly what’s missing.\nReinstalling after pulling new source changes\nIf you’re developing against a local checkout rather than installing a release, devtools::load_all() recompiles changed src/*.cpp files automatically; a plain library(fast.string) won’t pick up source changes without reinstalling first.",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Troubleshooting & FAQ</span>"
+    ]
+  },
+  {
+    "objectID": "07-troubleshooting.html#na-empty-strings-and-encoding",
+    "href": "07-troubleshooting.html#na-empty-strings-and-encoding",
+    "title": "7  Troubleshooting & FAQ",
+    "section": "\n7.2 NA, empty strings, and encoding",
+    "text": "7.2 NA, empty strings, and encoding\nWhy does my function return NA for a non-NA input?\nEvery function in this package returns NA for NA input — but a few functions also return NA for specific valid-looking but unparseable inputs:\n\n\nsoundex()/nysiis() return NA for strings with no alphabetic characters at all (e.g. \"123\", \"\") — there’s no phonetic code for a string with nothing to encode phonetically.\n\nfas.Date() returns NA for any string that doesn’t match the specified format exactly (wrong length, wrong separator position, non-digit where a digit is expected) or has an out-of-range month/day. Unlike base::as.Date(), it does not attempt multiple formats or partial parsing.\n\n\nsoundex(c(\"Smith\", \"123\", \"\", NA))\n\n[1] \"S530\" NA     NA     NA    \n\nfas.Date(c(\"2024-06-18\", \"2024/06/18\", \"2024-13-01\"), \"iso\")  # 2nd: wrong separator, 3rd: month 13\n\n[1] \"2024-06-18\" NA           NA          \n\n\n\nfchartr() silently fell back to base::chartr() — why?\nfchartr()’s fast path is a flat 256-entry byte lookup table, which only works correctly when every character in old and new is single-byte (ASCII). If either argument contains a multi-byte UTF-8 character (an accented letter, a curly quote, an emoji), the function detects that via a byte-count vs. char-count comparison and transparently delegates to base::chartr() instead — same result, just without the speedup, and without you needing to know in advance.\n\nfchartr(\"e\", \"é\", \"test\")  # \"é\" is multi-byte — falls back to base::chartr(), still correct\n\n[1] \"tést\"\n\n\n\nfnchar() bytes vs. chars\ntype = \"bytes\" counts bytes; type = \"chars\" counts Unicode codepoints. These differ for any non-ASCII input — get this backwards and a fixed-width field extraction (fsubstr()) on multi-byte data will be off by however many multi-byte characters are in the string.\n\nfnchar(\"café\", type = \"bytes\")  # 5 — \"é\" is 2 bytes in UTF-8\n\n[1] 5\n\nfnchar(\"café\", type = \"chars\") # 4 — 4 visible characters\n\n[1] 4",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Troubleshooting & FAQ</span>"
+    ]
+  },
+  {
+    "objectID": "07-troubleshooting.html#threading",
+    "href": "07-troubleshooting.html#threading",
+    "title": "7  Troubleshooting & FAQ",
+    "section": "\n7.3 Threading",
+    "text": "7.3 Threading\nI set nthreads = 1 for one call, and now every call is slow\nThis is real, and worth knowing about explicitly: RcppParallel::setThreadOptions() configures the underlying TBB thread pool process-wide, not just for the call that set it. Passing nthreads to any function that accepts it changes the thread count for every subsequent parallel call in the session, until something resets it.\n\nx &lt;- replicate(2e6, paste(sample(letters, 10, TRUE), collapse = \"\"))\n\nt1 &lt;- system.time(jaro_winkler(x, rev(x)))[\"elapsed\"]\njaro_winkler(\"a\", \"a\", nthreads = 1)  # a tiny, throwaway call — but it sets the pool to 1 thread\n\n[1] 1\n\nt2 &lt;- system.time(jaro_winkler(x, rev(x)))[\"elapsed\"]\nRcppParallel::setThreadOptions(numThreads = \"auto\")\nt3 &lt;- system.time(jaro_winkler(x, rev(x)))[\"elapsed\"]\n\ncat(sprintf(\"before:            %.2fs\\nafter nthreads=1:  %.2fs\\nafter reset:       %.2fs\\n\", t1, t2, t3))\n\nbefore:            0.04s\nafter nthreads=1:  0.33s\nafter reset:       0.04s\n\n\nThat single-row, throwaway nthreads = 1 call made every later full-vector call run single-threaded too — an 8x+ slowdown on this 16-core machine, silently, with no warning. If you need a one-off thread count for a specific call and want every other call in the session unaffected, reset explicitly afterward:\nRcppParallel::setThreadOptions(numThreads = \"auto\")\nA handful of functions (ftrimws(), fsubstr(), fnchar(), fchartr(), the format_date() family, soundex(), nysiis()) don’t take nthreads at all — they always run at whatever the process-wide setting currently is, so they’re affected by this too even though they have no argument that looks like it would be.\nDoes nthreads help on a machine with few cores?\nNot much below 4 cores, and the package’s own size thresholds (Chapter 3) mean it won’t even try to parallelise small inputs regardless. If you’re running inside a container with a CPU limit lower than parallel::detectCores() reports (common in CI and some cloud environments), set nthreads explicitly to the actual limit — TBB doesn’t know about cgroup CPU quotas and will otherwise oversubscribe.",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Troubleshooting & FAQ</span>"
+    ]
+  },
+  {
+    "objectID": "07-troubleshooting.html#regex-behaviour",
+    "href": "07-troubleshooting.html#regex-behaviour",
+    "title": "7  Troubleshooting & FAQ",
+    "section": "\n7.4 Regex behaviour",
+    "text": "7.4 Regex behaviour\nMy pattern works in grepl(perl = TRUE) but fgrepl() gave a cli::cli_inform() message and fell back\nThat’s the intended behaviour, not a bug: the pattern uses PCRE-only syntax (lookaround, atomic groups, possessive quantifiers, named backreferences — the exact list is in Chapter 3), and fast.string delegates to base::grepl(perl = TRUE) automatically rather than risk a subtly different result from its own PCRE2 binding on syntax it hasn’t specifically validated. The result is correct either way; you’re just not getting the parallel speedup for that specific call. Pass perl = TRUE explicitly to skip the syntax check (only do this if you’ve confirmed the pattern behaves identically under fast.string’s PCRE2 path for your actual data).\nCatastrophic backtracking — am I safe?\nOnly partially. RE2 (used for fixed = TRUE) is immune by construction. PCRE2 (used for general regex) is not — it’s still a backtracking engine, same risk class as base R’s perl = TRUE. If you’re matching untrusted patterns against untrusted input, that risk exists regardless of which package you use; this package doesn’t add to it, but doesn’t remove it either. Prefer fixed = TRUE whenever the pattern is actually a literal string — beyond being immune to backtracking blowup, it’s also the fastest path in the package.",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Troubleshooting & FAQ</span>"
+    ]
+  },
+  {
+    "objectID": "07-troubleshooting.html#getting-help",
+    "href": "07-troubleshooting.html#getting-help",
+    "title": "7  Troubleshooting & FAQ",
+    "section": "\n7.5 Getting help",
+    "text": "7.5 Getting help\n\nFound a bug, or a discrepancy between fast.string and base R’s behaviour on some input? Open an issue: https://github.com/KyleHaynes/anthropic_fast/issues.\nFor the underlying algorithms, Chapter 3 has the full detail behind every function’s behaviour.\nFor exact argument-by-argument documentation, Chapter 5.",
+    "crumbs": [
+      "Reference",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Troubleshooting & FAQ</span>"
+    ]
+  }
+]

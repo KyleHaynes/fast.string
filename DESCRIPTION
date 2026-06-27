@@ -16,7 +16,12 @@ Imports:
     Rcpp (>= 1.0.0),
     RcppParallel (>= 5.0.0)
 Suggests:
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    stringi,
+    stringdist,
+    RecordLinkage,
+    microbenchmark,
+    knitr
 LinkingTo:
     Rcpp,
     RcppParallel

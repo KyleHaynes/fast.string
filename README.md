@@ -18,7 +18,7 @@ remotes::install_github("KyleHaynes/anthropic_fast")
 - **String utilities**: `ftrimws()`, `fsubstr()`, `fnchar()`, `fchartr()`
 - **Dates**: `format_date()`, `format_date_parts()`, `date_parts()`, `fas.Date()`
 - **Phonetic blocking keys**: `soundex()`, `nysiis()`
-- **Fuzzy string similarity**: `jaro_winkler()`, `jaro_winkler_matrix()`
+- **Fuzzy string similarity**: `jaro_winkler()`, `jaro_winkler_matrix()`, `jaro_winkler_tokens()`
 
 Loading the package (`library(fast.string)`) prints a one-time startup
 banner listing all of these with a short description; suppress it with
@@ -59,3 +59,8 @@ pattern complexity.)
 For an extensive, per-function breakdown across all five function groups
 at 2M-row scale (including `NA`/`""` edge cases), see
 [Benchmarks.R](Benchmarks.R).
+
+For a narrative walkthrough with worked examples for every function, see
+the Quarto vignette [`fast-string.qmd`](fast-string.qmd) (`quarto render
+fast-string.qmd`); see [PUBLISHING.md](PUBLISHING.md) for how to publish
+it to GitHub Pages.

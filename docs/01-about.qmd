@@ -1,0 +1,112 @@
+# About fast.string {#sec-about}
+
+## Where it sits
+
+There's no shortage of fast string packages for R. `fast.string` doesn't
+try to replace any of them — it overlaps with each on one axis and fills a
+gap none of them cover on another:
+
+| Capability | base R | stringi / stringr | stringdist | RecordLinkage | **fast.string** |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Regex matching/substitution | yes (TRE/PCRE) | yes (ICU) | — | — | yes (PCRE2) |
+| Parallelised across cores | no | no | partial (`nthread`) | no | **yes (TBB)** |
+| Literal/fixed-string fast path | no | yes | — | — | yes (RE2) |
+| Multi-pattern substitution in one scan | no | no | — | — | **yes** (`gsub_all()`) |
+| Fast fixed-format date parse/format | no | no | — | — | **yes** |
+| Soundex / NYSIIS phonetic codes | no | no | `phonetic()`/`soundex` | `soundex()` | **yes, parallelised** |
+| Jaro-Winkler similarity | no | no | `stringdist(method="jw")` | `jarowinkler()` | **yes, parallelised** |
+| Token-reorder-aware name comparison | no | no | no | no | **yes** (`jaro_winkler_tokens()`) |
+
+A few things worth calling out explicitly:
+
+- **stringi/stringr** are excellent, mature, and already parallel-friendly
+  at the C level for many operations via ICU — but ICU's regex engine and
+  `fast.string`'s PCRE2 path land in similar performance territory for
+  *regex*. Where `fast.string` pulls ahead is parallelism (stringi's core
+  loops are single-threaded; this package's are TBB-parallel) and the
+  data-linkage-specific functions stringi doesn't have at all.
+- **stringdist** is the closest relative for the fuzzy-matching half of
+  this package, and is a fine choice if that's all you need — it supports
+  more distance metrics (Levenshtein, OSA, cosine, q-gram, ...) than
+  `fast.string` does. What it doesn't have is the regex/substitution side,
+  phonetic codes, or token-reorder-aware comparison.
+- **RecordLinkage** is a full record-linkage *framework* (blocking,
+  EM-based classification, training), not a string-function library. Its
+  `soundex()`/`jarowinkler()` are useful comparison points (used directly
+  in @sec-benchmarks) but solve a much narrower problem than the package
+  itself.
+
+@sec-benchmarks puts numbers behind every row in that table at 3-million-row
+scale.
+
+## Architecture
+
+The package is a thin R layer over compiled code; almost no decision logic
+lives in R beyond argument validation and dispatch:
+
+```{mermaid}
+flowchart LR
+    A["R wrapper\n(fgrepl, ftrimws, jaro_winkler, ...)"] --> B{Argument\nvalidation}
+    B -->|fixed = TRUE| C["RE2 StringPiece\n(literal scan)"]
+    B -->|regex, PCRE-only syntax| D["base::grepl/gsub\n(perl = TRUE fallback)"]
+    B -->|regex, PCRE2-compatible| E["PCRE2\n(via Rcpp)"]
+    B -->|trim/substr/nchar/chartr/\ndate/phonetic/jaro-winkler| F["Custom C++\n(via Rcpp)"]
+    E --> G["RcppParallel\n(Intel TBB parallelFor)"]
+    F --> G
+    C --> G
+    G --> H[Result vector]
+```
+
+Three design decisions explain most of the package's behaviour:
+
+**Two regex engines, chosen automatically.** PCRE2 supports the full
+modern regex feature set (lookaround, atomic groups, possessive
+quantifiers, named backreferences) that R's default TRE engine doesn't.
+But PCRE2 still walks a backtracking NFA, so pathological patterns can
+exhibit the catastrophic-backtracking blowup TRE and RE2 are immune to. For
+the common case — fixed/literal patterns with no regex metacharacters at
+all (`fixed = TRUE`) — the package instead uses RE2's `StringPiece`, which
+guarantees linear-time matching with no backtracking risk. Every
+regex-accepting function (`fgrepl()`, `fsub()`, `fgsub()`, `gsub_all()`)
+also runs a syntax check (`.has_pcre_only_syntax()`) before taking the fast
+path: if a pattern uses PCRE-only syntax and the caller didn't explicitly
+set `perl = TRUE`, the call transparently falls back to `base::grepl()`/
+`base::gsub()` with `perl = TRUE` rather than risk wrong results. See
+@sec-theory for why this matters in practice.
+
+**Parallelism via Intel TBB, not `parallel`/`future`.** Forking R processes
+(`parallel::mclapply`) or spinning up a cluster (`future`) carries fixed
+overhead per call — serialising data to workers, process startup, gathering
+results back — that swamps the actual work for anything shorter than
+seconds. RcppParallel's `parallelFor` instead splits one C++-level loop
+across a TBB thread pool *within a single R call*, with no
+serialisation step and microsecond-scale dispatch overhead. Every parallel
+function in this package applies a size threshold before bothering to
+parallelise at all (typically `n >= 1000` for vectors, `n*m >= 10000` for
+matrix operations) — below that, the thread-pool dispatch overhead would
+exceed the time saved, so the package just runs the loop on the calling
+thread.
+
+**Thread-local scratch buffers, not per-call allocation.** The
+performance-sensitive C++ (the bit-parallel Jaro similarity, the token
+alignment in `jaro_winkler_tokens()`) reuses `thread_local` buffers across
+rows within a worker thread instead of allocating fresh memory for every
+string pair. The buffers grow to a high-water mark and then stop
+reallocating, so the *steady-state* cost of comparing the one-millionth
+pair is the same as the thousandth.
+
+## Who this is for
+
+If you're doing record linkage, deduplication, ETL, or any other pipeline
+that processes name/address/free-text columns with **hundreds of thousands
+to tens of millions of rows**, and you've profiled your pipeline and found
+string operations are a meaningful fraction of the runtime, this package
+is squarely aimed at you.
+
+If your data is a few thousand rows, or your bottleneck is somewhere else
+entirely (I/O, a join, a model fit), the speedups here won't be the thing
+that matters, and the simpler base R/stringi call is the right choice —
+fewer dependencies, identical behaviour, and the performance difference
+won't be visible at that scale. @sec-benchmarks shows this explicitly: at
+small `n`, the parallel-dispatch overhead can make `fast.string` functions
+*slower* than their base R/stringi equivalents.

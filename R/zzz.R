@@ -19,6 +19,7 @@ NULL
     "fas.Date"          = "fast fixed-format date parsing",
     jaro_winkler        = "pairwise Jaro-Winkler string similarity",
     jaro_winkler_matrix = "all-pairs Jaro-Winkler similarity matrix",
+    jaro_winkler_tokens = "token-reorder/punctuation-aware Jaro-Winkler similarity",
     soundex             = "Soundex phonetic code",
     nysiis              = "NYSIIS phonetic code"
 )

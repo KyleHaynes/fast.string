@@ -1,2 +1,0 @@
--- focus on report on w/e 
--- ask gen ai to explain a workflow around using the jarowinkler matrix method compared to me workflow to explain the benefits of why the matrix function exists

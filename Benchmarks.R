@@ -200,4 +200,21 @@ print(microbenchmark(
     times = 5
 ))
 
+cat("\n=== jaro_winkler_tokens: multi-token (3-word) names, absolute throughput, no base equivalent ===\n")
+cap1 <- function(x) paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))
+make_multitoken_names <- function(n) {
+    paste(
+        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = "[a-z]")),
+        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = "[a-z]")),
+        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = "[a-z]"))
+    )
+}
+tok_a <- make_multitoken_names(n)
+tok_b <- make_multitoken_names(n)
+print(microbenchmark(
+    plain_jaro_winkler = fast.string::jaro_winkler(tok_a, tok_b),
+    jaro_winkler_tokens = fast.string::jaro_winkler_tokens(tok_a, tok_b),
+    times = 5
+))
+
 cat("\n=== Done ===\n")

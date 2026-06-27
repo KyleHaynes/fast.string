@@ -1,0 +1,420 @@
+# Function reference {#sec-reference}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+```
+
+Every exported function, grouped the same way as the README. Each entry
+gives the signature, every argument, the return value, and at least one
+runnable example. This chapter is the detailed reference; @sec-quickstart
+is the faster tour.
+
+## Matching & substitution
+
+### `fgrepl()`
+
+Equivalent to `base::grepl()`, using PCRE2 and Intel TBB. Typically 5-20x
+faster on large character vectors. See @sec-theory for the automatic
+PCRE-only-syntax fallback to `base::grepl(perl = TRUE)`.
+
+```r
+fgrepl(pattern, x, ignore.case = FALSE, perl = FALSE,
+       fixed = FALSE, useBytes = FALSE, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `pattern` | Character scalar. Pattern to search for. |
+| `x` | Character vector. `NA` elements return `NA`. |
+| `ignore.case` | Logical. Case-insensitive matching. |
+| `perl` | Logical. If `TRUE`, skip the PCRE-only syntax check and run the parallel PCRE2 engine directly. |
+| `fixed` | Logical. Treat `pattern` as a literal string (fastest path — uses RE2). |
+| `useBytes` | Logical. Ignored; kept for signature compatibility with `base::grepl()`. |
+| `nthreads` | Integer or `NULL`. Thread count; `NULL` uses all cores. |
+
+**Returns:** logical vector the same length as `x`.
+
+```{r}
+fgrepl("^inv", c("invoice", "Invoice", "credit"), ignore.case = TRUE)
+fgrepl("a.b", c("axb", "ab"), fixed = TRUE)  # literal "a.b" — no match for "axb"
+```
+
+### `fgrep()`
+
+Equivalent to `base::grep()`: wraps `fgrepl()` and returns indices or
+values.
+
+```r
+fgrep(pattern, x, ignore.case = FALSE, perl = FALSE, value = FALSE,
+      fixed = FALSE, useBytes = FALSE, invert = FALSE, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `pattern`, `x`, `ignore.case`, `perl`, `fixed`, `useBytes`, `nthreads` | Same as `fgrepl()`. |
+| `value` | Logical. Return matching elements instead of indices. |
+| `invert` | Logical. Return non-matching indices/values instead. |
+
+**Returns:** integer vector of indices, or a character vector when
+`value = TRUE`.
+
+```{r}
+fgrep("^inv", c("invoice", "credit", "invoice2"))
+fgrep("^inv", c("invoice", "credit", "invoice2"), value = TRUE)
+```
+
+### `fsub()`
+
+Equivalent to `base::sub()`: first-match substitution. Supports `\\1`-`\\9`
+capture groups and `\\U`/`\\L`/`\\E` case conversion in `replacement`.
+
+```r
+fsub(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
+     fixed = FALSE, useBytes = FALSE, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `pattern` | Character scalar. Pattern to search for. |
+| `replacement` | Character scalar. Replacement string. |
+| `x` | Character vector. `NA` elements return `NA`. |
+| `ignore.case`, `perl`, `fixed`, `useBytes`, `nthreads` | Same as `fgrepl()`. |
+
+**Returns:** character vector the same length as `x`.
+
+```{r}
+fsub("-([0-9]+)$", "_\\1", c("invoice-001", "invoice-002"))
+```
+
+### `fgsub()`
+
+Equivalent to `base::gsub()`: global substitution. Same capture-group and
+case-conversion support as `fsub()`.
+
+```r
+fgsub(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
+      fixed = FALSE, useBytes = FALSE, nthreads = NULL)
+```
+
+Arguments are identical to `fsub()`. **Returns:** character vector the
+same length as `x`.
+
+```{r}
+fgsub("[aeiou]", "_", c("hello world", "fast string"), ignore.case = TRUE)
+```
+
+### `gsub_all()`
+
+No base R equivalent: applies several patterns in a single function call,
+either sequentially (chained, like repeated `fgsub()` calls — later
+patterns can match text introduced by earlier replacements) or as one
+combined left-to-right scan (`sequential = FALSE` — the first pattern to
+match at each position wins; later replacements never see earlier ones'
+output).
+
+```r
+gsub_all(patterns, replacements, x, fixed = FALSE, ignore.case = FALSE,
+          sequential = TRUE, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `patterns` | Character vector of patterns to search for. |
+| `replacements` | Character scalar or vector the same length as `patterns`. |
+| `x` | Character vector. `NA` elements return `NA`. |
+| `fixed` | Logical. Treat each pattern as a literal string. |
+| `ignore.case` | Logical. Case-insensitive matching. |
+| `sequential` | Logical (default `TRUE`). `TRUE` = chained passes; `FALSE` = single combined scan. |
+| `nthreads` | Integer or `NULL`. Thread count. |
+
+**Returns:** character vector the same length as `x`.
+
+```{r}
+gsub_all(c("Mr\\.", "Mrs\\."), c("Mister", "Missus"), c("Mr. Smith", "Mrs. Jones"))
+```
+
+## String utilities
+
+All four functions in this group preserve `names(x)` and `NA` handling
+exactly like their base R equivalents.
+
+### `ftrimws()`
+
+```r
+ftrimws(x, which = c("both", "left", "right"), whitespace = "[ \t\r\n]")
+```
+
+| Argument | Description |
+|---|---|
+| `x` | Character vector. `NA` elements return `NA`. |
+| `which` | One of `"both"`, `"left"`, `"right"`. |
+| `whitespace` | Regex of characters to strip. Only the default `"[ \t\r\n]"` uses the fast path; any other value delegates to `base::trimws()`. |
+
+**Returns:** character vector the same length as `x`, with `names(x)`
+preserved.
+
+```{r}
+ftrimws(c("  padded  ", "\ttabbed\n"))
+ftrimws("  left only", which = "left")
+```
+
+### `fsubstr()`
+
+```r
+fsubstr(x, start, stop)
+```
+
+| Argument | Description |
+|---|---|
+| `x` | Character vector. `NA` elements return `NA`. |
+| `start`, `stop` | Integer (or numeric) vectors of length 1 or `length(x)`, 1-indexed, clamped to each string's bounds, recycled to `length(x)`. `NA` in either produces `NA` for that element. |
+
+**Returns:** character vector the same length as `x`.
+
+```{r}
+fsubstr("NSWREC123456789", 1, 3)
+fsubstr(rep("ABCDEFGH", 3), c(1, 4, 7), c(3, 6, 8))  # vectorised start/stop
+```
+
+### `fnchar()`
+
+```r
+fnchar(x, type = "chars", allowNA = FALSE, keepNA = NA)
+```
+
+| Argument | Description |
+|---|---|
+| `x` | Vector, coerced to character via `as.character()` if needed. |
+| `type` | One of `"bytes"`, `"chars"`, or `"width"`. `"width"` delegates to `base::nchar()` (display width isn't parallelised). |
+| `allowNA` | Logical. Ignored; the fast path never raises an encoding error regardless. |
+| `keepNA` | Logical or `NA` (default). `NA`/`TRUE`: `NA` elements of `x` return `NA`. `FALSE`: they return `2L` (length of the string `"NA"`), matching base R's legacy behaviour. |
+
+**Returns:** integer vector the same length as `x`, with `names(x)`
+preserved.
+
+```{r}
+fnchar(c("café", "abc", NA))
+fnchar(c("café", "abc"), type = "bytes")  # "é" is 2 bytes in UTF-8
+```
+
+### `fchartr()`
+
+```r
+fchartr(old, new, x)
+```
+
+| Argument | Description |
+|---|---|
+| `old`, `new` | Single strings with the same number of characters. Each character of `old` maps to the corresponding character of `new`. |
+| `x` | Character vector. `NA` elements return `NA`. |
+
+**Returns:** character vector the same length as `x`. Falls back to
+`base::chartr()` automatically when `old`/`new` contain multi-byte
+characters (the fast path is a flat byte lookup table, valid only for
+single-byte/ASCII characters).
+
+```{r}
+fchartr("'-", "  ", c("O'Brien", "Smith-Jones"))
+fchartr("aeiou", "AEIOU", "fast string")
+```
+
+## Dates
+
+### `format_date()`
+
+```r
+format_date(x, format = c("iso", "compact", "dmy", "ymd_slash"))
+```
+
+| Argument | Description |
+|---|---|
+| `x` | A `Date` object or numeric vector of days since 1970-01-01. |
+| `format` | `"iso"` (`YYYY-MM-DD`), `"compact"` (`YYYYMMDD`), `"dmy"` (`DD/MM/YYYY`), or `"ymd_slash"` (`YYYY/MM/DD`). |
+
+**Returns:** character vector the same length as `x`.
+
+```{r}
+format_date(as.Date(c("2024-06-18", NA)), "compact")
+```
+
+### `format_date_parts()`
+
+Pure string-building (zero-padding plus punctuation, no calendar math, no
+`Date` object) — the inverse of `date_parts()`.
+
+```r
+format_date_parts(year, month, day, format = c("iso", "compact", "dmy", "ymd_slash"))
+```
+
+| Argument | Description |
+|---|---|
+| `year`, `month`, `day` | Numeric vectors, recycled to a common length. `NA`, non-integer-coercible, or out-of-width values (year outside 0-9999, month/day outside 0-99) produce `NA` for that element. No calendar validation — `month = 13` formats as given if it fits the field width. |
+| `format` | Same four options as `format_date()`. |
+
+**Returns:** character vector recycled to the common length of `year`,
+`month`, `day`.
+
+```{r}
+format_date_parts(2024, 6, 18, "iso")
+```
+
+### `date_parts()`
+
+```r
+date_parts(x)
+```
+
+| Argument | Description |
+|---|---|
+| `x` | A `Date` object or numeric vector of days since 1970-01-01. |
+
+**Returns:** a `data.frame` with integer columns `year`, `month`, `day`.
+
+```{r}
+date_parts(as.Date(c("2024-06-18", "1999-12-31")))
+```
+
+### `fas.Date()`
+
+Not a drop-in for `base::as.Date()` — see @sec-theory for the speed/
+strictness trade-off (no days-in-month or leap-year validation).
+
+```r
+fas.Date(x, format = c("iso", "compact", "dmy", "ymd_slash"))
+```
+
+| Argument | Description |
+|---|---|
+| `x` | Character vector. `NA` elements, and elements that don't match `format` exactly (wrong length/separators/non-digits) or have an out-of-range month/day, become `NA`. |
+| `format` | Same four options as `format_date()`; `x` must be in exactly this one format. |
+
+**Returns:** a `Date` vector the same length as `x`.
+
+```{r}
+fas.Date(c("18/06/2024", "31/12/1999", "not-a-date"), "dmy")
+```
+
+## Phonetic blocking keys
+
+Both functions have no base R equivalent and are intended as blocking
+keys ahead of fuzzy name matching (@sec-theory, @sec-workflow).
+
+### `soundex()`
+
+```r
+soundex(x)
+```
+
+| Argument | Description |
+|---|---|
+| `x` | Character vector (coerced via `as.character()` if not already character — e.g. a factor read from CSV). `NA` elements, and elements with no alphabetic characters, return `NA`. |
+
+**Returns:** character vector the same length as `x`, with `names(x)`
+preserved; each element either `NA` or exactly 4 characters.
+
+```{r}
+soundex(c("Robert", "Rupert", "Ashcraft"))
+```
+
+### `nysiis()`
+
+```r
+nysiis(x)
+```
+
+| Argument | Description |
+|---|---|
+| `x` | Character vector (coerced via `as.character()` if needed). `NA` elements, and elements with no alphabetic characters, return `NA`. |
+
+**Returns:** character vector the same length as `x`, with `names(x)`
+preserved; each element either `NA` or up to 6 characters.
+
+```{r}
+nysiis(c("Robert", "Rupert", "Ashcraft"))
+```
+
+## Fuzzy string similarity
+
+### `jaro_winkler()`
+
+Vectorised pairwise Jaro-Winkler similarity. See @sec-theory for the
+algorithm and the bit-parallel implementation.
+
+```r
+jaro_winkler(a, b, p = 0.1, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `a`, `b` | Equal-length character vectors. |
+| `p` | Prefix scaling factor (default `0.1`, the standard value). |
+| `nthreads` | Integer or `NULL`. Thread count. |
+
+**Returns:** numeric vector of similarities in `[0, 1]`.
+
+```{r}
+jaro_winkler(c("MARTHA", "DWAYNE"), c("MARHTA", "DUANE"))
+jaro_winkler("SMITH", "SMYTH", p = 0)    # no prefix bonus
+jaro_winkler("SMITH", "SMYTH", p = 0.1)  # standard prefix bonus
+```
+
+### `jaro_winkler_matrix()`
+
+All-pairs Jaro-Winkler similarity — every element of `a` against every
+element of `b`.
+
+```r
+jaro_winkler_matrix(a, b, p = 0.1, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `a` | Character vector of length n (rows). |
+| `b` | Character vector of length m (columns). |
+| `p`, `nthreads` | Same as `jaro_winkler()`. |
+
+**Returns:** numeric matrix of dimensions n × m.
+
+```{r}
+jaro_winkler_matrix(c("JOHN SMITH", "MARY JONES"), c("JON SMYTH", "MARY JONES", "JOHN SMITH"))
+```
+
+### `jaro_winkler_tokens()`
+
+Token-reorder- and punctuation-aware Jaro-Winkler similarity. Full
+mechanics in @sec-theory.
+
+```r
+jaro_winkler_tokens(a, b, p = 0.1, ignore_case = FALSE, strip = "['’-]",
+                     extra_penalty = NULL, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `a`, `b` | Equal-length character vectors. |
+| `p` | Prefix scaling factor (default `0.1`). |
+| `ignore_case` | Logical (default `FALSE`). Uppercase both sides before comparing. |
+| `strip` | Single regex string matching punctuation to remove before tokenising, or `NULL` to skip. Default `"['’-]"` strips straight/curly apostrophes and hyphens. |
+| `extra_penalty` | `NULL` (default) or a non-negative numeric scalar. `NULL`: unmatched tokens dilute the average (divide by `max(n_tokens_a, n_tokens_b)`). A number: average over only matched tokens, then subtract `extra_penalty` per unmatched token (floored at 0) — `0` ignores extra tokens outright. |
+| `nthreads` | Integer or `NULL`. Thread count. |
+
+**Returns:** numeric vector of similarities in `[0, 1]`. `NA` if either
+side of a pair is `NA`.
+
+```{r}
+# Reordered tokens, one near-miss — rescued relative to plain jaro_winkler()
+jaro_winkler_tokens("Kyle John Haynes", "John Kylie Haynes")
+jaro_winkler("Kyle John Haynes", "John Kylie Haynes")
+
+# Punctuation/spacing variants of the same name
+jaro_winkler_tokens(c("OBrien", "OBrien"), c("O Brien", "O'Brien"))
+
+# A stray extra token, penalised by default...
+jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle")
+# ...vs. ignored outright with extra_penalty = 0
+jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle", extra_penalty = 0)
+# ...vs. lightly discounted
+jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle", extra_penalty = 0.1)
+```

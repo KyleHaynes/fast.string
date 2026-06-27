@@ -1,0 +1,100 @@
+# Preface {.unnumbered}
+
+`fast.string` is an R package of drop-in-faster equivalents for the string,
+date, and phonetic-matching functions that show up constantly in record
+linkage and ETL work — `grepl()`, `grep()`, `sub()`, `gsub()`, `trimws()`,
+`substr()`, `nchar()`, `chartr()`, plus a handful of functions base R simply
+doesn't have at all: Soundex/NYSIIS phonetic codes, and vectorised
+Jaro-Winkler similarity (including a token-reorder/punctuation-aware
+variant for multi-word names).
+
+Everything is parallelised across every CPU core via Intel TBB (through
+[RcppParallel](https://rcppcore.github.io/RcppParallel/)), with
+[PCRE2](https://www.pcre.org/) doing the regex work and
+[RE2](https://github.com/google/re2)'s `StringPiece` handling fixed/literal
+matching. Typical speedups over base R are **5-40x** on large character
+vectors; some operations (parallel Jaro-Winkler, multi-pattern substitution
+in one pass) have no base R equivalent at all.
+
+## Why this exists
+
+Record linkage and data-cleaning pipelines spend a surprising fraction of
+their wall-clock time in string operations that look trivial in isolation —
+`trimws()` on a column, a `gsub()` to strip punctuation, `grepl()` to flag a
+pattern — but get called over and over on multi-million-row name/address
+files. Individually each call is fast; in aggregate, on a 5M-row file, they
+add up to minutes of CPU time spent doing work a single core could be doing
+across eight or sixteen instead.
+
+Three things are conspicuously *not* one function each in base R, despite
+being everywhere in this kind of pipeline:
+
+- **Phonetic blocking keys** (Soundex, NYSIIS) — used to group
+  *probably-same* names before running an expensive pairwise comparison
+  within each group, rather than comparing every record against every
+  other record.
+- **Fuzzy string similarity** (Jaro-Winkler) — base R has no notion of
+  "how similar are these two strings," only exact (`==`) or pattern
+  (`grepl()`) matching.
+- **Multi-token name comparison** — `"Kyle John Haynes"` and
+  `"John Kylie Haynes"` are obviously the same person with two tokens
+  swapped, but a plain character-by-character comparison scores that badly.
+
+`fast.string` exists to make all of the above fast enough to run
+unblinkingly on real-sized data, and to package the boring-but-essential
+80% (trimming, substitution, date parsing) so a project doesn't need five
+different dependencies for five different speed problems.
+
+## What this is *not*
+
+To set expectations: `fast.string` is a toolbox of vectorised primitives,
+not a record-linkage framework. It doesn't do blocking-strategy selection,
+EM-based match probability estimation, or persistence of a linked dataset —
+for that end of the problem, pair it with something like
+[`RecordLinkage`](https://cran.r-project.org/package=RecordLinkage) or
+[`reclin2`](https://cran.r-project.org/package=reclin2), and use
+`fast.string` for the per-string comparison work those packages call
+underneath. @sec-benchmarks compares `fast.string`'s comparison primitives
+directly against the equivalent functions in `RecordLinkage` and
+`stringdist` at scale.
+
+## How this book is organised
+
+- **Getting started** — what `fast.string` is for and how it's positioned
+  against base R, `stringi`/`stringr`, `stringdist`, and `RecordLinkage`
+  (@sec-about), then a hands-on tour of every function group
+  (@sec-quickstart).
+- **Under the hood** — the algorithms (@sec-theory): why two regex
+  engines, how the bit-parallel Jaro-Winkler implementation works, how
+  multi-token name comparison resolves reordered tokens — followed by a
+  full worked record-linkage pipeline (@sec-workflow) putting the pieces
+  together.
+- **Reference** — an exhaustive per-function reference with every
+  argument and runnable examples (@sec-reference); the heavy benchmark
+  chapter at **3 million strings**, with `base`, `stringi`, `stringdist`,
+  and `RecordLinkage` as comparison baselines (@sec-benchmarks); and a
+  troubleshooting/FAQ chapter (@sec-troubleshooting).
+
+## A quick taste
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+```
+
+```{r}
+#| label: teaser
+n <- 2e5
+x <- sprintf("%s-%04d", sample(c("John Smith", "Mary O'Brien", "Kyle Haynes"), n, TRUE), sample(9999, n, TRUE))
+
+system.time(base::grepl("Smith", x))
+system.time(fast.string::fgrepl("Smith", x))
+
+round(fast.string::jaro_winkler_tokens("Kyle John Haynes", "John Kylie Haynes"), 3)
+```
+
+That last call is the headline example for the multi-token comparison
+function: two names with reordered tokens and one typo still score above
+0.95. The full story — including why it also handles `"O'Brien"` vs.
+`"O Brien"` vs. `"OBrien"` — is in @sec-theory and @sec-reference.

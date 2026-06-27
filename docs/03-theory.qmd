@@ -1,0 +1,275 @@
+# Algorithms under the hood {#sec-theory}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+has_recordlinkage <- requireNamespace("RecordLinkage", quietly = TRUE)
+```
+
+This chapter explains *why* the package is built the way it is, not just
+*what* each function does (that's @sec-reference). Skip it if you just want
+to call functions; read it if a benchmark number surprises you, or if
+you're deciding whether to trust the package's behaviour on a pattern or
+input shape you care about.
+
+## Two regex engines, and a safety net
+
+R's default regex engine is TRE, which doesn't support lookaround,
+possessive quantifiers, or atomic groups. `perl = TRUE` switches to PCRE,
+which does — at the cost of being a backtracking engine, which means
+certain patterns (nested quantifiers over ambiguous alternations, mainly)
+can exhibit catastrophic exponential-time backtracking on adversarial
+input.
+
+`fast.string` uses **PCRE2** for regex (full modern syntax, via Rcpp, not
+`base::grepl(perl = TRUE)`) and **RE2's `StringPiece`** for the
+`fixed = TRUE` literal-matching path. RE2 is built on a Thompson NFA
+construction with no backtracking at all — its matching time is
+*guaranteed* linear in the input, regardless of pattern. For literal
+strings (no regex metacharacters), that guarantee comes for free, so
+`fixed = TRUE` always takes the RE2 path.
+
+The catch with PCRE2: it's still a backtracking engine, so the
+catastrophic-backtracking risk that motivated using RE2 for fixed strings
+doesn't disappear for genuine regex patterns. What `fast.string` adds is a
+**syntax safety net**, not a backtracking guarantee: every regex-accepting
+function scans the pattern for PCRE-only syntax before taking the fast
+path —
+
+```{r}
+#| label: pcre-detect
+#| eval: false
+.has_pcre_only_syntax <- function(pattern) {
+    base::grepl(
+        paste0(
+            "\\(\\?[=!]",       # (?= lookahead   (?! negative lookahead
+            "|\\(\\?<[=!]",     # (?<= lookbehind  (?<! negative lookbehind
+            "|\\(\\?>",         # (?> atomic group
+            "|[*+?]\\+",        # *+  ++  ?+  possessive quantifiers
+            "|\\(\\?P[=<]",     # (?P=  (?P<  named backref / group
+            "|\\\\k[<']",       # \k<name>  \k'name'  named backreference
+            "|\\(\\?R\\)",      # (?R) full-pattern recursion
+            "|\\(\\?[0-9]",     # (?1) (?2) … numbered group recursion
+            "|\\(\\?&"          # (?&name) named group recursion
+        ),
+        pattern, perl = TRUE
+    )
+}
+```
+
+— and if it finds any, and the caller didn't explicitly pass
+`perl = TRUE`, the call transparently delegates to `base::grepl()`/
+`base::gsub()` with `perl = TRUE` instead of running it through
+`fast.string`'s own PCRE2 path, with a `cli::cli_inform()` notice
+explaining why:
+
+```{r}
+#| label: pcre-fallback
+fgrepl("(?<=foo)bar", c("foobar", "bazbar"), perl = FALSE)
+```
+
+This exists because `fast.string`'s PCRE2 binding and base R's PCRE
+binding are two different code paths with two different sets of supported
+constructs at the edges — the safety net means a pattern either runs
+correctly on the fast path, or falls back to a path R has already battle-
+tested for that exact syntax. It never silently mismatches.
+
+## Parallelism: RcppParallel, not `parallel`/`future`
+
+`parallel::mclapply()` and `future::plan(multisession)` parallelise across
+**R processes**: each worker is a separate R session, so every call pays
+process-management and (for anything that isn't fork-based) serialisation
+overhead — typically milliseconds at minimum, often more. That's
+negligible if each task takes seconds; it dominates if each task is "trim
+this one string."
+
+`fast.string` instead uses [RcppParallel](https://rcppcore.github.io/RcppParallel/)'s
+`parallelFor`, which partitions a single C++ loop across an Intel TBB
+thread pool **inside one R call**, with no process boundary and no
+serialisation step — the per-call dispatch overhead is microseconds, not
+milliseconds. The trade-off is that this parallelism lives entirely inside
+the C++ implementation: it's not something you can apply to arbitrary R
+code, only to the specific loops this package has written in C++.
+
+Because even microsecond dispatch overhead isn't free, every parallel
+function applies a size threshold before bothering: typically `n >= 1000`
+elements for pairwise vector operations, `n * m >= 10000` cells for matrix
+operations (`jaro_winkler_matrix()`). Below the threshold, the function
+just runs the loop on the calling thread — measurably faster than paying
+thread-pool dispatch cost for, say, ten comparisons. @sec-benchmarks shows
+this crossover explicitly with small-`n` timings.
+
+Thread count is controlled the same way wherever it's exposed: the regex
+family (`fgrepl()`, `fgrep()`, `fsub()`, `fgsub()`, `gsub_all()`) and the
+Jaro-Winkler family (`jaro_winkler()`, `jaro_winkler_matrix()`,
+`jaro_winkler_tokens()`) take an `nthreads` argument (`NULL` = let TBB use
+all available cores), which calls `RcppParallel::setThreadOptions(numThreads
+= nthreads)` before dispatch. The string-utility, date, and phonetic
+functions don't expose `nthreads` — they always run at whatever the
+process-wide TBB thread count currently is, which matters because
+`setThreadOptions()` is a *process-wide* setting that outlives the call
+that set it (@sec-troubleshooting).
+
+## Jaro and Jaro-Winkler similarity
+
+Jaro similarity between strings $s_1$ (length $l_1$) and $s_2$ (length
+$l_2$) is:
+
+$$
+\text{Jaro}(s_1, s_2) = \frac{1}{3}\left(\frac{m}{l_1} + \frac{m}{l_2} + \frac{m - t}{m}\right)
+$$
+
+where $m$ is the number of *matching* characters — characters common to
+both strings within a sliding window of $\lfloor \max(l_1, l_2)/2 \rfloor - 1$
+positions — and $t$ is the number of *transpositions* (matched characters
+that appear in a different relative order) divided by two. Jaro-Winkler
+adds a bonus for a shared prefix (up to 4 characters), scaled by `p`
+(default `0.1`, the standard value):
+
+$$
+\text{JW}(s_1, s_2) = \text{Jaro}(s_1, s_2) + \ell \cdot p \cdot (1 - \text{Jaro}(s_1, s_2))
+$$
+
+where $\ell$ is the length of the common prefix, capped at 4. This is why
+`jaro_winkler("SMITH", "SMYTH", p = 0.1)` scores higher than the same pair
+with `p = 0` — `SM` is a shared prefix that the Winkler boost rewards, on
+the reasoning that people are more likely to make typos later in a word
+than at the start.
+
+### The bit-parallel trick
+
+The textbook Jaro algorithm, for each character in $s_1$, linearly scans
+the matching window in $s_2$ for the first unclaimed equal character — an
+$O(l_1 \times \text{window})$ double loop. `fast.string` instead maintains,
+per worker thread, a 256-entry table of 64-bit bitmasks: `char_mask[c]` has
+bit $j$ set if `s2[j] == c`. Finding the first unclaimed match for
+`s1[i]` then becomes:
+
+```cpp
+uint64_t cand = char_mask[(unsigned char)s1[i]] & window_mask & ~used_mask;
+if (cand) {
+    int j = ctz64(cand);  // lowest set bit = leftmost match
+    ...
+}
+```
+
+— a handful of bitwise operations and one count-trailing-zeros instruction,
+replacing the inner linear scan entirely. This turns the
+$O(l_1 \times \text{window})$ comparison into $O(l_1 + l_2)$, and applies
+to any pair of strings up to 64 bytes each (covering the overwhelming
+majority of names and addresses). Longer strings fall back to a
+straightforward `bool[]`-array scalar implementation — still correct, just
+without the bitmask speedup.
+
+The `char_mask` table itself is `thread_local` and persists across calls
+within a worker thread (only the handful of bytes actually touched per
+call get cleared afterward), so the steady-state per-call setup cost is
+$O(l_2)$, not $O(256)$.
+
+### Token-aware comparison: `jaro_winkler_tokens()`
+
+Plain Jaro-Winkler compares strings as one ordered sequence of characters,
+so `"Kyle John Haynes"` vs. `"John Kylie Haynes"` scores badly — the
+*characters* moved, even though the *words* are almost all present.
+`jaro_winkler_tokens()` scores every pair two different ways and keeps
+whichever is higher:
+
+1. **Token alignment.** Split both strings on whitespace, score every
+   token in `a` against every token in `b`, then greedily pair off tokens
+   in descending order of similarity (repeatedly pick the best remaining
+   unused pair). This is a cheap approximation of an optimal bipartite
+   assignment — not guaranteed optimal in the general case, but for the 2-5
+   tokens typical of a name or address, it agrees with the true optimum
+   for all but pathological inputs. By default, the summed score divides
+   by `max(n_tokens_a, n_tokens_b)`, so missing/extra tokens dilute the
+   result; the `extra_penalty` argument switches to a scheme that instead
+   averages over only the *matched* tokens and subtracts a fixed penalty
+   per unmatched token — see @sec-reference for the worked example with
+   a stray middle initial.
+2. **Collapsed.** Both strings with whitespace removed, compared as one
+   string. This catches cases where the *only* difference is where the
+   token boundary falls — `"OBrien"` vs. `"O Brien"` — which token
+   alignment alone would under-score (one token vs. two, diluting the
+   average) even though they're clearly the same name.
+
+```{r}
+#| label: tokens-demo
+jaro_winkler_tokens("Kyle John Haynes", "John Kylie Haynes")  # token alignment wins
+jaro_winkler_tokens("OBrien", "O Brien")                      # collapsed framing wins
+```
+
+Both framings reuse the same underlying Jaro-Winkler primitive and the
+same parallelised, per-row execution as `jaro_winkler()` itself — tokenising,
+building the token similarity matrix, the greedy assignment, and the
+collapsed comparison all happen in one C++ pass over the whole input
+vector.
+
+## Soundex and NYSIIS
+
+Both are **phonetic encoding** schemes: they map a name to a short code
+such that names that *sound* alike (even if spelled differently) tend to
+map to the same code. They're used as **blocking keys** — group records by
+phonetic code first, then only run the expensive Jaro-Winkler comparison
+*within* a group, instead of against every other record in the dataset.
+
+**Soundex** (American/Census Bureau rules, implemented here) keeps the
+first letter verbatim, then maps the remaining consonants to digits
+(`B,F,P,V → 1`; `C,G,J,K,Q,S,X,Z → 2`; `D,T → 3`; `L → 4`; `M,N → 5`;
+`R → 6`), drops vowels, and pads/truncates to exactly 4 characters.
+Adjacent letters mapping to the *same* digit collapse to one — and `H`/`W`
+are **transparent** for that adjacency check, not just dropped. That
+transparency rule is the entire reason `"Ashcraft"` encodes as `A261` and
+not `A2261`: the `S` and `C` are separated by an `H`, but `H` doesn't break
+their adjacency, so they collapse to a single `2`.
+
+```{r}
+#| label: soundex-demo
+soundex(c("Ashcraft", "Ashcroft", "Robert", "Rupert"))
+```
+
+```{r}
+#| label: soundex-cross-pkg
+#| eval: !expr has_recordlinkage
+cat("fast.string::soundex:  ", fast.string::soundex("Ashcraft"), "(treats H as transparent)\n")
+cat("RecordLinkage::soundex:", RecordLinkage::soundex("Ashcraft"), "\n")
+```
+
+This H/W-transparency rule is exactly the kind of edge case where Soundex
+*implementations* genuinely disagree — some treat `H`/`W` as transparent
+(the canonical Census Bureau / Knuth *TAOCP* rule, and what `fast.string`
+follows), others drop them like any other consonant-adjacent vowel and get
+a different code for words like `"Ashcraft"`. Neither is "more correct"
+in any normative sense — Soundex was never formally standardised down to
+this level of detail — but it's worth knowing which rule a given package
+follows before assuming two Soundex columns from different tools are
+comparable.
+
+**NYSIIS** is more aggressive: it applies leading/trailing letter
+transforms first (e.g. a name starting with `MAC` becomes `MCC`, one ending
+in a vowel + `Y` drops the `Y`), then a per-letter substitution table with
+adjacent-duplicate collapsing, then truncates to 6 characters. It tends to
+produce fewer false-positive collisions than Soundex on typical English
+surnames, at the cost of a heavier per-element rule table — which is the
+direct explanation for why `nysiis()` benchmarks slower than `soundex()`
+in @sec-benchmarks despite both running through the same parallel
+dispatch.
+
+## Fast, fixed-format dates
+
+`format_date()`/`fas.Date()` deliberately don't replicate
+`base::format.Date()`/`base::as.Date()`'s full generality. Base R's date
+functions go through `strptime()`/`strftime()`, which are locale-aware and
+support arbitrary `%`-format strings — flexibility that costs real time
+when you're formatting the same fixed shape (say, ISO `YYYY-MM-DD`) for
+five million rows. `fast.string`'s date functions instead support exactly
+four fixed formats (`iso`, `compact`, `dmy`, `ymd_slash`) implemented as
+direct digit-to-character writes with zero-padding — no locale lookup, no
+calendar-math beyond what's needed to validate month (1-12) and day
+(1-31) ranges. There's deliberately *no* days-in-month or leap-year check,
+so `fas.Date("2024-02-30", "iso")` parses without error — trading
+strictness for speed, on the assumption that upstream data has already
+been validated or that downstream code will catch the implausible date
+some other way. If you need full calendar validation, `base::as.Date()` is
+still the right tool; `fas.Date()` is for when you already trust the input
+shape and just want it parsed fast.
