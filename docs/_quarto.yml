@@ -10,7 +10,7 @@ book:
   date-format: "D MMMM YYYY"
   search: true
   reader-mode: true
-  repo-url: https://github.com/KyleHaynes/anthropic_fast
+  repo-url: https://github.com/KyleHaynes/fast.string
   repo-actions: [edit, issue]
   page-footer:
     left: "fast.string — PCRE2 + RE2 + RcppParallel for R"
