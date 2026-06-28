@@ -65,6 +65,4 @@ at 2M-row scale (including `NA`/`""` edge cases), see
 [Benchmarks.R](Benchmarks.R).
 
 For a narrative walkthrough with worked examples for every function, see
-the Quarto vignette [`fast-string.qmd`](fast-string.qmd) (`quarto render
-fast-string.qmd`); see [PUBLISHING.md](PUBLISHING.md) for how to publish
-it to GitHub Pages.
+the Quarto vignette [https://kylehaynes.github.io/fast.string/](https://kylehaynes.github.io/fast.string/)
