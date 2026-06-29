@@ -259,6 +259,80 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_fuzz_ratio_impl
+NumericVector fast_fuzz_ratio_impl(const StringVector& a, const StringVector& b);
+RcppExport SEXP _fast_string_fast_fuzz_ratio_impl(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fuzz_ratio_impl(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_fuzz_partial_ratio_impl
+NumericVector fast_fuzz_partial_ratio_impl(const StringVector& a, const StringVector& b);
+RcppExport SEXP _fast_string_fast_fuzz_partial_ratio_impl(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fuzz_partial_ratio_impl(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_fuzz_token_sort_ratio_impl
+NumericVector fast_fuzz_token_sort_ratio_impl(const StringVector& a, const StringVector& b);
+RcppExport SEXP _fast_string_fast_fuzz_token_sort_ratio_impl(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fuzz_token_sort_ratio_impl(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_fuzz_token_set_ratio_impl
+NumericVector fast_fuzz_token_set_ratio_impl(const StringVector& a, const StringVector& b);
+RcppExport SEXP _fast_string_fast_fuzz_token_set_ratio_impl(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fuzz_token_set_ratio_impl(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_jaccard_impl
+NumericVector fast_jaccard_impl(const StringVector& a, const StringVector& b, int q);
+RcppExport SEXP _fast_string_fast_jaccard_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_jaccard_impl(a, b, q));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_jaccard_matrix_impl
+NumericMatrix fast_jaccard_matrix_impl(const StringVector& a, const StringVector& b, int q);
+RcppExport SEXP _fast_string_fast_jaccard_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_jaccard_matrix_impl(a, b, q));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_grepl_impl", (DL_FUNC) &_fast_string_fast_grepl_impl, 3},
@@ -280,6 +354,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_substr_impl", (DL_FUNC) &_fast_string_fast_substr_impl, 3},
     {"_fast_string_fast_nchar_impl", (DL_FUNC) &_fast_string_fast_nchar_impl, 3},
     {"_fast_string_fast_chartr_impl", (DL_FUNC) &_fast_string_fast_chartr_impl, 3},
+    {"_fast_string_fast_fuzz_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_ratio_impl, 2},
+    {"_fast_string_fast_fuzz_partial_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_partial_ratio_impl, 2},
+    {"_fast_string_fast_fuzz_token_sort_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_token_sort_ratio_impl, 2},
+    {"_fast_string_fast_fuzz_token_set_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_token_set_ratio_impl, 2},
+    {"_fast_string_fast_jaccard_impl", (DL_FUNC) &_fast_string_fast_jaccard_impl, 3},
+    {"_fast_string_fast_jaccard_matrix_impl", (DL_FUNC) &_fast_string_fast_jaccard_matrix_impl, 3},
     {NULL, NULL, 0}
 };
 

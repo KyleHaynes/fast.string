@@ -77,3 +77,27 @@ fast_chartr_impl <- function(old_chars, new_chars, x) {
     .Call(`_fast_string_fast_chartr_impl`, old_chars, new_chars, x)
 }
 
+fast_fuzz_ratio_impl <- function(a, b) {
+    .Call(`_fast_string_fast_fuzz_ratio_impl`, a, b)
+}
+
+fast_fuzz_partial_ratio_impl <- function(a, b) {
+    .Call(`_fast_string_fast_fuzz_partial_ratio_impl`, a, b)
+}
+
+fast_fuzz_token_sort_ratio_impl <- function(a, b) {
+    .Call(`_fast_string_fast_fuzz_token_sort_ratio_impl`, a, b)
+}
+
+fast_fuzz_token_set_ratio_impl <- function(a, b) {
+    .Call(`_fast_string_fast_fuzz_token_set_ratio_impl`, a, b)
+}
+
+fast_jaccard_impl <- function(a, b, q) {
+    .Call(`_fast_string_fast_jaccard_impl`, a, b, q)
+}
+
+fast_jaccard_matrix_impl <- function(a, b, q) {
+    .Call(`_fast_string_fast_jaccard_matrix_impl`, a, b, q)
+}
+

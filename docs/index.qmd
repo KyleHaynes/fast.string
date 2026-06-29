@@ -45,18 +45,17 @@ unblinkingly on real-sized data, and to package the boring-but-essential
 80% (trimming, substitution, date parsing) so a project doesn't need five
 different dependencies for five different speed problems.
 
-## What this is *not*
+## How it fits with record-linkage packages
 
-To set expectations: `fast.string` is a toolbox of vectorised primitives,
-not a record-linkage framework. It doesn't do blocking-strategy selection,
-EM-based match probability estimation, or persistence of a linked dataset —
-for that end of the problem, pair it with something like
+`fast.string` is a toolbox of vectorised string primitives. The
+blocking-strategy selection, EM-based match probability estimation, and
+persistence of a linked dataset are handled well already by packages like
 [`RecordLinkage`](https://cran.r-project.org/package=RecordLinkage) or
-[`reclin2`](https://cran.r-project.org/package=reclin2), and use
-`fast.string` for the per-string comparison work those packages call
-underneath. @sec-benchmarks compares `fast.string`'s comparison primitives
-directly against the equivalent functions in `RecordLinkage` and
-`stringdist` at scale.
+[`reclin2`](https://cran.r-project.org/package=reclin2) — pair `fast.string`
+with one of those for the per-string comparison work they call underneath.
+@sec-benchmarks compares `fast.string`'s comparison primitives directly
+against the equivalent functions in `RecordLinkage` and `stringdist` at
+scale.
 
 ## How this book is organised
 
