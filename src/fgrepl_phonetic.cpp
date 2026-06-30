@@ -3,6 +3,8 @@
 #include <RcppParallel.h>
 #include <string>
 #include <vector>
+#include "double_metaphone_core.h"
+#include "caverphone_core.h"
 using namespace Rcpp;
 using namespace RcppParallel;
 
@@ -209,6 +211,97 @@ CharacterVector fast_nysiis_impl(const StringVector& x) {
     std::vector<std::string> results((std::size_t)n);
     std::vector<uint8_t> is_na((std::size_t)n, 0);
     NysiisWorker worker(x, results, is_na);
+    if (n >= 10000) parallelFor(0, (std::size_t)n, worker);
+    else            worker(0, (std::size_t)n);
+
+    CharacterVector result(n);
+    for (R_xlen_t i = 0; i < n; ++i) {
+        if (is_na[(std::size_t)i])
+            SET_STRING_ELT(result, i, NA_STRING);
+        else
+            SET_STRING_ELT(result, i, Rf_mkChar(results[(std::size_t)i].c_str()));
+    }
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// Double Metaphone (Lawrence Philips). Computed once per element, yielding
+// both the primary and alternate code in a single pass (see
+// double_metaphone_core.h for the port and its validation against Apache
+// Commons Codec's published test vectors).
+// ---------------------------------------------------------------------------
+
+struct DoubleMetaphoneWorker : public Worker {
+    SEXP x_sexp;
+    std::vector<std::string>& primary;
+    std::vector<std::string>& secondary;
+    std::vector<uint8_t>& is_na;
+
+    DoubleMetaphoneWorker(SEXP x, std::vector<std::string>& p, std::vector<std::string>& s,
+                           std::vector<uint8_t>& na)
+        : x_sexp(x), primary(p), secondary(s), is_na(na) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        for (std::size_t i = begin; i < end; ++i) {
+            SEXP elem = STRING_ELT(x_sexp, i);
+            if (elem == NA_STRING) { is_na[i] = 1; continue; }
+            std::string word(CHAR(elem), (std::size_t)LENGTH(elem));
+            double_metaphone_code(word, primary[i], secondary[i]);
+            if (primary[i].empty()) is_na[i] = 1;
+        }
+    }
+};
+
+// [[Rcpp::export]]
+List fast_double_metaphone_impl(const StringVector& x) {
+    R_xlen_t n = x.size();
+    std::vector<std::string> primary((std::size_t)n), secondary((std::size_t)n);
+    std::vector<uint8_t> is_na((std::size_t)n, 0);
+    DoubleMetaphoneWorker worker(x, primary, secondary, is_na);
+    if (n >= 10000) parallelFor(0, (std::size_t)n, worker);
+    else            worker(0, (std::size_t)n);
+
+    CharacterVector primary_out(n), secondary_out(n);
+    for (R_xlen_t i = 0; i < n; ++i) {
+        if (is_na[(std::size_t)i]) {
+            SET_STRING_ELT(primary_out, i, NA_STRING);
+            SET_STRING_ELT(secondary_out, i, NA_STRING);
+        } else {
+            SET_STRING_ELT(primary_out, i, Rf_mkChar(primary[(std::size_t)i].c_str()));
+            SET_STRING_ELT(secondary_out, i, Rf_mkChar(secondary[(std::size_t)i].c_str()));
+        }
+    }
+    return List::create(Named("primary") = primary_out, Named("secondary") = secondary_out);
+}
+
+// ---------------------------------------------------------------------------
+// Caverphone 2.0 (Caversham Project, University of Otago). Always produces
+// a 10-character code; see caverphone_core.h.
+// ---------------------------------------------------------------------------
+
+struct CaverphoneWorker : public Worker {
+    SEXP x_sexp;
+    std::vector<std::string>& results;
+    std::vector<uint8_t>& is_na;
+
+    CaverphoneWorker(SEXP x, std::vector<std::string>& r, std::vector<uint8_t>& na)
+        : x_sexp(x), results(r), is_na(na) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        for (std::size_t i = begin; i < end; ++i) {
+            SEXP elem = STRING_ELT(x_sexp, i);
+            if (elem == NA_STRING) { is_na[i] = 1; continue; }
+            results[i] = caverphone2_code(std::string(CHAR(elem), (std::size_t)LENGTH(elem)));
+        }
+    }
+};
+
+// [[Rcpp::export]]
+CharacterVector fast_caverphone_impl(const StringVector& x) {
+    R_xlen_t n = x.size();
+    std::vector<std::string> results((std::size_t)n);
+    std::vector<uint8_t> is_na((std::size_t)n, 0);
+    CaverphoneWorker worker(x, results, is_na);
     if (n >= 10000) parallelFor(0, (std::size_t)n, worker);
     else            worker(0, (std::size_t)n);
 

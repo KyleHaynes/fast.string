@@ -12,6 +12,8 @@
 suppressPackageStartupMessages(library(fast.string))
 library(stringi)
 library(microbenchmark)
+library(stringdist)
+library(phonics)
 
 # ============================================================================
 # Test data
@@ -214,6 +216,86 @@ tok_b <- make_multitoken_names(n)
 print(microbenchmark(
     plain_jaro_winkler = fast.string::jaro_winkler(tok_a, tok_b),
     jaro_winkler_tokens = fast.string::jaro_winkler_tokens(tok_a, tok_b),
+    times = 5
+))
+
+# ============================================================================
+# 6. EDIT DISTANCE — Levenshtein / Damerau-Levenshtein / Hamming vs stringdist
+# ============================================================================
+
+cat("\n=== levenshtein vs stringdist::stringdist(method = \"lv\") ===\n")
+print(microbenchmark(
+    stringdist = stringdist::stringdist(names_x, rev(names_x), method = "lv"),
+    fast       = fast.string::levenshtein(names_x, rev(names_x)),
+    times = 5
+))
+
+cat("\n=== damerau_levenshtein vs stringdist::stringdist(method = \"dl\") ===\n")
+print(microbenchmark(
+    stringdist = stringdist::stringdist(names_x, rev(names_x), method = "dl"),
+    fast       = fast.string::damerau_levenshtein(names_x, rev(names_x)),
+    times = 5
+))
+
+cat("\n=== hamming vs stringdist::stringdist(method = \"hamming\") (equal-length strings) ===\n")
+names_eqlen <- fast.string::fsubstr(names_x, 1, 8) # pad/cap so lengths match -> avoids the all-Inf case
+print(microbenchmark(
+    stringdist = stringdist::stringdist(names_eqlen, rev(names_eqlen), method = "hamming"),
+    fast       = fast.string::hamming(names_eqlen, rev(names_eqlen)),
+    times = 5
+))
+
+# ============================================================================
+# 7. Q-GRAM SET METRICS — Jaccard / Dice / Tversky vs stringdist
+# ============================================================================
+
+cat("\n=== jaccard_index vs stringdist::stringsim(method = \"jaccard\") ===\n")
+print(microbenchmark(
+    stringdist = stringdist::stringsim(names_x, rev(names_x), method = "jaccard"),
+    fast       = fast.string::jaccard_index(names_x, rev(names_x)),
+    times = 5
+))
+
+cat("\n=== dice_coefficient / tversky_index (absolute throughput, no direct stringdist equivalent) ===\n")
+print(microbenchmark(
+    dice    = fast.string::dice_coefficient(names_x, rev(names_x)),
+    tversky = fast.string::tversky_index(names_x, rev(names_x), alpha = 0.3, beta = 0.7),
+    times = 5
+))
+
+# ============================================================================
+# 8. PHONETIC CODES v2 — Double Metaphone / Caverphone 2.0
+# ============================================================================
+# phonics::metaphone() implements classic (single-code) Metaphone, not Double
+# Metaphone, and phonics::caverphone()'s output doesn't match the Caverphone
+# 2.0 reference spec fast.string targets -- these are throughput comparisons
+# between "a phonetic-coding R function over this vector", not assertions
+# that the two sides produce identical codes.
+
+cat("\n=== double_metaphone vs phonics::metaphone (different algorithms; throughput only) ===\n")
+print(microbenchmark(
+    phonics = phonics::metaphone(names_x),
+    fast    = fast.string::double_metaphone(names_x),
+    times = 5
+))
+
+cat("\n=== caverphone vs phonics::caverphone (different Caverphone revision; throughput only) ===\n")
+print(microbenchmark(
+    phonics = phonics::caverphone(names_x, maxCodeLen = 10),
+    fast    = fast.string::caverphone(names_x),
+    times = 5
+))
+
+# ============================================================================
+# 9. FUZZYWUZZY-STYLE RATIOS — absolute throughput, no R/stringdist equivalent
+# ============================================================================
+
+cat("\n=== fuzz_ratio / fuzz_partial_ratio / fuzz_token_sort_ratio / fuzz_token_set_ratio ===\n")
+print(microbenchmark(
+    ratio       = fast.string::fuzz_ratio(tok_a, tok_b),
+    partial     = fast.string::fuzz_partial_ratio(tok_a, tok_b),
+    token_sort  = fast.string::fuzz_token_sort_ratio(tok_a, tok_b),
+    token_set   = fast.string::fuzz_token_set_ratio(tok_a, tok_b),
     times = 5
 ))
 

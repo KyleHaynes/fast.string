@@ -20,6 +20,7 @@ Suggests:
     stringi,
     stringdist,
     RecordLinkage,
+    phonics,
     microbenchmark,
     knitr
 LinkingTo:

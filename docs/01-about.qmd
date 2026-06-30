@@ -14,8 +14,12 @@ gap none of them cover on another:
 | Multi-pattern substitution in one scan | no | no | — | — | **yes** (`gsub_all()`) |
 | Fast fixed-format date parse/format | no | no | — | — | **yes** |
 | Soundex / NYSIIS phonetic codes | no | no | `phonetic()`/`soundex` | `soundex()` | **yes, parallelised** |
+| Double Metaphone / Caverphone 2.0 | no | no | no | no | **yes** (`double_metaphone()`, `caverphone()`) |
 | Jaro-Winkler similarity | no | no | `stringdist(method="jw")` | `jarowinkler()` | **yes, parallelised** |
 | Token-reorder-aware name comparison | no | no | no | no | **yes** (`jaro_winkler_tokens()`) |
+| Levenshtein / Damerau-Levenshtein / Hamming | no | no | `stringdist(method=...)` | no | **yes, parallelised & faster** |
+| Jaccard / Dice / Tversky q-gram similarity | no | no | `stringdist(method="jaccard")` only | no | **yes, parallelised & faster** |
+| fuzzywuzzy-style ratios | no | no | no | no | **yes** (port of Python's `fuzzywuzzy`) |
 
 A few things worth calling out explicitly:
 
@@ -26,10 +30,14 @@ A few things worth calling out explicitly:
   loops are single-threaded; this package's are TBB-parallel) and the
   data-linkage-specific functions stringi doesn't have at all.
 - **stringdist** is the closest relative for the fuzzy-matching half of
-  this package, and is a fine choice if that's all you need — it supports
-  more distance metrics (Levenshtein, OSA, cosine, q-gram, ...) than
-  `fast.string` does. What it doesn't have is the regex/substitution side,
-  phonetic codes, or token-reorder-aware comparison.
+  this package. `fast.string` now covers most of the same distance-metric
+  ground (Levenshtein, Damerau-Levenshtein/OSA, Hamming, Jaro-Winkler,
+  Jaccard) at 2-6x `stringdist`'s speed at multi-hundred-thousand-row scale
+  (@sec-benchmarks), plus a few `stringdist` doesn't have at all (Dice,
+  Tversky, token-reorder-aware comparison, fuzzywuzzy-style ratios). What
+  it still doesn't have is the regex/substitution side or `stringdist`'s
+  full breadth of more exotic metrics (cosine, LCS, full q-gram
+  tabulation).
 - **RecordLinkage** is a full record-linkage *framework* (blocking,
   EM-based classification, training), not a string-function library. Its
   `soundex()`/`jarowinkler()` are useful comparison points (used directly

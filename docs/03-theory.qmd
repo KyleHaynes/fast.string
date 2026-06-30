@@ -255,6 +255,182 @@ direct explanation for why `nysiis()` benchmarks slower than `soundex()`
 in @sec-benchmarks despite both running through the same parallel
 dispatch.
 
+## Double Metaphone and Caverphone
+
+`soundex()`/`nysiis()` were designed around English/American surnames;
+`double_metaphone()` and `caverphone()` are the package's answer for names
+that fall outside that design target.
+
+**Double Metaphone** (Lawrence Philips, 2000) returns *two* codes per
+word — `primary` and `secondary` — because some spellings genuinely have
+more than one plausible pronunciation: a `C` could be a hard `K` sound or
+a soft `S` sound depending on context, a `G` could be hard or soft, and so
+on. Rather than guessing one and risking a missed match, the algorithm
+emits both, and two names are usually considered a phonetic match if *any*
+of one side's codes equals *any* of the other's. This package's
+implementation is ported from the structure of the widely-used Apache
+Commons Codec Java implementation and cross-checked against its published
+unit-test vectors (`tests/testthat/test-double_metaphone.R`) rather than
+hand-derived, since the ruleset is large (dozens of context-sensitive
+branches per letter) and easy to get subtly wrong from a written
+description alone.
+
+```{r}
+#| label: dmetaphone-demo
+double_metaphone(c("Catherine", "Kathryn", "Smith", "Schmidt"))
+```
+
+`"Catherine"`/`"Kathryn"` sharing a code despite no letters lining up
+positionally is the kind of match Soundex/NYSIIS — which work
+letter-by-letter from the start of the word — structurally can't catch.
+
+One implementation detail worth calling out: unlike `soundex()`/`nysiis()`,
+which strip the input down to letters only before encoding, Double
+Metaphone keeps internal whitespace and punctuation (only the ends are
+trimmed, and the text uppercased). The algorithm's own rules key off
+literal multi-character fragments like `"VAN "`/`"SAN "`/`"SCH"`,
+*including the space* — stripping it first would silently break those
+rules.
+
+**Caverphone 2.0** (Caversham Project, University of Otago, 2004) takes a
+completely different shape: instead of a branching per-letter ruleset, it's
+a long fixed *chain* of substring transforms (originally specified as a
+sequence of regex replacements) — strip non-letters, handle a handful of
+silent-letter prefixes, replace `c`/`q`/`x`/`v`/`d`/`b`/`z` with their
+phonetic equivalents, collapse vowel runs to a placeholder digit, then
+clean up trailing consonants — always producing exactly 10 characters
+(padded with `1`s). It was designed for, and is still widely used on, New
+Zealand electoral-roll names, but works as a general-purpose alternative
+blocking key anywhere. This package's implementation is ported
+step-for-step from Apache Commons Codec's `Caverphone2` (again
+cross-checked against its published test vectors,
+`tests/testthat/test-caverphone.R`) including a documented quirk in the
+original 2004 specification — the `"enough"`/`"trough"` prefix rules are
+applied in an order that looks like a copy-paste duplication in the
+original paper — preserved here rather than "corrected", since the point
+of implementing a named phonetic algorithm is to match what every other
+implementation of *that algorithm* produces.
+
+```{r}
+#| label: caverphone-demo
+caverphone(c("Peter", "Tedder", "Stevenson"))
+```
+
+Trying more than one phonetic key (Soundex *and* NYSIIS *and* Double
+Metaphone *and* Caverphone, unioning the candidate blocks each produces)
+is a reasonable strategy when recall matters more than a small increase in
+block size — different rulesets group different near-miss spellings
+together, so one catches matches another misses.
+
+## Edit distance: Levenshtein and Damerau-Levenshtein
+
+`levenshtein()` and `damerau_levenshtein()` are the classic distance
+metrics — minimum number of single-character edits to turn one string into
+another. The textbook algorithm is an $O(l_1 \times l_2)$ dynamic-programming
+table; `stringdist` (and most other implementations) use exactly that.
+
+`levenshtein()` instead uses **Myers' (1999) bit-vector algorithm**: the
+same family of trick as this package's bit-parallel Jaro
+(@sec-theory's earlier section) — pack the *shorter* string's character
+positions into 64-bit masks (one mask per distinct byte value), then scan
+the *longer* string against those masks using a handful of bitwise
+operations per character instead of an inner loop over the DP row. That
+turns the usual $O(l_1 \times l_2)$ table into $O(l_1)$ word operations
+whenever the shorter string fits in 64 bits — true for the overwhelming
+majority of names/addresses. Pairs where even the shorter string exceeds
+64 bytes fall back to a conventional rolling-row DP.
+
+`damerau_levenshtein()` additionally treats an adjacent-character
+transposition (`"ab"` → `"ba"`) as a single edit rather than two
+substitutions — useful for typos, which are disproportionately adjacent
+swaps. There's no equivalently compact bit-parallel formulation for the
+transposition case that this package implements, so it uses a
+three-rolling-row DP (transposition needs to look back two rows, not one,
+unlike plain Levenshtein's one-row recurrence). This matches
+`stringdist::stringdist(method = "dl")`'s "optimal string alignment"
+(OSA) restriction — no substring is edited more than once — rather than
+unrestricted Damerau-Levenshtein, which is a genuinely different (and
+more expensive) algorithm.
+
+```{r}
+#| label: editdist-demo
+levenshtein("kitten", "sitting")
+damerau_levenshtein("ab", "ba")  # one transposition, not two substitutions
+```
+
+## Q-gram set similarity: Jaccard, Dice, Tversky
+
+A different family of similarity entirely: instead of an alignment between
+two character sequences, split each string into its set of overlapping
+length-`q` substrings ("q-grams" — bigrams for the default `q = 2`) and
+compare the two *sets*. This is symmetric in token order and insensitive
+to *where* a difference occurs, which makes it a useful complementary
+signal to edit-distance-style metrics rather than a replacement for them.
+
+`jaccard_index()`, `dice_coefficient()`, and `tversky_index()` all reduce
+to the same underlying triple — `|A|`, `|B|`, `|A ∩ B|` — combined three
+different ways:
+
+- Jaccard: $|A \cap B| / |A \cup B|$
+- Dice: $2|A \cap B| / (|A| + |B|)$ — always $\geq$ Jaccard for the same pair
+- Tversky: $|A \cap B| / (|A \cap B| + \alpha|A \setminus B| + \beta|B \setminus A|)$,
+  which reduces to Jaccard at $\alpha = \beta = 1$ and Dice at
+  $\alpha = \beta = 0.5$
+
+The speed advantage over `stringdist::stringdist(method = "jaccard")`
+comes from two things: for q-gram lengths up to 8 bytes (covering the
+default `q = 2` and the overwhelming majority of practical use), each
+q-gram packs exactly into a `uint64_t` — one shift-and-OR per byte — so the
+q-gram set is built and deduplicated as plain sorted integers, with no
+string allocation and no hash table. `stringdist` instead tabulates
+q-grams generically (to support arbitrary `q`, including very long ones)
+through R-level dispatch per pair.
+
+```{r}
+#| label: qgram-demo
+jaccard_index("night", "nacht")
+dice_coefficient("night", "nacht")
+```
+
+## fuzzywuzzy-style ratios: Ratcliff/Obershelp matching blocks
+
+`fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_token_sort_ratio()`, and
+`fuzz_token_set_ratio()` port Python's
+[fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy) package — useful when
+migrating a matching pipeline from Python, or when you specifically want
+fuzzywuzzy's flavour of scoring rather than edit distance or Jaro-Winkler.
+
+The core of all four is the **Ratcliff/Obershelp algorithm** — the same
+algorithm behind Python's `difflib.SequenceMatcher`, which is what
+fuzzywuzzy itself falls back to whenever the optional `python-Levenshtein`
+C extension isn't installed (this package implements that always-available
+reference behaviour, not the optional Levenshtein-based shortcut). It
+works by recursively finding the *longest common contiguous matching
+block* between two strings, then recursing into the unmatched left and
+right remainders on each side — repeating until no more matches are
+found. The total length of every matched block, `M`, gives a similarity
+ratio of `2*M / (len(a) + len(b))`. This is a meaningfully different
+notion of "similar" from edit distance: it rewards long shared *runs*
+rather than penalising every single-character difference equally, so a
+short insertion in the middle of an otherwise-identical string costs far
+less here than under Levenshtein.
+
+```{r}
+#| label: fuzz-demo
+fuzz_ratio("this is a test", "this is a test!")
+fuzz_partial_ratio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear")
+```
+
+`fuzz_partial_ratio()` builds on the same matching-blocks primitive: align
+the *shorter* string against every position the longer one offers (via
+those same matching blocks) and keep the best full-ratio alignment —
+useful when one string is plausibly a true substring of the other, padded
+with unrelated text on either side. `fuzz_token_sort_ratio()` and
+`fuzz_token_set_ratio()` layer tokenisation on top (sort-and-rejoin, or
+set-intersection-and-leftovers respectively) before running the same
+ratio underneath, the same way `jaro_winkler_tokens()` layers tokenisation
+on top of plain Jaro-Winkler.
+
 ## Fast, fixed-format dates
 
 `format_date()`/`fas.Date()` deliberately don't replicate

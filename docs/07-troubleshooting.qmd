@@ -41,9 +41,12 @@ Every function in this package returns `NA` for `NA` input — but a few
 functions also return `NA` for specific *valid-looking but unparseable*
 inputs:
 
-- `soundex()`/`nysiis()` return `NA` for strings with **no alphabetic
-  characters at all** (e.g. `"123"`, `""`) — there's no phonetic code for
-  a string with nothing to encode phonetically.
+- `soundex()`/`nysiis()`/`double_metaphone()` return `NA` for strings with
+  **no alphabetic characters at all** (e.g. `"123"`, `""`) — there's no
+  phonetic code for a string with nothing to encode phonetically.
+  `caverphone()` is the exception: it always returns a 10-character code
+  for non-`NA` input (even `""`, which codes as `"1111111111"`), matching
+  its reference implementation's behaviour.
 - `fas.Date()` returns `NA` for any string that doesn't match the
   specified `format` *exactly* (wrong length, wrong separator position,
   non-digit where a digit is expected) or has an out-of-range month/day.
@@ -116,10 +119,10 @@ RcppParallel::setThreadOptions(numThreads = "auto")
 ```
 
 A handful of functions (`ftrimws()`, `fsubstr()`, `fnchar()`, `fchartr()`,
-the `format_date()` family, `soundex()`, `nysiis()`) don't take `nthreads`
-at all — they always run at whatever the process-wide setting currently
-is, so they're affected by this too even though they have no argument
-that looks like it would be.
+the `format_date()` family, `soundex()`, `nysiis()`, `double_metaphone()`,
+`caverphone()`) don't take `nthreads` at all — they always run at whatever
+the process-wide setting currently is, so they're affected by this too
+even though they have no argument that looks like it would be.
 
 ### Does `nthreads` help on a machine with few cores?
 

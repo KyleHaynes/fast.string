@@ -61,6 +61,14 @@ fast_nysiis_impl <- function(x) {
     .Call(`_fast_string_fast_nysiis_impl`, x)
 }
 
+fast_double_metaphone_impl <- function(x) {
+    .Call(`_fast_string_fast_double_metaphone_impl`, x)
+}
+
+fast_caverphone_impl <- function(x) {
+    .Call(`_fast_string_fast_caverphone_impl`, x)
+}
+
 fast_trimws_impl <- function(x, which) {
     .Call(`_fast_string_fast_trimws_impl`, x, which)
 }
@@ -93,11 +101,47 @@ fast_fuzz_token_set_ratio_impl <- function(a, b) {
     .Call(`_fast_string_fast_fuzz_token_set_ratio_impl`, a, b)
 }
 
+fast_levenshtein_impl <- function(a, b) {
+    .Call(`_fast_string_fast_levenshtein_impl`, a, b)
+}
+
+fast_levenshtein_matrix_impl <- function(a, b) {
+    .Call(`_fast_string_fast_levenshtein_matrix_impl`, a, b)
+}
+
+fast_damerau_levenshtein_impl <- function(a, b) {
+    .Call(`_fast_string_fast_damerau_levenshtein_impl`, a, b)
+}
+
+fast_damerau_levenshtein_matrix_impl <- function(a, b) {
+    .Call(`_fast_string_fast_damerau_levenshtein_matrix_impl`, a, b)
+}
+
+fast_hamming_impl <- function(a, b) {
+    .Call(`_fast_string_fast_hamming_impl`, a, b)
+}
+
 fast_jaccard_impl <- function(a, b, q) {
     .Call(`_fast_string_fast_jaccard_impl`, a, b, q)
 }
 
 fast_jaccard_matrix_impl <- function(a, b, q) {
     .Call(`_fast_string_fast_jaccard_matrix_impl`, a, b, q)
+}
+
+fast_dice_impl <- function(a, b, q) {
+    .Call(`_fast_string_fast_dice_impl`, a, b, q)
+}
+
+fast_dice_matrix_impl <- function(a, b, q) {
+    .Call(`_fast_string_fast_dice_matrix_impl`, a, b, q)
+}
+
+fast_tversky_impl <- function(a, b, q, alpha, beta) {
+    .Call(`_fast_string_fast_tversky_impl`, a, b, q, alpha, beta)
+}
+
+fast_tversky_matrix_impl <- function(a, b, q, alpha, beta) {
+    .Call(`_fast_string_fast_tversky_matrix_impl`, a, b, q, alpha, beta)
 }
 

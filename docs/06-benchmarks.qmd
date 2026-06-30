@@ -10,6 +10,7 @@ suppressPackageStartupMessages({
 })
 has_stringdist     <- requireNamespace("stringdist", quietly = TRUE)
 has_recordlinkage  <- requireNamespace("RecordLinkage", quietly = TRUE)
+has_phonics        <- requireNamespace("phonics", quietly = TRUE)
 ```
 
 Every other chapter uses small inputs so the page renders quickly. This
@@ -26,9 +27,15 @@ Comparison baselines, used wherever they have a real equivalent:
   general string operations (stringr wraps stringi; benchmarks below call
   stringi directly).
 - **stringdist** — `method = "jw"` is the closest equivalent to
-  `jaro_winkler()`.
+  `jaro_winkler()`; `method = "lv"`/`"dl"`/`"hamming"`/`"jaccard"` are the
+  closest equivalents to `levenshtein()`/`damerau_levenshtein()`/
+  `hamming()`/`jaccard_index()`.
 - **RecordLinkage** — `soundex()` and `jarowinkler()` are the closest
   equivalents to this package's phonetic and fuzzy-matching functions.
+- **phonics** — `metaphone()` and `caverphone()` are throughput comparison
+  points for `double_metaphone()`/`caverphone()`; they implement different
+  algorithm revisions, so outputs aren't expected to match (the comparison
+  is "a phonetic-coding R function over this vector", not output parity).
 
 ```{r}
 #| label: versions
@@ -36,6 +43,7 @@ cat("fast.string: ", as.character(utils::packageVersion("fast.string")), "\n")
 cat("stringi:     ", as.character(utils::packageVersion("stringi")), "\n")
 if (has_stringdist)    cat("stringdist:  ", as.character(utils::packageVersion("stringdist")), "\n")
 if (has_recordlinkage) cat("RecordLinkage:", as.character(utils::packageVersion("RecordLinkage")), "\n")
+if (has_phonics)       cat("phonics:     ", as.character(utils::packageVersion("phonics")), "\n")
 cat("R:           ", R.version.string, "\n")
 cat("cores:       ", parallel::detectCores(), "\n")
 ```
@@ -194,6 +202,32 @@ rule table is genuinely heavier per element (leading/trailing transforms
 plus a stateful per-letter pass, vs. Soundex's single fixed lookup), as
 described in @sec-theory.
 
+`double_metaphone()` and `caverphone()` are considerably heavier rulesets
+again (Double Metaphone's branching is the most involved of the four;
+Caverphone 2.0 is a long fixed chain of substring transforms), so absolute
+throughput is lower — `phonics::metaphone()`/`phonics::caverphone()` are
+shown alongside as "another phonetic-coding R function over this vector"
+throughput comparisons, not as algorithm-equivalent baselines (see the
+note at the top of this chapter):
+
+```{r}
+#| label: bench-phonetic-v2
+t_fast_dm <- system.time(fast.string::double_metaphone(names_x))["elapsed"]
+t_fast_cp <- system.time(fast.string::caverphone(names_x))["elapsed"]
+cat(sprintf("fast.string::double_metaphone %.3fs\nfast.string::caverphone       %.3fs\n",
+            t_fast_dm, t_fast_cp))
+
+if (has_phonics) {
+    t_ph_mp <- system.time(phonics::metaphone(names_x))["elapsed"]
+    t_ph_cp <- system.time(phonics::caverphone(names_x, maxCodeLen = 10))["elapsed"]
+    cat(sprintf("phonics::metaphone   %.3fs\nphonics::caverphone  %.3fs\n", t_ph_mp, t_ph_cp))
+    record("double_metaphone", "phonics::metaphone (different algorithm)", t_ph_mp, t_fast_dm)
+    record("caverphone", "phonics::caverphone (different revision)", t_ph_cp, t_fast_cp)
+} else {
+    cat("phonics not installed — skipping cross-package comparison.\n")
+}
+```
+
 ## Fuzzy string similarity
 
 ```{r}
@@ -262,6 +296,81 @@ t_plain  <- system.time(fast.string::jaro_winkler(tok_a, tok_b))["elapsed"]
 t_tokens <- system.time(fast.string::jaro_winkler_tokens(tok_a, tok_b))["elapsed"]
 cat(sprintf("fast.string::jaro_winkler        %.3fs (%s pairs)\n", t_plain, format(n, big.mark = ",", scientific = FALSE)))
 cat(sprintf("fast.string::jaro_winkler_tokens %.3fs (%.1fx the plain-comparison cost)\n", t_tokens, t_tokens / t_plain))
+```
+
+## Edit distance
+
+```{r}
+#| label: bench-editdist
+t_fast_lv <- system.time(fast.string::levenshtein(names_x, rev(names_x)))["elapsed"]
+t_fast_dl <- system.time(fast.string::damerau_levenshtein(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::levenshtein         %.3fs\nfast.string::damerau_levenshtein %.3fs\n",
+            t_fast_lv, t_fast_dl))
+
+if (has_stringdist) {
+    t_sd_lv <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "lv"))["elapsed"]
+    t_sd_dl <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "dl"))["elapsed"]
+    cat(sprintf("stringdist (lv) %.3fs\nstringdist (dl) %.3fs\n", t_sd_lv, t_sd_dl))
+    record("levenshtein", "stringdist::stringdist(lv)", t_sd_lv, t_fast_lv)
+    record("damerau_levenshtein", "stringdist::stringdist(dl)", t_sd_dl, t_fast_dl)
+}
+
+# hamming() needs equal-length pairs to avoid the all-Inf degenerate case
+names_eqlen <- fast.string::fsubstr(names_x, 1, 8)
+t_fast_hm <- system.time(fast.string::hamming(names_eqlen, rev(names_eqlen)))["elapsed"]
+cat(sprintf("fast.string::hamming %.3fs\n", t_fast_hm))
+if (has_stringdist) {
+    t_sd_hm <- system.time(stringdist::stringdist(names_eqlen, rev(names_eqlen), method = "hamming"))["elapsed"]
+    cat(sprintf("stringdist (hamming) %.3fs\n", t_sd_hm))
+    record("hamming", "stringdist::stringdist(hamming)", t_sd_hm, t_fast_hm)
+}
+```
+
+```{r}
+#| label: bench-editdist-correctness
+# Bit-parallel Levenshtein/Damerau-Levenshtein should agree exactly with
+# stringdist's reference implementations.
+a3 <- c("kitten", "Saturday", "flaw")
+b3 <- c("sitting", "Sunday", "lawn")
+fast.string::levenshtein(a3, b3)
+if (has_stringdist) stringdist::stringdist(a3, b3, method = "lv")
+fast.string::damerau_levenshtein(c("ab"), c("ba"))
+if (has_stringdist) stringdist::stringdist(c("ab"), c("ba"), method = "dl")
+```
+
+## Q-gram set similarity
+
+```{r}
+#| label: bench-qgram
+t_fast_jac <- system.time(fast.string::jaccard_index(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::jaccard_index %.3fs\n", t_fast_jac))
+if (has_stringdist) {
+    t_sd_jac <- system.time(stringdist::stringsim(names_x, rev(names_x), method = "jaccard"))["elapsed"]
+    cat(sprintf("stringdist::stringsim(jaccard) %.3fs\n", t_sd_jac))
+    record("jaccard_index", "stringdist::stringsim(jaccard)", t_sd_jac, t_fast_jac)
+}
+
+t_fast_dice <- system.time(fast.string::dice_coefficient(names_x, rev(names_x)))["elapsed"]
+t_fast_tver <- system.time(fast.string::tversky_index(names_x, rev(names_x), alpha = 0.3, beta = 0.7))["elapsed"]
+cat(sprintf("fast.string::dice_coefficient %.3fs (no direct stringdist equivalent)\n", t_fast_dice))
+cat(sprintf("fast.string::tversky_index    %.3fs (no direct stringdist equivalent)\n", t_fast_tver))
+```
+
+## fuzzywuzzy-style ratios
+
+No R package implements fuzzywuzzy's specific scoring (Ratcliff/Obershelp
+matching blocks); this is absolute throughput only.
+
+```{r}
+#| label: bench-fuzzywuzzy
+t_ratio   <- system.time(fast.string::fuzz_ratio(tok_a, tok_b))["elapsed"]
+t_partial <- system.time(fast.string::fuzz_partial_ratio(tok_a, tok_b))["elapsed"]
+t_tsort   <- system.time(fast.string::fuzz_token_sort_ratio(tok_a, tok_b))["elapsed"]
+t_tset    <- system.time(fast.string::fuzz_token_set_ratio(tok_a, tok_b))["elapsed"]
+cat(sprintf(
+    "fast.string::fuzz_ratio            %.3fs\nfast.string::fuzz_partial_ratio    %.3fs\nfast.string::fuzz_token_sort_ratio %.3fs\nfast.string::fuzz_token_set_ratio  %.3fs\n",
+    t_ratio, t_partial, t_tsort, t_tset
+))
 ```
 
 ## The small-n crossover

@@ -208,6 +208,28 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_double_metaphone_impl
+List fast_double_metaphone_impl(const StringVector& x);
+RcppExport SEXP _fast_string_fast_double_metaphone_impl(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_double_metaphone_impl(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_caverphone_impl
+CharacterVector fast_caverphone_impl(const StringVector& x);
+RcppExport SEXP _fast_string_fast_caverphone_impl(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_caverphone_impl(x));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_trimws_impl
 CharacterVector fast_trimws_impl(const StringVector& x, int which);
 RcppExport SEXP _fast_string_fast_trimws_impl(SEXP xSEXP, SEXP whichSEXP) {
@@ -307,6 +329,66 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_levenshtein_impl
+NumericVector fast_levenshtein_impl(const StringVector& a, const StringVector& b);
+RcppExport SEXP _fast_string_fast_levenshtein_impl(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_levenshtein_impl(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_levenshtein_matrix_impl
+NumericMatrix fast_levenshtein_matrix_impl(const StringVector& a, const StringVector& b);
+RcppExport SEXP _fast_string_fast_levenshtein_matrix_impl(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_levenshtein_matrix_impl(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_damerau_levenshtein_impl
+NumericVector fast_damerau_levenshtein_impl(const StringVector& a, const StringVector& b);
+RcppExport SEXP _fast_string_fast_damerau_levenshtein_impl(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_damerau_levenshtein_impl(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_damerau_levenshtein_matrix_impl
+NumericMatrix fast_damerau_levenshtein_matrix_impl(const StringVector& a, const StringVector& b);
+RcppExport SEXP _fast_string_fast_damerau_levenshtein_matrix_impl(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_damerau_levenshtein_matrix_impl(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_hamming_impl
+NumericVector fast_hamming_impl(const StringVector& a, const StringVector& b);
+RcppExport SEXP _fast_string_fast_hamming_impl(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_hamming_impl(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_jaccard_impl
 NumericVector fast_jaccard_impl(const StringVector& a, const StringVector& b, int q);
 RcppExport SEXP _fast_string_fast_jaccard_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP) {
@@ -333,6 +415,62 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_dice_impl
+NumericVector fast_dice_impl(const StringVector& a, const StringVector& b, int q);
+RcppExport SEXP _fast_string_fast_dice_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_dice_impl(a, b, q));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_dice_matrix_impl
+NumericMatrix fast_dice_matrix_impl(const StringVector& a, const StringVector& b, int q);
+RcppExport SEXP _fast_string_fast_dice_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_dice_matrix_impl(a, b, q));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_tversky_impl
+NumericVector fast_tversky_impl(const StringVector& a, const StringVector& b, int q, double alpha, double beta);
+RcppExport SEXP _fast_string_fast_tversky_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_tversky_impl(a, b, q, alpha, beta));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_tversky_matrix_impl
+NumericMatrix fast_tversky_matrix_impl(const StringVector& a, const StringVector& b, int q, double alpha, double beta);
+RcppExport SEXP _fast_string_fast_tversky_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_tversky_matrix_impl(a, b, q, alpha, beta));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_grepl_impl", (DL_FUNC) &_fast_string_fast_grepl_impl, 3},
@@ -350,6 +488,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_jaro_winkler_tokens_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_tokens_impl, 5},
     {"_fast_string_fast_soundex_impl", (DL_FUNC) &_fast_string_fast_soundex_impl, 1},
     {"_fast_string_fast_nysiis_impl", (DL_FUNC) &_fast_string_fast_nysiis_impl, 1},
+    {"_fast_string_fast_double_metaphone_impl", (DL_FUNC) &_fast_string_fast_double_metaphone_impl, 1},
+    {"_fast_string_fast_caverphone_impl", (DL_FUNC) &_fast_string_fast_caverphone_impl, 1},
     {"_fast_string_fast_trimws_impl", (DL_FUNC) &_fast_string_fast_trimws_impl, 2},
     {"_fast_string_fast_substr_impl", (DL_FUNC) &_fast_string_fast_substr_impl, 3},
     {"_fast_string_fast_nchar_impl", (DL_FUNC) &_fast_string_fast_nchar_impl, 3},
@@ -358,8 +498,17 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_fuzz_partial_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_partial_ratio_impl, 2},
     {"_fast_string_fast_fuzz_token_sort_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_token_sort_ratio_impl, 2},
     {"_fast_string_fast_fuzz_token_set_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_token_set_ratio_impl, 2},
+    {"_fast_string_fast_levenshtein_impl", (DL_FUNC) &_fast_string_fast_levenshtein_impl, 2},
+    {"_fast_string_fast_levenshtein_matrix_impl", (DL_FUNC) &_fast_string_fast_levenshtein_matrix_impl, 2},
+    {"_fast_string_fast_damerau_levenshtein_impl", (DL_FUNC) &_fast_string_fast_damerau_levenshtein_impl, 2},
+    {"_fast_string_fast_damerau_levenshtein_matrix_impl", (DL_FUNC) &_fast_string_fast_damerau_levenshtein_matrix_impl, 2},
+    {"_fast_string_fast_hamming_impl", (DL_FUNC) &_fast_string_fast_hamming_impl, 2},
     {"_fast_string_fast_jaccard_impl", (DL_FUNC) &_fast_string_fast_jaccard_impl, 3},
     {"_fast_string_fast_jaccard_matrix_impl", (DL_FUNC) &_fast_string_fast_jaccard_matrix_impl, 3},
+    {"_fast_string_fast_dice_impl", (DL_FUNC) &_fast_string_fast_dice_impl, 3},
+    {"_fast_string_fast_dice_matrix_impl", (DL_FUNC) &_fast_string_fast_dice_matrix_impl, 3},
+    {"_fast_string_fast_tversky_impl", (DL_FUNC) &_fast_string_fast_tversky_impl, 5},
+    {"_fast_string_fast_tversky_matrix_impl", (DL_FUNC) &_fast_string_fast_tversky_matrix_impl, 5},
     {NULL, NULL, 0}
 };
 
