@@ -33,7 +33,8 @@ fgrep(
 
 \item{invert}{Logical. Return non-matching indices/values.}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Integer vector of indices (or character when \code{value = TRUE}).

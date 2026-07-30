@@ -14,7 +14,8 @@
 #'   another (later patterns can match text introduced by earlier
 #'   replacements). If `FALSE`, match all patterns in a single left-to-right
 #'   scan (first pattern to match at each position wins).
-#' @param nthreads Integer or `NULL`. Thread count.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector the same length as `x`.
 #' @export
 gsub_all <- function(patterns, replacements, x,
@@ -33,12 +34,16 @@ gsub_all <- function(patterns, replacements, x,
         else stop("`x` must be a character vector.")
     }
 
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
+    threads <- .as_nthreads(nthreads)
 
-    if (isTRUE(fixed))
-        return(fast_fixed_gsub_all_impl(patterns, replacements, x,
-                                         isTRUE(ignore.case), isTRUE(sequential)))
+    if (isTRUE(fixed)) {
+        if (any(patterns == "", na.rm = TRUE))
+            stop("zero-length pattern")
+        return(fast_fixed_gsub_all_impl(
+            patterns, replacements, x, isTRUE(ignore.case),
+            isTRUE(sequential), threads
+        ))
+    }
 
     if (any(vapply(patterns, .has_pcre_only_syntax, logical(1L)))) {
         cli::cli_inform(
@@ -47,8 +52,10 @@ gsub_all <- function(patterns, replacements, x,
         return(.base_gsub_all_loop(patterns, replacements, x, ignore.case))
     }
 
-    fast_regex_gsub_all_impl(patterns, replacements, x,
-                              isTRUE(ignore.case), isTRUE(sequential))
+    fast_regex_gsub_all_impl(
+        patterns, replacements, x,
+        isTRUE(ignore.case), isTRUE(sequential), threads
+    )
 }
 
 .base_gsub_all_loop <- function(patterns, repls, x, ignore.case) {

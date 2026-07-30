@@ -33,7 +33,8 @@
 #'   Must be a single integer >= 1.
 #' @param alpha,beta Tversky asymmetry weights (default `0.5` each, matching
 #'   Dice). Non-negative scalars.
-#' @param nthreads Integer or `NULL`. Thread count.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return Numeric vector of similarities in `[0, 1]`, `length(a)` long.
 #'   `NA` if either `a[i]` or `b[i]` is `NA`. Two strings shorter than `q`
 #'   (so neither has any q-grams) compare equal (`1`).
@@ -69,9 +70,7 @@ NULL
 #' @export
 jaccard_index <- function(a, b, q = 2, nthreads = NULL) {
     .qgram_validate(a, b, q)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_jaccard_impl(a, b, as.integer(q))
+    fast_jaccard_impl(a, b, as.integer(q), .as_nthreads(nthreads))
 }
 
 #' Q-gram Jaccard all-pairs similarity matrix
@@ -79,24 +78,21 @@ jaccard_index <- function(a, b, q = 2, nthreads = NULL) {
 #' @param a Character vector of length n (rows).
 #' @param b Character vector of length m (columns).
 #' @param q Q-gram length (default `2`).
-#' @param nthreads Integer or `NULL`. Thread count.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return Numeric matrix of dimensions n × m.
 #' @seealso [jaccard_index()]
 #' @export
 jaccard_matrix <- function(a, b, q = 2, nthreads = NULL) {
     .qgram_validate_matrix(a, b, q)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_jaccard_matrix_impl(a, b, as.integer(q))
+    fast_jaccard_matrix_impl(a, b, as.integer(q), .as_nthreads(nthreads))
 }
 
 #' @rdname qgram_metrics
 #' @export
 dice_coefficient <- function(a, b, q = 2, nthreads = NULL) {
     .qgram_validate(a, b, q)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_dice_impl(a, b, as.integer(q))
+    fast_dice_impl(a, b, as.integer(q), .as_nthreads(nthreads))
 }
 
 #' Q-gram Sorensen-Dice all-pairs similarity matrix
@@ -107,9 +103,7 @@ dice_coefficient <- function(a, b, q = 2, nthreads = NULL) {
 #' @export
 dice_matrix <- function(a, b, q = 2, nthreads = NULL) {
     .qgram_validate_matrix(a, b, q)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_dice_matrix_impl(a, b, as.integer(q))
+    fast_dice_matrix_impl(a, b, as.integer(q), .as_nthreads(nthreads))
 }
 
 #' @rdname qgram_metrics
@@ -120,9 +114,10 @@ tversky_index <- function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
         stop("`alpha` must be a single non-negative number.")
     if (!is.numeric(beta) || length(beta) != 1L || beta < 0)
         stop("`beta` must be a single non-negative number.")
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_tversky_impl(a, b, as.integer(q), as.double(alpha), as.double(beta))
+    fast_tversky_impl(
+        a, b, as.integer(q), as.double(alpha), as.double(beta),
+        .as_nthreads(nthreads)
+    )
 }
 
 #' Q-gram Tversky all-pairs similarity matrix
@@ -138,7 +133,8 @@ tversky_matrix <- function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL
         stop("`alpha` must be a single non-negative number.")
     if (!is.numeric(beta) || length(beta) != 1L || beta < 0)
         stop("`beta` must be a single non-negative number.")
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_tversky_matrix_impl(a, b, as.integer(q), as.double(alpha), as.double(beta))
+    fast_tversky_matrix_impl(
+        a, b, as.integer(q), as.double(alpha), as.double(beta),
+        .as_nthreads(nthreads)
+    )
 }

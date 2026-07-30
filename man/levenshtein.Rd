@@ -15,7 +15,8 @@ hamming(a, b, nthreads = NULL)
 \arguments{
 \item{a, b}{Equal-length character vectors.}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Numeric vector the same length as \code{a}, \code{NA} if either \code{a[i]} or

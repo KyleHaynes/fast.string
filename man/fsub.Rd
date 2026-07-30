@@ -30,7 +30,8 @@ fsub(
 
 \item{useBytes}{Logical. Ignored; included for signature compatibility.}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}.

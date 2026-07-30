@@ -28,7 +28,8 @@
 #'   default). Lowercases and replaces runs of non-alphanumeric characters
 #'   with a single space before comparing, same as fuzzywuzzy's
 #'   `full_process()` preprocessing step.
-#' @param nthreads Integer or `NULL`. Thread count.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return Numeric vector of scores in `[0, 100]`, `length(a)` long. `NA` if
 #'   either `a[i]` or `b[i]` is `NA`.
 #' @examples
@@ -40,52 +41,45 @@
 #' @aliases fuzz_ratio fuzz_partial_ratio fuzz_token_sort_ratio fuzz_token_set_ratio
 NULL
 
-.fuzz_normalise <- function(a, b, full_process, nthreads) {
+.fuzz_validate <- function(a, b) {
     if (!is.character(a) || !is.character(b))
         stop("`a` and `b` must be character vectors.")
     if (length(a) != length(b))
         stop("`a` and `b` must have the same length.")
-    if (isTRUE(full_process)) {
-        a <- tolower(fgsub("[^A-Za-z0-9]+", " ", a, nthreads = nthreads))
-        b <- tolower(fgsub("[^A-Za-z0-9]+", " ", b, nthreads = nthreads))
-        a <- ftrimws(a)
-        b <- ftrimws(b)
-    }
-    list(a = a, b = b)
 }
 
 #' @rdname fuzz
 #' @export
 fuzz_ratio <- function(a, b, full_process = TRUE, nthreads = NULL) {
-    ab <- .fuzz_normalise(a, b, full_process, nthreads)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    round(fast_fuzz_ratio_impl(ab$a, ab$b))
+    .fuzz_validate(a, b)
+    round(fast_fuzz_ratio_impl(
+        a, b, isTRUE(full_process), .as_nthreads(nthreads)
+    ))
 }
 
 #' @rdname fuzz
 #' @export
 fuzz_partial_ratio <- function(a, b, full_process = TRUE, nthreads = NULL) {
-    ab <- .fuzz_normalise(a, b, full_process, nthreads)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    round(fast_fuzz_partial_ratio_impl(ab$a, ab$b))
+    .fuzz_validate(a, b)
+    round(fast_fuzz_partial_ratio_impl(
+        a, b, isTRUE(full_process), .as_nthreads(nthreads)
+    ))
 }
 
 #' @rdname fuzz
 #' @export
 fuzz_token_sort_ratio <- function(a, b, full_process = TRUE, nthreads = NULL) {
-    ab <- .fuzz_normalise(a, b, full_process, nthreads)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    round(fast_fuzz_token_sort_ratio_impl(ab$a, ab$b))
+    .fuzz_validate(a, b)
+    round(fast_fuzz_token_sort_ratio_impl(
+        a, b, isTRUE(full_process), .as_nthreads(nthreads)
+    ))
 }
 
 #' @rdname fuzz
 #' @export
 fuzz_token_set_ratio <- function(a, b, full_process = TRUE, nthreads = NULL) {
-    ab <- .fuzz_normalise(a, b, full_process, nthreads)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    round(fast_fuzz_token_set_ratio_impl(ab$a, ab$b))
+    .fuzz_validate(a, b)
+    round(fast_fuzz_token_set_ratio_impl(
+        a, b, isTRUE(full_process), .as_nthreads(nthreads)
+    ))
 }

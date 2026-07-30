@@ -94,6 +94,159 @@ test_that("fgsub supports capture groups and case conversion", {
                       base::gsub("(\\w+)", "\\U\\1", x, perl = TRUE))
 })
 
+test_that("PCRE2 substitution grows its buffer for expanding backreferences", {
+    x <- rep(strrep("ab", 128L), 1500L)
+    replacement <- "\\1\\1\\1\\1"
+
+    for (nthreads in c(1L, 2L, 4L)) {
+        expect_identical(
+            fast.string::fgsub(
+                "(ab)", replacement, x, perl = TRUE, nthreads = nthreads
+            ),
+            base::gsub("(ab)", replacement, x, perl = TRUE)
+        )
+    }
+})
+
+test_that("PCRE2 substitution handles zero-length matches like base", {
+    x <- c("ab", "xx", "xxx", "xa", "xax", "", NA_character_)
+
+    expect_identical(
+        fast.string::fsub("x*", "_", x, perl = TRUE, nthreads = 2L),
+        base::sub("x*", "_", x, perl = TRUE)
+    )
+    expect_identical(
+        fast.string::fgsub("x*", "_", x, perl = TRUE, nthreads = 2L),
+        base::gsub("x*", "_", x, perl = TRUE)
+    )
+
+    for (pattern in c("a*", ".*?", "(|x)", "x?", "(x|)")) {
+        expect_identical(
+            fast.string::fgsub(
+                pattern, "_", x, perl = TRUE, nthreads = 2L
+            ),
+            base::gsub(pattern, "_", x, perl = TRUE)
+        )
+    }
+})
+
+test_that("zero-length regex substitution preserves backreferences", {
+    x <- c("", "x", "xa", "xax", "ab", NA_character_)
+
+    expect_identical(
+        fast.string::fgsub(
+            "((a)*)", "\\1-\\2", x, perl = TRUE, nthreads = 2L
+        ),
+        base::gsub("((a)*)", "\\1-\\2", x, perl = TRUE)
+    )
+})
+
+test_that("disjoint regex deletions are not tagged as source slices", {
+    x <- iconv("\u00e9aaba", from = "UTF-8", to = "latin1")
+    Encoding(x) <- "latin1"
+
+    result <- fast.string::fsub(
+        "ab", "", x, perl = TRUE, nthreads = 2L
+    )
+    expect_identical(charToRaw(result), as.raw(c(0xe9, 0x61, 0x61)))
+    expect_identical(Encoding(result), "UTF-8")
+
+    for (substitute in list(fast.string::fsub, fast.string::fgsub)) {
+        fixed_result <- substitute(
+            "ab", "", x, fixed = TRUE, nthreads = 2L
+        )
+        expect_identical(
+            charToRaw(fixed_result),
+            as.raw(c(0xe9, 0x61, 0x61))
+        )
+        expect_identical(Encoding(fixed_result), "UTF-8")
+    }
+})
+
+test_that("substitution preserves the encoding of unchanged strings", {
+    latin1 <- iconv("\u00e9clair", from = "UTF-8", to = "latin1")
+    Encoding(latin1) <- "latin1"
+    bytes <- rawToChar(as.raw(c(0xe9, 0x63, 0x6c, 0x61, 0x69, 0x72)))
+    Encoding(bytes) <- "bytes"
+    x <- c(latin1, bytes)
+
+    fixed_unchanged <- fast.string::fgsub(
+        "absent", "x", x, fixed = TRUE, nthreads = 2L
+    )
+    regex_unchanged <- fast.string::fgsub(
+        "absent", "x", x, nthreads = 2L
+    )
+    expect_identical(Encoding(fixed_unchanged), Encoding(x))
+    expect_identical(Encoding(regex_unchanged), Encoding(x))
+})
+
+test_that("substitution preserves the encoding of pure source slices", {
+    latin1 <- iconv("\u00e9clair", from = "UTF-8", to = "latin1")
+    Encoding(latin1) <- "latin1"
+    latin1_prefixed <- iconv("x\u00e9clair", from = "UTF-8", to = "latin1")
+    Encoding(latin1_prefixed) <- "latin1"
+    fixed_slice <- fast.string::fsub(
+        "x", "", latin1_prefixed, fixed = TRUE, nthreads = 2L
+    )
+    regex_slice <- fast.string::fsub(
+        "^x", "", latin1_prefixed, nthreads = 2L
+    )
+    expect_identical(Encoding(fixed_slice), "latin1")
+    expect_identical(Encoding(regex_slice), "latin1")
+    expect_identical(charToRaw(fixed_slice), charToRaw(latin1))
+    expect_identical(charToRaw(regex_slice), charToRaw(latin1))
+})
+
+test_that("substitution tags newly constructed output as UTF-8", {
+    fixed_changed <- fast.string::fgsub(
+        "a", "\u96ea", "a", fixed = TRUE, nthreads = 2L
+    )
+    regex_changed <- fast.string::fgsub(
+        "a", "\u96ea", "a", nthreads = 2L
+    )
+    expect_identical(Encoding(fixed_changed), "UTF-8")
+    expect_identical(Encoding(regex_changed), "UTF-8")
+})
+
+test_that("matching and substitution retain legacy name behavior", {
+    x <- c(first = "alpha", second = "beta")
+    expect_null(names(fast.string::fgrepl("a", x, fixed = TRUE)))
+    expect_null(names(fast.string::fgrepl("a", x)))
+    expect_null(names(fast.string::fsub("a", "x", x, fixed = TRUE)))
+    expect_null(names(fast.string::fgsub("a", "x", x)))
+})
+
+test_that("nthreads is a positive integer cap", {
+    invalid <- list(0, -1, 1.5, Inf, NA_real_, TRUE, "2", c(1, 2))
+    for (value in invalid) {
+        expect_error(
+            fast.string::fgrepl("a", "a", nthreads = value),
+            "positive integer"
+        )
+    }
+    expect_identical(
+        fast.string::fgrepl("a", "a", nthreads = 1L),
+        TRUE
+    )
+})
+
+test_that("fgrep preserves value names but returns unnamed indices like base", {
+    x <- c(first = "alpha", second = "beta", missing = NA_character_)
+
+    expect_identical(
+        fast.string::fgrep("a", x, fixed = TRUE),
+        base::grep("a", x, fixed = TRUE)
+    )
+    expect_identical(
+        fast.string::fgrep("z", x, fixed = TRUE, invert = TRUE),
+        base::grep("z", x, fixed = TRUE, invert = TRUE)
+    )
+    expect_identical(
+        fast.string::fgrep("a", x, fixed = TRUE, value = TRUE),
+        base::grep("a", x, fixed = TRUE, value = TRUE)
+    )
+})
+
 test_that("fgsub ignore.case regex matches base", {
     x <- c("hello world", "foo bar", "HELLO WORLD")
     expect_identical(fast.string::fgsub("hello", "HI", x, ignore.case = TRUE),

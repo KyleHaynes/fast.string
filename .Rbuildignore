@@ -1,2 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^docs/\.quarto$
+^docs/_freeze$
+^docs/site_libs$
+^docs/.*\.html$
+^docs/search\.json$

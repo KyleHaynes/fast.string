@@ -24,7 +24,8 @@ default). Lowercases and replaces runs of non-alphanumeric characters
 with a single space before comparing, same as fuzzywuzzy's
 \code{full_process()} preprocessing step.}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Numeric vector of scores in \verb{[0, 100]}, \code{length(a)} long. \code{NA} if

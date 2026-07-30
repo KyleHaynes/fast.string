@@ -1,0 +1,428 @@
+# Benchmarks at scale {#sec-benchmarks}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+suppressPackageStartupMessages({
+    library(stringi)
+    library(microbenchmark)
+})
+has_stringdist     <- requireNamespace("stringdist", quietly = TRUE)
+has_recordlinkage  <- requireNamespace("RecordLinkage", quietly = TRUE)
+has_phonics        <- requireNamespace("phonics", quietly = TRUE)
+```
+
+Every other chapter uses small inputs so the page renders quickly. This
+chapter doesn't: every benchmark below runs on **3 million strings**,
+because this package is built for exactly that scale — record linkage and
+ETL pipelines where a "small" file is already six figures of rows. If a
+function is only 10% faster at 3M rows, that's a real, honestly-reported
+result, not a number picked to flatter the package.
+
+Comparison baselines, used wherever they have a real equivalent:
+
+- **base R** — the function this package's API mirrors.
+- **stringi**/**stringr** — the standard fast-string ecosystem package for
+  general string operations (stringr wraps stringi; benchmarks below call
+  stringi directly).
+- **stringdist** — `method = "jw"` is the closest equivalent to
+  `jaro_winkler()`; `method = "lv"`/`"dl"`/`"hamming"`/`"jaccard"` are the
+  closest equivalents to `levenshtein()`/`damerau_levenshtein()`/
+  `hamming()`/`jaccard_index()`.
+- **RecordLinkage** — `soundex()` and `jarowinkler()` are the closest
+  equivalents to this package's phonetic and fuzzy-matching functions.
+- **phonics** — `metaphone()` and `caverphone()` are throughput comparison
+  points for `double_metaphone()`/`caverphone()`; they implement different
+  algorithm revisions, so outputs aren't expected to match (the comparison
+  is "a phonetic-coding R function over this vector", not output parity).
+
+```{r}
+#| label: versions
+cat("fast.string: ", as.character(utils::packageVersion("fast.string")), "\n")
+cat("stringi:     ", as.character(utils::packageVersion("stringi")), "\n")
+if (has_stringdist)    cat("stringdist:  ", as.character(utils::packageVersion("stringdist")), "\n")
+if (has_recordlinkage) cat("RecordLinkage:", as.character(utils::packageVersion("RecordLinkage")), "\n")
+if (has_phonics)       cat("phonics:     ", as.character(utils::packageVersion("phonics")), "\n")
+cat("R:           ", R.version.string, "\n")
+cat("cores:       ", parallel::detectCores(), "\n")
+```
+
+```{r}
+#| label: test-data
+set.seed(1)
+n <- 3e6
+
+x <- stri_rand_strings(n, sample(2:40, n, replace = TRUE), pattern = "[A-Za-z0-9 ]")
+na_idx    <- sample(n, 3000)
+empty_idx <- sample(setdiff(seq_len(n), na_idx), 3000)
+x[na_idx]    <- NA_character_
+x[empty_idx] <- ""
+
+cat(sprintf("n = %s strings (%d NA, %d empty, lengths 2-40)\n",
+            format(n, big.mark = ",", scientific = FALSE), length(na_idx), length(empty_idx)))
+```
+
+A results table accumulates through the chapter and prints in full at the
+end (@tbl-summary), alongside every individual comparison inline.
+
+```{r}
+#| label: results-accumulator
+results <- list()
+record <- function(op, baseline, baseline_s, fast_s) {
+    baseline_s <- unname(baseline_s)
+    fast_s <- unname(fast_s)
+    results[[length(results) + 1]] <<- data.frame(
+        operation = op, baseline = baseline,
+        baseline_s = baseline_s, fast_s = fast_s,
+        speedup = baseline_s / fast_s
+    )
+}
+```
+
+## Matching & substitution
+
+```{r}
+#| label: bench-grepl
+t_base <- system.time(base::grepl("[0-9]{2}", x))["elapsed"]
+t_fast <- system.time(fast.string::fgrepl("[0-9]{2}", x))["elapsed"]
+t_stri <- system.time(stri_detect_regex(x, "[0-9]{2}"))["elapsed"]
+cat(sprintf("base::grepl       %.3fs\nstringi::stri_detect_regex %.3fs\nfast.string::fgrepl %.3fs\n", t_base, t_stri, t_fast))
+record("fgrepl (regex)", "base::grepl", t_base, t_fast)
+```
+
+```{r}
+#| label: bench-gsub
+t_base <- system.time(base::gsub("[0-9]+", "#", x, perl = TRUE))["elapsed"]
+t_fast <- system.time(fast.string::fgsub("[0-9]+", "#", x))["elapsed"]
+t_stri <- system.time(stri_replace_all_regex(x, "[0-9]+", "#"))["elapsed"]
+cat(sprintf("base::gsub        %.3fs\nstringi::stri_replace_all_regex %.3fs\nfast.string::fgsub %.3fs\n", t_base, t_stri, t_fast))
+record("fgsub (regex)", "base::gsub", t_base, t_fast)
+```
+
+```{r}
+#| label: bench-gsub-all
+patterns <- c("a", "e", "i", "o", "u")
+repls    <- c("4", "3", "1", "0", "*")
+t_base <- system.time({
+    y <- x
+    for (i in seq_along(patterns)) y <- base::gsub(patterns[i], repls[i], y, fixed = TRUE)
+})["elapsed"]
+t_fast <- system.time(fast.string::gsub_all(patterns, repls, x, fixed = TRUE, sequential = TRUE))["elapsed"]
+cat(sprintf("base (5x chained gsub)  %.3fs\nfast.string::gsub_all   %.3fs\n", t_base, t_fast))
+record("gsub_all (5 patterns)", "base (chained gsub)", t_base, t_fast)
+```
+
+## String utilities
+
+```{r}
+#| label: bench-str-utils
+x_ws <- ifelse(is.na(x), NA_character_, paste0("  ", x, "\t\n"))
+
+t_base <- system.time(base::trimws(x_ws))["elapsed"]
+t_fast <- system.time(fast.string::ftrimws(x_ws))["elapsed"]
+t_stri <- system.time(stri_trim_both(x_ws))["elapsed"]
+cat(sprintf("base::trimws      %.3fs\nstringi::stri_trim_both %.3fs\nfast.string::ftrimws %.3fs\n", t_base, t_stri, t_fast))
+record("ftrimws", "base::trimws", t_base, t_fast)
+
+t_base <- system.time(base::substr(x, 1, 10))["elapsed"]
+t_fast <- system.time(fast.string::fsubstr(x, 1, 10))["elapsed"]
+cat(sprintf("base::substr      %.3fs\nfast.string::fsubstr %.3fs\n", t_base, t_fast))
+record("fsubstr", "base::substr", t_base, t_fast)
+
+t_base <- system.time(base::nchar(x, "chars"))["elapsed"]
+t_fast <- system.time(fast.string::fnchar(x, "chars"))["elapsed"]
+t_stri <- system.time(stri_length(x))["elapsed"]
+cat(sprintf("base::nchar       %.3fs\nstringi::stri_length %.3fs\nfast.string::fnchar %.3fs\n", t_base, t_stri, t_fast))
+record("fnchar", "base::nchar", t_base, t_fast)
+
+t_base <- system.time(base::chartr("aeiou", "AEIOU", x))["elapsed"]
+t_fast <- system.time(fast.string::fchartr("aeiou", "AEIOU", x))["elapsed"]
+cat(sprintf("base::chartr      %.3fs\nfast.string::fchartr %.3fs\n", t_base, t_fast))
+record("fchartr", "base::chartr", t_base, t_fast)
+```
+
+`fsubstr` is the one operation in this whole chapter where parallelism
+doesn't help: base R's `substr()` is already close to memcpy speed for a
+fixed-width extraction, so there's little headroom — consistent with the
+~1x result in @tbl-summary. The win shows up on operations with real
+per-element branching cost (`trimws`, `chartr`) or where base R's
+implementation does something surprisingly expensive (`nchar`).
+
+## Dates
+
+```{r}
+#| label: bench-dates
+dates <- as.Date(sample(seq(as.Date("1950-01-01"), as.Date("2024-12-31"), by = "day"), n, replace = TRUE))
+dates[na_idx] <- NA
+date_strings_iso <- fast.string::format_date(dates, "iso")
+
+t_base <- system.time(format(dates, "%Y-%m-%d"))["elapsed"]
+t_fast <- system.time(fast.string::format_date(dates, "iso"))["elapsed"]
+cat(sprintf("base format.Date  %.3fs\nfast.string::format_date %.3fs\n", t_base, t_fast))
+record("format_date", "format.Date", t_base, t_fast)
+
+t_base <- system.time(base::as.Date(date_strings_iso, format = "%Y-%m-%d"))["elapsed"]
+t_fast <- system.time(fast.string::fas.Date(date_strings_iso, "iso"))["elapsed"]
+cat(sprintf("base::as.Date     %.3fs\nfast.string::fas.Date %.3fs\n", t_base, t_fast))
+record("fas.Date", "as.Date", t_base, t_fast)
+```
+
+## Phonetic blocking keys
+
+`soundex()`/`nysiis()` have no base R equivalent; `RecordLinkage::soundex()`
+is the closest comparison (algorithm details and why the two can disagree
+on specific inputs are in @sec-theory). `RecordLinkage::soundex()` runs a
+single timed pass rather than `microbenchmark`'s repeated runs — at 3M
+rows it's the single slowest operation in this chapter, and repeating it
+five times buys little additional statistical confidence for a lot of
+extra render time.
+
+```{r}
+#| label: bench-phonetic
+names_x <- stri_rand_strings(n, sample(3:15, n, replace = TRUE), pattern = "[A-Z]")
+names_x[na_idx] <- NA_character_
+
+t_fast_sx <- system.time(fast.string::soundex(names_x))["elapsed"]
+t_fast_ny <- system.time(fast.string::nysiis(names_x))["elapsed"]
+cat(sprintf("fast.string::soundex %.3fs\nfast.string::nysiis  %.3fs\n", t_fast_sx, t_fast_ny))
+
+if (has_recordlinkage) {
+    t_rl_sx <- system.time(RecordLinkage::soundex(names_x))["elapsed"]
+    cat(sprintf("RecordLinkage::soundex %.3fs\n", t_rl_sx))
+    record("soundex", "RecordLinkage::soundex", t_rl_sx, t_fast_sx)
+} else {
+    cat("RecordLinkage not installed — skipping cross-package soundex comparison.\n")
+}
+```
+
+`nysiis()` is consistently slower than `soundex()` here — not a
+parallelism gap (both run through the same dispatch), but because NYSIIS's
+rule table is genuinely heavier per element (leading/trailing transforms
+plus a stateful per-letter pass, vs. Soundex's single fixed lookup), as
+described in @sec-theory.
+
+`double_metaphone()` and `caverphone()` are considerably heavier rulesets
+again (Double Metaphone's branching is the most involved of the four;
+Caverphone 2.0 is a long fixed chain of substring transforms), so absolute
+throughput is lower — `phonics::metaphone()`/`phonics::caverphone()` are
+shown alongside as "another phonetic-coding R function over this vector"
+throughput comparisons, not as algorithm-equivalent baselines (see the
+note at the top of this chapter):
+
+```{r}
+#| label: bench-phonetic-v2
+t_fast_dm <- system.time(fast.string::double_metaphone(names_x))["elapsed"]
+t_fast_cp <- system.time(fast.string::caverphone(names_x))["elapsed"]
+cat(sprintf("fast.string::double_metaphone %.3fs\nfast.string::caverphone       %.3fs\n",
+            t_fast_dm, t_fast_cp))
+
+if (has_phonics) {
+    t_ph_mp <- system.time(phonics::metaphone(names_x))["elapsed"]
+    t_ph_cp <- system.time(phonics::caverphone(names_x, maxCodeLen = 10))["elapsed"]
+    cat(sprintf("phonics::metaphone   %.3fs\nphonics::caverphone  %.3fs\n", t_ph_mp, t_ph_cp))
+    record("double_metaphone", "phonics::metaphone (different algorithm)", t_ph_mp, t_fast_dm)
+    record("caverphone", "phonics::caverphone (different revision)", t_ph_cp, t_fast_cp)
+} else {
+    cat("phonics not installed — skipping cross-package comparison.\n")
+}
+```
+
+## Fuzzy string similarity
+
+```{r}
+#| label: bench-jaro
+t_fast <- system.time(fast.string::jaro_winkler(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::jaro_winkler %.3fs (%s pairs, no base equivalent)\n",
+            t_fast, format(n, big.mark = ",", scientific = FALSE)))
+
+if (has_stringdist) {
+    t_sd <- system.time(1 - stringdist::stringdist(names_x, rev(names_x), method = "jw", p = 0.1))["elapsed"]
+    cat(sprintf("stringdist::stringdist(jw, p=0.1) %.3fs\n", t_sd))
+    record("jaro_winkler", "stringdist::stringdist(jw)", t_sd, t_fast)
+}
+if (has_recordlinkage) {
+    t_rl <- system.time(RecordLinkage::jarowinkler(names_x, rev(names_x)))["elapsed"]
+    cat(sprintf("RecordLinkage::jarowinkler %.3fs\n", t_rl))
+    record("jaro_winkler", "RecordLinkage::jarowinkler", t_rl, t_fast)
+}
+```
+
+```{r}
+#| label: bench-jaro-correctness
+# All three should agree numerically (RecordLinkage's defaults and
+# stringdist with p = 0.1 both implement the same standard Jaro-Winkler).
+a3 <- c("MARTHA", "DWAYNE", "DIXON")
+b3 <- c("MARHTA", "DUANE", "DICKSONX")
+fast.string::jaro_winkler(a3, b3)
+if (has_recordlinkage) RecordLinkage::jarowinkler(a3, b3)
+if (has_stringdist) 1 - stringdist::stringdist(a3, b3, method = "jw", p = 0.1)
+```
+
+`jaro_winkler_matrix()` is $O(n \times m)$ by construction, so a 3M x 3M
+matrix is neither a realistic workload nor something most machines could
+hold in memory — a 3,000 x 3,000 block (9M cell comparisons) is a more
+representative blocking-table size:
+
+```{r}
+#| label: bench-jaro-matrix
+m <- 3000
+a_small <- names_x[seq_len(m)]
+b_small <- names_x[(n - m + 1):n]
+t_fast <- system.time(fast.string::jaro_winkler_matrix(a_small, b_small))["elapsed"]
+cat(sprintf("fast.string::jaro_winkler_matrix: %s x %s (%s cells) in %.3fs\n",
+            m, m, format(m * m, big.mark = ","), t_fast))
+```
+
+`jaro_winkler_tokens()` does more work per pair (tokenising, an internal
+similarity matrix per row, greedy assignment, plus the collapsed
+comparison — @sec-theory) than plain `jaro_winkler()`, so it's
+meaningfully slower per comparison. No package in this comparison set has
+a token-reorder-aware equivalent, so this is absolute throughput only:
+
+```{r}
+#| label: bench-jaro-tokens
+cap1 <- function(s) paste0(toupper(substr(s, 1, 1)), substr(s, 2, nchar(s)))
+make_multitoken_names <- function(n) {
+    paste(
+        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = "[a-z]")),
+        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = "[a-z]")),
+        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = "[a-z]"))
+    )
+}
+tok_a <- make_multitoken_names(n)
+tok_b <- make_multitoken_names(n)
+t_plain  <- system.time(fast.string::jaro_winkler(tok_a, tok_b))["elapsed"]
+t_tokens <- system.time(fast.string::jaro_winkler_tokens(tok_a, tok_b))["elapsed"]
+cat(sprintf("fast.string::jaro_winkler        %.3fs (%s pairs)\n", t_plain, format(n, big.mark = ",", scientific = FALSE)))
+cat(sprintf("fast.string::jaro_winkler_tokens %.3fs (%.1fx the plain-comparison cost)\n", t_tokens, t_tokens / t_plain))
+```
+
+## Edit distance
+
+```{r}
+#| label: bench-editdist
+t_fast_lv <- system.time(fast.string::levenshtein(names_x, rev(names_x)))["elapsed"]
+t_fast_dl <- system.time(fast.string::damerau_levenshtein(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::levenshtein         %.3fs\nfast.string::damerau_levenshtein %.3fs\n",
+            t_fast_lv, t_fast_dl))
+
+if (has_stringdist) {
+    t_sd_lv <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "lv"))["elapsed"]
+    t_sd_dl <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "dl"))["elapsed"]
+    cat(sprintf("stringdist (lv) %.3fs\nstringdist (dl) %.3fs\n", t_sd_lv, t_sd_dl))
+    record("levenshtein", "stringdist::stringdist(lv)", t_sd_lv, t_fast_lv)
+    record("damerau_levenshtein", "stringdist::stringdist(dl)", t_sd_dl, t_fast_dl)
+}
+
+# hamming() needs equal-length pairs to avoid the all-Inf degenerate case
+names_eqlen <- fast.string::fsubstr(names_x, 1, 8)
+t_fast_hm <- system.time(fast.string::hamming(names_eqlen, rev(names_eqlen)))["elapsed"]
+cat(sprintf("fast.string::hamming %.3fs\n", t_fast_hm))
+if (has_stringdist) {
+    t_sd_hm <- system.time(stringdist::stringdist(names_eqlen, rev(names_eqlen), method = "hamming"))["elapsed"]
+    cat(sprintf("stringdist (hamming) %.3fs\n", t_sd_hm))
+    record("hamming", "stringdist::stringdist(hamming)", t_sd_hm, t_fast_hm)
+}
+```
+
+```{r}
+#| label: bench-editdist-correctness
+# Bit-parallel Levenshtein/Damerau-Levenshtein should agree exactly with
+# stringdist's reference implementations.
+a3 <- c("kitten", "Saturday", "flaw")
+b3 <- c("sitting", "Sunday", "lawn")
+fast.string::levenshtein(a3, b3)
+if (has_stringdist) stringdist::stringdist(a3, b3, method = "lv")
+fast.string::damerau_levenshtein(c("ab"), c("ba"))
+if (has_stringdist) stringdist::stringdist(c("ab"), c("ba"), method = "dl")
+```
+
+## Q-gram set similarity
+
+```{r}
+#| label: bench-qgram
+t_fast_jac <- system.time(fast.string::jaccard_index(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::jaccard_index %.3fs\n", t_fast_jac))
+if (has_stringdist) {
+    t_sd_jac <- system.time(stringdist::stringsim(names_x, rev(names_x), method = "jaccard"))["elapsed"]
+    cat(sprintf("stringdist::stringsim(jaccard) %.3fs\n", t_sd_jac))
+    record("jaccard_index", "stringdist::stringsim(jaccard)", t_sd_jac, t_fast_jac)
+}
+
+t_fast_dice <- system.time(fast.string::dice_coefficient(names_x, rev(names_x)))["elapsed"]
+t_fast_tver <- system.time(fast.string::tversky_index(names_x, rev(names_x), alpha = 0.3, beta = 0.7))["elapsed"]
+cat(sprintf("fast.string::dice_coefficient %.3fs (no direct stringdist equivalent)\n", t_fast_dice))
+cat(sprintf("fast.string::tversky_index    %.3fs (no direct stringdist equivalent)\n", t_fast_tver))
+```
+
+## fuzzywuzzy-style ratios
+
+No R package implements fuzzywuzzy's specific scoring (Ratcliff/Obershelp
+matching blocks); this is absolute throughput only.
+
+```{r}
+#| label: bench-fuzzywuzzy
+t_ratio   <- system.time(fast.string::fuzz_ratio(tok_a, tok_b))["elapsed"]
+t_partial <- system.time(fast.string::fuzz_partial_ratio(tok_a, tok_b))["elapsed"]
+t_tsort   <- system.time(fast.string::fuzz_token_sort_ratio(tok_a, tok_b))["elapsed"]
+t_tset    <- system.time(fast.string::fuzz_token_set_ratio(tok_a, tok_b))["elapsed"]
+cat(sprintf(
+    "fast.string::fuzz_ratio            %.3fs\nfast.string::fuzz_partial_ratio    %.3fs\nfast.string::fuzz_token_sort_ratio %.3fs\nfast.string::fuzz_token_set_ratio  %.3fs\n",
+    t_ratio, t_partial, t_tsort, t_tset
+))
+```
+
+## The small-n crossover
+
+@sec-theory claims every parallel function applies a size threshold and
+falls back to single-threaded execution below it, *because* thread-pool
+dispatch overhead would otherwise exceed the time saved. Here's that claim
+checked directly, at `n = 20` — small enough that the claim predicts
+`fast.string` will be *no faster, possibly slower* than base R:
+
+```{r}
+#| label: bench-small-n
+small <- stri_rand_strings(20, sample(5:15, 20, replace = TRUE))
+print(microbenchmark(
+    base = base::grepl("[0-9]", small),
+    fast = fast.string::fgrepl("[0-9]", small),
+    times = 50
+))
+```
+
+At this scale the two are within noise of each other (sometimes base R
+even wins outright) — exactly what the size-threshold design predicts, and
+the reason the rest of this chapter uses 3M rows rather than 20: the
+benefit this package offers only shows up once there's enough work to
+amortise parallel dispatch.
+
+## Summary
+
+```{r}
+#| label: tbl-summary
+#| tbl-cap: !expr sprintf("Observed speedups, n = %s, %d cores, 1 run per cell unless noted (this machine — yours will vary).", format(n, big.mark = ",", scientific = FALSE), parallel::detectCores())
+summary_df <- do.call(rbind, results)
+summary_df$baseline_s <- round(summary_df$baseline_s, 3)
+summary_df$fast_s     <- round(summary_df$fast_s, 3)
+summary_df$speedup    <- paste0(round(summary_df$speedup, 1), "x")
+knitr::kable(
+    summary_df,
+    row.names = FALSE,
+    col.names = c("Operation", "Baseline", "Baseline (s)", "fast.string (s)", "Speedup")
+)
+```
+
+A few patterns worth drawing out explicitly:
+
+- The biggest wins are on operations with **real per-element work** —
+  regex matching/substitution, trimming, phonetic encoding — where
+  parallelising actual computation pays off directly.
+- The smallest (or negative) wins are on operations base R already does
+  close to optimally for a single core (`substr()`); parallelism helps
+  least when there's least work to spread around.
+- Cross-package comparisons (`stringdist`, `RecordLinkage`) confirm
+  *correctness* (the Jaro-Winkler numbers agree to floating-point
+  precision) as much as they confirm speed — agreement there is the more
+  important result, since a faster-but-wrong implementation isn't a
+  useful trade.

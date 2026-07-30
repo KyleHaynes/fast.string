@@ -49,6 +49,11 @@ static inline int myers_levenshtein_64(const char* txt, int lt, const char* pat,
 // constructor/destructor to run.
 static inline int levenshtein_dp(const char* s1, int l1, const char* s2, int l2) {
     if (l1 < l2) { std::swap(s1, s2); std::swap(l1, l2); } // keep the shorter row in memory
+    // Besides handling the valid empty-row case without allocating scratch
+    // space, this makes the non-negative row bound explicit to GCC.  Without
+    // it, -Wmaybe-uninitialized cannot prove that the initialization loop
+    // reaches row[l2], even though public callers only supply string lengths.
+    if (l2 <= 0) return l1;
     const int STACK_LIM = 256;
     int row_stack[STACK_LIM + 1];
     int* row = (l2 <= STACK_LIM) ? row_stack : new int[(std::size_t)l2 + 1];
@@ -69,6 +74,19 @@ static inline int levenshtein_dp(const char* s1, int l1, const char* s2, int l2)
 }
 
 static inline int levenshtein_distance(const char* s1, int l1, const char* s2, int l2) {
+    // Matching edges cannot contribute to edit cost. Removing them first is
+    // especially valuable for records that share long prefixes/suffixes and
+    // can also move the remaining problem back under Myers' 64-byte limit.
+    while (l1 > 0 && l2 > 0 && *s1 == *s2) {
+        ++s1;
+        ++s2;
+        --l1;
+        --l2;
+    }
+    while (l1 > 0 && l2 > 0 && s1[l1 - 1] == s2[l2 - 1]) {
+        --l1;
+        --l2;
+    }
     if (l1 == 0) return l2;
     if (l2 == 0) return l1;
     const char* pat; int lp;
@@ -88,6 +106,16 @@ static inline int levenshtein_distance(const char* s1, int l1, const char* s2, i
 static inline int damerau_levenshtein_distance(const char* s1, int l1, const char* s2, int l2) {
     if (l1 == 0) return l2;
     if (l2 == 0) return l1;
+    // OSA distance is symmetric, so use the shorter input as the rolling-row
+    // dimension without changing the recurrence or observable result.
+    if (l1 < l2) {
+        std::swap(s1, s2);
+        std::swap(l1, l2);
+    }
+    // Keep the valid empty-row case explicit after pointer/length swapping so
+    // GCC can prove that row1[l2] is initialized without clearing the stack
+    // buffers. Public callers only supply non-negative string lengths.
+    if (l2 <= 0) return l1;
     // Stack-allocated for the common case, heap fallback for longer strings;
     // see levenshtein_dp() above for why these are plain locals, not
     // thread_local. row0 = i-2, row1 = i-1, row2 = current.

@@ -11,7 +11,8 @@ levenshtein_matrix(a, b, nthreads = NULL)
 
 \item{b}{Character vector of length m (columns).}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Numeric matrix of dimensions n × m.

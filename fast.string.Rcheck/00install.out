@@ -1,0 +1,40 @@
+[1] "hey; %USERPROFILE% / Rprofile to file me"
+* installing *source* package 'fast.string' ...
+** this is package 'fast.string' version '0.2.0'
+** using staged installation
+** libs
+using C++ compiler: 'G__~1.EXE (GCC) 14.2.0'
+using C++14
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c RcppExports.cpp -o RcppExports.o
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c fgrepl.cpp -o fgrepl.o
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c fgrepl_date.cpp -o fgrepl_date.o
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c fgrepl_jaro.cpp -o fgrepl_jaro.o
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c fgrepl_jaro_tokens.cpp -o fgrepl_jaro_tokens.o
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c fgrepl_phonetic.cpp -o fgrepl_phonetic.o
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c fgrepl_str.cpp -o fgrepl_str.o
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c fuzz.cpp -o fuzz.o
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c levenshtein.cpp -o levenshtein.o
+In file included from levenshtein.cpp:4:
+levenshtein_core.h: In function 'int damerau_levenshtein_distance(const char*, int, const char*, int)':
+levenshtein_core.h:138:9: warning: 'row1_stack' may be used uninitialized [-Wmaybe-uninitialized]
+  138 |     int result = row1[l2];
+      |         ^~~~~~
+levenshtein_core.h:119:36: note: 'row1_stack' declared here
+  119 |     int row0_stack[STACK_LIM + 1], row1_stack[STACK_LIM + 1], row2_stack[STACK_LIM + 1];
+      |                                    ^~~~~~~~~~
+g++  -std=gnu++14 -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG -I. -DNDEBUG -DNOMINMAX -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/Rcpp/include' -I'C:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -DRCPP_PARALLEL_USE_TBB=1   -O2 -Wall -gdwarf-2 -mfpmath=sse -msse2 -mstackrealign    -c qgram_metrics.cpp -o qgram_metrics.o
+g++ -shared -static-libgcc -o fast.string.dll tmp.def RcppExports.o fgrepl.o fgrepl_date.o fgrepl_jaro.o fgrepl_jaro_tokens.o fgrepl_phonetic.o fgrepl_str.o fuzz.o levenshtein.o qgram_metrics.o -lpcre2-8 -LC:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/libs/x64 -lRcppParallel -LC:/Users/kyleh/AppData/Local/R/win-library/4.5/RcppParallel/lib/x64 -ltbb -ltbbmalloc -LC:/rtools45/x86_64-w64-mingw32.static.posix/lib/x64 -LC:/rtools45/x86_64-w64-mingw32.static.posix/lib -LC:/PROGRA~1/R/R-45~1.0/bin/x64 -lR
+installing to C:/Users/kyleh/GitHub/anthropic_fast/fast.string.Rcheck/00LOCK-FAST~1.STR/00new/fast.string/libs/x64
+** R
+** byte-compile and prepare package for lazy loading
+[1] "hey; %USERPROFILE% / Rprofile to file me"
+** help
+*** installing help indices
+** building package indices
+[1] "hey; %USERPROFILE% / Rprofile to file me"
+** testing if installed package can be loaded from temporary location
+[1] "hey; %USERPROFILE% / Rprofile to file me"
+** testing if installed package can be loaded from final location
+[1] "hey; %USERPROFILE% / Rprofile to file me"
+** testing if installed package keeps a record of temporary installation path
+* DONE (fast.string)

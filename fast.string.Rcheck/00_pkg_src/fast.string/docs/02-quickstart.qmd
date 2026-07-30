@@ -1,0 +1,218 @@
+# Quickstart {#sec-quickstart}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+suppressPackageStartupMessages(library(stringi))
+```
+
+## Installation
+
+```r
+remotes::install_github("KyleHaynes/fast.string")
+```
+
+This compiles C++ source on install, so you need a working toolchain:
+Rtools on Windows, Xcode command-line tools on macOS, or `build-essential`
++ `libpcre2-dev` on Linux. See @sec-troubleshooting if the install fails.
+
+```{r}
+#| label: load
+library(fast.string)
+```
+
+Loading the package prints a one-time startup banner listing every
+exported function; suppress it with `options(fast.string.verbose = FALSE)`
+set *before* `library()`, or with `suppressPackageStartupMessages()`.
+
+The rest of this chapter is a guided tour through every function group,
+using small inputs so it renders fast — @sec-benchmarks is where the same
+functions get pushed to 3 million rows.
+
+## Matching & substitution
+
+`fgrepl()`, `fgrep()`, `fsub()`, and `fgsub()` are argument-compatible with
+`base::grepl()`/`grep()`/`sub()`/`gsub()` — same defaults, same `NA`
+handling — just parallelised.
+
+```{r}
+#| label: matching
+x <- c("invoice-2024-001", "invoice-2024-002", "credit-note-001", NA)
+
+fgrepl("^invoice", x)
+fgrep("^invoice", x, value = TRUE)
+fsub("-([0-9]+)$", "_\\1", x)
+fgsub("[0-9]", "#", x)
+```
+
+`gsub_all()` has no base R equivalent: it applies several patterns in one
+pass, either sequentially (chained, like calling `gsub()` repeatedly) or as
+a single combined left-to-right scan where the first matching pattern at
+each position wins.
+
+```{r}
+#| label: gsub-all
+patterns <- c("Mr\\.", "Mrs\\.", "Dr\\.")
+repls    <- c("Mister", "Missus", "Doctor")
+gsub_all(patterns, repls, c("Mr. Smith", "Dr. Jones"), fixed = FALSE)
+```
+
+## String utilities
+
+`ftrimws()`, `fsubstr()`, `fnchar()`, and `fchartr()` mirror their base
+equivalents exactly, including `names(x)` preservation.
+
+```{r}
+#| label: str-utils
+messy <- c("  John Smith  ", "\tMary Jones\n", NA)
+ftrimws(messy)
+
+records <- c("NSWREC123456789", "VICPOL987654321")
+fsubstr(records, 1, 3)   # state code
+fsubstr(records, 4, 6)   # category code
+
+fnchar(c("café", NA, ""), type = "chars")
+
+fchartr("'-", "  ", c("O'Brien", "Smith-Jones"))
+```
+
+## Dates
+
+`format_date()`/`fas.Date()` trade `base::as.Date()`'s locale-aware,
+multi-format flexibility for speed on one fixed format at a time.
+`date_parts()` decomposes a `Date` vector into year/month/day columns in a
+single pass — useful for building blocking keys.
+
+```{r}
+#| label: dates
+dates <- as.Date(c("2024-06-18", "1999-12-31", NA))
+format_date(dates, "compact")
+date_parts(dates)
+fas.Date(c("18/06/2024", "31/12/1999"), "dmy")
+```
+
+## Phonetic blocking keys
+
+`soundex()`, `nysiis()`, `double_metaphone()`, and `caverphone()` have no
+base R equivalent. They're typically used to group records that *sound*
+alike before running a more expensive pairwise comparison only within each
+group, rather than comparing every record against every other record.
+Different rulesets group different near-miss spellings together, so trying
+more than one can catch matches a single phonetic key misses.
+
+```{r}
+#| label: phonetic
+names_x <- c("Robert", "Rupert", "Ashcraft", "Ashcroft", "Smith", "Smyth")
+data.frame(
+    name       = names_x,
+    soundex    = soundex(names_x),
+    nysiis     = nysiis(names_x),
+    caverphone = caverphone(names_x)
+)
+double_metaphone(c("Smith", "Schmidt", "Catherine", "Kathryn"))
+```
+
+`"Ashcraft"`/`"Ashcroft"` sharing a Soundex code (`A261`) despite differing
+spelling is the textbook example of why Soundex exists — and a known point
+of disagreement between *implementations* of Soundex, covered in
+@sec-theory.
+
+`double_metaphone()` returns two codes per word — `primary` and
+`secondary` — because some spellings have more than one plausible
+pronunciation (a `C` that could be a hard `K` or a soft `S` sound, for
+instance); two names are usually considered a phonetic match if *any* of
+one side's codes matches *any* of the other's. `"Catherine"` and
+`"Kathryn"` sharing the code `K0RN` despite no letters lining up is the
+kind of match Soundex/NYSIIS — designed around English/American surnames —
+typically miss.
+
+## Fuzzy string similarity
+
+Three functions, three shapes of comparison:
+
+- **`jaro_winkler(a, b)`** — pairwise, equal-length vectors. `a[i]` vs.
+  `b[i]` for every `i`.
+- **`jaro_winkler_matrix(a, b)`** — all-pairs. Every element of `a` against
+  every element of `b`, returned as an `n × m` matrix.
+- **`jaro_winkler_tokens(a, b)`** — pairwise like the first, but tolerant
+  of token reordering and punctuation/spacing differences within a token.
+
+```{r}
+#| label: jaro
+jaro_winkler(c("SMITH", "DWAYNE"), c("SMYTH", "DUANE"))
+
+candidates_a <- c("John Smith", "Mary Jones")
+candidates_b <- c("Jon Smith", "Mary-Anne Jones", "Someone Else")
+jaro_winkler_matrix(candidates_a, candidates_b)
+
+# Token reordering — two of three tokens match exactly, the third is close
+jaro_winkler_tokens("Kyle John Haynes", "John Kylie Haynes")
+
+# Punctuation/spacing variants of the same name
+jaro_winkler_tokens(c("OBrien", "OBrien"), c("O Brien", "O'Brien"))
+```
+
+The full mechanics of how `jaro_winkler_tokens()` resolves reordered
+tokens — and the `extra_penalty` argument for handling a stray extra
+token — are in @sec-theory and the function reference (@sec-reference).
+
+## Edit distance
+
+`levenshtein()`, `damerau_levenshtein()`, and `hamming()` are classic
+distance metrics — `stringdist`'s bread and butter — backed by a
+bit-parallel implementation instead of `stringdist`'s generic dispatch.
+Each has a `_matrix()` all-pairs counterpart, like Jaro-Winkler.
+
+```{r}
+#| label: editdist
+levenshtein("kitten", "sitting")
+damerau_levenshtein("ab", "ba")  # adjacent transposition costs one edit, not two
+hamming("karolin", "kathrin")
+hamming("abc", "ab")             # Inf for unequal length, matching stringdist
+```
+
+## Q-gram set similarity
+
+`jaccard_index()`, `dice_coefficient()`, and `tversky_index()` compare two
+strings' sets of overlapping length-`q` substrings ("q-grams") rather than
+their character-by-character alignment — symmetric in token order and
+insensitive to *where* a difference occurs, which makes them a useful
+second signal alongside Jaro-Winkler/edit-distance.
+
+```{r}
+#| label: qgram
+jaccard_index("night", "nacht")
+dice_coefficient("night", "nacht")     # weights shared q-grams more heavily
+tversky_index("night", "nacht", alpha = 1, beta = 1)  # == jaccard_index()
+```
+
+`tversky_index()` generalises both: `alpha = beta = 1` is Jaccard,
+`alpha = beta = 0.5` is Dice, and asymmetric weights are useful when one
+side is a query and the other a reference and the two kinds of mismatch
+shouldn't be penalised equally.
+
+## fuzzywuzzy-style ratios
+
+`fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_token_sort_ratio()`, and
+`fuzz_token_set_ratio()` are vectorised ports of Python's
+[fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy) package — useful if
+you're porting a matching pipeline from Python, or just want its specific
+flavour of fuzzy scoring (Ratcliff/Obershelp matching blocks, *not* edit
+distance). All four return `0-100` like the originals.
+
+```{r}
+#| label: fuzz
+fuzz_ratio("this is a test", "this is a test!")
+fuzz_partial_ratio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear")
+fuzz_token_sort_ratio("fuzzy was a bear", "bear was a fuzzy")
+fuzz_token_set_ratio("fuzzy was a bear", "fuzzy fuzzy bear was a bear")
+```
+
+## Putting it together
+
+A typical pipeline normalises with `fchartr()`/`ftrimws()`, builds a
+blocking key with `soundex()`/`nysiis()`/`format_date()`, then scores
+candidates within each block with `jaro_winkler_matrix()` or
+`jaro_winkler_tokens()`. @sec-workflow walks through exactly that, end to
+end, on a small linkage example.

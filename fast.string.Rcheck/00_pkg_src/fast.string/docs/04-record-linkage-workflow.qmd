@@ -1,0 +1,138 @@
+# A worked record-linkage pipeline {#sec-workflow}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+```
+
+This chapter strings every piece from @sec-quickstart together into a
+single, realistic linkage pipeline: an incoming batch of records needs to
+be matched against a reference database. It's the same shape of problem
+`examples_data_linkage.R` in the repo demonstrates, written out here as a
+narrative.
+
+## The data
+
+```{r}
+#| label: data
+incoming <- data.frame(
+    id   = 1:4,
+    name = c("  JOHN O'BRIEN  ", "MARY-JANE SMITH", "ROBERT BROWN", "Kyle John Haynes"),
+    dob  = as.Date(c("1985-03-15", "1990-07-22", "1975-12-01", "1988-01-05")),
+    stringsAsFactors = FALSE
+)
+
+reference <- data.frame(
+    ref_id = 101:105,
+    name   = c("JON OBRIEN", "MARYANN SMITH", "ROB BROWN", "JOHN BRIEN", "Haynes John Kyle"),
+    dob    = as.Date(c("1985-03-14", "1990-07-20", "1975-12-02", "1985-03-15", "1988-01-05")),
+    stringsAsFactors = FALSE
+)
+
+incoming
+reference
+```
+
+Four incoming records, five reference records, deliberately messy:
+inconsistent casing, stray whitespace, punctuation, typos, one straight-up
+near-duplicate (`"JOHN BRIEN"` vs. `"JOHN O'BRIEN"`), and one fully
+reordered multi-token name (`"Kyle John Haynes"` vs.
+`"Haynes John Kyle"`).
+
+## Step 1: normalise
+
+Strip punctuation and whitespace inconsistencies *before* comparing, so the
+comparison step measures genuine name similarity rather than formatting
+noise.
+
+```{r}
+#| label: normalise
+incoming$name_clean  <- fchartr("'-", "  ", ftrimws(incoming$name))
+reference$name_clean <- fchartr("'-", "  ", ftrimws(reference$name))
+
+incoming$name_clean
+reference$name_clean
+```
+
+(`jaro_winkler_tokens()` does its own internal punctuation stripping and
+case-folding — see @sec-reference — but normalising up front keeps this
+example explicit, and matters for `jaro_winkler()`/`jaro_winkler_matrix()`,
+which don't.)
+
+## Step 2: block
+
+Comparing every incoming record against every reference record is
+$O(n \times m)$ — fine at this toy scale, prohibitive at millions of rows.
+**Blocking** groups records by a cheap, coarse key first (here: a
+month-year DOB key) and only compares records *within* the same block,
+cutting the number of pairwise comparisons by orders of magnitude in
+practice.
+
+```{r}
+#| label: blocking
+incoming$dob_block  <- fsubstr(format_date(incoming$dob,  "compact"), 1, 6)
+reference$dob_block <- fsubstr(format_date(reference$dob, "compact"), 1, 6)
+
+incoming[, c("id", "name", "dob_block")]
+reference[, c("ref_id", "name", "dob_block")]
+```
+
+Soundex/NYSIIS codes (@sec-theory) are the other common blocking key,
+typically used *together* with a coarse date block — block on
+`soundex(last_name)` + birth year, for instance — to keep block sizes
+manageable while still catching records where the date itself has a typo.
+
+## Step 3: score within each block
+
+For each incoming record, find reference records sharing its block, then
+score name similarity only among those candidates. `jaro_winkler_tokens()`
+is used uniformly rather than switching between it and plain
+`jaro_winkler()`: it degenerates exactly to ordinary Jaro-Winkler when both
+names happen to have the same token count and order (@sec-theory), so
+there's no accuracy cost on the "normal" records — and it correctly
+survives the one record (`"Kyle John Haynes"`) where the tokens are fully
+reordered, which plain `jaro_winkler()` would score badly.
+
+```{r}
+#| label: scoring
+match_one <- function(rec) {
+    candidates <- reference[reference$dob_block == rec$dob_block, ]
+    if (nrow(candidates) == 0L) return(NULL)
+    scores <- jaro_winkler_tokens(rep(rec$name_clean, nrow(candidates)), candidates$name_clean)
+    candidates$score <- scores
+    candidates[order(-candidates$score), c("ref_id", "name", "score")]
+}
+
+results <- lapply(seq_len(nrow(incoming)), function(i) {
+    res <- match_one(incoming[i, ])
+    if (is.null(res)) return(NULL)
+    cbind(incoming_id = incoming$id[i], incoming_name = incoming$name[i], res)
+})
+do.call(rbind, results)
+```
+
+## Step 4: threshold
+
+Apply a similarity cutoff to decide which candidate pairs are accepted as
+links. 0.85 is a common starting point for Jaro-Winkler on names; the
+right value depends on your data and how costly false positives/negatives
+are relative to each other — tune it against a labelled sample if you
+have one.
+
+```{r}
+#| label: threshold
+all_results <- do.call(rbind, results)
+threshold <- 0.85
+links <- all_results[all_results$score >= threshold, ]
+links[!duplicated(links$incoming_id), ]  # best link per incoming record
+```
+
+Every incoming record links to its obvious match, including the fully
+reordered `"Kyle John Haynes"` → `"Haynes John Kyle"` pair — the one case
+in this dataset where plain `jaro_winkler()` would have scored well below
+threshold and `jaro_winkler_tokens()` is doing real work, not just
+matching what character-level comparison already would have.
+
+@sec-benchmarks now scales the comparison step of this exact pipeline
+shape up to 3 million rows.

@@ -49,6 +49,25 @@ test_that("q-gram metrics respect the q parameter", {
     expect_true(fast.string::jaccard_index("abc", "abd", q = 1) > 0) # shared unigrams a,b
 })
 
+test_that("q-gram sets deduplicate repeated grams and handle short strings", {
+    expect_equal(
+        fast.string::jaccard_index("aaaa", "aaab", q = 2L),
+        0.5
+    )
+    expect_equal(
+        fast.string::dice_coefficient("aaaa", "aaab", q = 2L),
+        2 / 3
+    )
+    expect_equal(
+        fast.string::jaccard_index("short", "tiny", q = 8L),
+        1
+    )
+    expect_equal(
+        fast.string::jaccard_index("short", "long enough", q = 8L),
+        0
+    )
+})
+
 test_that("q-gram metrics survive the RcppParallel threshold (n >= 1000)", {
     # Regression test: thread_local non-POD scratch buffers (std::vector)
     # crashed the first time they were touched inside an RcppParallel/TBB
@@ -71,4 +90,67 @@ test_that("q-gram metrics error on bad input", {
     expect_error(fast.string::jaccard_index(1, "x"), "character vectors")
     expect_error(fast.string::jaccard_index("a", "b", q = 0), "q.*>= 1")
     expect_error(fast.string::tversky_index("a", "b", alpha = -1), "alpha")
+})
+
+test_that("prepared q-gram matrices match pairwise scores including fallback", {
+    a <- rep(
+        c("night", "nacht", "", "aaaa", NA_character_, "abcdef", "xyxyxy"),
+        length.out = 128
+    )
+    b <- rep(
+        c("nacht", "night", "", "bbbb", "abcdef", NA_character_, "xyxy"),
+        length.out = 128
+    )
+    pair_a <- rep(a, times = length(b))
+    pair_b <- rep(b, each = length(a))
+
+    for (q in c(1L, 2L, 8L, 9L)) {
+        expect_identical(
+            fast.string::jaccard_matrix(a, b, q = q, nthreads = 2),
+            matrix(
+                fast.string::jaccard_index(
+                    pair_a, pair_b, q = q, nthreads = 1
+                ),
+                nrow = length(a)
+            )
+        )
+        expect_identical(
+            fast.string::dice_matrix(a, b, q = q, nthreads = 2),
+            matrix(
+                fast.string::dice_coefficient(
+                    pair_a, pair_b, q = q, nthreads = 1
+                ),
+                nrow = length(a)
+            )
+        )
+        expect_identical(
+            fast.string::tversky_matrix(
+                a, b, q = q, alpha = 0.3, beta = 0.7, nthreads = 2
+            ),
+            matrix(
+                fast.string::tversky_index(
+                    pair_a, pair_b, q = q, alpha = 0.3, beta = 0.7,
+                    nthreads = 1
+                ),
+                nrow = length(a)
+            )
+        )
+    }
+})
+
+test_that("q-gram matrix threshold rejection preserves exact results", {
+    a <- sprintf("a%03d-abcdefgh", seq_len(63L))
+    b <- sprintf("b%03d-abcdefgi", seq_len(65L))
+    pair_a <- rep(a, times = length(b))
+    pair_b <- rep(b, each = length(a))
+
+    expect_identical(
+        fast.string::jaccard_matrix(a, b, q = 8L, nthreads = 4L),
+        matrix(
+            fast.string::jaccard_index(
+                pair_a, pair_b, q = 8L, nthreads = 1L
+            ),
+            nrow = length(a)
+        )
+    )
 })

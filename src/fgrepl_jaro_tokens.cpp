@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 #include "jaro_winkler_core.h"
+#include "parallel_dispatch.h"
+#include "string_snapshot.h"
 using namespace Rcpp;
 using namespace RcppParallel;
 
@@ -77,13 +79,17 @@ struct TokenScratch {
     std::string rot_buf;
 };
 
+inline bool is_token_ws(char c) {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
 inline void tokenize(const char* s, int n, std::vector<const char*>& ptrs, std::vector<int>& lens) {
     ptrs.clear(); lens.clear();
     int i = 0;
     while (i < n) {
-        while (i < n && s[i] == ' ') ++i;
+        while (i < n && is_token_ws(s[i])) ++i;
         int start = i;
-        while (i < n && s[i] != ' ') ++i;
+        while (i < n && !is_token_ws(s[i])) ++i;
         if (i > start) { ptrs.push_back(s + start); lens.push_back(i - start); }
     }
 }
@@ -132,7 +138,9 @@ inline void build_candidates(const std::vector<const char*>& ptrs, const std::ve
 // sorting the full pair list — for the handful of tokens in a name/address
 // (m, k almost always <= ~5) this is a few dozen comparisons, not a
 // performance concern.
-double token_alignment_score(TokenScratch& sc, double p, double extra_penalty) {
+double token_alignment_score(TokenScratch& sc, double p,
+                             double extra_penalty,
+                             bool has_extra_penalty) {
     int mi = (int)sc.ptr_a.size();
     int ki = (int)sc.ptr_b.size();
     int want = std::min(mi, ki);
@@ -162,7 +170,7 @@ double token_alignment_score(TokenScratch& sc, double p, double extra_penalty) {
         total += best_val;
     }
 
-    if (ISNA(extra_penalty)) return total / std::max(mi, ki);
+    if (!has_extra_penalty) return total / std::max(mi, ki);
     int n_extra = std::max(mi, ki) - want;
     double score = total / want - extra_penalty * n_extra;
     return score < 0.0 ? 0.0 : score;
@@ -176,12 +184,16 @@ double token_alignment_score(TokenScratch& sc, double p, double extra_penalty) {
 // each accepted match once (whether it consumed one token or two) plus any
 // genuinely leftover, unconsumed tokens — so when a contraction accounts for
 // every token on both sides, there's nothing left to penalise.
-double token_alignment_score_contractions(TokenScratch& sc, double p, double extra_penalty) {
+double token_alignment_score_contractions(TokenScratch& sc, double p,
+                                          double extra_penalty,
+                                          bool has_extra_penalty) {
     int mi = (int)sc.ptr_a.size();
     int ki = (int)sc.ptr_b.size();
     if (mi == 0 || ki == 0) return 0.0;
     if (mi > MASK_CAP || ki > MASK_CAP)
-        return token_alignment_score(sc, p, extra_penalty);
+        return token_alignment_score(
+            sc, p, extra_penalty, has_extra_penalty
+        );
 
     build_candidates(sc.ptr_a, sc.len_a, sc.cand_a, sc.bufs_a);
     build_candidates(sc.ptr_b, sc.len_b, sc.cand_b, sc.bufs_b);
@@ -232,7 +244,8 @@ double token_alignment_score_contractions(TokenScratch& sc, double p, double ext
     int effective_mi = n_matched + leftover_a;
     int effective_ki = n_matched + leftover_b;
 
-    if (ISNA(extra_penalty)) return total / std::max(effective_mi, effective_ki);
+    if (!has_extra_penalty)
+        return total / std::max(effective_mi, effective_ki);
     int n_extra = std::max(effective_mi, effective_ki) - n_matched;
     double score = total / n_matched - extra_penalty * n_extra;
     return score < 0.0 ? 0.0 : score;
@@ -242,6 +255,10 @@ double token_alignment_score_contractions(TokenScratch& sc, double p, double ext
 // matches that differ only in punctuation/whitespace placement (e.g. one
 // token vs two) which token alignment alone would under-score.
 double collapsed_score(TokenScratch& sc, double p) {
+    if (sc.ptr_a.size() == 1 && sc.ptr_b.size() == 1)
+        return jaro_winkler_sim(sc.ptr_a[0], sc.len_a[0],
+                                sc.ptr_b[0], sc.len_b[0], p);
+
     sc.collapsed_a.clear();
     for (std::size_t i = 0; i < sc.ptr_a.size(); ++i) sc.collapsed_a.append(sc.ptr_a[i], sc.len_a[i]);
     sc.collapsed_b.clear();
@@ -251,29 +268,44 @@ double collapsed_score(TokenScratch& sc, double p) {
 }
 
 struct JaroWinklerTokensWorker : public Worker {
-    SEXP a_sexp;
-    SEXP b_sexp;
+    const StringView* a;
+    const StringView* b;
     double p;
     double extra_penalty;
+    bool has_extra_penalty;
     bool contractions;
     RVector<double> out;
 
-    JaroWinklerTokensWorker(SEXP a, SEXP b, double p, double extra_penalty, bool contractions, NumericVector& out)
-        : a_sexp(a), b_sexp(b), p(p), extra_penalty(extra_penalty), contractions(contractions), out(out) {}
+    JaroWinklerTokensWorker(const StringView* a, const StringView* b,
+                            double p, double extra_penalty,
+                            bool has_extra_penalty, bool contractions,
+                            NumericVector& out)
+        : a(a), b(b), p(p), extra_penalty(extra_penalty),
+          has_extra_penalty(has_extra_penalty),
+          contractions(contractions), out(out) {}
 
     void operator()(std::size_t begin, std::size_t end) {
         TokenScratch sc;
         for (std::size_t i = begin; i < end; ++i) {
-            SEXP ea = STRING_ELT(a_sexp, i);
-            SEXP eb = STRING_ELT(b_sexp, i);
-            if (ea == NA_STRING || eb == NA_STRING) { out[i] = NA_REAL; continue; }
+            const StringView& ea = a[i];
+            const StringView& eb = b[i];
+            if (ea.is_na() || eb.is_na()) { out[i] = NA_REAL; continue; }
 
-            tokenize(CHAR(ea), LENGTH(ea), sc.ptr_a, sc.len_a);
-            tokenize(CHAR(eb), LENGTH(eb), sc.ptr_b, sc.len_b);
+            tokenize(ea.data, static_cast<int>(ea.size), sc.ptr_a, sc.len_a);
+            tokenize(eb.data, static_cast<int>(eb.size), sc.ptr_b, sc.len_b);
 
             double cscore = collapsed_score(sc, p);
-            double tscore = contractions ? token_alignment_score_contractions(sc, p, extra_penalty)
-                                          : token_alignment_score(sc, p, extra_penalty);
+            if (!contractions && sc.ptr_a.size() == 1 && sc.ptr_b.size() == 1) {
+                out[i] = cscore;
+                continue;
+            }
+            double tscore = contractions
+                ? token_alignment_score_contractions(
+                    sc, p, extra_penalty, has_extra_penalty
+                )
+                : token_alignment_score(
+                    sc, p, extra_penalty, has_extra_penalty
+                );
             out[i] = std::max(cscore, tscore);
         }
     }
@@ -286,13 +318,22 @@ NumericVector fast_jaro_winkler_tokens_impl(const StringVector& a,
                                              const StringVector& b,
                                              double p,
                                              double extra_penalty,
-                                             bool contractions) {
+                                             bool contractions,
+                                             int nthreads) {
     if (a.size() != b.size())
         stop("`a` and `b` must have the same length.");
     R_xlen_t n = a.size();
     NumericVector result(n);
-    JaroWinklerTokensWorker worker(a, b, p, extra_penalty, contractions, result);
-    if (n >= 1000) parallelFor(0, (std::size_t)n, worker);
-    else           worker(0, (std::size_t)n);
+    StringSnapshot a_snapshot(a), b_snapshot(b);
+    const bool has_extra_penalty = !ISNA(extra_penalty);
+    JaroWinklerTokensWorker worker(
+        a_snapshot.data(), b_snapshot.data(), p, extra_penalty,
+        has_extra_penalty, contractions, result
+    );
+    dispatch_for(
+        0, static_cast<std::size_t>(n), worker,
+        estimated_pairwise_string_work(a_snapshot, b_snapshot),
+        1000, nthreads
+    );
     return result;
 }

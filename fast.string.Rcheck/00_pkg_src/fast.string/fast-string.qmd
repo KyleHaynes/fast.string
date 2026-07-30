@@ -1,0 +1,166 @@
+---
+title: "fast.string: Parallel String, Date & Phonetic Matching"
+subtitle: "PCRE2 + prepared literal search + RcppParallel (Intel TBB)"
+author: "Kyle Haynes"
+date: today
+format:
+  html:
+    toc: true
+    code-fold: show
+    df-print: paged
+execute:
+  warning: false
+---
+
+## Overview
+
+`fast.string` provides fast equivalents of common base R string functions
+(`grepl()`, `grep()`, `sub()`, `gsub()`, `trimws()`, `substr()`, `nchar()`,
+`chartr()`), plus date formatting/parsing and phonetic-matching helpers
+(`soundex()`, `nysiis()`, `jaro_winkler()`), with large workloads
+parallelised across CPU cores via Intel TBB (through RcppParallel), PCRE2
+for regex, and a prepared byte-oriented searcher for fixed-string matching.
+
+Performance depends on string length, match density, value reuse, matrix
+shape, and available cores. The benchmark chapter measures those factors
+against an isolated installation of the exact checkout being documented.
+
+```{r}
+#| label: setup
+#| include: false
+if (!requireNamespace("fast.string", quietly = TRUE)) {
+    remotes::install_local(".", quiet = TRUE, upgrade = "never")
+}
+library(fast.string)
+options(fast.string.verbose = FALSE)
+library(stringi)
+```
+
+All examples below time a single run with `system.time()` against a
+moderately-sized vector (200,000 strings, lengths 2–40, with a few `NA`
+and `""` mixed in) so this document renders quickly — see
+[`Benchmarks.R`](Benchmarks.R) in the repo for the full 2M-row,
+`microbenchmark`-based benchmark suite.
+
+```{r}
+#| label: test-data
+set.seed(1)
+n <- 2e5
+x <- stri_rand_strings(n, sample(2:40, n, replace = TRUE), pattern = "[A-Za-z0-9 ]")
+na_idx    <- sample(n, 200)
+empty_idx <- sample(setdiff(seq_len(n), na_idx), 200)
+x[na_idx]    <- NA_character_
+x[empty_idx] <- ""
+
+length(x)
+```
+
+## Matching & substitution
+
+`fgrepl()`, `fgrep()`, `fsub()`, and `fgsub()` mirror `grepl()`, `grep()`,
+`sub()`, and `gsub()` exactly (same arguments, same `NA`/edge-case
+behaviour), but run the matching/substitution in parallel.
+
+```{r}
+#| label: grepl-bench
+system.time(base::grepl("[0-9]{2}", x))
+system.time(fast.string::fgrepl("[0-9]{2}", x))
+```
+
+```{r}
+#| label: gsub-bench
+system.time(base::gsub("[0-9]+", "#", x, perl = TRUE))
+system.time(fast.string::fgsub("[0-9]+", "#", x))
+```
+
+`gsub_all()` has no base equivalent: it applies several patterns in a
+single pass, either sequentially (chaining, like repeated `gsub()` calls)
+or as one combined left-to-right scan.
+
+```{r}
+#| label: gsub-all-bench
+patterns <- c("a", "e", "i", "o", "u")
+repls    <- c("4", "3", "1", "0", "*")
+system.time({
+    y <- x
+    for (i in seq_along(patterns)) y <- base::gsub(patterns[i], repls[i], y, fixed = TRUE)
+})
+system.time(fast.string::gsub_all(patterns, repls, x, fixed = TRUE, sequential = TRUE))
+system.time(fast.string::gsub_all(patterns, repls, x, fixed = TRUE, sequential = FALSE))
+```
+
+## String utilities
+
+`ftrimws()`, `fsubstr()`, `fnchar()`, and `fchartr()` mirror their base
+equivalents, preserving `names(x)` and `NA` handling exactly.
+
+```{r}
+#| label: str-utils-bench
+x_ws <- ifelse(is.na(x), NA_character_, paste0("  ", x, "\t\n"))
+
+system.time(base::trimws(x_ws))
+system.time(fast.string::ftrimws(x_ws))
+
+system.time(base::nchar(x, "chars"))
+system.time(fast.string::fnchar(x, "chars"))
+```
+
+## Dates
+
+`format_date()` / `fas.Date()` trade `base::as.Date()`/`format.Date()`'s
+locale-aware, multi-format flexibility for raw speed on one fixed format
+at a time. `date_parts()` decomposes a `Date` vector into year/month/day
+columns in a single pass — handy for blocking keys in record linkage.
+
+```{r}
+#| label: dates-bench
+dates <- as.Date(sample(seq(as.Date("1950-01-01"), as.Date("2024-12-31"), by = "day"), n, replace = TRUE))
+dates[na_idx] <- NA
+
+system.time(format(dates, "%Y-%m-%d"))
+system.time(fast.string::format_date(dates, "iso"))
+```
+
+```{r}
+#| label: date-parts-demo
+head(fast.string::date_parts(dates))
+```
+
+## Phonetic blocking keys
+
+`soundex()` and `nysiis()` have no base R equivalent. They're typically
+used as blocking keys ahead of fuzzy name matching, grouping records that
+are *phonetically* similar before running a more expensive comparison
+like Jaro-Winkler within each block.
+
+```{r}
+#| label: phonetic-demo
+names_x <- c("Robert", "Rupert", "Ashcraft", "Ashcroft", NA)
+data.frame(name = names_x, soundex = fast.string::soundex(names_x), nysiis = fast.string::nysiis(names_x))
+```
+
+## Fuzzy string similarity
+
+`jaro_winkler()` compares two equal-length vectors pairwise;
+`jaro_winkler_matrix()` computes the full n × m similarity matrix between
+two vectors — the typical shape of a data-linkage blocking table.
+
+```{r}
+#| label: jaro-bench
+system.time(fast.string::jaro_winkler(x, rev(x)))
+```
+
+```{r}
+#| label: jaro-matrix-demo
+candidates_a <- c("John Smith", "Mary Jones", "Robert Brown")
+candidates_b <- c("Jon Smith", "Mary-Anne Jones", "Rob Brown", "Someone Else")
+fast.string::jaro_winkler_matrix(candidates_a, candidates_b)
+```
+
+## Further reading
+
+- [`README.md`](README.md) — quick install and `system.time()` examples.
+- [`Benchmarks.R`](Benchmarks.R) — full benchmark suite at 2M-row scale,
+  covering every exported function.
+- [`examples_data_linkage.R`](examples_data_linkage.R) — an end-to-end
+  record-linkage pipeline using these functions together.

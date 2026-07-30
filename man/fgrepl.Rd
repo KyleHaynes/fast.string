@@ -28,14 +28,16 @@ the parallel PCRE2 engine directly.}
 
 \item{useBytes}{Logical. Ignored; included for signature compatibility.}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count; \code{NULL} uses all cores.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Logical vector the same length as \code{x}.
 }
 \description{
 Equivalent to \code{\link[base:grep]{base::grepl()}}, using PCRE2 and Intel TBB.
-Typically 5–20x faster on large character vectors.
+Large inputs can use multiple cores; the crossover depends on subject
+length, pattern cost, match density, and the available cores.
 }
 \details{
 Patterns using PCRE-only syntax (lookaheads, lookbehinds, atomic groups,

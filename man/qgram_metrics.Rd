@@ -19,7 +19,8 @@ tversky_index(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
 \item{q}{Q-gram length (default \code{2}, i.e. bigrams — the common default).
 Must be a single integer >= 1.}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 
 \item{alpha, beta}{Tversky asymmetry weights (default \code{0.5} each, matching
 Dice). Non-negative scalars.}

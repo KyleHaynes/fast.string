@@ -1,7 +1,8 @@
 #' Fast parallel string matching
 #'
 #' Equivalent to [base::grepl()], using PCRE2 and Intel TBB.
-#' Typically 5–20x faster on large character vectors.
+#' Large inputs can use multiple cores; the crossover depends on subject
+#' length, pattern cost, match density, and the available cores.
 #'
 #' Patterns using PCRE-only syntax (lookaheads, lookbehinds, atomic groups,
 #' possessive quantifiers, named backreferences) are automatically detected
@@ -15,7 +16,8 @@
 #'   the parallel PCRE2 engine directly.
 #' @param fixed Logical. Treat `pattern` as a literal string (fastest path).
 #' @param useBytes Logical. Ignored; included for signature compatibility.
-#' @param nthreads Integer or `NULL`. Thread count; `NULL` uses all cores.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #'
 #' @return Logical vector the same length as `x`.
 #' @seealso [base::grepl()]
@@ -28,14 +30,18 @@ fgrepl <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
         if (all(is.na(x))) x <- as.character(x)
         else stop("`x` must be a character vector.")
     }
-    if (!is.null(nthreads)) RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
+    threads <- .as_nthreads(nthreads)
 
-    if (isTRUE(fixed)) return(fast_fixed_impl(pattern, x, isTRUE(ignore.case)))
+    if (isTRUE(fixed)) {
+        return(fast_fixed_impl(
+            pattern, x, isTRUE(ignore.case), threads
+        ))
+    }
 
     if (!isTRUE(perl) && .has_pcre_only_syntax(pattern)) {
         cli::cli_inform("Pattern has PCRE-only syntax; delegating to {.fn base::grepl} with {.code perl = TRUE}.")
         return(base::grepl(pattern, x, ignore.case = ignore.case, perl = TRUE))
     }
 
-    fast_grepl_impl(pattern, x, isTRUE(ignore.case))
+    fast_grepl_impl(pattern, x, isTRUE(ignore.case), threads)
 }

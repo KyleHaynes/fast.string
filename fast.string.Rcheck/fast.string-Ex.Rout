@@ -1,0 +1,211 @@
+
+R version 4.5.0 (2025-04-11 ucrt) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> pkgname <- "fast.string"
+> source(file.path(R.home("share"), "R", "examples-header.R"))
+> options(warn = 1)
+> options(pager = "console")
+> library('fast.string')
+fast.string: parallel string/date/phonetic functions (PCRE2 + RcppParallel)
+  * fgrepl()             grepl() equivalent (PCRE2 regex / prepared fixed-string match)
+  * fgrep()              grep() equivalent, returns matching indices or values
+  * fsub()               sub() equivalent, first-match substitution
+  * fgsub()              gsub() equivalent, global substitution
+  * gsub_all()           multi-pattern substitution in a single pass
+  * ftrimws()            trimws() equivalent
+  * fsubstr()            substr() equivalent
+  * fnchar()             nchar() equivalent
+  * fchartr()            chartr() equivalent
+  * format_date()        format a Date/integer-days vector as strings
+  * format_date_parts()  assemble year/month/day fields into a date string
+  * date_parts()         decompose a Date vector into year/month/day columns
+  * fas.Date()           fast fixed-format date parsing
+  * jaro_winkler()       pairwise Jaro-Winkler string similarity
+  * jaro_winkler_matrix() all-pairs Jaro-Winkler similarity matrix
+  * jaro_winkler_tokens() token-reorder/punctuation-aware Jaro-Winkler similarity
+  * soundex()            Soundex phonetic code
+  * nysiis()             NYSIIS phonetic code
+Suppress this message with options(fast.string.verbose = FALSE).
+> 
+> base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
+> base::assign(".old_wd", base::getwd(), pos = 'CheckExEnv')
+> cleanEx()
+> nameEx("caverphone")
+> ### * caverphone
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: caverphone
+> ### Title: Caverphone 2.0 phonetic code (Caversham Project, University of
+> ###   Otago)
+> ### Aliases: caverphone
+> 
+> ### ** Examples
+> 
+> caverphone(c("Peter", "Tedder", "Stevenson"))
+[1] "PTA1111111" "TTA1111111" "STFNSN1111"
+> 
+> 
+> 
+> cleanEx()
+> nameEx("double_metaphone")
+> ### * double_metaphone
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: double_metaphone
+> ### Title: Double Metaphone phonetic code (Lawrence Philips, 2000)
+> ### Aliases: double_metaphone
+> 
+> ### ** Examples
+> 
+> double_metaphone(c("Smith", "Schmidt", "Catherine", "Kathryn"))
+  primary secondary
+1     SM0       XMT
+2     XMT       SMT
+3    K0RN      KTRN
+4    K0RN      KTRN
+> 
+> 
+> 
+> cleanEx()
+> nameEx("fuzz")
+> ### * fuzz
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: fuzz
+> ### Title: fuzzywuzzy-style fuzzy string ratios
+> ### Aliases: fuzz fuzz_ratio fuzz_partial_ratio fuzz_token_sort_ratio
+> ###   fuzz_token_set_ratio
+> 
+> ### ** Examples
+> 
+> fuzz_ratio("this is a test", "this is a test!")
+[1] 100
+> fuzz_partial_ratio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear")
+[1] 91
+> fuzz_token_sort_ratio("fuzzy was a bear", "bear was a fuzzy")
+[1] 100
+> fuzz_token_set_ratio("fuzzy was a bear", "fuzzy fuzzy bear was a bear")
+[1] 100
+> 
+> 
+> 
+> cleanEx()
+> nameEx("jaro_winkler_tokens")
+> ### * jaro_winkler_tokens
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: jaro_winkler_tokens
+> ### Title: Token-aware Jaro-Winkler similarity for multi-token strings
+> ### Aliases: jaro_winkler_tokens
+> 
+> ### ** Examples
+> 
+> jaro_winkler_tokens("Kyle John Haynes", "John Kylie Haynes")
+[1] 0.9844444
+> jaro_winkler_tokens(c("OBrien", "O'Brien"), c("O Brien", "O Brien"))
+[1] 1 1
+> 
+> # Penalised, not ignored: an extra token still costs something.
+> jaro_winkler_tokens("John Smith", "John Smith Jones")
+[1] 0.9285714
+> 
+> # Extra/junk token ("ZZ") dropped instead of diluting the score.
+> jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle",
++                     extra_penalty = 0)
+[1] 0.9844444
+> 
+> # Contractions: "KYLEJOHN" recognised as "KYLE" + "JOHN" (adjacent), and
+> # "KYLEHAYNES" recognised as "KYLE" + "HAYNES" (non-adjacent, "JOHN" sits
+> # between them in the original) -- both score perfectly with contractions on.
+> jaro_winkler_tokens("KYLEJOHN HAYNES", "KYLE JOHN HAYNES", contractions = TRUE)
+[1] 1
+> jaro_winkler_tokens("KYLEHAYNES JOHN", "KYLE JOHN HAYNES", contractions = TRUE)
+[1] 1
+> 
+> # Both sides already fused two words into one token, just in opposite
+> # order ("JOHNKYLE" vs "KYLEJOHN") -- rescued by the rotation check.
+> jaro_winkler_tokens("HAYNES JOHNKYLE", "KYLEJOHN HAYNES", contractions = TRUE)
+[1] 1
+> 
+> 
+> 
+> cleanEx()
+> nameEx("levenshtein")
+> ### * levenshtein
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: levenshtein
+> ### Title: Vectorised Levenshtein, Damerau-Levenshtein, and Hamming
+> ###   distance
+> ### Aliases: levenshtein damerau_levenshtein hamming
+> 
+> ### ** Examples
+> 
+> levenshtein("kitten", "sitting")
+[1] 3
+> damerau_levenshtein("ab", "ba")
+[1] 1
+> hamming("karolin", "kathrin")
+[1] 3
+> 
+> 
+> 
+> cleanEx()
+> nameEx("qgram_metrics")
+> ### * qgram_metrics
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: qgram_metrics
+> ### Title: Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky
+> ### Aliases: qgram_metrics jaccard_index dice_coefficient tversky_index
+> 
+> ### ** Examples
+> 
+> jaccard_index("night", "nacht")
+[1] 0.1428571
+> dice_coefficient("night", "nacht")
+[1] 0.25
+> tversky_index("night", "nacht", alpha = 1, beta = 1) # == jaccard_index()
+[1] 0.1428571
+> jaccard_index(c("Kyle Haynes", "John Smith"), c("Kyle Haynes", "Jon Smith"))
+[1] 1.0 0.7
+> 
+> 
+> 
+> ### * <FOOTER>
+> ###
+> cleanEx()
+> options(digits = 7L)
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  0.11 0.03 0.16 NA NA 
+> grDevices::dev.off()
+null device 
+          1 
+> ###
+> ### Local variables: ***
+> ### mode: outline-minor ***
+> ### outline-regexp: "\\(> \\)?### [*]+" ***
+> ### End: ***
+> quit('no')

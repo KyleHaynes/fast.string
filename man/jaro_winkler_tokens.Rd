@@ -21,28 +21,29 @@ jaro_winkler_tokens(
 \item{p}{Prefix scaling factor (default 0.1, the standard value).}
 
 \item{ignore_case}{Logical. Uppercase both sides before comparing
-(default \code{FALSE} — name/address tokens are rarely meaningfully
+(default \code{FALSE} -- name/address tokens are rarely meaningfully
 case-sensitive).}
 
 \item{strip}{Single regex string matching punctuation to remove before
-tokenising, or \code{NULL} to skip this step. Default \code{"['’-]"} strips
+tokenising, or \code{NULL} to skip this step. Default \code{"['\\u2019-]"} strips
 straight/curly apostrophes and hyphens.}
 
 \item{extra_penalty}{\code{NULL} (default) or a non-negative numeric scalar.
 \code{NULL} penalises unmatched tokens by diluting the average (divide by
 \code{max(n_tokens_a, n_tokens_b)}). A numeric value instead averages over
 only the matched tokens (\code{min(n_tokens_a, n_tokens_b)}) and subtracts
-\code{extra_penalty} per unmatched token from that average, floored at 0 —
+\code{extra_penalty} per unmatched token from that average, floored at 0 --
 so unmatched tokens can be ignored (\code{0}) or lightly discounted (e.g.
 \code{0.05}-\code{0.2}) instead of fully diluting the score.}
 
 \item{contractions}{Logical (default \code{FALSE}). If \code{TRUE}, also try every
 pair of tokens on each side concatenated together (in their original
 left-to-right order, not just adjacent pairs) as a candidate match for
-a single token on the other side — see Details. Slower than the
+a single token on the other side -- see Details. Slower than the
 default since it considers \code{O(n^2)} extra candidates per side.}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Numeric vector of similarities in \verb{[0, 1]}, \code{length(a)} long.
@@ -52,12 +53,12 @@ Numeric vector of similarities in \verb{[0, 1]}, \code{length(a)} long.
 \code{\link[=jaro_winkler]{jaro_winkler()}} compares two strings as single, ordered sequences of
 characters, so \code{"Kyle John Haynes"} vs \code{"John Kylie Haynes"} scores badly
 even though two of the three tokens are identical and the third is a
-near-miss — the words just moved. \code{jaro_winkler_tokens()} fixes that by
+near-miss -- the words just moved. \code{jaro_winkler_tokens()} fixes that by
 scoring each pair two ways and keeping the higher result:
 }
 \details{
 \enumerate{
-\item \strong{Token alignment} — split both strings on whitespace, score every
+\item \strong{Token alignment} -- split both strings on whitespace, score every
 token in \code{a} against every token in \code{b}, then greedily pair off tokens
 in descending order of similarity (a cheap stand-in for an optimal
 assignment; accurate enough for the handful of tokens found in
@@ -65,7 +66,7 @@ names/addresses). By default the summed score is divided by
 \code{max(n_tokens_a, n_tokens_b)}, so missing or extra tokens are
 penalised. This is what rescues \code{"Kyle John Haynes"} /
 \code{"John Kylie Haynes"}.
-\item \strong{Collapsed} — both sides with internal whitespace removed and
+\item \strong{Collapsed} -- both sides with internal whitespace removed and
 compared as one string. This rescues cases where punctuation/spacing
 alone differs, e.g. \code{"OBrien"} vs \code{"O Brien"}, which token alignment
 alone would under-score (one token vs two).
@@ -76,18 +77,18 @@ default) are removed so that \code{"O'Brien"}, \code{"O-Brien"}, and \code{"OBri
 tokenise and collapse identically.
 
 Set \code{contractions = TRUE} to also rescue tokens that are \emph{split on one
-side but joined on the other} — \code{"KYLEJOHN HAYNES"} vs.
+side but joined on the other} -- \code{"KYLEJOHN HAYNES"} vs.
 \code{"KYLE JOHN HAYNES"} scores perfectly, because \code{"KYLEJOHN"} is recognised
 as \code{"KYLE"} + \code{"JOHN"} concatenated. This isn't limited to adjacent
 tokens: \code{"KYLEHAYNES JOHN"} vs. \code{"KYLE JOHN HAYNES"} also scores
 perfectly, because the two tokens that contracted (\code{"KYLE"}, \code{"HAYNES"})
-don't need to be next to each other in the original — only in their
+don't need to be next to each other in the original -- only in their
 original left-to-right order (so \code{"HAYNESKYLE"} would \emph{not} match). Every
 pair of tokens on each side (not just adjacent ones) is tried as a
 candidate contraction.
 
 \code{contractions = TRUE} also catches the case where \emph{both} sides already
-have two words fused into one token, just in opposite order —
+have two words fused into one token, just in opposite order --
 \code{"HAYNES JOHNKYLE"} vs. \code{"KYLEJOHN HAYNES"} scores highly, because
 \code{"JOHNKYLE"} and \code{"KYLEJOHN"} are equal-length and one is an exact cyclic
 rotation of the other (plain Jaro-Winkler can't see this: swapping two
@@ -97,7 +98,7 @@ the best kept, so this needs no prior knowledge of where the fused word
 boundary was.
 
 Both contraction mechanisms try \code{O(n^2)} extra candidate comparisons per
-side, so \code{contractions = TRUE} is noticeably slower than the default —
+side, so \code{contractions = TRUE} is noticeably slower than the default --
 off by default for that reason, and most useful when names/addresses are
 known to have inconsistent word-splitting.
 
@@ -106,17 +107,17 @@ by \code{max(n_tokens_a, n_tokens_b)} rather than the number actually matched.
 Set \code{extra_penalty} to a number to switch to a different scheme: unmatched
 tokens (e.g. a stray middle name/initial on one side) are dropped from the
 average entirely, and each one then subtracts \code{extra_penalty} from the
-result instead — \code{extra_penalty = 0} ignores extra tokens outright,
+result instead -- \code{extra_penalty = 0} ignores extra tokens outright,
 \code{extra_penalty = 0.1} lets a couple of strays through with a small dent in
 score. This is what lets \code{"Kylie John ZZ Haynes"} still score highly
 against \code{"Haynes John Kyle"} (3 of 4 tokens align well; \code{"ZZ"} is dropped
 rather than dragging the average down).
 
-The normalisation (\code{toupper}/\code{strip}/whitespace collapse) runs in R using
-the package's own \code{\link[=fgsub]{fgsub()}}/\code{\link[=ftrimws]{ftrimws()}}, but tokenising, the token x token
-similarity matrix, the greedy assignment, and the collapsed comparison all
-run in a single parallelised C++ pass (via Intel TBB through RcppParallel)
-over the whole vector, the same as \code{\link[=jaro_winkler]{jaro_winkler()}} itself.
+Case and \code{strip} normalisation run in R, while whitespace handling,
+tokenising, the token x token similarity matrix, the greedy assignment,
+and the collapsed comparison all run in a single parallelised C++ pass
+(via Intel TBB through RcppParallel) over the whole vector, the same as
+\code{\link[=jaro_winkler]{jaro_winkler()}} itself.
 }
 \examples{
 jaro_winkler_tokens("Kyle John Haynes", "John Kylie Haynes")
@@ -131,12 +132,12 @@ jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle",
 
 # Contractions: "KYLEJOHN" recognised as "KYLE" + "JOHN" (adjacent), and
 # "KYLEHAYNES" recognised as "KYLE" + "HAYNES" (non-adjacent, "JOHN" sits
-# between them in the original) — both score perfectly with contractions on.
+# between them in the original) -- both score perfectly with contractions on.
 jaro_winkler_tokens("KYLEJOHN HAYNES", "KYLE JOHN HAYNES", contractions = TRUE)
 jaro_winkler_tokens("KYLEHAYNES JOHN", "KYLE JOHN HAYNES", contractions = TRUE)
 
 # Both sides already fused two words into one token, just in opposite
-# order ("JOHNKYLE" vs "KYLEJOHN") — rescued by the rotation check.
+# order ("JOHNKYLE" vs "KYLEJOHN") -- rescued by the rotation check.
 jaro_winkler_tokens("HAYNES JOHNKYLE", "KYLEJOHN HAYNES", contractions = TRUE)
 }
 \seealso{

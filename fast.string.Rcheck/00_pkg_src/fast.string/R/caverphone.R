@@ -1,0 +1,33 @@
+#' Caverphone 2.0 phonetic code (Caversham Project, University of Otago)
+#'
+#' Encodes each string as a fixed 10-character phonetic code via a chain of
+#' substring transforms originally designed for matching New Zealand
+#' electoral-roll names, and widely used in NZ/AU record linkage generally.
+#' Complements [soundex()]/[nysiis()]/[double_metaphone()] as another
+#' blocking-key option — different rulesets group different near-miss
+#' spellings together, so trying more than one can catch matches a single
+#' phonetic key misses.
+#'
+#' Ported step-for-step from the algorithm's reference Java implementation
+#' (Apache Commons Codec's `Caverphone2`) and cross-checked against its
+#' published test vectors (see `tests/testthat/test-caverphone.R`),
+#' including the "enough"/"trough" duplicate-rule quirk inherited from the
+#' original published 2004 specification — preserved here rather than
+#' "corrected", since the point of a phonetic key is to match the standard
+#' algorithm everyone else is using, not a personal improvement on it.
+#'
+#' @param x Character vector (coerced via [as.character()] if not already
+#'   character). `NA` elements return `NA`; every other input — including
+#'   `""` — returns a 10-character code (`""` and pure-non-letter strings
+#'   both code as `"1111111111"`).
+#'
+#' @return Character vector the same length as `x`, with `names(x)`
+#'   preserved, each element either `NA` or exactly 10 characters.
+#' @seealso [soundex()], [nysiis()], [double_metaphone()]
+#' @examples
+#' caverphone(c("Peter", "Tedder", "Stevenson"))
+#' @export
+caverphone <- function(x) {
+    if (!is.character(x)) x <- as.character(x)
+    .copy_names(fast_caverphone_impl(x), x)
+}

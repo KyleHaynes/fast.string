@@ -15,7 +15,8 @@ tversky_matrix(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
 
 \item{alpha, beta}{Tversky asymmetry weights (default \code{0.5} each).}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Numeric matrix of dimensions n × m.

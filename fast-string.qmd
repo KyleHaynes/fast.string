@@ -1,6 +1,6 @@
 ---
 title: "fast.string: Parallel String, Date & Phonetic Matching"
-subtitle: "PCRE2 + RE2 + RcppParallel (Intel TBB)"
+subtitle: "PCRE2 + prepared literal search + RcppParallel (Intel TBB)"
 author: "Kyle Haynes"
 date: today
 format:
@@ -17,21 +17,23 @@ execute:
 `fast.string` provides fast equivalents of common base R string functions
 (`grepl()`, `grep()`, `sub()`, `gsub()`, `trimws()`, `substr()`, `nchar()`,
 `chartr()`), plus date formatting/parsing and phonetic-matching helpers
-(`soundex()`, `nysiis()`, `jaro_winkler()`) — all parallelised across CPU
-cores via Intel TBB (through RcppParallel), with PCRE2 for regex and RE2
-`StringPiece` for fixed-string matching.
+(`soundex()`, `nysiis()`, `jaro_winkler()`), with large workloads
+parallelised across CPU cores via Intel TBB (through RcppParallel), PCRE2
+for regex, and a prepared byte-oriented searcher for fixed-string matching.
 
-These are typically 5–40x faster than the base R equivalents on large
-character vectors, which matters most for record-linkage and ETL pipelines
-that process millions of strings.
+Performance depends on string length, match density, value reuse, matrix
+shape, and available cores. The benchmark chapter measures those factors
+against an isolated installation of the exact checkout being documented.
 
 ```{r}
 #| label: setup
 #| include: false
-if (!requireNamespace("fast.string", quietly = TRUE)) {
-    remotes::install_local(".", quiet = TRUE, upgrade = "never")
-}
-library(fast.string)
+source("benchmark_helpers.R", local = FALSE)
+.benchmark_installation <- benchmark_install_checkout(".")
+.benchmark_metadata <- benchmark_metadata(
+    .benchmark_installation,
+    profile = "fast-string-qmd"
+)
 options(fast.string.verbose = FALSE)
 library(stringi)
 ```

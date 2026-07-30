@@ -33,6 +33,113 @@ test_that("gsub_all regex sequential matches chained base gsub with perl", {
     expect_identical(result, expected)
 })
 
+test_that("gsub_all grows PCRE2 buffers for expanding backreferences", {
+    x <- rep(strrep("ab", 128L), 1800L)
+    patterns <- c("(ab)", "z")
+    replacements <- c("\\1\\1\\1\\1", "q")
+    expected <- base::gsub(
+        patterns[[1L]], replacements[[1L]], x, perl = TRUE
+    )
+    expected <- base::gsub(
+        patterns[[2L]], replacements[[2L]], expected, perl = TRUE
+    )
+
+    expect_identical(
+        fast.string::gsub_all(
+            patterns, replacements, x, sequential = TRUE, nthreads = 4L
+        ),
+        expected
+    )
+})
+
+test_that("gsub_all handles zero-length regex matches like base", {
+    x <- c("ab", "xxx", "xa", "xax", "", NA_character_)
+
+    expect_identical(
+        fast.string::gsub_all("x*", "_", x, nthreads = 2L),
+        base::gsub("x*", "_", x, perl = TRUE)
+    )
+
+    patterns <- c("x*", "a")
+    replacements <- c("_", "A")
+    expected <- x
+    for (i in seq_along(patterns)) {
+        expected <- base::gsub(
+            patterns[[i]], replacements[[i]], expected, perl = TRUE
+        )
+    }
+    expect_identical(
+        fast.string::gsub_all(
+            patterns, replacements, x,
+            sequential = TRUE, nthreads = 2L
+        ),
+        expected
+    )
+})
+
+test_that("gsub_all preserves pure source-slice encodings", {
+    latin1 <- iconv("\u00e9clair", from = "UTF-8", to = "latin1")
+    Encoding(latin1) <- "latin1"
+    prefixed <- iconv("x\u00e9clair", from = "UTF-8", to = "latin1")
+    Encoding(prefixed) <- "latin1"
+
+    fixed_slice <- fast.string::gsub_all(
+        "x", "", prefixed, fixed = TRUE, nthreads = 2L
+    )
+    regex_slice <- fast.string::gsub_all(
+        "^x", "", prefixed, nthreads = 2L
+    )
+    expect_identical(Encoding(fixed_slice), "latin1")
+    expect_identical(Encoding(regex_slice), "latin1")
+    expect_identical(charToRaw(fixed_slice), charToRaw(latin1))
+    expect_identical(charToRaw(regex_slice), charToRaw(latin1))
+})
+
+test_that("gsub_all does not tag disjoint deletions as source slices", {
+    x <- iconv("\u00e9aaba", from = "UTF-8", to = "latin1")
+    Encoding(x) <- "latin1"
+
+    result <- fast.string::gsub_all(
+        "ab", "", x, sequential = TRUE, nthreads = 2L
+    )
+    expect_identical(charToRaw(result), as.raw(c(0xe9, 0x61, 0x61)))
+    expect_identical(Encoding(result), "UTF-8")
+
+    for (sequential in c(TRUE, FALSE)) {
+        fixed_result <- fast.string::gsub_all(
+            "ab", "", x, fixed = TRUE,
+            sequential = sequential, nthreads = 2L
+        )
+        expect_identical(
+            charToRaw(fixed_result),
+            as.raw(c(0xe9, 0x61, 0x61))
+        )
+        expect_identical(Encoding(fixed_result), "UTF-8")
+    }
+})
+
+test_that("later deletions can restore a pure source slice", {
+    x <- iconv("\u00e9ab", from = "UTF-8", to = "latin1")
+    Encoding(x) <- "latin1"
+
+    for (fixed in c(FALSE, TRUE)) {
+        result <- fast.string::gsub_all(
+            c("a", "b"), "", x, fixed = fixed,
+            sequential = TRUE, nthreads = 2L
+        )
+        expect_identical(charToRaw(result), as.raw(0xe9))
+        expect_identical(Encoding(result), "latin1")
+    }
+})
+
+test_that("gsub_all retains legacy unnamed output", {
+    x <- c(first = "alpha", second = "beta")
+    expect_null(names(
+        fast.string::gsub_all("a", "x", x, fixed = TRUE)
+    ))
+    expect_null(names(fast.string::gsub_all("a", "x", x)))
+})
+
 test_that("gsub_all recycles a single replacement to all patterns", {
     x <- "a-b-c"
     result <- fast.string::gsub_all(c("a", "b", "c"), "X", x, fixed = TRUE)

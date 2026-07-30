@@ -25,7 +25,8 @@
 #' Intel TBB through RcppParallel), the same as [jaro_winkler()].
 #'
 #' @param a,b Equal-length character vectors.
-#' @param nthreads Integer or `NULL`. Thread count.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return Numeric vector the same length as `a`, `NA` if either `a[i]` or
 #'   `b[i]` is `NA`.
 #' @seealso [levenshtein_matrix()], [damerau_levenshtein_matrix()], [jaro_winkler()]
@@ -47,34 +48,29 @@ NULL
 #' @export
 levenshtein <- function(a, b, nthreads = NULL) {
     .editdist_validate(a, b)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_levenshtein_impl(a, b)
+    fast_levenshtein_impl(a, b, .as_nthreads(nthreads))
 }
 
 #' Levenshtein all-pairs distance matrix
 #'
 #' @param a Character vector of length n (rows).
 #' @param b Character vector of length m (columns).
-#' @param nthreads Integer or `NULL`. Thread count.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return Numeric matrix of dimensions n × m.
 #' @seealso [levenshtein()]
 #' @export
 levenshtein_matrix <- function(a, b, nthreads = NULL) {
     if (!is.character(a) || !is.character(b))
         stop("`a` and `b` must be character vectors.")
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_levenshtein_matrix_impl(a, b)
+    fast_levenshtein_matrix_impl(a, b, .as_nthreads(nthreads))
 }
 
 #' @rdname levenshtein
 #' @export
 damerau_levenshtein <- function(a, b, nthreads = NULL) {
     .editdist_validate(a, b)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_damerau_levenshtein_impl(a, b)
+    fast_damerau_levenshtein_impl(a, b, .as_nthreads(nthreads))
 }
 
 #' Damerau-Levenshtein (OSA) all-pairs distance matrix
@@ -86,16 +82,12 @@ damerau_levenshtein <- function(a, b, nthreads = NULL) {
 damerau_levenshtein_matrix <- function(a, b, nthreads = NULL) {
     if (!is.character(a) || !is.character(b))
         stop("`a` and `b` must be character vectors.")
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_damerau_levenshtein_matrix_impl(a, b)
+    fast_damerau_levenshtein_matrix_impl(a, b, .as_nthreads(nthreads))
 }
 
 #' @rdname levenshtein
 #' @export
 hamming <- function(a, b, nthreads = NULL) {
     .editdist_validate(a, b)
-    if (!is.null(nthreads))
-        RcppParallel::setThreadOptions(numThreads = as.integer(nthreads))
-    fast_hamming_impl(a, b)
+    fast_hamming_impl(a, b, .as_nthreads(nthreads))
 }

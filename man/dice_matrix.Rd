@@ -13,7 +13,8 @@ dice_matrix(a, b, q = 2, nthreads = NULL)
 
 \item{q}{Q-gram length (default \code{2}).}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Numeric matrix of dimensions n × m.

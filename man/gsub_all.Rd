@@ -31,7 +31,8 @@ another (later patterns can match text introduced by earlier
 replacements). If \code{FALSE}, match all patterns in a single left-to-right
 scan (first pattern to match at each position wins).}
 
-\item{nthreads}{Integer or \code{NULL}. Thread count.}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}.
