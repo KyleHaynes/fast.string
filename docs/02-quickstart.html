@@ -401,7 +401,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#dates" id="toc-dates" class="nav-link" data-scroll-target="#dates"><span class="header-section-number">2.4</span> Dates</a></li>
   <li><a href="#phonetic-blocking-keys" id="toc-phonetic-blocking-keys" class="nav-link" data-scroll-target="#phonetic-blocking-keys"><span class="header-section-number">2.5</span> Phonetic blocking keys</a></li>
   <li><a href="#fuzzy-string-similarity" id="toc-fuzzy-string-similarity" class="nav-link" data-scroll-target="#fuzzy-string-similarity"><span class="header-section-number">2.6</span> Fuzzy string similarity</a></li>
-  <li><a href="#putting-it-together" id="toc-putting-it-together" class="nav-link" data-scroll-target="#putting-it-together"><span class="header-section-number">2.7</span> Putting it together</a></li>
+  <li><a href="#edit-distance" id="toc-edit-distance" class="nav-link" data-scroll-target="#edit-distance"><span class="header-section-number">2.7</span> Edit distance</a></li>
+  <li><a href="#fuzzy-lookup-without-a-full-matrix" id="toc-fuzzy-lookup-without-a-full-matrix" class="nav-link" data-scroll-target="#fuzzy-lookup-without-a-full-matrix"><span class="header-section-number">2.8</span> Fuzzy lookup without a full matrix</a></li>
+  <li><a href="#q-gram-set-similarity" id="toc-q-gram-set-similarity" class="nav-link" data-scroll-target="#q-gram-set-similarity"><span class="header-section-number">2.9</span> Q-gram set similarity</a></li>
+  <li><a href="#fuzzywuzzy-style-ratios" id="toc-fuzzywuzzy-style-ratios" class="nav-link" data-scroll-target="#fuzzywuzzy-style-ratios"><span class="header-section-number">2.10</span> fuzzywuzzy-style ratios</a></li>
+  <li><a href="#putting-it-together" id="toc-putting-it-together" class="nav-link" data-scroll-target="#putting-it-together"><span class="header-section-number">2.11</span> Putting it together</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/02-quickstart.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
@@ -423,12 +427,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header><section id="installation" class="level2" data-number="2.1"><h2 data-number="2.1" class="anchored" data-anchor-id="installation">
 <span class="header-section-number">2.1</span> Installation</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html">install_github</a></span><span class="op">(</span><span class="st">"KyleHaynes/fast.string"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This compiles C++ source on install, so you need a working toolchain: Rtools on Windows, Xcode command-line tools on macOS, or <code>build-essential</code> + <code>libpcre2-dev</code> on Linux. See <a href="07-troubleshooting.html" class="quarto-xref"><span>Chapter 7</span></a> if the install fails.</p>
+<p>This compiles C++ source on install, so you need a working toolchain: Rtools on Windows, Xcode command-line tools on macOS, or <code>build-essential</code> + <code>libpcre2-dev</code> on Linux. See <a href="#sec-troubleshooting" class="quarto-xref"><span class="quarto-unresolved-ref">sec-troubleshooting</span></a> if the install fails.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">fast.string</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Loading the package prints a one-time startup banner listing every exported function; suppress it with <code>options(fast.string.verbose = FALSE)</code> set <em>before</em> <code><a href="https://rdrr.io/r/base/library.html">library()</a></code>, or with <code><a href="https://rdrr.io/r/base/message.html">suppressPackageStartupMessages()</a></code>.</p>
-<p>The rest of this chapter is a guided tour through every function group, using small inputs so it renders fast — <a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> is where the same functions get pushed to 3 million rows.</p>
+<p>The rest of this chapter is a guided tour through every function group, using small inputs so it renders fast — <a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a> is where the same functions get pushed to 3 million rows.</p>
 </section><section id="matching-substitution" class="level2" data-number="2.2"><h2 data-number="2.2" class="anchored" data-anchor-id="matching-substitution">
 <span class="header-section-number">2.2</span> Matching &amp; substitution</h2>
 <p><code><a href="https://rdrr.io/pkg/fast.string/man/fgrepl.html">fgrepl()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/fgrep.html">fgrep()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/fsub.html">fsub()</a></code>, and <code><a href="https://rdrr.io/pkg/fast.string/man/fgsub.html">fgsub()</a></code> are argument-compatible with <code><a href="https://rdrr.io/r/base/grep.html">base::grepl()</a></code>/<code><a href="https://rdrr.io/r/base/grep.html">grep()</a></code>/<code><a href="https://rdrr.io/r/base/grep.html">sub()</a></code>/<code><a href="https://rdrr.io/r/base/grep.html">gsub()</a></code> — same defaults, same <code>NA</code> handling — just parallelised.</p>
@@ -511,25 +515,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </section><section id="phonetic-blocking-keys" class="level2" data-number="2.5"><h2 data-number="2.5" class="anchored" data-anchor-id="phonetic-blocking-keys">
 <span class="header-section-number">2.5</span> Phonetic blocking keys</h2>
-<p><code><a href="https://rdrr.io/pkg/fast.string/man/soundex.html">soundex()</a></code> and <code><a href="https://rdrr.io/pkg/fast.string/man/nysiis.html">nysiis()</a></code> have no base R equivalent. They’re typically used to group records that <em>sound</em> alike before running a more expensive pairwise comparison only within each group, rather than comparing every record against every other record.</p>
+<p><code><a href="https://rdrr.io/pkg/fast.string/man/soundex.html">soundex()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/nysiis.html">nysiis()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/double_metaphone.html">double_metaphone()</a></code>, and <code><a href="https://rdrr.io/pkg/fast.string/man/caverphone.html">caverphone()</a></code> have no base R equivalent. They’re typically used to group records that <em>sound</em> alike before running a more expensive pairwise comparison only within each group, rather than comparing every record against every other record. Different rulesets group different near-miss spellings together, so trying more than one can catch matches a single phonetic key misses.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">names_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Robert"</span>, <span class="st">"Rupert"</span>, <span class="st">"Ashcraft"</span>, <span class="st">"Ashcroft"</span>, <span class="st">"Smith"</span>, <span class="st">"Smyth"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
-<span>    name    <span class="op">=</span> <span class="va">names_x</span>,</span>
-<span>    soundex <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/soundex.html">soundex</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span>,</span>
-<span>    nysiis  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/nysiis.html">nysiis</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span></span>
+<span>    name       <span class="op">=</span> <span class="va">names_x</span>,</span>
+<span>    soundex    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/soundex.html">soundex</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span>,</span>
+<span>    nysiis     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/nysiis.html">nysiis</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span>,</span>
+<span>    caverphone <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/caverphone.html">caverphone</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>      name soundex nysiis
-1   Robert    R163  RABAD
-2   Rupert    R163  RAPAD
-3 Ashcraft    A261 ASCRAF
-4 Ashcroft    A261 ASCRAF
-5    Smith    S530   SNAT
-6    Smyth    S530   SNYT</code></pre>
+<pre><code>      name soundex nysiis caverphone
+1   Robert    R163  RABAD RPT1111111
+2   Rupert    R163  RAPAD RPT1111111
+3 Ashcraft    A261 ASCRAF ASKRFT1111
+4 Ashcroft    A261 ASCRAF ASKRFT1111
+5    Smith    S530   SNAT SMT1111111
+6    Smyth    S530   SNYT SMT1111111</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/double_metaphone.html">double_metaphone</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Smith"</span>, <span class="st">"Schmidt"</span>, <span class="st">"Catherine"</span>, <span class="st">"Kathryn"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  primary secondary
+1     SM0       XMT
+2     XMT       SMT
+3    K0RN      KTRN
+4    K0RN      KTRN</code></pre>
 </div>
 </div>
-<p><code>"Ashcraft"</code>/<code>"Ashcroft"</code> sharing a Soundex code (<code>A261</code>) despite differing spelling is the textbook example of why Soundex exists — and a known point of disagreement between <em>implementations</em> of Soundex, covered in <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>.</p>
+<p><code>"Ashcraft"</code>/<code>"Ashcroft"</code> sharing a Soundex code (<code>A261</code>) despite differing spelling is the textbook example of why Soundex exists — and a known point of disagreement between <em>implementations</em> of Soundex, covered in <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>.</p>
+<p><code><a href="https://rdrr.io/pkg/fast.string/man/double_metaphone.html">double_metaphone()</a></code> returns two codes per word — <code>primary</code> and <code>secondary</code> — because some spellings have more than one plausible pronunciation (a <code>C</code> that could be a hard <code>K</code> or a soft <code>S</code> sound, for instance); two names are usually considered a phonetic match if <em>any</em> of one side’s codes matches <em>any</em> of the other’s. <code>"Catherine"</code> and <code>"Kathryn"</code> sharing the code <code>K0RN</code> despite no letters lining up is the kind of match Soundex/NYSIIS — designed around English/American surnames — typically miss.</p>
 </section><section id="fuzzy-string-similarity" class="level2" data-number="2.6"><h2 data-number="2.6" class="anchored" data-anchor-id="fuzzy-string-similarity">
 <span class="header-section-number">2.6</span> Fuzzy string similarity</h2>
 <p>Three functions, three shapes of comparison:</p>
@@ -542,11 +556,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <strong><code>jaro_winkler_tokens(a, b)</code></strong> — pairwise like the first, but tolerant of token reordering and punctuation/spacing differences within a token.</li>
 </ul>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler.html">jaro_winkler</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"DWAYNE"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMYTH"</span>, <span class="st">"DUANE"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler.html">jaro_winkler</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"DWAYNE"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMYTH"</span>, <span class="st">"DUANE"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.8933333 0.8400000</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">candidates_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"John Smith"</span>, <span class="st">"Mary Jones"</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">candidates_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"John Smith"</span>, <span class="st">"Mary Jones"</span><span class="op">)</span></span>
 <span><span class="va">candidates_b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Jon Smith"</span>, <span class="st">"Mary-Anne Jones"</span>, <span class="st">"Someone Else"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_matrix.html">jaro_winkler_matrix</a></span><span class="op">(</span><span class="va">candidates_a</span>, <span class="va">candidates_b</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -554,21 +568,109 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 [1,] 0.9733333 0.4444444 0.4722222
 [2,] 0.4037037 0.8833333 0.5388889</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Token reordering — two of three tokens match exactly, the third is close</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Token reordering — two of three tokens match exactly, the third is close</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_tokens.html">jaro_winkler_tokens</a></span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.9844444</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Punctuation/spacing variants of the same name</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Punctuation/spacing variants of the same name</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_tokens.html">jaro_winkler_tokens</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"OBrien"</span>, <span class="st">"OBrien"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"O Brien"</span>, <span class="st">"O'Brien"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 1 1</code></pre>
 </div>
 </div>
-<p>The full mechanics of how <code><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_tokens.html">jaro_winkler_tokens()</a></code> resolves reordered tokens — and the <code>extra_penalty</code> argument for handling a stray extra token — are in <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> and the function reference (<a href="05-function-reference.html" class="quarto-xref"><span>Chapter 5</span></a>).</p>
-</section><section id="putting-it-together" class="level2" data-number="2.7"><h2 data-number="2.7" class="anchored" data-anchor-id="putting-it-together">
-<span class="header-section-number">2.7</span> Putting it together</h2>
-<p>A typical pipeline normalises with <code><a href="https://rdrr.io/pkg/fast.string/man/fchartr.html">fchartr()</a></code>/<code><a href="https://rdrr.io/pkg/fast.string/man/ftrimws.html">ftrimws()</a></code>, builds a blocking key with <code><a href="https://rdrr.io/pkg/fast.string/man/soundex.html">soundex()</a></code>/<code><a href="https://rdrr.io/pkg/fast.string/man/nysiis.html">nysiis()</a></code>/<code><a href="https://rdrr.io/pkg/fast.string/man/format_date.html">format_date()</a></code>, then scores candidates within each block with <code><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_matrix.html">jaro_winkler_matrix()</a></code> or <code><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_tokens.html">jaro_winkler_tokens()</a></code>. <a href="04-record-linkage-workflow.html" class="quarto-xref"><span>Chapter 4</span></a> walks through exactly that, end to end, on a small linkage example.</p>
+<p>The full mechanics of how <code><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_tokens.html">jaro_winkler_tokens()</a></code> resolves reordered tokens — and the <code>extra_penalty</code> argument for handling a stray extra token — are in <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> and the function reference (<a href="#sec-reference" class="quarto-xref"><span class="quarto-unresolved-ref">sec-reference</span></a>).</p>
+</section><section id="edit-distance" class="level2" data-number="2.7"><h2 data-number="2.7" class="anchored" data-anchor-id="edit-distance">
+<span class="header-section-number">2.7</span> Edit distance</h2>
+<p><code><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">levenshtein()</a></code>, <code>osa_distance()</code>, <code><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">damerau_levenshtein()</a></code>, and <code><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">hamming()</a></code> cover plain edits, restricted adjacent transpositions, unrestricted Damerau-Levenshtein, and position-wise differences. Existing APIs compare bytes by default; set <code>use_bytes = FALSE</code> for UTF-8 code points.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">levenshtein</a></span><span class="op">(</span><span class="st">"kitten"</span>, <span class="st">"sitting"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">osa_distance</span><span class="op">(</span><span class="st">"ca"</span>, <span class="st">"abc"</span><span class="op">)</span>             <span class="co"># 3 under the OSA restriction</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">damerau_levenshtein</a></span><span class="op">(</span><span class="st">"ca"</span>, <span class="st">"abc"</span><span class="op">)</span>      <span class="co"># 2 under unrestricted DL</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">levenshtein_similarity</span><span class="op">(</span><span class="st">"kitten"</span>, <span class="st">"sitting"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.5714286</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">levenshtein_within</span><span class="op">(</span><span class="st">"kitten"</span>, <span class="st">"sitting"</span>, max_distance <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] TRUE</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">hamming</a></span><span class="op">(</span><span class="st">"karolin"</span>, <span class="st">"kathrin"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb53"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">hamming</a></span><span class="op">(</span><span class="st">"abc"</span>, <span class="st">"ab"</span><span class="op">)</span>             <span class="co"># Inf for unequal length, matching stringdist</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] Inf</code></pre>
+</div>
+</div>
+</section><section id="fuzzy-lookup-without-a-full-matrix" class="level2" data-number="2.8"><h2 data-number="2.8" class="anchored" data-anchor-id="fuzzy-lookup-without-a-full-matrix">
+<span class="header-section-number">2.8</span> Fuzzy lookup without a full matrix</h2>
+<p><code>fuzzy_match()</code> and <code>fuzzy_top_n()</code> scan a candidate table while retaining only the requested matches. They default to Unicode code-point comparison and avoid the potentially enormous all-pairs matrix.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb55"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">choices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMYTH"</span>, <span class="st">"JONAS"</span>, <span class="st">"JONES"</span>, <span class="st">"MITTEN"</span>, <span class="st">"SITTING"</span><span class="op">)</span></span>
+<span><span class="fu">fuzzy_match</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"JONES"</span><span class="op">)</span>, <span class="va">choices</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb57"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzzy_top_n</span><span class="op">(</span><span class="st">"kitten"</span>, <span class="va">choices</span>, method <span class="op">=</span> <span class="st">"levenshtein"</span>, top_n <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  query_index table_index score rank
+1           1           1     0    1
+2           1           2     0    2</code></pre>
+</div>
+</div>
+</section><section id="q-gram-set-similarity" class="level2" data-number="2.9"><h2 data-number="2.9" class="anchored" data-anchor-id="q-gram-set-similarity">
+<span class="header-section-number">2.9</span> Q-gram set similarity</h2>
+<p><code><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">jaccard_index()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">dice_coefficient()</a></code>, and <code><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">tversky_index()</a></code> compare two strings’ sets of overlapping length-<code>q</code> substrings (“q-grams”) rather than their character-by-character alignment — symmetric in token order and insensitive to <em>where</em> a difference occurs, which makes them a useful second signal alongside Jaro-Winkler/edit-distance.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb59"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">jaccard_index</a></span><span class="op">(</span><span class="st">"night"</span>, <span class="st">"nacht"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.1428571</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb61"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">dice_coefficient</a></span><span class="op">(</span><span class="st">"night"</span>, <span class="st">"nacht"</span><span class="op">)</span>     <span class="co"># weights shared q-grams more heavily</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.25</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb63"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">tversky_index</a></span><span class="op">(</span><span class="st">"night"</span>, <span class="st">"nacht"</span>, alpha <span class="op">=</span> <span class="fl">1</span>, beta <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>  <span class="co"># == jaccard_index()</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.1428571</code></pre>
+</div>
+</div>
+<p><code><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">tversky_index()</a></code> generalises both: <code>alpha = beta = 1</code> is Jaccard, <code>alpha = beta = 0.5</code> is Dice, and asymmetric weights are useful when one side is a query and the other a reference and the two kinds of mismatch shouldn’t be penalised equally.</p>
+</section><section id="fuzzywuzzy-style-ratios" class="level2" data-number="2.10"><h2 data-number="2.10" class="anchored" data-anchor-id="fuzzywuzzy-style-ratios">
+<span class="header-section-number">2.10</span> fuzzywuzzy-style ratios</h2>
+<p><code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_ratio()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_partial_ratio()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_sort_ratio()</a></code>, and <code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_set_ratio()</a></code> are vectorised ports of Python’s <a href="https://github.com/seatgeek/fuzzywuzzy">fuzzywuzzy</a> package — useful if you’re porting a matching pipeline from Python, or just want its specific flavour of fuzzy scoring (Ratcliff/Obershelp matching blocks, <em>not</em> edit distance). All four return <code>0-100</code> like the originals.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_ratio</a></span><span class="op">(</span><span class="st">"this is a test"</span>, <span class="st">"this is a test!"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 100</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb67"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_partial_ratio</a></span><span class="op">(</span><span class="st">"fuzzy wuzzy was a bear"</span>, <span class="st">"wuzzy fuzzy was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 91</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb69"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_sort_ratio</a></span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"bear was a fuzzy"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 100</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb71"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_set_ratio</a></span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"fuzzy fuzzy bear was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 100</code></pre>
+</div>
+</div>
+</section><section id="putting-it-together" class="level2" data-number="2.11"><h2 data-number="2.11" class="anchored" data-anchor-id="putting-it-together">
+<span class="header-section-number">2.11</span> Putting it together</h2>
+<p>A typical pipeline normalises with <code><a href="https://rdrr.io/pkg/fast.string/man/fchartr.html">fchartr()</a></code>/<code><a href="https://rdrr.io/pkg/fast.string/man/ftrimws.html">ftrimws()</a></code>, builds a blocking key with <code><a href="https://rdrr.io/pkg/fast.string/man/soundex.html">soundex()</a></code>/<code><a href="https://rdrr.io/pkg/fast.string/man/nysiis.html">nysiis()</a></code>/<code><a href="https://rdrr.io/pkg/fast.string/man/format_date.html">format_date()</a></code>, then scores candidates within each block with <code><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_matrix.html">jaro_winkler_matrix()</a></code> or <code><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_tokens.html">jaro_winkler_tokens()</a></code>. <a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a> walks through exactly that, end to end, on a small linkage example.</p>
 
 
 </section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
@@ -997,7 +1099,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div> <!-- /content -->
 <footer class="footer"><div class="nav-footer">
     <div class="nav-footer-left">
-<p>fast.string — PCRE2 + RE2 + RcppParallel for R</p>
+<p>fast.string — PCRE2 + prepared literal search + RcppParallel for R</p>
 </div>   
     <div class="nav-footer-center">
       &nbsp;

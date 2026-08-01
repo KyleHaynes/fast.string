@@ -41,12 +41,12 @@ fast_date_parts_impl <- function(x) {
     .Call(`_fast_string_fast_date_parts_impl`, x)
 }
 
-fast_jaro_winkler_impl <- function(a, b, p, nthreads) {
-    .Call(`_fast_string_fast_jaro_winkler_impl`, a, b, p, nthreads)
+fast_jaro_winkler_impl <- function(a, b, p, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_jaro_winkler_impl`, a, b, p, nthreads, use_bytes)
 }
 
-fast_jaro_winkler_matrix_impl <- function(a, b, p, nthreads) {
-    .Call(`_fast_string_fast_jaro_winkler_matrix_impl`, a, b, p, nthreads)
+fast_jaro_winkler_matrix_impl <- function(a, b, p, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_jaro_winkler_matrix_impl`, a, b, p, nthreads, use_bytes)
 }
 
 fast_jaro_winkler_tokens_impl <- function(a, b, p, extra_penalty, contractions, nthreads) {
@@ -101,24 +101,44 @@ fast_fuzz_token_set_ratio_impl <- function(a, b, full_process, nthreads) {
     .Call(`_fast_string_fast_fuzz_token_set_ratio_impl`, a, b, full_process, nthreads)
 }
 
-fast_levenshtein_impl <- function(a, b, nthreads) {
-    .Call(`_fast_string_fast_levenshtein_impl`, a, b, nthreads)
+fast_fuzzy_top_n_impl <- function(x, table, method, top_n, p, min_score, max_distance, match_na, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_fuzzy_top_n_impl`, x, table, method, top_n, p, min_score, max_distance, match_na, nthreads, use_bytes)
 }
 
-fast_levenshtein_matrix_impl <- function(a, b, nthreads) {
-    .Call(`_fast_string_fast_levenshtein_matrix_impl`, a, b, nthreads)
+fast_levenshtein_impl <- function(a, b, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_levenshtein_impl`, a, b, nthreads, use_bytes)
 }
 
-fast_damerau_levenshtein_impl <- function(a, b, nthreads) {
-    .Call(`_fast_string_fast_damerau_levenshtein_impl`, a, b, nthreads)
+fast_levenshtein_matrix_impl <- function(a, b, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_levenshtein_matrix_impl`, a, b, nthreads, use_bytes)
 }
 
-fast_damerau_levenshtein_matrix_impl <- function(a, b, nthreads) {
-    .Call(`_fast_string_fast_damerau_levenshtein_matrix_impl`, a, b, nthreads)
+fast_osa_distance_impl <- function(a, b, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_osa_distance_impl`, a, b, nthreads, use_bytes)
 }
 
-fast_hamming_impl <- function(a, b, nthreads) {
-    .Call(`_fast_string_fast_hamming_impl`, a, b, nthreads)
+fast_osa_distance_matrix_impl <- function(a, b, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_osa_distance_matrix_impl`, a, b, nthreads, use_bytes)
+}
+
+fast_damerau_levenshtein_impl <- function(a, b, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_damerau_levenshtein_impl`, a, b, nthreads, use_bytes)
+}
+
+fast_damerau_levenshtein_matrix_impl <- function(a, b, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_damerau_levenshtein_matrix_impl`, a, b, nthreads, use_bytes)
+}
+
+fast_hamming_impl <- function(a, b, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_hamming_impl`, a, b, nthreads, use_bytes)
+}
+
+fast_edit_similarity_impl <- function(a, b, method, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_edit_similarity_impl`, a, b, method, nthreads, use_bytes)
+}
+
+fast_levenshtein_within_impl <- function(a, b, max_distance, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_levenshtein_within_impl`, a, b, max_distance, nthreads, use_bytes)
 }
 
 fast_jaccard_impl <- function(a, b, q, nthreads) {

@@ -32,7 +32,23 @@ NULL
     jaro_winkler_matrix = "all-pairs Jaro-Winkler similarity matrix",
     jaro_winkler_tokens = "token-reorder/punctuation-aware Jaro-Winkler similarity",
     soundex             = "Soundex phonetic code",
-    nysiis              = "NYSIIS phonetic code"
+    nysiis              = "NYSIIS phonetic code",
+    double_metaphone    = "Double Metaphone primary and secondary codes",
+    caverphone          = "Caverphone 2.0 phonetic code",
+    levenshtein         = "pairwise Levenshtein distance",
+    osa_distance        = "pairwise Optimal String Alignment distance",
+    damerau_levenshtein = "pairwise unrestricted Damerau-Levenshtein distance",
+    levenshtein_similarity = "normalized Levenshtein similarity",
+    levenshtein_within  = "bounded Levenshtein threshold test",
+    fuzzy_match         = "best match in a candidate table",
+    fuzzy_top_n         = "memory-bounded top-N fuzzy matches",
+    jaccard_index       = "pairwise q-gram Jaccard similarity",
+    dice_coefficient    = "pairwise q-gram Dice similarity",
+    tversky_index       = "pairwise q-gram Tversky similarity",
+    fuzz_ratio          = "fuzzywuzzy-style overall ratio",
+    fuzz_partial_ratio  = "fuzzywuzzy-style partial ratio",
+    fuzz_token_sort_ratio = "token-sort fuzzy ratio",
+    fuzz_token_set_ratio = "token-set fuzzy ratio"
 )
 
 .onAttach <- function(libname, pkgname) {

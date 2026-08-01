@@ -29,7 +29,8 @@ gsub_all(
 \item{sequential}{Logical. If \code{TRUE} (default), apply patterns one after
 another (later patterns can match text introduced by earlier
 replacements). If \code{FALSE}, match all patterns in a single left-to-right
-scan (first pattern to match at each position wins).}
+scan (first pattern to match at each position wins). This mode requires
+\code{fixed = TRUE}.}
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
@@ -39,6 +40,8 @@ Character vector the same length as \code{x}.
 }
 \description{
 Replace several patterns in \code{x} either sequentially (one full pass per
-pattern, like chaining \code{\link[=fgsub]{fgsub()}} calls) or in a single combined scan
-(\code{sequential = FALSE}), parallelised across all CPU cores via Intel TBB.
+pattern, like chaining \code{\link[=fgsub]{fgsub()}} calls) or, for fixed patterns, in a single
+combined scan (\code{sequential = FALSE}), parallelised across CPU cores via
+Intel TBB. Non-sequential regular-expression replacement is rejected
+because combined capture/backreference semantics are not implemented.
 }

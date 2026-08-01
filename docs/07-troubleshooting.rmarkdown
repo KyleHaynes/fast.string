@@ -1,0 +1,164 @@
+# Troubleshooting & FAQ {#sec-troubleshooting}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+```
+
+## Installation
+
+### "could not find tools necessary to compile a package" / install fails
+
+`fast.string` compiles C++ source on install (PCRE2 bindings, prepared
+literal search, RcppParallel). You need a working toolchain:
+
+- **Windows**: install [Rtools](https://cran.r-project.org/bin/windows/Rtools/)
+  matching your R version, and make sure it's on `PATH` (the Rtools
+  installer offers to do this). Verify with
+  `pkgbuild::has_build_tools(debug = TRUE)`.
+- **macOS**: install Xcode command-line tools (`xcode-select --install`).
+- **Linux**: a C++14-capable compiler (gcc/clang) plus the PCRE2
+  development headers — `libpcre2-dev` on Debian/Ubuntu,
+  `pcre2-devel` on Fedora/RHEL.
+
+If `pkgbuild::has_build_tools(debug = TRUE)` returns `FALSE`, the
+underlying compiler invocation it prints is the fastest way to see exactly
+what's missing.
+
+### Reinstalling after pulling new source changes
+
+If you're developing against a local checkout rather than installing a
+release, `devtools::load_all()` recompiles changed `src/*.cpp` files
+automatically; a plain `library(fast.string)` won't pick up source changes
+without reinstalling first.
+
+## NA, empty strings, and encoding
+
+### Why does my function return `NA` for a non-`NA` input?
+
+Every function in this package returns `NA` for `NA` input — but a few
+functions also return `NA` for specific *valid-looking but unparseable*
+inputs:
+
+- `soundex()`/`nysiis()`/`double_metaphone()` return `NA` for strings with
+  **no alphabetic characters at all** (e.g. `"123"`, `""`) — there's no
+  phonetic code for a string with nothing to encode phonetically.
+  `caverphone()` is the exception: it always returns a 10-character code
+  for non-`NA` input (even `""`, which codes as `"1111111111"`), matching
+  its reference implementation's behaviour.
+- `fas.Date()` returns `NA` for any string that doesn't match the
+  specified `format` *exactly* (wrong length, wrong separator position,
+  non-digit where a digit is expected) or has an out-of-range month/day.
+  Unlike `base::as.Date()`, it does **not** attempt multiple formats or
+  partial parsing.
+
+```{r}
+soundex(c("Smith", "123", "", NA))
+fas.Date(c("2024-06-18", "2024/06/18", "2024-13-01"), "iso")  # 2nd: wrong separator, 3rd: month 13
+```
+
+### `fchartr()` silently fell back to `base::chartr()` — why?
+
+`fchartr()`'s fast path is a flat 256-entry byte lookup table, which only
+works correctly when every character in `old` and `new` is single-byte
+(ASCII). If either argument contains a multi-byte UTF-8 character (an
+accented letter, a curly quote, an emoji), the function detects that via
+a byte-count vs. char-count comparison and transparently delegates to
+`base::chartr()` instead — same result, just without the speedup, and
+without you needing to know in advance.
+
+```{r}
+fchartr("e", "é", "test")  # "é" is multi-byte — falls back to base::chartr(), still correct
+```
+
+### `fnchar()` bytes vs. chars
+
+`type = "bytes"` counts bytes; `type = "chars"` counts Unicode codepoints.
+These differ for any non-ASCII input — get this backwards and a
+fixed-width field extraction (`fsubstr()`) on multi-byte data will be off
+by however many multi-byte characters are in the string.
+
+```{r}
+fnchar("café", type = "bytes")  # 5 — "é" is 2 bytes in UTF-8
+fnchar("café", type = "chars") # 4 — 4 visible characters
+```
+
+### Similarity bytes vs. Unicode code points
+
+Established edit-distance and Jaro-Winkler functions default to
+`use_bytes = TRUE` for compatibility. Set `use_bytes = FALSE` when one
+accented character or emoji should count as one comparison symbol. Fuzzy
+lookup defaults to code points. This does not perform Unicode normalization:
+precomposed and decomposed spellings can still compare differently.
+
+Bytes-encoded R strings cannot be decoded as Unicode and produce an indexed
+error in code-point mode; pass `use_bytes = TRUE` when those bytes are the
+intended data.
+
+## Threading
+
+### Does `nthreads` affect later calls?
+
+No. Functions that expose `nthreads` pass it to the native dispatcher as a
+**per-call cap**; they do not change RcppParallel's process-wide options.
+`NULL` uses the RcppParallel default for that call, a positive integer
+limits it to at most that many threads, and `nthreads = 1` forces strict
+serial execution. A later call without `nthreads` is unaffected.
+
+The dispatcher can use fewer threads than the cap when the input contains
+too little useful work. String-utility, date, and phonetic functions keep
+their existing signatures and use the default scheduler for their own
+calls.
+
+### Does `nthreads` help on a machine with few cores?
+
+Not much below 4 cores, and the package's own size thresholds
+(@sec-theory) mean it won't even try to parallelise small inputs
+regardless. If you're running inside a container with a CPU limit lower
+than `parallel::detectCores()` reports (common in CI and some cloud
+environments), set `nthreads` explicitly to the actual limit — TBB doesn't
+know about cgroup CPU quotas and will otherwise oversubscribe.
+
+The supported Windows build always uses TBB. On a diagnostic build forced
+to RcppParallel's TinyThread backend, values above one are advisory because
+that backend ignores the native thread-count argument; the dispatcher
+coarsens its ranges to limit useful parallel work instead. `nthreads = 1`
+still runs strictly serially on either backend. Set the build variable
+`FAST_STRING_TINYTHREAD=1` only when installing such a diagnostic build.
+
+## Regex behaviour
+
+### My pattern works in `grepl(perl = TRUE)` but `fgrepl()` gave a `cli::cli_inform()` message and fell back
+
+That's the intended behaviour, not a bug: the pattern uses PCRE-only
+syntax (lookaround, atomic groups, possessive quantifiers, named
+backreferences — the exact list is in @sec-theory), and `fast.string`
+delegates to `base::grepl(perl = TRUE)` automatically rather than risk a
+subtly different result from its own PCRE2 binding on syntax it hasn't
+specifically validated. The result is correct either way; you're just not
+getting the parallel speedup for that specific call. Pass `perl = TRUE`
+explicitly to skip the syntax check (only do this if you've confirmed the
+pattern behaves identically under `fast.string`'s PCRE2 path for your
+actual data).
+
+### Catastrophic backtracking — am I safe?
+
+Only partially. The prepared `fixed = TRUE` path treats the pattern as
+literal bytes, so regex backtracking cannot occur. PCRE2 (used for general
+regex) is **not** immune — it's still a backtracking engine, in the same
+risk class as base R's `perl = TRUE`. If you're matching untrusted patterns
+against untrusted input, that risk exists regardless of which package you
+use; this package doesn't add to it, but doesn't remove it either. Prefer
+`fixed = TRUE` whenever the pattern is actually a literal string: it avoids
+regex backtracking and is also the fastest path in the package.
+
+## Getting help
+
+- Found a bug, or a discrepancy between `fast.string` and base R's
+  behaviour on some input? Open an issue:
+  <https://github.com/KyleHaynes/anthropic_fast/issues>.
+- For the underlying algorithms, @sec-theory has the full detail behind
+  every function's behaviour.
+- For exact argument-by-argument documentation, @sec-reference.
+

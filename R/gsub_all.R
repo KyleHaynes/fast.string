@@ -1,8 +1,10 @@
 #' Apply multiple substitutions in one pass
 #'
 #' Replace several patterns in `x` either sequentially (one full pass per
-#' pattern, like chaining [fgsub()] calls) or in a single combined scan
-#' (`sequential = FALSE`), parallelised across all CPU cores via Intel TBB.
+#' pattern, like chaining [fgsub()] calls) or, for fixed patterns, in a single
+#' combined scan (`sequential = FALSE`), parallelised across CPU cores via
+#' Intel TBB. Non-sequential regular-expression replacement is rejected
+#' because combined capture/backreference semantics are not implemented.
 #'
 #' @param patterns Character vector of patterns to search for.
 #' @param replacements Character scalar or vector the same length as
@@ -13,7 +15,8 @@
 #' @param sequential Logical. If `TRUE` (default), apply patterns one after
 #'   another (later patterns can match text introduced by earlier
 #'   replacements). If `FALSE`, match all patterns in a single left-to-right
-#'   scan (first pattern to match at each position wins).
+#'   scan (first pattern to match at each position wins). This mode requires
+#'   `fixed = TRUE`.
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector the same length as `x`.
@@ -44,6 +47,9 @@ gsub_all <- function(patterns, replacements, x,
             isTRUE(sequential), threads
         ))
     }
+
+    if (!isTRUE(sequential))
+        stop("`sequential = FALSE` is not supported for regular-expression patterns; use `fixed = TRUE` or `sequential = TRUE`.")
 
     if (any(vapply(patterns, .has_pcre_only_syntax, logical(1L)))) {
         cli::cli_inform(

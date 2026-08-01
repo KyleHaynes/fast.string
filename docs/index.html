@@ -5,7 +5,7 @@
 <meta name="generator" content="quarto-1.9.38">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <meta name="author" content="Kyle Haynes">
-<meta name="dcterms.date" content="2026-06-27">
+<meta name="dcterms.date" content="2026-08-01">
 <title>fast.string</title>
 <style>
 /* Default styles provided by pandoc.
@@ -400,7 +400,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <a href="#preface" id="toc-preface" class="nav-link active" data-scroll-target="#preface">Preface</a>
   <ul class="collapse">
 <li><a href="#why-this-exists" id="toc-why-this-exists" class="nav-link" data-scroll-target="#why-this-exists">Why this exists</a></li>
-  <li><a href="#what-this-is-not" id="toc-what-this-is-not" class="nav-link" data-scroll-target="#what-this-is-not">What this is <em>not</em></a></li>
+  <li><a href="#how-it-fits-with-record-linkage-packages" id="toc-how-it-fits-with-record-linkage-packages" class="nav-link" data-scroll-target="#how-it-fits-with-record-linkage-packages">How it fits with record-linkage packages</a></li>
   <li><a href="#how-this-book-is-organised" id="toc-how-this-book-is-organised" class="nav-link" data-scroll-target="#how-this-book-is-organised">How this book is organised</a></li>
   <li><a href="#a-quick-taste" id="toc-a-quick-taste" class="nav-link" data-scroll-target="#a-quick-taste">A quick taste</a></li>
   </ul>
@@ -427,7 +427,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">27 June 2026</p>
+      <p class="date">1 August 2026</p>
     </div>
   </div>
   
@@ -438,7 +438,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 </header><section id="preface" class="level1 unnumbered"><h1 class="unnumbered">Preface</h1>
 <p><code>fast.string</code> is an R package of drop-in-faster equivalents for the string, date, and phonetic-matching functions that show up constantly in record linkage and ETL work — <code><a href="https://rdrr.io/r/base/grep.html">grepl()</a></code>, <code><a href="https://rdrr.io/r/base/grep.html">grep()</a></code>, <code><a href="https://rdrr.io/r/base/grep.html">sub()</a></code>, <code><a href="https://rdrr.io/r/base/grep.html">gsub()</a></code>, <code><a href="https://rdrr.io/r/base/trimws.html">trimws()</a></code>, <code><a href="https://rdrr.io/r/base/substr.html">substr()</a></code>, <code><a href="https://rdrr.io/r/base/nchar.html">nchar()</a></code>, <code><a href="https://rdrr.io/r/base/chartr.html">chartr()</a></code>, plus a handful of functions base R simply doesn’t have at all: Soundex/NYSIIS phonetic codes, and vectorised Jaro-Winkler similarity (including a token-reorder/punctuation-aware variant for multi-word names).</p>
-<p>Everything is parallelised across every CPU core via Intel TBB (through <a href="https://rcppcore.github.io/RcppParallel/">RcppParallel</a>), with <a href="https://www.pcre.org/">PCRE2</a> doing the regex work and <a href="https://github.com/google/re2">RE2</a>’s <code>StringPiece</code> handling fixed/literal matching. Typical speedups over base R are <strong>5-40x</strong> on large character vectors; some operations (parallel Jaro-Winkler, multi-pattern substitution in one pass) have no base R equivalent at all.</p>
+<p>Large workloads are parallelised via Intel TBB (through <a href="https://rcppcore.github.io/RcppParallel/">RcppParallel</a>), with <a href="https://www.pcre.org/">PCRE2</a> doing the regex work and a prepared byte-oriented searcher handling fixed/literal matching. Performance depends on string length, match density, value reuse, matrix shape, and available cores. Some operations (parallel Jaro-Winkler, multi-pattern substitution in one pass) have no base R equivalent at all.</p>
 <section id="why-this-exists" class="level2"><h2 class="anchored" data-anchor-id="why-this-exists">Why this exists</h2>
 <p>Record linkage and data-cleaning pipelines spend a surprising fraction of their wall-clock time in string operations that look trivial in isolation — <code><a href="https://rdrr.io/r/base/trimws.html">trimws()</a></code> on a column, a <code><a href="https://rdrr.io/r/base/grep.html">gsub()</a></code> to strip punctuation, <code><a href="https://rdrr.io/r/base/grep.html">grepl()</a></code> to flag a pattern — but get called over and over on multi-million-row name/address files. Individually each call is fast; in aggregate, on a 5M-row file, they add up to minutes of CPU time spent doing work a single core could be doing across eight or sixteen instead.</p>
 <p>Three things are conspicuously <em>not</em> one function each in base R, despite being everywhere in this kind of pipeline:</p>
@@ -451,17 +451,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <strong>Multi-token name comparison</strong> — <code>"Kyle John Haynes"</code> and <code>"John Kylie Haynes"</code> are obviously the same person with two tokens swapped, but a plain character-by-character comparison scores that badly.</li>
 </ul>
 <p><code>fast.string</code> exists to make all of the above fast enough to run unblinkingly on real-sized data, and to package the boring-but-essential 80% (trimming, substitution, date parsing) so a project doesn’t need five different dependencies for five different speed problems.</p>
-</section><section id="what-this-is-not" class="level2"><h2 class="anchored" data-anchor-id="what-this-is-not">What this is <em>not</em>
-</h2>
-<p>To set expectations: <code>fast.string</code> is a toolbox of vectorised primitives, not a record-linkage framework. It doesn’t do blocking-strategy selection, EM-based match probability estimation, or persistence of a linked dataset — for that end of the problem, pair it with something like <a href="https://cran.r-project.org/package=RecordLinkage"><code>RecordLinkage</code></a> or <a href="https://cran.r-project.org/package=reclin2"><code>reclin2</code></a>, and use <code>fast.string</code> for the per-string comparison work those packages call underneath. <a href="06-benchmarks.html" class="quarto-xref"><span>6&nbsp; Benchmarks at scale</span></a> compares <code>fast.string</code>’s comparison primitives directly against the equivalent functions in <code>RecordLinkage</code> and <code>stringdist</code> at scale.</p>
+</section><section id="how-it-fits-with-record-linkage-packages" class="level2"><h2 class="anchored" data-anchor-id="how-it-fits-with-record-linkage-packages">How it fits with record-linkage packages</h2>
+<p><code>fast.string</code> is a toolbox of vectorised string primitives. The blocking-strategy selection, EM-based match probability estimation, and persistence of a linked dataset are handled well already by packages like <a href="https://cran.r-project.org/package=RecordLinkage"><code>RecordLinkage</code></a> or <a href="https://cran.r-project.org/package=reclin2"><code>reclin2</code></a> — pair <code>fast.string</code> with one of those for the per-string comparison work they call underneath. <a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a> compares <code>fast.string</code>’s comparison primitives directly against the equivalent functions in <code>RecordLinkage</code> and <code>stringdist</code> at scale.</p>
 </section><section id="how-this-book-is-organised" class="level2"><h2 class="anchored" data-anchor-id="how-this-book-is-organised">How this book is organised</h2>
 <ul>
 <li>
-<strong>Getting started</strong> — what <code>fast.string</code> is for and how it’s positioned against base R, <code>stringi</code>/<code>stringr</code>, <code>stringdist</code>, and <code>RecordLinkage</code> (<a href="01-about.html" class="quarto-xref"><span>1&nbsp; About fast.string</span></a>), then a hands-on tour of every function group (<a href="02-quickstart.html" class="quarto-xref"><span>2&nbsp; Quickstart</span></a>).</li>
+<strong>Getting started</strong> — what <code>fast.string</code> is for and how it’s positioned against base R, <code>stringi</code>/<code>stringr</code>, <code>stringdist</code>, and <code>RecordLinkage</code> (<a href="#sec-about" class="quarto-xref"><span class="quarto-unresolved-ref">sec-about</span></a>), then a hands-on tour of every function group (<a href="#sec-quickstart" class="quarto-xref"><span class="quarto-unresolved-ref">sec-quickstart</span></a>).</li>
 <li>
-<strong>Under the hood</strong> — the algorithms (<a href="03-theory.html" class="quarto-xref"><span>3&nbsp; Algorithms under the hood</span></a>): why two regex engines, how the bit-parallel Jaro-Winkler implementation works, how multi-token name comparison resolves reordered tokens — followed by a full worked record-linkage pipeline (<a href="04-record-linkage-workflow.html" class="quarto-xref"><span>4&nbsp; A worked record-linkage pipeline</span></a>) putting the pieces together.</li>
+<strong>Under the hood</strong> — the algorithms (<a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>): how regex and fixed-literal matching differ, how the bit-parallel Jaro-Winkler implementation works, and how multi-token name comparison resolves reordered tokens — followed by a full worked record-linkage pipeline (<a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a>) putting the pieces together.</li>
 <li>
-<strong>Reference</strong> — an exhaustive per-function reference with every argument and runnable examples (<a href="05-function-reference.html" class="quarto-xref"><span>5&nbsp; Function reference</span></a>); the heavy benchmark chapter at <strong>3 million strings</strong>, with <code>base</code>, <code>stringi</code>, <code>stringdist</code>, and <code>RecordLinkage</code> as comparison baselines (<a href="06-benchmarks.html" class="quarto-xref"><span>6&nbsp; Benchmarks at scale</span></a>); and a troubleshooting/FAQ chapter (<a href="07-troubleshooting.html" class="quarto-xref"><span>7&nbsp; Troubleshooting &amp; FAQ</span></a>).</li>
+<strong>Reference</strong> — an exhaustive per-function reference with every argument and runnable examples (<a href="#sec-reference" class="quarto-xref"><span class="quarto-unresolved-ref">sec-reference</span></a>); the heavy benchmark chapter at <strong>3 million strings</strong>, with <code>base</code>, <code>stringi</code>, <code>stringdist</code>, and <code>RecordLinkage</code> as comparison baselines (<a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a>); and a troubleshooting/FAQ chapter (<a href="#sec-troubleshooting" class="quarto-xref"><span class="quarto-unresolved-ref">sec-troubleshooting</span></a>).</li>
 </ul></section><section id="a-quick-taste" class="level2"><h2 class="anchored" data-anchor-id="a-quick-taste">A quick taste</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">2e5</span></span>
@@ -470,19 +469,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">base</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">grepl</a></span><span class="op">(</span><span class="st">"Smith"</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.03    0.00    0.03 </code></pre>
+   0.05    0.00    0.05 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fgrepl.html">fgrepl</a></span><span class="op">(</span><span class="st">"Smith"</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-      0       0       0 </code></pre>
+   0.01    0.00    0.02 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_tokens.html">jaro_winkler_tokens</a></span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.984</code></pre>
 </div>
 </div>
-<p>That last call is the headline example for the multi-token comparison function: two names with reordered tokens and one typo still score above 0.95. The full story — including why it also handles <code>"O'Brien"</code> vs. <code>"O Brien"</code> vs.&nbsp;<code>"OBrien"</code> — is in <a href="03-theory.html" class="quarto-xref"><span>3&nbsp; Algorithms under the hood</span></a> and <a href="05-function-reference.html" class="quarto-xref"><span>5&nbsp; Function reference</span></a>.</p>
+<p>That last call is the headline example for the multi-token comparison function: two names with reordered tokens and one typo still score above 0.95. The full story — including why it also handles <code>"O'Brien"</code> vs. <code>"O Brien"</code> vs.&nbsp;<code>"OBrien"</code> — is in <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> and <a href="#sec-reference" class="quarto-xref"><span class="quarto-unresolved-ref">sec-reference</span></a>.</p>
 
 
 </section></section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
@@ -908,7 +907,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div> <!-- /content -->
 <footer class="footer"><div class="nav-footer">
     <div class="nav-footer-left">
-<p>fast.string — PCRE2 + RE2 + RcppParallel for R</p>
+<p>fast.string — PCRE2 + prepared literal search + RcppParallel for R</p>
 </div>   
     <div class="nav-footer-center">
       &nbsp;

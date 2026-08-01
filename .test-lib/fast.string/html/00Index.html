@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head><title>R: Fast Parallel String Functions via PCRE2 and RcppParallel</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body><div class="container">
+<h1> Fast Parallel String Functions via PCRE2 and RcppParallel
+<img class="toplogo" src="../../../doc/html/Rlogo.svg" alt="[R logo]" />
+</h1>
+<hr/>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]" /></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]" /></a>
+</div><h2>Documentation for package &lsquo;fast.string&rsquo; version 0.2.0</h2>
+
+<ul><li><a href="../DESCRIPTION" type="text/plain; charset=utf-8">DESCRIPTION file</a>.</li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="caverphone.html">caverphone</a></td>
+<td>Caverphone 2.0 phonetic code (Caversham Project, University of Otago)</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">damerau_levenshtein</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="damerau_levenshtein_matrix.html">damerau_levenshtein_matrix</a></td>
+<td>Unrestricted Damerau-Levenshtein all-pairs distance matrix</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">damerau_levenshtein_similarity</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="date_parts.html">date_parts</a></td>
+<td>Decompose a Date vector into year, month, day integer columns.</td></tr>
+<tr><td style="width: 25%;"><a href="qgram_metrics.html">dice_coefficient</a></td>
+<td>Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky</td></tr>
+<tr><td style="width: 25%;"><a href="dice_matrix.html">dice_matrix</a></td>
+<td>Q-gram Sorensen-Dice all-pairs similarity matrix</td></tr>
+<tr><td style="width: 25%;"><a href="double_metaphone.html">double_metaphone</a></td>
+<td>Double Metaphone phonetic code (Lawrence Philips, 2000)</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">edit_distance</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="fas.Date.html">fas.Date</a></td>
+<td>Fast fixed-format date parsing (not a drop-in for base::as.Date())</td></tr>
+<tr><td style="width: 25%;"><a href="fchartr.html">fchartr</a></td>
+<td>Fast parallel character translation</td></tr>
+<tr><td style="width: 25%;"><a href="fgrep.html">fgrep</a></td>
+<td>Fast parallel string matching returning indices or values</td></tr>
+<tr><td style="width: 25%;"><a href="fgrepl.html">fgrepl</a></td>
+<td>Fast parallel string matching</td></tr>
+<tr><td style="width: 25%;"><a href="fgsub.html">fgsub</a></td>
+<td>Fast parallel global substitution</td></tr>
+<tr><td style="width: 25%;"><a href="fnchar.html">fnchar</a></td>
+<td>Fast parallel character/byte counting</td></tr>
+<tr><td style="width: 25%;"><a href="format_date.html">format_date</a></td>
+<td>Format a Date vector as strings without locale or timezone overhead.</td></tr>
+<tr><td style="width: 25%;"><a href="format_date_parts.html">format_date_parts</a></td>
+<td>Concatenate separate year/month/day fields into a formatted date string.</td></tr>
+<tr><td style="width: 25%;"><a href="fsub.html">fsub</a></td>
+<td>Fast parallel first-match substitution</td></tr>
+<tr><td style="width: 25%;"><a href="fsubstr.html">fsubstr</a></td>
+<td>Fast parallel substring extraction</td></tr>
+<tr><td style="width: 25%;"><a href="ftrimws.html">ftrimws</a></td>
+<td>Fast parallel whitespace trimming</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz</a></td>
+<td>fuzzywuzzy-style fuzzy string ratios</td></tr>
+<tr><td style="width: 25%;"><a href="fuzzy_lookup.html">fuzzy_lookup</a></td>
+<td>Memory-efficient fuzzy lookup</td></tr>
+<tr><td style="width: 25%;"><a href="fuzzy_lookup.html">fuzzy_match</a></td>
+<td>Memory-efficient fuzzy lookup</td></tr>
+<tr><td style="width: 25%;"><a href="fuzzy_lookup.html">fuzzy_top_n</a></td>
+<td>Memory-efficient fuzzy lookup</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_partial_ratio</a></td>
+<td>fuzzywuzzy-style fuzzy string ratios</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_ratio</a></td>
+<td>fuzzywuzzy-style fuzzy string ratios</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_token_set_ratio</a></td>
+<td>fuzzywuzzy-style fuzzy string ratios</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_token_sort_ratio</a></td>
+<td>fuzzywuzzy-style fuzzy string ratios</td></tr>
+<tr><td style="width: 25%;"><a href="gsub_all.html">gsub_all</a></td>
+<td>Apply multiple substitutions in one pass</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">hamming</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="qgram_metrics.html">jaccard_index</a></td>
+<td>Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky</td></tr>
+<tr><td style="width: 25%;"><a href="jaccard_matrix.html">jaccard_matrix</a></td>
+<td>Q-gram Jaccard all-pairs similarity matrix</td></tr>
+<tr><td style="width: 25%;"><a href="jaro_winkler.html">jaro_winkler</a></td>
+<td>Vectorised Jaro-Winkler similarity.</td></tr>
+<tr><td style="width: 25%;"><a href="jaro_winkler_matrix.html">jaro_winkler_matrix</a></td>
+<td>Jaro-Winkler all-pairs similarity matrix.</td></tr>
+<tr><td style="width: 25%;"><a href="jaro_winkler_tokens.html">jaro_winkler_tokens</a></td>
+<td>Token-aware Jaro-Winkler similarity for multi-token strings</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">levenshtein</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="levenshtein_matrix.html">levenshtein_matrix</a></td>
+<td>Levenshtein all-pairs distance matrix</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">levenshtein_similarity</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="levenshtein_within.html">levenshtein_within</a></td>
+<td>Test whether Levenshtein distance is within a cutoff</td></tr>
+<tr><td style="width: 25%;"><a href="nysiis.html">nysiis</a></td>
+<td>NYSIIS phonetic code (New York State Identification and Intelligence System)</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">osa_distance</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="osa_distance_matrix.html">osa_distance_matrix</a></td>
+<td>Optimal String Alignment all-pairs distance matrix</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">osa_similarity</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="qgram_metrics.html">qgram_metrics</a></td>
+<td>Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky</td></tr>
+<tr><td style="width: 25%;"><a href="soundex.html">soundex</a></td>
+<td>Soundex phonetic code (American Soundex / US Census Bureau rules)</td></tr>
+<tr><td style="width: 25%;"><a href="qgram_metrics.html">tversky_index</a></td>
+<td>Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky</td></tr>
+<tr><td style="width: 25%;"><a href="tversky_matrix.html">tversky_matrix</a></td>
+<td>Q-gram Tversky all-pairs similarity matrix</td></tr>
+</table>
+</div></body></html>

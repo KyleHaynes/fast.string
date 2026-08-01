@@ -1,0 +1,25 @@
+Package: fast.string
+Type: Package
+Title: Fast Parallel String Functions via PCRE2 and RcppParallel
+Version: 0.2.0
+Authors@R: person("Kyle", "Haynes", email = "kyle@kylehaynes.com.au", role = c("aut", "cre"))
+Depends: R (>= 3.5.0)
+Description: Fast equivalents of grepl(), grep(), sub(), and gsub() that
+    use PCRE2 for regular expressions and prepared literal search for fixed
+    strings, parallelised across CPU cores via Intel TBB through
+    RcppParallel. Includes a reproducible benchmark harness for measuring
+    workload- and platform-specific performance.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports: cli (>= 3.0.0), Rcpp (>= 1.0.0), RcppParallel (>= 5.1.1)
+Suggests: testthat (>= 3.0.0), stringi, stringdist, RecordLinkage,
+        phonics, microbenchmark, knitr
+LinkingTo: Rcpp, RcppParallel (>= 5.1.1)
+SystemRequirements: C++14, GNU make
+Config/testthat/edition: 3
+Author: Kyle Haynes [aut, cre]
+Maintainer: Kyle Haynes <kyle@kylehaynes.com.au>
+Built: R 4.5.0; x86_64-w64-mingw32; 2026-08-01 07:48:46 UTC; windows
+Archs: x64

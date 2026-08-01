@@ -321,9 +321,9 @@ is a reasonable strategy when recall matters more than a small increase in
 block size — different rulesets group different near-miss spellings
 together, so one catches matches another misses.
 
-## Edit distance: Levenshtein and Damerau-Levenshtein
+## Edit distance: Levenshtein, OSA, and Damerau-Levenshtein
 
-`levenshtein()` and `damerau_levenshtein()` are the classic distance
+`levenshtein()`, `osa_distance()`, and `damerau_levenshtein()` are classic distance
 metrics — minimum number of single-character edits to turn one string into
 another. The textbook algorithm is an $O(l_1 \times l_2)$ dynamic-programming
 table; `stringdist` (and most other implementations) use exactly that.
@@ -339,23 +339,30 @@ whenever the shorter string fits in 64 bits — true for the overwhelming
 majority of names/addresses. Pairs where even the shorter string exceeds
 64 bytes fall back to a conventional rolling-row DP.
 
-`damerau_levenshtein()` additionally treats an adjacent-character
+`osa_distance()` additionally treats an adjacent-character
 transposition (`"ab"` → `"ba"`) as a single edit rather than two
 substitutions — useful for typos, which are disproportionately adjacent
 swaps. There's no equivalently compact bit-parallel formulation for the
 transposition case that this package implements, so it uses a
 three-rolling-row DP (transposition needs to look back two rows, not one,
 unlike plain Levenshtein's one-row recurrence). This matches
-`stringdist::stringdist(method = "dl")`'s "optimal string alignment"
-(OSA) restriction — no substring is edited more than once — rather than
-unrestricted Damerau-Levenshtein, which is a genuinely different (and
-more expensive) algorithm.
+`stringdist::stringdist(method = "osa")`: no substring is edited more than
+once. `damerau_levenshtein()` uses the unrestricted Lowrance-Wagner
+recurrence, matching `stringdist(method = "dl")`; it tracks the last row in
+which each symbol occurred so multiple edits may involve the same substring.
 
 ```{r}
 #| label: editdist-demo
 levenshtein("kitten", "sitting")
-damerau_levenshtein("ab", "ba")  # one transposition, not two substitutions
+osa_distance("ca", "abc")         # 3
+damerau_levenshtein("ca", "abc")  # 2
 ```
+
+The compatibility default is byte comparison. With `use_bytes = FALSE`,
+inputs are converted and validated as UTF-8 on the calling R thread, then
+workers compare immutable code-point arrays. ASCII inputs still use the
+original bit-parallel byte kernels. Code-point mode does not normalize
+canonically equivalent spellings and does not combine grapheme clusters.
 
 ## Q-gram set similarity: Jaccard, Dice, Tversky
 

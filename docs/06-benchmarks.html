@@ -466,7 +466,7 @@ window.Quarto = {
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"fast.string: "</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html">packageVersion</a></span><span class="op">(</span><span class="st">"fast.string"</span><span class="op">)</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string:  0.2.0 </code></pre>
+<pre><code>fast.string:  0.3.0 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"stringi:     "</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html">packageVersion</a></span><span class="op">(</span><span class="st">"stringi"</span><span class="op">)</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -509,7 +509,7 @@ window.Quarto = {
 <pre><code>n = 3,000,000 strings (3000 NA, 3000 empty, lengths 2-40)</code></pre>
 </div>
 </div>
-<p>A results table accumulates through the chapter and prints in full at the end (<a href="#tbl-summary" class="quarto-xref">Table&nbsp;<span>6.1</span></a>), alongside every individual comparison inline.</p>
+<p>A results table accumulates through the chapter and prints in full at the end (<a href="#tbl-summary" class="quarto-xref">Table&nbsp;<span class="quarto-unresolved-ref">tbl-summary</span></a>), alongside every individual comparison inline.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">record</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">op</span>, <span class="va">baseline</span>, <span class="va">baseline_s</span>, <span class="va">fast_s</span><span class="op">)</span> <span class="op">{</span></span>
@@ -530,9 +530,9 @@ window.Quarto = {
 <span><span class="va">t_stri</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">stri_detect_regex</span><span class="op">(</span><span class="va">x</span>, <span class="st">"[0-9]{2}"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"base::grepl       %.3fs\nstringi::stri_detect_regex %.3fs\nfast.string::fgrepl %.3fs\n"</span>, <span class="va">t_base</span>, <span class="va">t_stri</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>base::grepl       0.720s
-stringi::stri_detect_regex 0.870s
-fast.string::fgrepl 0.090s</code></pre>
+<pre><code>base::grepl       0.800s
+stringi::stri_detect_regex 1.080s
+fast.string::fgrepl 0.100s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">record</span><span class="op">(</span><span class="st">"fgrepl (regex)"</span>, <span class="st">"base::grepl"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
@@ -542,9 +542,9 @@ fast.string::fgrepl 0.090s</code></pre>
 <span><span class="va">t_stri</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">stri_replace_all_regex</span><span class="op">(</span><span class="va">x</span>, <span class="st">"[0-9]+"</span>, <span class="st">"#"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"base::gsub        %.3fs\nstringi::stri_replace_all_regex %.3fs\nfast.string::fgsub %.3fs\n"</span>, <span class="va">t_base</span>, <span class="va">t_stri</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>base::gsub        5.750s
-stringi::stri_replace_all_regex 3.730s
-fast.string::fgsub 2.380s</code></pre>
+<pre><code>base::gsub        5.220s
+stringi::stri_replace_all_regex 3.660s
+fast.string::fgsub 2.230s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">record</span><span class="op">(</span><span class="st">"fgsub (regex)"</span>, <span class="st">"base::gsub"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
@@ -558,8 +558,8 @@ fast.string::fgsub 2.380s</code></pre>
 <span><span class="va">t_fast</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/gsub_all.html">gsub_all</a></span><span class="op">(</span><span class="va">patterns</span>, <span class="va">repls</span>, <span class="va">x</span>, fixed <span class="op">=</span> <span class="cn">TRUE</span>, sequential <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"base (5x chained gsub)  %.3fs\nfast.string::gsub_all   %.3fs\n"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>base (5x chained gsub)  6.370s
-fast.string::gsub_all   0.760s</code></pre>
+<pre><code>base (5x chained gsub)  6.280s
+fast.string::gsub_all   0.860s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">record</span><span class="op">(</span><span class="st">"gsub_all (5 patterns)"</span>, <span class="st">"base (chained gsub)"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
@@ -573,9 +573,9 @@ fast.string::gsub_all   0.760s</code></pre>
 <span><span class="va">t_stri</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">stri_trim_both</span><span class="op">(</span><span class="va">x_ws</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"base::trimws      %.3fs\nstringi::stri_trim_both %.3fs\nfast.string::ftrimws %.3fs\n"</span>, <span class="va">t_base</span>, <span class="va">t_stri</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>base::trimws      3.900s
-stringi::stri_trim_both 0.820s
-fast.string::ftrimws 0.800s</code></pre>
+<pre><code>base::trimws      3.890s
+stringi::stri_trim_both 0.830s
+fast.string::ftrimws 0.780s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">record</span><span class="op">(</span><span class="st">"ftrimws"</span>, <span class="st">"base::trimws"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span></span>
 <span></span>
@@ -583,8 +583,8 @@ fast.string::ftrimws 0.800s</code></pre>
 <span><span class="va">t_fast</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fsubstr.html">fsubstr</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">1</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"base::substr      %.3fs\nfast.string::fsubstr %.3fs\n"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>base::substr      1.050s
-fast.string::fsubstr 1.060s</code></pre>
+<pre><code>base::substr      1.000s
+fast.string::fsubstr 0.990s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">record</span><span class="op">(</span><span class="st">"fsubstr"</span>, <span class="st">"base::substr"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span></span>
 <span></span>
@@ -593,9 +593,9 @@ fast.string::fsubstr 1.060s</code></pre>
 <span><span class="va">t_stri</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">stri_length</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"base::nchar       %.3fs\nstringi::stri_length %.3fs\nfast.string::fnchar %.3fs\n"</span>, <span class="va">t_base</span>, <span class="va">t_stri</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>base::nchar       0.560s
+<pre><code>base::nchar       0.570s
 stringi::stri_length 0.030s
-fast.string::fnchar 0.090s</code></pre>
+fast.string::fnchar 0.120s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">record</span><span class="op">(</span><span class="st">"fnchar"</span>, <span class="st">"base::nchar"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span></span>
 <span></span>
@@ -603,12 +603,12 @@ fast.string::fnchar 0.090s</code></pre>
 <span><span class="va">t_fast</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fchartr.html">fchartr</a></span><span class="op">(</span><span class="st">"aeiou"</span>, <span class="st">"AEIOU"</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"base::chartr      %.3fs\nfast.string::fchartr %.3fs\n"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>base::chartr      3.670s
-fast.string::fchartr 1.000s</code></pre>
+<pre><code>base::chartr      3.660s
+fast.string::fchartr 0.960s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">record</span><span class="op">(</span><span class="st">"fchartr"</span>, <span class="st">"base::chartr"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<p><code>fsubstr</code> is the one operation in this whole chapter where parallelism doesn’t help: base R’s <code><a href="https://rdrr.io/r/base/substr.html">substr()</a></code> is already close to memcpy speed for a fixed-width extraction, so there’s little headroom — consistent with the ~1x result in <a href="#tbl-summary" class="quarto-xref">Table&nbsp;<span>6.1</span></a>. The win shows up on operations with real per-element branching cost (<code>trimws</code>, <code>chartr</code>) or where base R’s implementation does something surprisingly expensive (<code>nchar</code>).</p>
+<p><code>fsubstr</code> is the one operation in this whole chapter where parallelism doesn’t help: base R’s <code><a href="https://rdrr.io/r/base/substr.html">substr()</a></code> is already close to memcpy speed for a fixed-width extraction, so there’s little headroom — consistent with the ~1x result in <a href="#tbl-summary" class="quarto-xref">Table&nbsp;<span class="quarto-unresolved-ref">tbl-summary</span></a>. The win shows up on operations with real per-element branching cost (<code>trimws</code>, <code>chartr</code>) or where base R’s implementation does something surprisingly expensive (<code>nchar</code>).</p>
 </section><section id="dates" class="level2" data-number="6.3"><h2 data-number="6.3" class="anchored" data-anchor-id="dates">
 <span class="header-section-number">6.3</span> Dates</h2>
 <div class="cell">
@@ -620,8 +620,8 @@ fast.string::fchartr 1.000s</code></pre>
 <span><span class="va">t_fast</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/format_date.html">format_date</a></span><span class="op">(</span><span class="va">dates</span>, <span class="st">"iso"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"base format.Date  %.3fs\nfast.string::format_date %.3fs\n"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>base format.Date  27.970s
-fast.string::format_date 0.140s</code></pre>
+<pre><code>base format.Date  29.390s
+fast.string::format_date 0.130s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">record</span><span class="op">(</span><span class="st">"format_date"</span>, <span class="st">"format.Date"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span></span>
 <span></span>
@@ -629,14 +629,14 @@ fast.string::format_date 0.140s</code></pre>
 <span><span class="va">t_fast</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fas.Date.html">fas.Date</a></span><span class="op">(</span><span class="va">date_strings_iso</span>, <span class="st">"iso"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"base::as.Date     %.3fs\nfast.string::fas.Date %.3fs\n"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>base::as.Date     12.220s
-fast.string::fas.Date 0.030s</code></pre>
+<pre><code>base::as.Date     12.750s
+fast.string::fas.Date 0.040s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">record</span><span class="op">(</span><span class="st">"fas.Date"</span>, <span class="st">"as.Date"</span>, <span class="va">t_base</span>, <span class="va">t_fast</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section><section id="phonetic-blocking-keys" class="level2" data-number="6.4"><h2 data-number="6.4" class="anchored" data-anchor-id="phonetic-blocking-keys">
 <span class="header-section-number">6.4</span> Phonetic blocking keys</h2>
-<p><code>soundex()</code>/<code>nysiis()</code> have no base R equivalent; <code><a href="https://rdrr.io/pkg/RecordLinkage/man/phonetics.html">RecordLinkage::soundex()</a></code> is the closest comparison (algorithm details and why the two can disagree on specific inputs are in <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>). <code><a href="https://rdrr.io/pkg/RecordLinkage/man/phonetics.html">RecordLinkage::soundex()</a></code> runs a single timed pass rather than <code>microbenchmark</code>’s repeated runs — at 3M rows it’s the single slowest operation in this chapter, and repeating it five times buys little additional statistical confidence for a lot of extra render time.</p>
+<p><code>soundex()</code>/<code>nysiis()</code> have no base R equivalent; <code><a href="https://rdrr.io/pkg/RecordLinkage/man/phonetics.html">RecordLinkage::soundex()</a></code> is the closest comparison (algorithm details and why the two can disagree on specific inputs are in <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>). <code><a href="https://rdrr.io/pkg/RecordLinkage/man/phonetics.html">RecordLinkage::soundex()</a></code> runs a single timed pass rather than <code>microbenchmark</code>’s repeated runs — at 3M rows it’s the single slowest operation in this chapter, and repeating it five times buys little additional statistical confidence for a lot of extra render time.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">names_x</span> <span class="op">&lt;-</span> <span class="fu">stri_rand_strings</span><span class="op">(</span><span class="va">n</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">3</span><span class="op">:</span><span class="fl">15</span>, <span class="va">n</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, pattern <span class="op">=</span> <span class="st">"[A-Z]"</span><span class="op">)</span></span>
 <span><span class="va">names_x</span><span class="op">[</span><span class="va">na_idx</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA_character_</span></span>
@@ -645,8 +645,8 @@ fast.string::fas.Date 0.030s</code></pre>
 <span><span class="va">t_fast_ny</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/nysiis.html">nysiis</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::soundex %.3fs\nfast.string::nysiis  %.3fs\n"</span>, <span class="va">t_fast_sx</span>, <span class="va">t_fast_ny</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::soundex 0.120s
-fast.string::nysiis  1.130s</code></pre>
+<pre><code>fast.string::soundex 0.150s
+fast.string::nysiis  1.090s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_recordlinkage</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">t_rl_sx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">RecordLinkage</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/RecordLinkage/man/phonetics.html">soundex</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
@@ -656,10 +656,10 @@ fast.string::nysiis  1.130s</code></pre>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"RecordLinkage not installed — skipping cross-package soundex comparison.\n"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>RecordLinkage::soundex 5.250s</code></pre>
+<pre><code>RecordLinkage::soundex 5.020s</code></pre>
 </div>
 </div>
-<p><code>nysiis()</code> is consistently slower than <code>soundex()</code> here — not a parallelism gap (both run through the same dispatch), but because NYSIIS’s rule table is genuinely heavier per element (leading/trailing transforms plus a stateful per-letter pass, vs.&nbsp;Soundex’s single fixed lookup), as described in <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>.</p>
+<p><code>nysiis()</code> is consistently slower than <code>soundex()</code> here — not a parallelism gap (both run through the same dispatch), but because NYSIIS’s rule table is genuinely heavier per element (leading/trailing transforms plus a stateful per-letter pass, vs.&nbsp;Soundex’s single fixed lookup), as described in <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>.</p>
 <p><code>double_metaphone()</code> and <code>caverphone()</code> are considerably heavier rulesets again (Double Metaphone’s branching is the most involved of the four; Caverphone 2.0 is a long fixed chain of substring transforms), so absolute throughput is lower — <code><a href="https://jameshoward.us/phonics-in-r/reference/metaphone.html">phonics::metaphone()</a></code>/<code><a href="https://jameshoward.us/phonics-in-r/reference/caverphone.html">phonics::caverphone()</a></code> are shown alongside as “another phonetic-coding R function over this vector” throughput comparisons, not as algorithm-equivalent baselines (see the note at the top of this chapter):</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">t_fast_dm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/double_metaphone.html">double_metaphone</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
@@ -667,8 +667,8 @@ fast.string::nysiis  1.130s</code></pre>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::double_metaphone %.3fs\nfast.string::caverphone       %.3fs\n"</span>,</span>
 <span>            <span class="va">t_fast_dm</span>, <span class="va">t_fast_cp</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::double_metaphone 0.380s
-fast.string::caverphone       1.750s</code></pre>
+<pre><code>fast.string::double_metaphone 0.360s
+fast.string::caverphone       1.780s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_phonics</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">t_ph_mp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">phonics</span><span class="fu">::</span><span class="fu"><a href="https://jameshoward.us/phonics-in-r/reference/metaphone.html">metaphone</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
@@ -680,8 +680,8 @@ fast.string::caverphone       1.750s</code></pre>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"phonics not installed — skipping cross-package comparison.\n"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>phonics::metaphone   7.410s
-phonics::caverphone  87.080s</code></pre>
+<pre><code>phonics::metaphone   7.560s
+phonics::caverphone  89.910s</code></pre>
 </div>
 </div>
 </section><section id="fuzzy-string-similarity" class="level2" data-number="6.5"><h2 data-number="6.5" class="anchored" data-anchor-id="fuzzy-string-similarity">
@@ -691,7 +691,7 @@ phonics::caverphone  87.080s</code></pre>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::jaro_winkler %.3fs (%s pairs, no base equivalent)\n"</span>,</span>
 <span>            <span class="va">t_fast</span>, <span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="va">n</span>, big.mark <span class="op">=</span> <span class="st">","</span>, scientific <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::jaro_winkler 0.210s (3,000,000 pairs, no base equivalent)</code></pre>
+<pre><code>fast.string::jaro_winkler 0.220s (3,000,000 pairs, no base equivalent)</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">t_sd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"jw"</span>, p <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
@@ -707,7 +707,7 @@ phonics::caverphone  87.080s</code></pre>
 <span>    <span class="fu">record</span><span class="op">(</span><span class="st">"jaro_winkler"</span>, <span class="st">"RecordLinkage::jarowinkler"</span>, <span class="va">t_rl</span>, <span class="va">t_fast</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>RecordLinkage::jarowinkler 1.170s</code></pre>
+<pre><code>RecordLinkage::jarowinkler 1.220s</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -737,10 +737,10 @@ phonics::caverphone  87.080s</code></pre>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::jaro_winkler_matrix: %s x %s (%s cells) in %.3fs\n"</span>,</span>
 <span>            <span class="va">m</span>, <span class="va">m</span>, <span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="va">m</span> <span class="op">*</span> <span class="va">m</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>, <span class="va">t_fast</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::jaro_winkler_matrix: 3000 x 3000 (9e+06 cells) in 0.090s</code></pre>
+<pre><code>fast.string::jaro_winkler_matrix: 3000 x 3000 (9e+06 cells) in 0.110s</code></pre>
 </div>
 </div>
-<p><code>jaro_winkler_tokens()</code> does more work per pair (tokenising, an internal similarity matrix per row, greedy assignment, plus the collapsed comparison — <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>) than plain <code>jaro_winkler()</code>, so it’s meaningfully slower per comparison. No package in this comparison set has a token-reorder-aware equivalent, so this is absolute throughput only:</p>
+<p><code>jaro_winkler_tokens()</code> does more work per pair (tokenising, an internal similarity matrix per row, greedy assignment, plus the collapsed comparison — <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>) than plain <code>jaro_winkler()</code>, so it’s meaningfully slower per comparison. No package in this comparison set has a token-reorder-aware equivalent, so this is absolute throughput only:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb63"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">cap1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/chartr.html">toupper</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span>, <span class="fl">2</span>, <span class="fu"><a href="https://rdrr.io/r/base/nchar.html">nchar</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">make_multitoken_names</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n</span><span class="op">)</span> <span class="op">{</span></span>
@@ -756,41 +756,46 @@ phonics::caverphone  87.080s</code></pre>
 <span><span class="va">t_tokens</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_tokens.html">jaro_winkler_tokens</a></span><span class="op">(</span><span class="va">tok_a</span>, <span class="va">tok_b</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::jaro_winkler        %.3fs (%s pairs)\n"</span>, <span class="va">t_plain</span>, <span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="va">n</span>, big.mark <span class="op">=</span> <span class="st">","</span>, scientific <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::jaro_winkler        0.150s (3,000,000 pairs)</code></pre>
+<pre><code>fast.string::jaro_winkler        0.170s (3,000,000 pairs)</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::jaro_winkler_tokens %.3fs (%.1fx the plain-comparison cost)\n"</span>, <span class="va">t_tokens</span>, <span class="va">t_tokens</span> <span class="op">/</span> <span class="va">t_plain</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::jaro_winkler_tokens 0.700s (4.7x the plain-comparison cost)</code></pre>
+<pre><code>fast.string::jaro_winkler_tokens 0.740s (4.4x the plain-comparison cost)</code></pre>
 </div>
 </div>
 </section><section id="edit-distance" class="level2" data-number="6.6"><h2 data-number="6.6" class="anchored" data-anchor-id="edit-distance">
 <span class="header-section-number">6.6</span> Edit distance</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb67"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">t_fast_lv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">levenshtein</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
+<span><span class="va">t_fast_osa</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu">osa_distance</span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="va">t_fast_dl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">damerau_levenshtein</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::levenshtein         %.3fs\nfast.string::damerau_levenshtein %.3fs\n"</span>,</span>
-<span>            <span class="va">t_fast_lv</span>, <span class="va">t_fast_dl</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::levenshtein         %.3fs\nfast.string::osa_distance        %.3fs\nfast.string::damerau_levenshtein %.3fs\n"</span>,</span>
+<span>            <span class="va">t_fast_lv</span>, <span class="va">t_fast_osa</span>, <span class="va">t_fast_dl</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::levenshtein         0.180s
-fast.string::damerau_levenshtein 0.240s</code></pre>
+<pre><code>fast.string::levenshtein         0.170s
+fast.string::osa_distance        0.230s
+fast.string::damerau_levenshtein 0.620s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb69"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">t_sd_lv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"lv"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
+<span>    <span class="va">t_sd_osa</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"osa"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span>    <span class="va">t_sd_dl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"dl"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"stringdist (lv) %.3fs\nstringdist (dl) %.3fs\n"</span>, <span class="va">t_sd_lv</span>, <span class="va">t_sd_dl</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"stringdist (lv) %.3fs\nstringdist (osa) %.3fs\nstringdist (dl) %.3fs\n"</span>, <span class="va">t_sd_lv</span>, <span class="va">t_sd_osa</span>, <span class="va">t_sd_dl</span><span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="fu">record</span><span class="op">(</span><span class="st">"levenshtein"</span>, <span class="st">"stringdist::stringdist(lv)"</span>, <span class="va">t_sd_lv</span>, <span class="va">t_fast_lv</span><span class="op">)</span></span>
+<span>    <span class="fu">record</span><span class="op">(</span><span class="st">"osa_distance"</span>, <span class="st">"stringdist::stringdist(osa)"</span>, <span class="va">t_sd_osa</span>, <span class="va">t_fast_osa</span><span class="op">)</span></span>
 <span>    <span class="fu">record</span><span class="op">(</span><span class="st">"damerau_levenshtein"</span>, <span class="st">"stringdist::stringdist(dl)"</span>, <span class="va">t_sd_dl</span>, <span class="va">t_fast_dl</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>stringdist (lv) 0.260s
-stringdist (dl) 0.430s</code></pre>
+<pre><code>stringdist (lv) 0.310s
+stringdist (osa) 0.280s
+stringdist (dl) 0.530s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb71"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># hamming() needs equal-length pairs to avoid the all-Inf degenerate case</span></span>
 <span><span class="va">names_eqlen</span> <span class="op">&lt;-</span> <span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fsubstr.html">fsubstr</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fl">1</span>, <span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">t_fast_hm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">hamming</a></span><span class="op">(</span><span class="va">names_eqlen</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_eqlen</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::hamming %.3fs\n"</span>, <span class="va">t_fast_hm</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::hamming 0.220s</code></pre>
+<pre><code>fast.string::hamming 0.210s</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb73"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">t_sd_hm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="va">names_eqlen</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_eqlen</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"hamming"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
@@ -798,40 +803,64 @@ stringdist (dl) 0.430s</code></pre>
 <span>    <span class="fu">record</span><span class="op">(</span><span class="st">"hamming"</span>, <span class="st">"stringdist::stringdist(hamming)"</span>, <span class="va">t_sd_hm</span>, <span class="va">t_fast_hm</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>stringdist (hamming) 0.310s</code></pre>
+<pre><code>stringdist (hamming) 0.300s</code></pre>
+</div>
+</div>
+<p><code>fuzzy_match()</code> computes the same best-match result without retaining the full score matrix. The output matrix below is modest for documentation, but its allocation grows as <code>length(query) * length(table)</code> while lookup output remains one integer per query.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb75"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">lookup_queries</span> <span class="op">&lt;-</span> <span class="va">names_x</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq_len</a></span><span class="op">(</span><span class="fl">100L</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">lookup_table</span> <span class="op">&lt;-</span> <span class="va">names_x</span><span class="op">[</span><span class="fl">1001</span><span class="op">:</span><span class="fl">2000</span><span class="op">]</span></span>
+<span><span class="va">t_lookup</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span></span>
+<span>    <span class="fu">fuzzy_match</span><span class="op">(</span><span class="va">lookup_queries</span>, <span class="va">lookup_table</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
+<span><span class="va">t_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/maxCol.html">max.col</a></span><span class="op">(</span><span class="fu">jaro_winkler_matrix</span><span class="op">(</span><span class="va">lookup_queries</span>, <span class="va">lookup_table</span><span class="op">)</span>,</span>
+<span>            ties.method <span class="op">=</span> <span class="st">"first"</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fuzzy_match %.3fs; materialized matrix %.3fs\n"</span>,</span>
+<span>            <span class="va">t_lookup</span>, <span class="va">t_matrix</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>fuzzy_match 0.020s; materialized matrix 0.000s</code></pre>
 </div>
 </div>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb75"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Bit-parallel Levenshtein/Damerau-Levenshtein should agree exactly with</span></span>
-<span><span class="co"># stringdist's reference implementations.</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb77"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Each edit-distance implementation should agree with its stringdist method.</span></span>
 <span><span class="va">a3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"kitten"</span>, <span class="st">"Saturday"</span>, <span class="st">"flaw"</span><span class="op">)</span></span>
 <span><span class="va">b3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"sitting"</span>, <span class="st">"Sunday"</span>, <span class="st">"lawn"</span><span class="op">)</span></span>
 <span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">levenshtein</a></span><span class="op">(</span><span class="va">a3</span>, <span class="va">b3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 3 3 2</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb77"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="va">a3</span>, <span class="va">b3</span>, method <span class="op">=</span> <span class="st">"lv"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb79"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="va">a3</span>, <span class="va">b3</span>, method <span class="op">=</span> <span class="st">"lv"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 3 3 2</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb79"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">damerau_levenshtein</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ab"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ba"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb81"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu">osa_distance</span><span class="op">(</span><span class="st">"ca"</span>, <span class="st">"abc"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 1</code></pre>
+<pre><code>[1] 3</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb81"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ab"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ba"</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"dl"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb83"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="st">"ca"</span>, <span class="st">"abc"</span>, method <span class="op">=</span> <span class="st">"osa"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 1</code></pre>
+<pre><code>[1] 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb85"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/levenshtein.html">damerau_levenshtein</a></span><span class="op">(</span><span class="st">"ca"</span>, <span class="st">"abc"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb87"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringdist.html">stringdist</a></span><span class="op">(</span><span class="st">"ca"</span>, <span class="st">"abc"</span>, method <span class="op">=</span> <span class="st">"dl"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2</code></pre>
 </div>
 </div>
 </section><section id="q-gram-set-similarity" class="level2" data-number="6.7"><h2 data-number="6.7" class="anchored" data-anchor-id="q-gram-set-similarity">
 <span class="header-section-number">6.7</span> Q-gram set similarity</h2>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb83"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">t_fast_jac</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">jaccard_index</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb89"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">t_fast_jac</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">jaccard_index</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::jaccard_index %.3fs\n"</span>, <span class="va">t_fast_jac</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::jaccard_index 0.260s</code></pre>
+<pre><code>fast.string::jaccard_index 0.270s</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb85"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="op">{</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb91"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">has_stringdist</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">t_sd_jac</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">stringdist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/stringdist/man/stringsim.html">stringsim</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"jaccard"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"stringdist::stringsim(jaccard) %.3fs\n"</span>, <span class="va">t_sd_jac</span><span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="fu">record</span><span class="op">(</span><span class="st">"jaccard_index"</span>, <span class="st">"stringdist::stringsim(jaccard)"</span>, <span class="va">t_sd_jac</span>, <span class="va">t_fast_jac</span><span class="op">)</span></span>
@@ -839,13 +868,13 @@ stringdist (dl) 0.430s</code></pre>
 <div class="cell-output cell-output-stdout">
 <pre><code>stringdist::stringsim(jaccard) 0.440s</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb87"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">t_fast_dice</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">dice_coefficient</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb93"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">t_fast_dice</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">dice_coefficient</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="va">t_fast_tver</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/qgram_metrics.html">tversky_index</a></span><span class="op">(</span><span class="va">names_x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">names_x</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.3</span>, beta <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::dice_coefficient %.3fs (no direct stringdist equivalent)\n"</span>, <span class="va">t_fast_dice</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>fast.string::dice_coefficient 0.270s (no direct stringdist equivalent)</code></pre>
+<pre><code>fast.string::dice_coefficient 0.250s (no direct stringdist equivalent)</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb89"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::tversky_index    %.3fs (no direct stringdist equivalent)\n"</span>, <span class="va">t_fast_tver</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb95"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"fast.string::tversky_index    %.3fs (no direct stringdist equivalent)\n"</span>, <span class="va">t_fast_tver</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>fast.string::tversky_index    0.280s (no direct stringdist equivalent)</code></pre>
 </div>
@@ -854,7 +883,7 @@ stringdist (dl) 0.430s</code></pre>
 <span class="header-section-number">6.8</span> fuzzywuzzy-style ratios</h2>
 <p>No R package implements fuzzywuzzy’s specific scoring (Ratcliff/Obershelp matching blocks); this is absolute throughput only.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb91"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">t_ratio</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_ratio</a></span><span class="op">(</span><span class="va">tok_a</span>, <span class="va">tok_b</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb97"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">t_ratio</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_ratio</a></span><span class="op">(</span><span class="va">tok_a</span>, <span class="va">tok_b</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="va">t_partial</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_partial_ratio</a></span><span class="op">(</span><span class="va">tok_a</span>, <span class="va">tok_b</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="va">t_tsort</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_sort_ratio</a></span><span class="op">(</span><span class="va">tok_a</span>, <span class="va">tok_b</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
 <span><span class="va">t_tset</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_set_ratio</a></span><span class="op">(</span><span class="va">tok_a</span>, <span class="va">tok_b</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
@@ -864,16 +893,16 @@ stringdist (dl) 0.430s</code></pre>
 <span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>fast.string::fuzz_ratio            1.160s
-fast.string::fuzz_partial_ratio    3.550s
-fast.string::fuzz_token_sort_ratio 1.570s
-fast.string::fuzz_token_set_ratio  1.860s</code></pre>
+fast.string::fuzz_partial_ratio    3.440s
+fast.string::fuzz_token_sort_ratio 1.550s
+fast.string::fuzz_token_set_ratio  1.870s</code></pre>
 </div>
 </div>
 </section><section id="the-small-n-crossover" class="level2" data-number="6.9"><h2 data-number="6.9" class="anchored" data-anchor-id="the-small-n-crossover">
 <span class="header-section-number">6.9</span> The small-n crossover</h2>
-<p><a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> claims every parallel function applies a size threshold and falls back to single-threaded execution below it, <em>because</em> thread-pool dispatch overhead would otherwise exceed the time saved. Here’s that claim checked directly, at <code>n = 20</code> — small enough that the claim predicts <code>fast.string</code> will be <em>no faster, possibly slower</em> than base R:</p>
+<p><a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> claims every parallel function applies a size threshold and falls back to single-threaded execution below it, <em>because</em> thread-pool dispatch overhead would otherwise exceed the time saved. Here’s that claim checked directly, at <code>n = 20</code> — small enough that the claim predicts <code>fast.string</code> will be <em>no faster, possibly slower</em> than base R:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb93"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">small</span> <span class="op">&lt;-</span> <span class="fu">stri_rand_strings</span><span class="op">(</span><span class="fl">20</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">5</span><span class="op">:</span><span class="fl">15</span>, <span class="fl">20</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb99"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">small</span> <span class="op">&lt;-</span> <span class="fu">stri_rand_strings</span><span class="op">(</span><span class="fl">20</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">5</span><span class="op">:</span><span class="fl">15</span>, <span class="fl">20</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="fu">microbenchmark</span><span class="op">(</span></span>
 <span>    base <span class="op">=</span> <span class="fu">base</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">grepl</a></span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">small</span><span class="op">)</span>,</span>
 <span>    fast <span class="op">=</span> <span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fgrepl.html">fgrepl</a></span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">small</span><span class="op">)</span>,</span>
@@ -881,16 +910,16 @@ fast.string::fuzz_token_set_ratio  1.860s</code></pre>
 <span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Unit: microseconds
- expr    min     lq     mean  median     uq     max neval
- base  5.401  6.002  7.37702  6.4510  7.501  25.501    50
- fast 54.101 54.700 57.84886 55.2005 57.500 148.602    50</code></pre>
+ expr    min     lq     mean  median     uq   max neval
+ base  5.701  6.201  8.71698  7.4005  9.701  31.3    50
+ fast 55.101 56.202 60.53496 57.1005 59.802 173.2    50</code></pre>
 </div>
 </div>
 <p>At this scale the two are within noise of each other (sometimes base R even wins outright) — exactly what the size-threshold design predicts, and the reason the rest of this chapter uses 3M rows rather than 20: the benefit this package offers only shows up once there’s enough work to amortise parallel dispatch.</p>
 </section><section id="summary" class="level2" data-number="6.10"><h2 data-number="6.10" class="anchored" data-anchor-id="summary">
 <span class="header-section-number">6.10</span> Summary</h2>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb95"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">summary_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">results</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb101"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">summary_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">results</span><span class="op">)</span></span>
 <span><span class="va">summary_df</span><span class="op">$</span><span class="va">baseline_s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="va">summary_df</span><span class="op">$</span><span class="va">baseline_s</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="va">summary_df</span><span class="op">$</span><span class="va">fast_s</span>     <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="va">summary_df</span><span class="op">$</span><span class="va">fast_s</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="va">summary_df</span><span class="op">$</span><span class="va">speedup</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="va">summary_df</span><span class="op">$</span><span class="va">speedup</span>, <span class="fl">1</span><span class="op">)</span>, <span class="st">"x"</span><span class="op">)</span></span>
@@ -923,128 +952,135 @@ Table&nbsp;6.1: Observed speedups, n = 3,000,000, 16 cores, 1 run per cell unles
 <tr class="odd">
 <td style="text-align: left;">fgrepl (regex)</td>
 <td style="text-align: left;">base::grepl</td>
-<td style="text-align: right;">0.72</td>
-<td style="text-align: right;">0.09</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">0.10</td>
 <td style="text-align: left;">8x</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">fgsub (regex)</td>
 <td style="text-align: left;">base::gsub</td>
-<td style="text-align: right;">5.75</td>
-<td style="text-align: right;">2.38</td>
-<td style="text-align: left;">2.4x</td>
+<td style="text-align: right;">5.22</td>
+<td style="text-align: right;">2.23</td>
+<td style="text-align: left;">2.3x</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">gsub_all (5 patterns)</td>
 <td style="text-align: left;">base (chained gsub)</td>
-<td style="text-align: right;">6.37</td>
-<td style="text-align: right;">0.76</td>
-<td style="text-align: left;">8.4x</td>
+<td style="text-align: right;">6.28</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: left;">7.3x</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">ftrimws</td>
 <td style="text-align: left;">base::trimws</td>
-<td style="text-align: right;">3.90</td>
-<td style="text-align: right;">0.80</td>
-<td style="text-align: left;">4.9x</td>
+<td style="text-align: right;">3.89</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: left;">5x</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">fsubstr</td>
 <td style="text-align: left;">base::substr</td>
-<td style="text-align: right;">1.05</td>
-<td style="text-align: right;">1.06</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.99</td>
 <td style="text-align: left;">1x</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">fnchar</td>
 <td style="text-align: left;">base::nchar</td>
-<td style="text-align: right;">0.56</td>
-<td style="text-align: right;">0.09</td>
-<td style="text-align: left;">6.2x</td>
+<td style="text-align: right;">0.57</td>
+<td style="text-align: right;">0.12</td>
+<td style="text-align: left;">4.7x</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">fchartr</td>
 <td style="text-align: left;">base::chartr</td>
-<td style="text-align: right;">3.67</td>
-<td style="text-align: right;">1.00</td>
-<td style="text-align: left;">3.7x</td>
+<td style="text-align: right;">3.66</td>
+<td style="text-align: right;">0.96</td>
+<td style="text-align: left;">3.8x</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">format_date</td>
 <td style="text-align: left;">format.Date</td>
-<td style="text-align: right;">27.97</td>
-<td style="text-align: right;">0.14</td>
-<td style="text-align: left;">199.8x</td>
+<td style="text-align: right;">29.39</td>
+<td style="text-align: right;">0.13</td>
+<td style="text-align: left;">226.1x</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">fas.Date</td>
 <td style="text-align: left;">as.Date</td>
-<td style="text-align: right;">12.22</td>
-<td style="text-align: right;">0.03</td>
-<td style="text-align: left;">407.3x</td>
+<td style="text-align: right;">12.75</td>
+<td style="text-align: right;">0.04</td>
+<td style="text-align: left;">318.8x</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">soundex</td>
 <td style="text-align: left;">RecordLinkage::soundex</td>
-<td style="text-align: right;">5.25</td>
-<td style="text-align: right;">0.12</td>
-<td style="text-align: left;">43.7x</td>
+<td style="text-align: right;">5.02</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: left;">33.5x</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">double_metaphone</td>
 <td style="text-align: left;">phonics::metaphone (different algorithm)</td>
-<td style="text-align: right;">7.41</td>
-<td style="text-align: right;">0.38</td>
-<td style="text-align: left;">19.5x</td>
+<td style="text-align: right;">7.56</td>
+<td style="text-align: right;">0.36</td>
+<td style="text-align: left;">21x</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">caverphone</td>
 <td style="text-align: left;">phonics::caverphone (different revision)</td>
-<td style="text-align: right;">87.08</td>
-<td style="text-align: right;">1.75</td>
-<td style="text-align: left;">49.8x</td>
+<td style="text-align: right;">89.91</td>
+<td style="text-align: right;">1.78</td>
+<td style="text-align: left;">50.5x</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">jaro_winkler</td>
 <td style="text-align: left;">stringdist::stringdist(jw)</td>
 <td style="text-align: right;">0.28</td>
-<td style="text-align: right;">0.21</td>
+<td style="text-align: right;">0.22</td>
 <td style="text-align: left;">1.3x</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">jaro_winkler</td>
 <td style="text-align: left;">RecordLinkage::jarowinkler</td>
-<td style="text-align: right;">1.17</td>
-<td style="text-align: right;">0.21</td>
-<td style="text-align: left;">5.6x</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">0.22</td>
+<td style="text-align: left;">5.5x</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">levenshtein</td>
 <td style="text-align: left;">stringdist::stringdist(lv)</td>
-<td style="text-align: right;">0.26</td>
-<td style="text-align: right;">0.18</td>
-<td style="text-align: left;">1.4x</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">damerau_levenshtein</td>
-<td style="text-align: left;">stringdist::stringdist(dl)</td>
-<td style="text-align: right;">0.43</td>
-<td style="text-align: right;">0.24</td>
+<td style="text-align: right;">0.31</td>
+<td style="text-align: right;">0.17</td>
 <td style="text-align: left;">1.8x</td>
 </tr>
+<tr class="even">
+<td style="text-align: left;">osa_distance</td>
+<td style="text-align: left;">stringdist::stringdist(osa)</td>
+<td style="text-align: right;">0.28</td>
+<td style="text-align: right;">0.23</td>
+<td style="text-align: left;">1.2x</td>
+</tr>
 <tr class="odd">
-<td style="text-align: left;">hamming</td>
-<td style="text-align: left;">stringdist::stringdist(hamming)</td>
-<td style="text-align: right;">0.31</td>
-<td style="text-align: right;">0.22</td>
-<td style="text-align: left;">1.4x</td>
+<td style="text-align: left;">damerau_levenshtein</td>
+<td style="text-align: left;">stringdist::stringdist(dl)</td>
+<td style="text-align: right;">0.53</td>
+<td style="text-align: right;">0.62</td>
+<td style="text-align: left;">0.9x</td>
 </tr>
 <tr class="even">
+<td style="text-align: left;">hamming</td>
+<td style="text-align: left;">stringdist::stringdist(hamming)</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">0.21</td>
+<td style="text-align: left;">1.4x</td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;">jaccard_index</td>
 <td style="text-align: left;">stringdist::stringsim(jaccard)</td>
 <td style="text-align: right;">0.44</td>
-<td style="text-align: right;">0.26</td>
-<td style="text-align: left;">1.7x</td>
+<td style="text-align: right;">0.27</td>
+<td style="text-align: left;">1.6x</td>
 </tr>
 </tbody>
 </table>

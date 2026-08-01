@@ -77,6 +77,16 @@ test_that("gsub_all handles zero-length regex matches like base", {
     )
 })
 
+test_that("non-sequential regex substitution is rejected explicitly", {
+    expect_error(
+        fast.string::gsub_all(
+            c("a", "b"), c("x", "y"), "ab",
+            fixed = FALSE, sequential = FALSE
+        ),
+        "not supported for regular-expression patterns"
+    )
+})
+
 test_that("gsub_all preserves pure source-slice encodings", {
     latin1 <- iconv("\u00e9clair", from = "UTF-8", to = "latin1")
     Encoding(latin1) <- "latin1"

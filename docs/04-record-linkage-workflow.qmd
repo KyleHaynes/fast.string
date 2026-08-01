@@ -85,6 +85,12 @@ manageable while still catching records where the date itself has a typo.
 
 ## Step 3: score within each block
 
+For the plain Jaro-Winkler and edit-distance methods, `fuzzy_match()` and
+`fuzzy_top_n()` perform this candidate scan directly without allocating an
+all-pairs score matrix. This example keeps the explicit loop because it uses
+the specialized token-reordering scorer, which is intentionally not yet part
+of the lookup method set.
+
 For each incoming record, find reference records sharing its block, then
 score name similarity only among those candidates. `jaro_winkler_tokens()`
 is used uniformly rather than switching between it and plain

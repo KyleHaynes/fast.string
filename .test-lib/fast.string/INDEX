@@ -1,0 +1,48 @@
+caverphone              Caverphone 2.0 phonetic code (Caversham
+                        Project, University of Otago)
+damerau_levenshtein_matrix
+                        Unrestricted Damerau-Levenshtein all-pairs
+                        distance matrix
+date_parts              Decompose a Date vector into year, month, day
+                        integer columns.
+dice_matrix             Q-gram Sorensen-Dice all-pairs similarity
+                        matrix
+double_metaphone        Double Metaphone phonetic code (Lawrence
+                        Philips, 2000)
+edit_distance           Parallel edit distances and normalized
+                        similarities
+fas.Date                Fast fixed-format date parsing (not a drop-in
+                        for base::as.Date())
+fchartr                 Fast parallel character translation
+fgrep                   Fast parallel string matching returning indices
+                        or values
+fgrepl                  Fast parallel string matching
+fgsub                   Fast parallel global substitution
+fnchar                  Fast parallel character/byte counting
+format_date             Format a Date vector as strings without locale
+                        or timezone overhead.
+format_date_parts       Concatenate separate year/month/day fields into
+                        a formatted date string.
+fsub                    Fast parallel first-match substitution
+fsubstr                 Fast parallel substring extraction
+ftrimws                 Fast parallel whitespace trimming
+fuzz                    fuzzywuzzy-style fuzzy string ratios
+fuzzy_lookup            Memory-efficient fuzzy lookup
+gsub_all                Apply multiple substitutions in one pass
+jaccard_matrix          Q-gram Jaccard all-pairs similarity matrix
+jaro_winkler            Vectorised Jaro-Winkler similarity.
+jaro_winkler_matrix     Jaro-Winkler all-pairs similarity matrix.
+jaro_winkler_tokens     Token-aware Jaro-Winkler similarity for
+                        multi-token strings
+levenshtein_matrix      Levenshtein all-pairs distance matrix
+levenshtein_within      Test whether Levenshtein distance is within a
+                        cutoff
+nysiis                  NYSIIS phonetic code (New York State
+                        Identification and Intelligence System)
+osa_distance_matrix     Optimal String Alignment all-pairs distance
+                        matrix
+qgram_metrics           Vectorised q-gram set-overlap similarity:
+                        Jaccard, Dice, Tversky
+soundex                 Soundex phonetic code (American Soundex / US
+                        Census Bureau rules)
+tversky_matrix          Q-gram Tversky all-pairs similarity matrix

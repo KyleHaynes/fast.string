@@ -2,6 +2,7 @@ matrix_functions <- list(
     jaro_winkler = fast.string::jaro_winkler_matrix,
     levenshtein = fast.string::levenshtein_matrix,
     damerau = fast.string::damerau_levenshtein_matrix,
+    osa = fast.string::osa_distance_matrix,
     jaccard = fast.string::jaccard_matrix,
     dice = fast.string::dice_matrix,
     tversky = fast.string::tversky_matrix

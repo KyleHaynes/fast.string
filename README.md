@@ -25,7 +25,8 @@ remotes::install_github("KyleHaynes/fast.string")
 - **Dates**: `format_date()`, `format_date_parts()`, `date_parts()`, `fas.Date()`
 - **Phonetic blocking keys**: `soundex()`, `nysiis()`, `double_metaphone()`, `caverphone()`
 - **Fuzzy string similarity**: `jaro_winkler()`, `jaro_winkler_matrix()`, `jaro_winkler_tokens()`
-- **Edit distance**: `levenshtein()`, `damerau_levenshtein()`, `hamming()` (+ `_matrix()` variants)
+- **Fuzzy lookup**: `fuzzy_match()`, `fuzzy_top_n()` (streaming best/top-N matches without a full matrix)
+- **Edit distance**: `levenshtein()`, `osa_distance()`, `damerau_levenshtein()`, `hamming()` (+ matrix, normalized-similarity, and bounded variants)
 - **Q-gram set overlap**: `jaccard_index()`, `dice_coefficient()`, `tversky_index()` (+ `_matrix()` variants)
 - **fuzzywuzzy-style ratios** (R port of Python's `fuzzywuzzy`): `fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_token_sort_ratio()`, `fuzz_token_set_ratio()`
 
@@ -33,6 +34,18 @@ Loading the package (`library(fast.string)`) prints a one-time startup
 banner listing all of these with a short description; suppress it with
 `options(fast.string.verbose = FALSE)` (set before `library()`) or
 `suppressPackageStartupMessages()`.
+
+The established similarity APIs compare encoded bytes by default for
+compatibility and speed; pass `use_bytes = FALSE` for UTF-8 code-point
+comparison. The new fuzzy lookup APIs use code points by default and retain
+only the requested matches, so memory grows with `length(x) * top_n` rather
+than `length(x) * length(table)`.
+
+```r
+fuzzy_match(c("SMITH", "JONES"), c("SMYTH", "JONAS", "JONES"))
+fuzzy_top_n("kitten", c("sitting", "mitten", "cat"),
+            method = "levenshtein", top_n = 2)
+```
 
 ## Quick benchmark
 

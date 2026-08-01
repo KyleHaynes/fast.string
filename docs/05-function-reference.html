@@ -428,6 +428,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
 <li><a href="#soundex" id="toc-soundex" class="nav-link" data-scroll-target="#soundex"><code>soundex()</code></a></li>
   <li><a href="#nysiis" id="toc-nysiis" class="nav-link" data-scroll-target="#nysiis"><code>nysiis()</code></a></li>
+  <li><a href="#double_metaphone" id="toc-double_metaphone" class="nav-link" data-scroll-target="#double_metaphone"><code>double_metaphone()</code></a></li>
+  <li><a href="#caverphone" id="toc-caverphone" class="nav-link" data-scroll-target="#caverphone"><code>caverphone()</code></a></li>
   </ul>
 </li>
   <li>
@@ -438,6 +440,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#jaro_winkler_tokens" id="toc-jaro_winkler_tokens" class="nav-link" data-scroll-target="#jaro_winkler_tokens"><code>jaro_winkler_tokens()</code></a></li>
   </ul>
 </li>
+  <li><a href="#fuzzy-lookup" id="toc-fuzzy-lookup" class="nav-link" data-scroll-target="#fuzzy-lookup"><span class="header-section-number">5.6</span> Fuzzy lookup</a></li>
+  <li>
+<a href="#edit-distance" id="toc-edit-distance" class="nav-link" data-scroll-target="#edit-distance"><span class="header-section-number">5.7</span> Edit distance</a>
+  <ul class="collapse">
+<li><a href="#levenshtein" id="toc-levenshtein" class="nav-link" data-scroll-target="#levenshtein"><code>levenshtein()</code></a></li>
+  <li><a href="#levenshtein_matrix" id="toc-levenshtein_matrix" class="nav-link" data-scroll-target="#levenshtein_matrix"><code>levenshtein_matrix()</code></a></li>
+  <li><a href="#osa_distance-osa_distance_matrix" id="toc-osa_distance-osa_distance_matrix" class="nav-link" data-scroll-target="#osa_distance-osa_distance_matrix"><code>osa_distance()</code> / <code>osa_distance_matrix()</code></a></li>
+  <li><a href="#damerau_levenshtein-damerau_levenshtein_matrix" id="toc-damerau_levenshtein-damerau_levenshtein_matrix" class="nav-link" data-scroll-target="#damerau_levenshtein-damerau_levenshtein_matrix"><code>damerau_levenshtein()</code> / <code>damerau_levenshtein_matrix()</code></a></li>
+  <li><a href="#normalized-and-bounded-edit-comparison" id="toc-normalized-and-bounded-edit-comparison" class="nav-link" data-scroll-target="#normalized-and-bounded-edit-comparison">Normalized and bounded edit comparison</a></li>
+  <li><a href="#hamming" id="toc-hamming" class="nav-link" data-scroll-target="#hamming"><code>hamming()</code></a></li>
+  </ul>
+</li>
+  <li>
+<a href="#q-gram-set-similarity" id="toc-q-gram-set-similarity" class="nav-link" data-scroll-target="#q-gram-set-similarity"><span class="header-section-number">5.8</span> Q-gram set similarity</a>
+  <ul class="collapse">
+<li><a href="#jaccard_index" id="toc-jaccard_index" class="nav-link" data-scroll-target="#jaccard_index"><code>jaccard_index()</code></a></li>
+  <li><a href="#jaccard_matrix" id="toc-jaccard_matrix" class="nav-link" data-scroll-target="#jaccard_matrix"><code>jaccard_matrix()</code></a></li>
+  <li><a href="#dice_coefficient-dice_matrix" id="toc-dice_coefficient-dice_matrix" class="nav-link" data-scroll-target="#dice_coefficient-dice_matrix"><code>dice_coefficient()</code> / <code>dice_matrix()</code></a></li>
+  <li><a href="#tversky_index-tversky_matrix" id="toc-tversky_index-tversky_matrix" class="nav-link" data-scroll-target="#tversky_index-tversky_matrix"><code>tversky_index()</code> / <code>tversky_matrix()</code></a></li>
+  </ul>
+</li>
+  <li><a href="#fuzzywuzzy-style-ratios" id="toc-fuzzywuzzy-style-ratios" class="nav-link" data-scroll-target="#fuzzywuzzy-style-ratios"><span class="header-section-number">5.9</span> fuzzywuzzy-style ratios</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/05-function-reference.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
@@ -456,11 +480,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   
 
 
-</header><p>Every exported function, grouped the same way as the README. Each entry gives the signature, every argument, the return value, and at least one runnable example. This chapter is the detailed reference; <a href="02-quickstart.html" class="quarto-xref"><span>Chapter 2</span></a> is the faster tour.</p>
+</header><p>Every exported function, grouped the same way as the README. Each entry gives the signature, every argument, the return value, and at least one runnable example. This chapter is the detailed reference; <a href="#sec-quickstart" class="quarto-xref"><span class="quarto-unresolved-ref">sec-quickstart</span></a> is the faster tour.</p>
 <section id="matching-substitution" class="level2" data-number="5.1"><h2 data-number="5.1" class="anchored" data-anchor-id="matching-substitution">
 <span class="header-section-number">5.1</span> Matching &amp; substitution</h2>
 <section id="fgrepl" class="level3"><h3 class="anchored" data-anchor-id="fgrepl"><code>fgrepl()</code></h3>
-<p>Equivalent to <code><a href="https://rdrr.io/r/base/grep.html">base::grepl()</a></code>, using PCRE2 and Intel TBB. Typically 5-20x faster on large character vectors. See <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the automatic PCRE-only-syntax fallback to <code>base::grepl(perl = TRUE)</code>.</p>
+<p>Equivalent to <code><a href="https://rdrr.io/r/base/grep.html">base::grepl()</a></code>, using PCRE2 and Intel TBB. Large inputs can use multiple cores; the crossover depends on subject length and pattern cost. See <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> for the automatic PCRE-only-syntax fallback to <code>base::grepl(perl = TRUE)</code>. With <code>fixed = TRUE</code>, the byte-oriented pattern is prepared once: one-byte needles use <code>memchr</code>, two- and three-byte needles use <code>memchr</code> plus <code>memcmp</code>, and longer needles use Boyer–Moore–Horspool. <code>ignore.case = TRUE</code> uses a 256-entry byte-folding table without lowercasing each input string.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgrepl</span><span class="op">(</span><span class="va">pattern</span>, <span class="va">x</span>, ignore.case <span class="op">=</span> <span class="cn">FALSE</span>, perl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>       fixed <span class="op">=</span> <span class="cn">FALSE</span>, useBytes <span class="op">=</span> <span class="cn">FALSE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
@@ -491,7 +515,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td><code>fixed</code></td>
-<td>Logical. Treat <code>pattern</code> as a literal string (fastest path — uses RE2).</td>
+<td>Logical. Treat <code>pattern</code> as bytes and use the prepared literal-search path.</td>
 </tr>
 <tr class="even">
 <td><code>useBytes</code></td>
@@ -499,7 +523,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td><code>nthreads</code></td>
-<td>Integer or <code>NULL</code>. Thread count; <code>NULL</code> uses all cores.</td>
+<td>Positive integer per-call thread cap, or <code>NULL</code> for the RcppParallel default; <code>1</code> forces serial execution.</td>
 </tr>
 </tbody>
 </table>
@@ -608,7 +632,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section><section id="gsub_all" class="level3"><h3 class="anchored" data-anchor-id="gsub_all"><code>gsub_all()</code></h3>
-<p>No base R equivalent: applies several patterns in a single function call, either sequentially (chained, like repeated <code>fgsub()</code> calls — later patterns can match text introduced by earlier replacements) or as one combined left-to-right scan (<code>sequential = FALSE</code> — the first pattern to match at each position wins; later replacements never see earlier ones’ output).</p>
+<p>No base R equivalent: applies several patterns in a single function call, either sequentially (chained, like repeated <code>fgsub()</code> calls — later patterns can match text introduced by earlier replacements) or, for <code>fixed = TRUE</code>, as one combined left-to-right scan (<code>sequential = FALSE</code>). Non-sequential regex replacement is rejected explicitly.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">gsub_all</span><span class="op">(</span><span class="va">patterns</span>, <span class="va">replacements</span>, <span class="va">x</span>, fixed <span class="op">=</span> <span class="cn">FALSE</span>, ignore.case <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>          sequential <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
@@ -643,11 +667,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><code>sequential</code></td>
-<td>Logical (default <code>TRUE</code>). <code>TRUE</code> = chained passes; <code>FALSE</code> = single combined scan.</td>
+<td>Logical (default <code>TRUE</code>). <code>TRUE</code> = chained passes; <code>FALSE</code> = fixed-pattern single combined scan.</td>
 </tr>
 <tr class="odd">
 <td><code>nthreads</code></td>
-<td>Integer or <code>NULL</code>. Thread count.</td>
+<td>Positive integer per-call thread cap, or <code>NULL</code> for the RcppParallel default; <code>1</code> forces serial execution.</td>
 </tr>
 </tbody>
 </table>
@@ -895,7 +919,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section><section id="fas.date" class="level3"><h3 class="anchored" data-anchor-id="fas.date"><code>fas.Date()</code></h3>
-<p>Not a drop-in for <code><a href="https://rdrr.io/r/base/as.Date.html">base::as.Date()</a></code> — see <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the speed/ strictness trade-off (no days-in-month or leap-year validation).</p>
+<p>Not a drop-in for <code><a href="https://rdrr.io/r/base/as.Date.html">base::as.Date()</a></code> — see <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> for the speed/ strictness trade-off (no days-in-month or leap-year validation).</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.Date</span><span class="op">(</span><span class="va">x</span>, format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"iso"</span>, <span class="st">"compact"</span>, <span class="st">"dmy"</span>, <span class="st">"ymd_slash"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
 <colgroup>
@@ -926,7 +950,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </section></section><section id="phonetic-blocking-keys" class="level2" data-number="5.4"><h2 data-number="5.4" class="anchored" data-anchor-id="phonetic-blocking-keys">
 <span class="header-section-number">5.4</span> Phonetic blocking keys</h2>
-<p>Both functions have no base R equivalent and are intended as blocking keys ahead of fuzzy name matching (<a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>, <a href="04-record-linkage-workflow.html" class="quarto-xref"><span>Chapter 4</span></a>).</p>
+<p>All four functions have no base R equivalent and are intended as blocking keys ahead of fuzzy name matching (<a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>, <a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a>).</p>
 <section id="soundex" class="level3"><h3 class="anchored" data-anchor-id="soundex"><code>soundex()</code></h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb52"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">soundex</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
@@ -973,12 +997,68 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>[1] "RABAD"  "RAPAD"  "ASCRAF"</code></pre>
 </div>
 </div>
+</section><section id="double_metaphone" class="level3"><h3 class="anchored" data-anchor-id="double_metaphone"><code>double_metaphone()</code></h3>
+<p>Two codes per word — <code>primary</code> and <code>secondary</code> — for ambiguous pronunciations. Ported from the structure of Apache Commons Codec’s Java implementation and cross-checked against its published test vectors. Unlike <code>soundex()</code>/<code>nysiis()</code>, internal whitespace/punctuation is <em>not</em> stripped before encoding (only the ends are trimmed and the text uppercased) — the algorithm itself keys off literal fragments like <code>"VAN "</code>/<code>"SCH"</code>, including the space.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb58"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">double_metaphone</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td><code>x</code></td>
+<td>Character vector (coerced via <code><a href="https://rdrr.io/r/base/character.html">as.character()</a></code> if needed). <code>NA</code> elements, and elements with no content after trimming, return <code>NA</code> in both columns.</td>
+</tr></tbody>
+</table>
+<p><strong>Returns:</strong> a <code>data.frame</code> with character columns <code>primary</code> and <code>secondary</code>, each <code>length(x)</code> long.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb59"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">double_metaphone</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Smith"</span>, <span class="st">"Schmidt"</span>, <span class="st">"Catherine"</span>, <span class="st">"Kathryn"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  primary secondary
+1     SM0       XMT
+2     XMT       SMT
+3    K0RN      KTRN
+4    K0RN      KTRN</code></pre>
+</div>
+</div>
+</section><section id="caverphone" class="level3"><h3 class="anchored" data-anchor-id="caverphone"><code>caverphone()</code></h3>
+<p>Caverphone 2.0 (Caversham Project, University of Otago) — a fixed 10-character code via a chain of substring transforms, widely used in NZ/AU record linkage. Ported step-for-step from Apache Commons Codec’s <code>Caverphone2</code> and cross-checked against its published test vectors, including the “enough”/“trough” duplicate-rule quirk inherited from the original 2004 specification (preserved rather than “corrected” — the point of a phonetic key is to match the standard everyone else uses).</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb61"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">caverphone</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td><code>x</code></td>
+<td>Character vector (coerced via <code><a href="https://rdrr.io/r/base/character.html">as.character()</a></code> if needed). <code>NA</code> elements return <code>NA</code>; every other input — including <code>""</code> — returns a 10-character code.</td>
+</tr></tbody>
+</table>
+<p><strong>Returns:</strong> character vector the same length as <code>x</code>, with <code>names(x)</code> preserved; each element either <code>NA</code> or exactly 10 characters.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb62"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">caverphone</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Peter"</span>, <span class="st">"Tedder"</span>, <span class="st">"Stevenson"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "PTA1111111" "TTA1111111" "STFNSN1111"</code></pre>
+</div>
+</div>
 </section></section><section id="fuzzy-string-similarity" class="level2" data-number="5.5"><h2 data-number="5.5" class="anchored" data-anchor-id="fuzzy-string-similarity">
 <span class="header-section-number">5.5</span> Fuzzy string similarity</h2>
 <section id="jaro_winkler" class="level3"><h3 class="anchored" data-anchor-id="jaro_winkler"><code>jaro_winkler()</code></h3>
-<p>Vectorised pairwise Jaro-Winkler similarity. See <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the algorithm and the bit-parallel implementation.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb58"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Vectorised pairwise Jaro-Winkler similarity. See <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> for the algorithm and the bit-parallel implementation.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb64"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
 <thead><tr class="header">
 <th>Argument</th>
 <th>Description</th>
@@ -996,28 +1076,33 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td><code>nthreads</code></td>
-<td>Integer or <code>NULL</code>. Thread count.</td>
+<td>Positive integer per-call thread cap, or <code>NULL</code> for the RcppParallel default; <code>1</code> forces serial execution.</td>
+</tr>
+<tr class="even">
+<td><code>use_bytes</code></td>
+<td>
+<code>TRUE</code> for compatibility byte comparison; <code>FALSE</code> for UTF-8 code points.</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Returns:</strong> numeric vector of similarities in <code>[0, 1]</code>.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb59"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARTHA"</span>, <span class="st">"DWAYNE"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARHTA"</span>, <span class="st">"DUANE"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARTHA"</span>, <span class="st">"DWAYNE"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARHTA"</span>, <span class="st">"DUANE"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.9611111 0.8400000</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb61"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, p <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>    <span class="co"># no prefix bonus</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb67"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, p <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>    <span class="co"># no prefix bonus</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.8666667</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb63"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, p <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span>  <span class="co"># standard prefix bonus</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb69"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, p <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span>  <span class="co"># standard prefix bonus</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.8933333</code></pre>
 </div>
 </div>
 </section><section id="jaro_winkler_matrix" class="level3"><h3 class="anchored" data-anchor-id="jaro_winkler_matrix"><code>jaro_winkler_matrix()</code></h3>
 <p>All-pairs Jaro-Winkler similarity — every element of <code>a</code> against every element of <code>b</code>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_matrix</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb71"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_matrix</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
 <thead><tr class="header">
 <th>Argument</th>
@@ -1042,7 +1127,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 <p><strong>Returns:</strong> numeric matrix of dimensions n × m.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb66"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_matrix</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN SMITH"</span>, <span class="st">"MARY JONES"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JON SMYTH"</span>, <span class="st">"MARY JONES"</span>, <span class="st">"JOHN SMITH"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb72"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_matrix</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN SMITH"</span>, <span class="st">"MARY JONES"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JON SMYTH"</span>, <span class="st">"MARY JONES"</span>, <span class="st">"JOHN SMITH"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>          [,1]      [,2]      [,3]
 [1,] 0.9170370 0.4222222 1.0000000
@@ -1050,8 +1135,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section><section id="jaro_winkler_tokens" class="level3"><h3 class="anchored" data-anchor-id="jaro_winkler_tokens"><code>jaro_winkler_tokens()</code></h3>
-<p>Token-reorder- and punctuation-aware Jaro-Winkler similarity. Full mechanics in <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb68"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, ignore_case <span class="op">=</span> <span class="cn">FALSE</span>, strip <span class="op">=</span> <span class="st">"['’-]"</span>,</span>
+<p>Token-reorder- and punctuation-aware Jaro-Winkler similarity. Full mechanics in <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb74"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, ignore_case <span class="op">=</span> <span class="cn">FALSE</span>, strip <span class="op">=</span> <span class="st">"['’-]"</span>,</span>
 <span>                     extra_penalty <span class="op">=</span> <span class="cn">NULL</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
 <colgroup>
@@ -1088,45 +1173,314 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><code>nthreads</code></td>
-<td>Integer or <code>NULL</code>. Thread count.</td>
+<td>Positive integer per-call thread cap, or <code>NULL</code> for the RcppParallel default; <code>1</code> forces serial execution.</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Returns:</strong> numeric vector of similarities in <code>[0, 1]</code>. <code>NA</code> if either side of a pair is <code>NA</code>.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb69"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Reordered tokens, one near-miss — rescued relative to plain jaro_winkler()</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb75"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Reordered tokens, one near-miss — rescued relative to plain jaro_winkler()</span></span>
 <span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.9844444</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb71"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb77"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.8970588</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb73"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Punctuation/spacing variants of the same name</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb79"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Punctuation/spacing variants of the same name</span></span>
 <span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"OBrien"</span>, <span class="st">"OBrien"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"O Brien"</span>, <span class="st">"O'Brien"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 1 1</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb75"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># A stray extra token, penalised by default...</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb81"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># A stray extra token, penalised by default...</span></span>
 <span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kylie John ZZ Haynes"</span>, <span class="st">"Haynes John Kyle"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.7383333</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb77"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># ...vs. ignored outright with extra_penalty = 0</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb83"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># ...vs. ignored outright with extra_penalty = 0</span></span>
 <span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kylie John ZZ Haynes"</span>, <span class="st">"Haynes John Kyle"</span>, extra_penalty <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.9844444</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb79"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># ...vs. lightly discounted</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb85"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># ...vs. lightly discounted</span></span>
 <span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kylie John ZZ Haynes"</span>, <span class="st">"Haynes John Kyle"</span>, extra_penalty <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.8844444</code></pre>
 </div>
 </div>
+</section></section><section id="fuzzy-lookup" class="level2" data-number="5.6"><h2 data-number="5.6" class="anchored" data-anchor-id="fuzzy-lookup">
+<span class="header-section-number">5.6</span> Fuzzy lookup</h2>
+<p><code>fuzzy_match()</code> returns the best table index for every query. <code>fuzzy_top_n()</code> returns a long data frame of ranked candidates. Both scan the table without allocating a full all-pairs matrix and compare UTF-8 code points by default.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb87"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzzy_match</span><span class="op">(</span><span class="va">x</span>, <span class="va">table</span>, method <span class="op">=</span> <span class="st">"jaro_winkler"</span>, min_score <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>            max_distance <span class="op">=</span> <span class="cn">NULL</span>, match_na <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>            nomatch <span class="op">=</span> <span class="cn">NA_integer_</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu">fuzzy_top_n</span><span class="op">(</span><span class="va">x</span>, <span class="va">table</span>, method <span class="op">=</span> <span class="st">"jaro_winkler"</span>, top_n <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>            min_score <span class="op">=</span> <span class="fl">0</span>, max_distance <span class="op">=</span> <span class="cn">NULL</span>, match_na <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>            nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Supported methods are <code>"jaro_winkler"</code>, <code>"levenshtein"</code>, <code>"osa"</code>, and <code>"damerau_levenshtein"</code>. Scores are normalized to <code>[0, 1]</code>; ties resolve to the earliest table position.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb88"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzzy_match</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"JONES"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMYTH"</span>, <span class="st">"JONAS"</span>, <span class="st">"JONES"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb90"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzzy_top_n</span><span class="op">(</span><span class="st">"kitten"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"sitting"</span>, <span class="st">"mitten"</span>, <span class="st">"cat"</span><span class="op">)</span>,</span>
+<span>            method <span class="op">=</span> <span class="st">"levenshtein"</span>, top_n <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  query_index table_index     score rank
+1           1           2 0.8333333    1
+2           1           1 0.5714286    2</code></pre>
+</div>
+</div>
+</section><section id="edit-distance" class="level2" data-number="5.7"><h2 data-number="5.7" class="anchored" data-anchor-id="edit-distance">
+<span class="header-section-number">5.7</span> Edit distance</h2>
+<p>The edit-distance family distinguishes OSA from unrestricted Damerau-Levenshtein and offers normalized and bounded forms. Byte comparison is the compatibility default; <code>use_bytes = FALSE</code> compares UTF-8 code points.</p>
+<section id="levenshtein" class="level3"><h3 class="anchored" data-anchor-id="levenshtein"><code>levenshtein()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb92"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">levenshtein</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>a</code>, <code>b</code>
+</td>
+<td>Equal-length character vectors.</td>
+</tr>
+<tr class="even">
+<td><code>nthreads</code></td>
+<td>Positive integer per-call thread cap, or <code>NULL</code> for the RcppParallel default; <code>1</code> forces serial execution.</td>
+</tr>
+<tr class="odd">
+<td><code>use_bytes</code></td>
+<td>
+<code>TRUE</code> for encoded bytes; <code>FALSE</code> for UTF-8 code points.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> numeric vector the same length as <code>a</code> (minimum number of single-character insertions/deletions/substitutions). <code>NA</code> if either side of a pair is <code>NA</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb93"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">levenshtein</span><span class="op">(</span><span class="st">"kitten"</span>, <span class="st">"sitting"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3</code></pre>
+</div>
+</div>
+</section><section id="levenshtein_matrix" class="level3"><h3 class="anchored" data-anchor-id="levenshtein_matrix"><code>levenshtein_matrix()</code></h3>
+<p>All-pairs Levenshtein distance.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb95"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">levenshtein_matrix</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Returns:</strong> numeric matrix of dimensions <code>length(a)</code> x <code>length(b)</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb96"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">levenshtein_matrix</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"kitten"</span>, <span class="st">"cat"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"sitting"</span>, <span class="st">"bat"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     [,1] [,2]
+[1,]    3    5
+[2,]    6    1</code></pre>
+</div>
+</div>
+</section><section id="osa_distance-osa_distance_matrix" class="level3"><h3 class="anchored" data-anchor-id="osa_distance-osa_distance_matrix">
+<code>osa_distance()</code> / <code>osa_distance_matrix()</code>
+</h3>
+<p>Adjacent transpositions cost one edit under the Optimal String Alignment restriction that no substring is edited more than once.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb98"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">osa_distance</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu">osa_distance_matrix</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Arguments identical to <code>levenshtein()</code>. <strong>Returns:</strong> numeric vector the same length as <code>a</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb99"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">osa_distance</span><span class="op">(</span><span class="st">"ca"</span>, <span class="st">"abc"</span><span class="op">)</span>  <span class="co"># 3</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3</code></pre>
+</div>
+</div>
+</section><section id="damerau_levenshtein-damerau_levenshtein_matrix" class="level3"><h3 class="anchored" data-anchor-id="damerau_levenshtein-damerau_levenshtein_matrix">
+<code>damerau_levenshtein()</code> / <code>damerau_levenshtein_matrix()</code>
+</h3>
+<p>Unrestricted Damerau-Levenshtein permits a substring to participate in multiple edits and matches <code>stringdist(method = "dl")</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb101"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">damerau_levenshtein</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu">damerau_levenshtein_matrix</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb102"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">damerau_levenshtein</span><span class="op">(</span><span class="st">"ca"</span>, <span class="st">"abc"</span><span class="op">)</span>  <span class="co"># 2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2</code></pre>
+</div>
+</div>
+</section><section id="normalized-and-bounded-edit-comparison" class="level3"><h3 class="anchored" data-anchor-id="normalized-and-bounded-edit-comparison">Normalized and bounded edit comparison</h3>
+<p><code>levenshtein_similarity()</code>, <code>osa_similarity()</code>, and <code>damerau_levenshtein_similarity()</code> return <code>1 - distance/max(lengths)</code>. <code>levenshtein_within()</code> uses a banded dynamic program to test a raw cutoff.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb104"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">levenshtein_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu">levenshtein_within</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">max_distance</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section><section id="hamming" class="level3"><h3 class="anchored" data-anchor-id="hamming"><code>hamming()</code></h3>
+<p>Number of positions at which two equal-length strings differ.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb105"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">hamming</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Arguments identical to <code>levenshtein()</code>. <strong>Returns:</strong> numeric vector the same length as <code>a</code>; <code>Inf</code> for a pair of unequal length (matching <code>stringdist::stringdist(method = "hamming")</code>).</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb106"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">hamming</span><span class="op">(</span><span class="st">"karolin"</span>, <span class="st">"kathrin"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb108"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">hamming</span><span class="op">(</span><span class="st">"abc"</span>, <span class="st">"ab"</span><span class="op">)</span>  <span class="co"># Inf -- unequal length</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] Inf</code></pre>
+</div>
+</div>
+</section></section><section id="q-gram-set-similarity" class="level2" data-number="5.8"><h2 data-number="5.8" class="anchored" data-anchor-id="q-gram-set-similarity">
+<span class="header-section-number">5.8</span> Q-gram set similarity</h2>
+<p><code>jaccard_index()</code>, <code>dice_coefficient()</code>, and <code>tversky_index()</code> compare two strings’ sets of overlapping length-<code>q</code> substrings (“q-grams”). All three share one sorted-merge intersection pass over packed-integer q-gram sets without routing through <code>stringdist</code>’s generic R-level dispatch (<a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a>).</p>
+<section id="jaccard_index" class="level3"><h3 class="anchored" data-anchor-id="jaccard_index"><code>jaccard_index()</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb110"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaccard_index</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, q <span class="op">=</span> <span class="fl">2</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>a</code>, <code>b</code>
+</td>
+<td>Equal-length character vectors.</td>
+</tr>
+<tr class="even">
+<td><code>q</code></td>
+<td>Q-gram length (default <code>2</code>, i.e.&nbsp;bigrams). Must be a single integer &gt;= 1.</td>
+</tr>
+<tr class="odd">
+<td><code>nthreads</code></td>
+<td>Positive integer per-call thread cap, or <code>NULL</code> for the RcppParallel default; <code>1</code> forces serial execution.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> numeric vector of similarities in <code>[0, 1]</code>, <code>length(a)</code> long. Two strings shorter than <code>q</code> (so neither has any q-grams) compare equal (<code>1</code>).</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb111"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaccard_index</span><span class="op">(</span><span class="st">"night"</span>, <span class="st">"nacht"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.1428571</code></pre>
+</div>
+</div>
+</section><section id="jaccard_matrix" class="level3"><h3 class="anchored" data-anchor-id="jaccard_matrix"><code>jaccard_matrix()</code></h3>
+<p>All-pairs Jaccard similarity. Same argument/return shape as <code>jaro_winkler_matrix()</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb113"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaccard_matrix</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, q <span class="op">=</span> <span class="fl">2</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section><section id="dice_coefficient-dice_matrix" class="level3"><h3 class="anchored" data-anchor-id="dice_coefficient-dice_matrix">
+<code>dice_coefficient()</code> / <code>dice_matrix()</code>
+</h3>
+<p>The Sorensen-Dice coefficient: <code>2*|intersection| / (|A| + |B|)</code>. Weights shared q-grams more heavily than Jaccard (always <code>&gt;=</code> the Jaccard score for the same pair). Same arguments as <code>jaccard_index()</code>/<code>jaccard_matrix()</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb114"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">dice_coefficient</span><span class="op">(</span><span class="st">"night"</span>, <span class="st">"nacht"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.25</code></pre>
+</div>
+</div>
+</section><section id="tversky_index-tversky_matrix" class="level3"><h3 class="anchored" data-anchor-id="tversky_index-tversky_matrix">
+<code>tversky_index()</code> / <code>tversky_matrix()</code>
+</h3>
+<p>Generalises both: <code>|intersection| / (|intersection| + alpha*|A only| + beta*|B only|)</code>. <code>alpha = beta = 1</code> reduces to Jaccard; <code>alpha = beta = 0.5</code> (the default) reduces to Dice.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb116"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">tversky_index</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, q <span class="op">=</span> <span class="fl">2</span>, alpha <span class="op">=</span> <span class="fl">0.5</span>, beta <span class="op">=</span> <span class="fl">0.5</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>a</code>, <code>b</code>, <code>q</code>, <code>nthreads</code>
+</td>
+<td>Same as <code>jaccard_index()</code>.</td>
+</tr>
+<tr class="even">
+<td>
+<code>alpha</code>, <code>beta</code>
+</td>
+<td>Tversky asymmetry weights (default <code>0.5</code> each). Non-negative scalars.</td>
+</tr>
+</tbody>
+</table>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb117"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">tversky_index</span><span class="op">(</span><span class="st">"night"</span>, <span class="st">"nacht"</span>, alpha <span class="op">=</span> <span class="fl">1</span>, beta <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>   <span class="co"># == jaccard_index()</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.1428571</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb119"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">tversky_index</span><span class="op">(</span><span class="st">"night"</span>, <span class="st">"nacht"</span>, alpha <span class="op">=</span> <span class="fl">0.5</span>, beta <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="co"># == dice_coefficient()</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.25</code></pre>
+</div>
+</div>
+</section></section><section id="fuzzywuzzy-style-ratios" class="level2" data-number="5.9"><h2 data-number="5.9" class="anchored" data-anchor-id="fuzzywuzzy-style-ratios">
+<span class="header-section-number">5.9</span> fuzzywuzzy-style ratios</h2>
+<p>Vectorised ports of Python’s <a href="https://github.com/seatgeek/fuzzywuzzy">fuzzywuzzy</a> package, implementing the same Ratcliff/Obershelp matching-blocks algorithm fuzzywuzzy itself falls back to (the one behind Python’s <code>difflib.SequenceMatcher</code>). All four return <code>0-100</code> like the Python originals; see <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> for the algorithm.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb121"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_partial_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_token_sort_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_token_set_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>a</code>, <code>b</code>
+</td>
+<td>Equal-length character vectors.</td>
+</tr>
+<tr class="even">
+<td><code>full_process</code></td>
+<td>Logical (default <code>TRUE</code>, matching fuzzywuzzy’s default). Lowercases and replaces runs of non-alphanumeric characters with a single space before comparing.</td>
+</tr>
+<tr class="odd">
+<td><code>nthreads</code></td>
+<td>Positive integer per-call thread cap, or <code>NULL</code> for the RcppParallel default; <code>1</code> forces serial execution.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> numeric vector of scores in <code>[0, 100]</code>, <code>length(a)</code> long.</p>
+<ul>
+<li>
+<strong><code>fuzz_ratio()</code></strong> — overall similarity: <code>2*M / (len(a)+len(b))</code>, <code>M</code> being the total length of the longest-common matching blocks (found recursively — <em>not</em> edit distance).</li>
+<li>
+<strong><code>fuzz_partial_ratio()</code></strong> — best alignment of the shorter string against any equal-length window of the longer one.</li>
+<li>
+<strong><code>fuzz_token_sort_ratio()</code></strong> — splits into whitespace tokens, sorts them, rejoins, then runs <code>fuzz_ratio()</code> — word order stops mattering.</li>
+<li>
+<strong><code>fuzz_token_set_ratio()</code></strong> — splits into token <em>sets</em> and compares the shared-token core against each side’s leftovers, taking the best of three pairwise ratios — robust to one side having extra words.</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb122"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_ratio</span><span class="op">(</span><span class="st">"this is a test"</span>, <span class="st">"this is a test!"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 100</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb124"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_partial_ratio</span><span class="op">(</span><span class="st">"fuzzy wuzzy was a bear"</span>, <span class="st">"wuzzy fuzzy was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 91</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb126"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_token_sort_ratio</span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"bear was a fuzzy"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 100</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb128"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_token_set_ratio</span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"fuzzy fuzzy bear was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 100</code></pre>
+</div>
+</div>
 
 
-</section></section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
+</section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
     // Ensure there is a toggle, if there isn't float one in the top right
     if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
@@ -1552,7 +1906,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div> <!-- /content -->
 <footer class="footer"><div class="nav-footer">
     <div class="nav-footer-left">
-<p>fast.string — PCRE2 + RE2 + RcppParallel for R</p>
+<p>fast.string — PCRE2 + prepared literal search + RcppParallel for R</p>
 </div>   
     <div class="nav-footer-center">
       &nbsp;

@@ -303,15 +303,18 @@ cat(sprintf("fast.string::jaro_winkler_tokens %.3fs (%.1fx the plain-comparison 
 ```{r}
 #| label: bench-editdist
 t_fast_lv <- system.time(fast.string::levenshtein(names_x, rev(names_x)))["elapsed"]
+t_fast_osa <- system.time(fast.string::osa_distance(names_x, rev(names_x)))["elapsed"]
 t_fast_dl <- system.time(fast.string::damerau_levenshtein(names_x, rev(names_x)))["elapsed"]
-cat(sprintf("fast.string::levenshtein         %.3fs\nfast.string::damerau_levenshtein %.3fs\n",
-            t_fast_lv, t_fast_dl))
+cat(sprintf("fast.string::levenshtein         %.3fs\nfast.string::osa_distance        %.3fs\nfast.string::damerau_levenshtein %.3fs\n",
+            t_fast_lv, t_fast_osa, t_fast_dl))
 
 if (has_stringdist) {
     t_sd_lv <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "lv"))["elapsed"]
+    t_sd_osa <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "osa"))["elapsed"]
     t_sd_dl <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "dl"))["elapsed"]
-    cat(sprintf("stringdist (lv) %.3fs\nstringdist (dl) %.3fs\n", t_sd_lv, t_sd_dl))
+    cat(sprintf("stringdist (lv) %.3fs\nstringdist (osa) %.3fs\nstringdist (dl) %.3fs\n", t_sd_lv, t_sd_osa, t_sd_dl))
     record("levenshtein", "stringdist::stringdist(lv)", t_sd_lv, t_fast_lv)
+    record("osa_distance", "stringdist::stringdist(osa)", t_sd_osa, t_fast_osa)
     record("damerau_levenshtein", "stringdist::stringdist(dl)", t_sd_dl, t_fast_dl)
 }
 
@@ -326,16 +329,37 @@ if (has_stringdist) {
 }
 ```
 
+`fuzzy_match()` computes the same best-match result without retaining the
+full score matrix. The output matrix below is modest for documentation, but
+its allocation grows as `length(query) * length(table)` while lookup output
+remains one integer per query.
+
+```{r}
+#| label: bench-fuzzy-lookup
+lookup_queries <- names_x[seq_len(100L)]
+lookup_table <- names_x[1001:2000]
+t_lookup <- system.time(
+    fuzzy_match(lookup_queries, lookup_table, use_bytes = TRUE)
+)["elapsed"]
+t_matrix <- system.time(
+    max.col(jaro_winkler_matrix(lookup_queries, lookup_table),
+            ties.method = "first")
+)["elapsed"]
+cat(sprintf("fuzzy_match %.3fs; materialized matrix %.3fs\n",
+            t_lookup, t_matrix))
+```
+
 ```{r}
 #| label: bench-editdist-correctness
-# Bit-parallel Levenshtein/Damerau-Levenshtein should agree exactly with
-# stringdist's reference implementations.
+# Each edit-distance implementation should agree with its stringdist method.
 a3 <- c("kitten", "Saturday", "flaw")
 b3 <- c("sitting", "Sunday", "lawn")
 fast.string::levenshtein(a3, b3)
 if (has_stringdist) stringdist::stringdist(a3, b3, method = "lv")
-fast.string::damerau_levenshtein(c("ab"), c("ba"))
-if (has_stringdist) stringdist::stringdist(c("ab"), c("ba"), method = "dl")
+fast.string::osa_distance("ca", "abc")
+if (has_stringdist) stringdist::stringdist("ca", "abc", method = "osa")
+fast.string::damerau_levenshtein("ca", "abc")
+if (has_stringdist) stringdist::stringdist("ca", "abc", method = "dl")
 ```
 
 ## Q-gram set similarity

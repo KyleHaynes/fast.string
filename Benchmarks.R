@@ -246,11 +246,32 @@ print(microbenchmark(
     times = 5
 ))
 
+cat("\n=== osa_distance vs stringdist::stringdist(method = \"osa\") ===\n")
+print(microbenchmark(
+    stringdist = stringdist::stringdist(names_x, rev(names_x), method = "osa"),
+    fast       = fast.string::osa_distance(names_x, rev(names_x)),
+    times = 5
+))
+
 cat("\n=== hamming vs stringdist::stringdist(method = \"hamming\") (equal-length strings) ===\n")
 names_eqlen <- fast.string::fsubstr(names_x, 1, 8) # pad/cap so lengths match -> avoids the all-Inf case
 print(microbenchmark(
     stringdist = stringdist::stringdist(names_eqlen, rev(names_eqlen), method = "hamming"),
     fast       = fast.string::hamming(names_eqlen, rev(names_eqlen)),
+    times = 5
+))
+
+cat("\n=== fuzzy_match vs materialized Jaro-Winkler matrix ===\n")
+lookup_queries <- names_x[seq_len(100L)]
+lookup_table <- names_x[1001:2000]
+print(microbenchmark(
+    matrix = max.col(
+        fast.string::jaro_winkler_matrix(lookup_queries, lookup_table),
+        ties.method = "first"
+    ),
+    lookup = fast.string::fuzzy_match(
+        lookup_queries, lookup_table, use_bytes = TRUE
+    ),
     times = 5
 ))
 

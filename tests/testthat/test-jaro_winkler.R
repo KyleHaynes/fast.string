@@ -11,6 +11,20 @@ test_that("jaro_winkler edge cases", {
     expect_equal(fast.string::jaro_winkler("", "A"), 0.0)
 })
 
+test_that("jaro_winkler supports code-point comparison without changing ASCII", {
+    e_acute <- intToUtf8(0x00e9)
+    expect_equal(
+        fast.string::jaro_winkler("MARTHA", "MARHTA", use_bytes = FALSE),
+        fast.string::jaro_winkler("MARTHA", "MARHTA", use_bytes = TRUE)
+    )
+    expect_false(isTRUE(all.equal(
+        fast.string::jaro_winkler(paste0(e_acute, "a"), "ea"),
+        fast.string::jaro_winkler(
+            paste0(e_acute, "a"), "ea", use_bytes = FALSE
+        )
+    )))
+})
+
 test_that("jaro_winkler is vectorised and NA-aware", {
     a <- c("JOHN", NA, "MARY")
     b <- c("JON", "MARIE", "MARIE")

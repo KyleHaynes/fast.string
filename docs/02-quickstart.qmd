@@ -159,17 +159,33 @@ token — are in @sec-theory and the function reference (@sec-reference).
 
 ## Edit distance
 
-`levenshtein()`, `damerau_levenshtein()`, and `hamming()` are classic
-distance metrics — `stringdist`'s bread and butter — backed by a
-bit-parallel implementation instead of `stringdist`'s generic dispatch.
-Each has a `_matrix()` all-pairs counterpart, like Jaro-Winkler.
+`levenshtein()`, `osa_distance()`, `damerau_levenshtein()`, and `hamming()`
+cover plain edits, restricted adjacent transpositions, unrestricted
+Damerau-Levenshtein, and position-wise differences. Existing APIs compare
+bytes by default; set `use_bytes = FALSE` for UTF-8 code points.
 
 ```{r}
 #| label: editdist
 levenshtein("kitten", "sitting")
-damerau_levenshtein("ab", "ba")  # adjacent transposition costs one edit, not two
+osa_distance("ca", "abc")             # 3 under the OSA restriction
+damerau_levenshtein("ca", "abc")      # 2 under unrestricted DL
+levenshtein_similarity("kitten", "sitting")
+levenshtein_within("kitten", "sitting", max_distance = 3)
 hamming("karolin", "kathrin")
 hamming("abc", "ab")             # Inf for unequal length, matching stringdist
+```
+
+## Fuzzy lookup without a full matrix
+
+`fuzzy_match()` and `fuzzy_top_n()` scan a candidate table while retaining
+only the requested matches. They default to Unicode code-point comparison
+and avoid the potentially enormous all-pairs matrix.
+
+```{r}
+#| label: fuzzy-lookup
+choices <- c("SMYTH", "JONAS", "JONES", "MITTEN", "SITTING")
+fuzzy_match(c("SMITH", "JONES"), choices)
+fuzzy_top_n("kitten", choices, method = "levenshtein", top_n = 2)
 ```
 
 ## Q-gram set similarity

@@ -114,10 +114,9 @@ fgsub("[aeiou]", "_", c("hello world", "fast string"), ignore.case = TRUE)
 
 No base R equivalent: applies several patterns in a single function call,
 either sequentially (chained, like repeated `fgsub()` calls — later
-patterns can match text introduced by earlier replacements) or as one
-combined left-to-right scan (`sequential = FALSE` — the first pattern to
-match at each position wins; later replacements never see earlier ones'
-output).
+patterns can match text introduced by earlier replacements) or, for
+`fixed = TRUE`, as one combined left-to-right scan (`sequential = FALSE`).
+Non-sequential regex replacement is rejected explicitly.
 
 ```r
 gsub_all(patterns, replacements, x, fixed = FALSE, ignore.case = FALSE,
@@ -131,7 +130,7 @@ gsub_all(patterns, replacements, x, fixed = FALSE, ignore.case = FALSE,
 | `x` | Character vector. `NA` elements return `NA`. |
 | `fixed` | Logical. Treat each pattern as a literal string. |
 | `ignore.case` | Logical. Case-insensitive matching. |
-| `sequential` | Logical (default `TRUE`). `TRUE` = chained passes; `FALSE` = single combined scan. |
+| `sequential` | Logical (default `TRUE`). `TRUE` = chained passes; `FALSE` = fixed-pattern single combined scan. |
 | `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`.
@@ -398,7 +397,7 @@ Vectorised pairwise Jaro-Winkler similarity. See @sec-theory for the
 algorithm and the bit-parallel implementation.
 
 ```r
-jaro_winkler(a, b, p = 0.1, nthreads = NULL)
+jaro_winkler(a, b, p = 0.1, nthreads = NULL, use_bytes = TRUE)
 ```
 
 | Argument | Description |
@@ -406,6 +405,7 @@ jaro_winkler(a, b, p = 0.1, nthreads = NULL)
 | `a`, `b` | Equal-length character vectors. |
 | `p` | Prefix scaling factor (default `0.1`, the standard value). |
 | `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
+| `use_bytes` | `TRUE` for compatibility byte comparison; `FALSE` for UTF-8 code points. |
 
 **Returns:** numeric vector of similarities in `[0, 1]`.
 
@@ -421,7 +421,7 @@ All-pairs Jaro-Winkler similarity — every element of `a` against every
 element of `b`.
 
 ```r
-jaro_winkler_matrix(a, b, p = 0.1, nthreads = NULL)
+jaro_winkler_matrix(a, b, p = 0.1, nthreads = NULL, use_bytes = TRUE)
 ```
 
 | Argument | Description |
@@ -474,24 +474,49 @@ jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle", extra_penalty = 
 jaro_winkler_tokens("Kylie John ZZ Haynes", "Haynes John Kyle", extra_penalty = 0.1)
 ```
 
+## Fuzzy lookup
+
+`fuzzy_match()` returns the best table index for every query.
+`fuzzy_top_n()` returns a long data frame of ranked candidates. Both scan the
+table without allocating a full all-pairs matrix and compare UTF-8 code points
+by default.
+
+```r
+fuzzy_match(x, table, method = "jaro_winkler", min_score = 0,
+            max_distance = NULL, match_na = FALSE,
+            nomatch = NA_integer_, nthreads = NULL, use_bytes = FALSE)
+fuzzy_top_n(x, table, method = "jaro_winkler", top_n = 5L,
+            min_score = 0, max_distance = NULL, match_na = FALSE,
+            nthreads = NULL, use_bytes = FALSE)
+```
+
+Supported methods are `"jaro_winkler"`, `"levenshtein"`, `"osa"`, and
+`"damerau_levenshtein"`. Scores are normalized to `[0, 1]`; ties resolve to
+the earliest table position.
+
+```{r}
+fuzzy_match(c("SMITH", "JONES"), c("SMYTH", "JONAS", "JONES"))
+fuzzy_top_n("kitten", c("sitting", "mitten", "cat"),
+            method = "levenshtein", top_n = 2)
+```
+
 ## Edit distance
 
-`levenshtein()` and `damerau_levenshtein()` use a bit-parallel
-implementation (Myers' (1999) bit-vector algorithm for plain Levenshtein,
-a three-rolling-row dynamic program for Damerau-Levenshtein) rather than
-`stringdist`'s generic dispatch — see @sec-theory for the algorithm and
-@sec-benchmarks for the speed comparison.
+The edit-distance family distinguishes OSA from unrestricted
+Damerau-Levenshtein and offers normalized and bounded forms. Byte comparison
+is the compatibility default; `use_bytes = FALSE` compares UTF-8 code points.
 
 ### `levenshtein()`
 
 ```r
-levenshtein(a, b, nthreads = NULL)
+levenshtein(a, b, nthreads = NULL, use_bytes = TRUE)
 ```
 
 | Argument | Description |
 |---|---|
 | `a`, `b` | Equal-length character vectors. |
 | `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
+| `use_bytes` | `TRUE` for encoded bytes; `FALSE` for UTF-8 code points. |
 
 **Returns:** numeric vector the same length as `a` (minimum number of
 single-character insertions/deletions/substitutions). `NA` if either side
@@ -506,7 +531,7 @@ levenshtein("kitten", "sitting")
 All-pairs Levenshtein distance.
 
 ```r
-levenshtein_matrix(a, b, nthreads = NULL)
+levenshtein_matrix(a, b, nthreads = NULL, use_bytes = TRUE)
 ```
 
 **Returns:** numeric matrix of dimensions `length(a)` x `length(b)`.
@@ -515,33 +540,46 @@ levenshtein_matrix(a, b, nthreads = NULL)
 levenshtein_matrix(c("kitten", "cat"), c("sitting", "bat"))
 ```
 
-### `damerau_levenshtein()`
+### `osa_distance()` / `osa_distance_matrix()`
 
-Like `levenshtein()`, but an adjacent-character transposition
-(`"ab"` <-> `"ba"`) also costs one edit, under the "optimal string
-alignment" (OSA) restriction that no substring is edited more than once —
-matching `stringdist::stringdist(method = "dl")`, not full unrestricted
-Damerau-Levenshtein.
+Adjacent transpositions cost one edit under the Optimal String Alignment
+restriction that no substring is edited more than once.
 
 ```r
-damerau_levenshtein(a, b, nthreads = NULL)
+osa_distance(a, b, nthreads = NULL, use_bytes = TRUE)
+osa_distance_matrix(a, b, nthreads = NULL, use_bytes = TRUE)
 ```
 
 Arguments identical to `levenshtein()`. **Returns:** numeric vector the
 same length as `a`.
 
 ```{r}
-damerau_levenshtein("ab", "ba")   # one transposition
-levenshtein("ab", "ba")           # two substitutions
+osa_distance("ca", "abc")  # 3
 ```
 
-### `damerau_levenshtein_matrix()`
+### `damerau_levenshtein()` / `damerau_levenshtein_matrix()`
 
-All-pairs Damerau-Levenshtein (OSA) distance — same shape as
-`levenshtein_matrix()`.
+Unrestricted Damerau-Levenshtein permits a substring to participate in
+multiple edits and matches `stringdist(method = "dl")`.
 
 ```r
-damerau_levenshtein_matrix(a, b, nthreads = NULL)
+damerau_levenshtein(a, b, nthreads = NULL, use_bytes = TRUE)
+damerau_levenshtein_matrix(a, b, nthreads = NULL, use_bytes = TRUE)
+```
+
+```{r}
+damerau_levenshtein("ca", "abc")  # 2
+```
+
+### Normalized and bounded edit comparison
+
+`levenshtein_similarity()`, `osa_similarity()`, and
+`damerau_levenshtein_similarity()` return `1 - distance/max(lengths)`.
+`levenshtein_within()` uses a banded dynamic program to test a raw cutoff.
+
+```r
+levenshtein_similarity(a, b, nthreads = NULL, use_bytes = TRUE)
+levenshtein_within(a, b, max_distance, nthreads = NULL, use_bytes = TRUE)
 ```
 
 ### `hamming()`

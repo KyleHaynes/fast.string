@@ -4,22 +4,20 @@
 \alias{levenshtein_matrix}
 \title{Levenshtein all-pairs distance matrix}
 \usage{
-levenshtein_matrix(a, b, nthreads = NULL)
+levenshtein_matrix(a, b, nthreads = NULL, use_bytes = TRUE)
 }
 \arguments{
-\item{a}{Character vector of length n (rows).}
+\item{a, b}{Equal-length character vectors.}
 
-\item{b}{Character vector of length m (columns).}
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} for the
+RcppParallel default.}
 
-\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
-RcppParallel default. \code{1} forces serial execution.}
+\item{use_bytes}{Logical scalar. Compare encoded bytes when \code{TRUE}, or
+UTF-8 code points when \code{FALSE}.}
 }
 \value{
-Numeric matrix of dimensions n × m.
+Numeric matrix with \code{length(a)} rows and \code{length(b)} columns.
 }
 \description{
 Levenshtein all-pairs distance matrix
-}
-\seealso{
-\code{\link[=levenshtein]{levenshtein()}}
 }

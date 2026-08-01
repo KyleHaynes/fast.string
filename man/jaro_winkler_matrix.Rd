@@ -4,7 +4,7 @@
 \alias{jaro_winkler_matrix}
 \title{Jaro-Winkler all-pairs similarity matrix.}
 \usage{
-jaro_winkler_matrix(a, b, p = 0.1, nthreads = NULL)
+jaro_winkler_matrix(a, b, p = 0.1, nthreads = NULL, use_bytes = TRUE)
 }
 \arguments{
 \item{a}{Character vector of length n (rows).}
@@ -15,6 +15,9 @@ jaro_winkler_matrix(a, b, p = 0.1, nthreads = NULL)
 
 \item{nthreads}{Integer thread cap, or \code{NULL} to use the
 RcppParallel default for this call.}
+
+\item{use_bytes}{Logical scalar. Compare encoded bytes when \code{TRUE} (the
+compatibility default), or UTF-8 code points when \code{FALSE}.}
 }
 \value{
 Numeric matrix with n rows and m columns.

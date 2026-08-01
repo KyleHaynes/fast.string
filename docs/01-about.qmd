@@ -17,7 +17,8 @@ gap none of them cover on another:
 | Double Metaphone / Caverphone 2.0 | no | no | no | no | **yes** (`double_metaphone()`, `caverphone()`) |
 | Jaro-Winkler similarity | no | no | `stringdist(method="jw")` | `jarowinkler()` | **yes, parallelised** |
 | Token-reorder-aware name comparison | no | no | no | no | **yes** (`jaro_winkler_tokens()`) |
-| Levenshtein / Damerau-Levenshtein / Hamming | no | no | `stringdist(method=...)` | no | **yes, parallelised & faster** |
+| Levenshtein / OSA / unrestricted Damerau-Levenshtein / Hamming | no | no | `stringdist(method=...)` | no | **yes, parallelised** |
+| Best/top-N fuzzy table lookup without a score matrix | `agrep()` (limited) | no | `amatch()` (best only) | no | **yes** (`fuzzy_match()`, `fuzzy_top_n()`) |
 | Jaccard / Dice / Tversky q-gram similarity | no | no | `stringdist(method="jaccard")` only | no | **yes, parallelised** |
 | fuzzywuzzy-style ratios | no | no | no | no | **yes** (port of Python's `fuzzywuzzy`) |
 
@@ -31,7 +32,7 @@ A few things worth calling out explicitly:
   data-linkage-specific functions stringi doesn't have at all.
 - **stringdist** is the closest relative for the fuzzy-matching half of
   this package. `fast.string` now covers most of the same distance-metric
-  ground (Levenshtein, Damerau-Levenshtein/OSA, Hamming, Jaro-Winkler,
+  ground (Levenshtein, OSA, unrestricted Damerau-Levenshtein, Hamming, Jaro-Winkler,
   Jaccard), plus a few `stringdist` doesn't have at all (Dice, Tversky,
   token-reorder-aware comparison, fuzzywuzzy-style ratios). The benchmark
   chapter measures the overlapping kernels on the current checkout. What it

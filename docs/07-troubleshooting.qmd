@@ -84,6 +84,18 @@ fnchar("café", type = "bytes")  # 5 — "é" is 2 bytes in UTF-8
 fnchar("café", type = "chars") # 4 — 4 visible characters
 ```
 
+### Similarity bytes vs. Unicode code points
+
+Established edit-distance and Jaro-Winkler functions default to
+`use_bytes = TRUE` for compatibility. Set `use_bytes = FALSE` when one
+accented character or emoji should count as one comparison symbol. Fuzzy
+lookup defaults to code points. This does not perform Unicode normalization:
+precomposed and decomposed spellings can still compare differently.
+
+Bytes-encoded R strings cannot be decoded as Unicode and produce an indexed
+error in code-point mode; pass `use_bytes = TRUE` when those bytes are the
+intended data.
+
 ## Threading
 
 ### Does `nthreads` affect later calls?

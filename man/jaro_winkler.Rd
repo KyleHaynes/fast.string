@@ -4,7 +4,7 @@
 \alias{jaro_winkler}
 \title{Vectorised Jaro-Winkler similarity.}
 \usage{
-jaro_winkler(a, b, p = 0.1, nthreads = NULL)
+jaro_winkler(a, b, p = 0.1, nthreads = NULL, use_bytes = TRUE)
 }
 \arguments{
 \item{a, b}{Equal-length character vectors.}
@@ -13,6 +13,9 @@ jaro_winkler(a, b, p = 0.1, nthreads = NULL)
 
 \item{nthreads}{Integer thread cap, or \code{NULL} to use the
 RcppParallel default for this call.}
+
+\item{use_bytes}{Logical scalar. Compare encoded bytes when \code{TRUE} (the
+compatibility default), or UTF-8 code points when \code{FALSE}.}
 }
 \value{
 Numeric vector of similarities between 0 and 1.

@@ -2,11 +2,14 @@
 #include <Rcpp.h>
 #include <RcppParallel.h>
 #include <limits>
+#include <memory>
 #include <string>
 #include <vector>
+#include "codepoint_snapshot.h"
 #include "jaro_winkler_core.h"
 #include "parallel_dispatch.h"
 #include "string_snapshot.h"
+#include "unicode_metric_core.h"
 using namespace Rcpp;
 using namespace RcppParallel;
 
@@ -17,12 +20,18 @@ using namespace RcppParallel;
 struct JaroWinklerWorker : public Worker {
     const StringView* a;
     const StringView* b;
+    const CodepointView* a_codepoints;
+    const CodepointView* b_codepoints;
     double p;
+    bool use_bytes;
     RVector<double> out;
 
     JaroWinklerWorker(const StringView* a, const StringView* b,
-                      double p, NumericVector& out)
-        : a(a), b(b), p(p), out(out) {}
+                      const CodepointView* a_codepoints,
+                      const CodepointView* b_codepoints,
+                      double p, bool use_bytes, NumericVector& out)
+        : a(a), b(b), a_codepoints(a_codepoints),
+          b_codepoints(b_codepoints), p(p), use_bytes(use_bytes), out(out) {}
 
     void operator()(std::size_t begin, std::size_t end) {
         for (std::size_t i = begin; i < end; ++i) {
@@ -32,10 +41,18 @@ struct JaroWinklerWorker : public Worker {
                 out[i] = NA_REAL;
                 continue;
             }
-            out[i] = jaro_winkler_sim(
-                ai.data, static_cast<int>(ai.size),
-                bi.data, static_cast<int>(bi.size), p
-            );
+            out[i] = use_bytes ||
+                (a_codepoints[i].ascii && b_codepoints[i].ascii)
+                ? jaro_winkler_sim(
+                    ai.data, static_cast<int>(ai.size),
+                    bi.data, static_cast<int>(bi.size), p
+                )
+                : sequence_jaro_winkler_similarity(
+                    a_codepoints[i].data,
+                    static_cast<int>(a_codepoints[i].size),
+                    b_codepoints[i].data,
+                    static_cast<int>(b_codepoints[i].size), p
+                );
         }
     }
 };
@@ -44,15 +61,24 @@ struct JaroWinklerWorker : public Worker {
 NumericVector fast_jaro_winkler_impl(const StringVector& a,
                                       const StringVector& b,
                                       double p,
-                                      int nthreads) {
+                                      int nthreads,
+                                      bool use_bytes) {
     if (a.size() != b.size())
         stop("`a` and `b` must have the same length.");
     const R_xlen_t n = a.size();
     StringSnapshot a_snapshot(a);
     StringSnapshot b_snapshot(b);
+    std::unique_ptr<CodepointSnapshot> a_codepoints, b_codepoints;
+    if (!use_bytes) {
+        a_codepoints.reset(new CodepointSnapshot(a, "a"));
+        b_codepoints.reset(new CodepointSnapshot(b, "b"));
+    }
     NumericVector result(n);
     JaroWinklerWorker worker(
-        a_snapshot.data(), b_snapshot.data(), p, result
+        a_snapshot.data(), b_snapshot.data(),
+        use_bytes ? nullptr : a_codepoints->data(),
+        use_bytes ? nullptr : b_codepoints->data(),
+        p, use_bytes, result
     );
     dispatch_for(
         0, static_cast<std::size_t>(n), worker,
@@ -71,13 +97,21 @@ NumericVector fast_jaro_winkler_impl(const StringVector& a,
 struct JaroWinklerMatrixWorker : public Worker {
     const StringView* a;
     const StringView* b;
+    const CodepointView* a_codepoints;
+    const CodepointView* b_codepoints;
     double p;
+    bool use_bytes;
     std::size_t na;
     double* out_ptr;
 
     JaroWinklerMatrixWorker(const StringView* a, const StringView* b,
-                            double p, std::size_t na, double* out_ptr)
-        : a(a), b(b), p(p), na(na), out_ptr(out_ptr) {}
+                            const CodepointView* a_codepoints,
+                            const CodepointView* b_codepoints,
+                            double p, bool use_bytes,
+                            std::size_t na, double* out_ptr)
+        : a(a), b(b), a_codepoints(a_codepoints),
+          b_codepoints(b_codepoints), p(p), use_bytes(use_bytes),
+          na(na), out_ptr(out_ptr) {}
 
     void operator()(std::size_t begin, std::size_t end) {
         if (begin >= end) return;
@@ -89,10 +123,18 @@ struct JaroWinklerMatrixWorker : public Worker {
             if (ai.is_na() || bj.is_na()) {
                 out_ptr[cell] = NA_REAL;
             } else {
-                out_ptr[cell] = jaro_winkler_sim(
-                    ai.data, static_cast<int>(ai.size),
-                    bj.data, static_cast<int>(bj.size), p
-                );
+                out_ptr[cell] = use_bytes ||
+                    (a_codepoints[i].ascii && b_codepoints[j].ascii)
+                    ? jaro_winkler_sim(
+                        ai.data, static_cast<int>(ai.size),
+                        bj.data, static_cast<int>(bj.size), p
+                    )
+                    : sequence_jaro_winkler_similarity(
+                        a_codepoints[i].data,
+                        static_cast<int>(a_codepoints[i].size),
+                        b_codepoints[j].data,
+                        static_cast<int>(b_codepoints[j].size), p
+                    );
             }
             if (++i == na) {
                 i = 0;
@@ -106,7 +148,8 @@ struct JaroWinklerMatrixWorker : public Worker {
 NumericMatrix fast_jaro_winkler_matrix_impl(const StringVector& a,
                                              const StringVector& b,
                                              double p,
-                                             int nthreads) {
+                                             int nthreads,
+                                             bool use_bytes) {
     const R_xlen_t na = a.size();
     const R_xlen_t nb = b.size();
     const std::size_t na_size = static_cast<std::size_t>(na);
@@ -118,9 +161,17 @@ NumericMatrix fast_jaro_winkler_matrix_impl(const StringVector& a,
 
     StringSnapshot a_snapshot(a);
     StringSnapshot b_snapshot(b);
+    std::unique_ptr<CodepointSnapshot> a_codepoints, b_codepoints;
+    if (!use_bytes) {
+        a_codepoints.reset(new CodepointSnapshot(a, "a"));
+        b_codepoints.reset(new CodepointSnapshot(b, "b"));
+    }
     NumericMatrix result(na, nb);
     JaroWinklerMatrixWorker worker(
-        a_snapshot.data(), b_snapshot.data(), p, na_size, REAL(result)
+        a_snapshot.data(), b_snapshot.data(),
+        use_bytes ? nullptr : a_codepoints->data(),
+        use_bytes ? nullptr : b_codepoints->data(),
+        p, use_bytes, na_size, REAL(result)
     );
     dispatch_for(
         0, cells, worker,
