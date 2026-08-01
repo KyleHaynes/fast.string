@@ -587,7 +587,7 @@ levenshtein_within(a, b, max_distance, nthreads = NULL, use_bytes = TRUE)
 Number of positions at which two equal-length strings differ.
 
 ```r
-hamming(a, b, nthreads = NULL)
+hamming(a, b, nthreads = NULL, use_bytes = TRUE)
 ```
 
 Arguments identical to `levenshtein()`. **Returns:** numeric vector the

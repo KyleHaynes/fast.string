@@ -444,7 +444,7 @@ window.Quarto = {
   
 
 
-</header><p>This chapter strings every piece from <a href="#sec-quickstart" class="quarto-xref"><span class="quarto-unresolved-ref">sec-quickstart</span></a> together into a single, realistic linkage pipeline: an incoming batch of records needs to be matched against a reference database. It’s the same shape of problem <code>examples_data_linkage.R</code> in the repo demonstrates, written out here as a narrative.</p>
+</header><p>This chapter strings every piece from <a href="02-quickstart.html" class="quarto-xref"><span>Chapter 2</span></a> together into a single, realistic linkage pipeline: an incoming batch of records needs to be matched against a reference database. It’s the same shape of problem <code>examples_data_linkage.R</code> in the repo demonstrates, written out here as a narrative.</p>
 <section id="the-data" class="level2" data-number="4.1"><h2 data-number="4.1" class="anchored" data-anchor-id="the-data">
 <span class="header-section-number">4.1</span> The data</h2>
 <div class="cell">
@@ -497,7 +497,7 @@ window.Quarto = {
 <pre><code>[1] "JON OBRIEN"       "MARYANN SMITH"    "ROB BROWN"        "JOHN BRIEN"       "Haynes John Kyle"</code></pre>
 </div>
 </div>
-<p>(<code>jaro_winkler_tokens()</code> does its own internal punctuation stripping and case-folding — see <a href="#sec-reference" class="quarto-xref"><span class="quarto-unresolved-ref">sec-reference</span></a> — but normalising up front keeps this example explicit, and matters for <code>jaro_winkler()</code>/<code>jaro_winkler_matrix()</code>, which don’t.)</p>
+<p>(<code>jaro_winkler_tokens()</code> does its own internal punctuation stripping and case-folding — see <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 5</span></a> — but normalising up front keeps this example explicit, and matters for <code>jaro_winkler()</code>/<code>jaro_winkler_matrix()</code>, which don’t.)</p>
 </section><section id="step-2-block" class="level2" data-number="4.3"><h2 data-number="4.3" class="anchored" data-anchor-id="step-2-block">
 <span class="header-section-number">4.3</span> Step 2: block</h2>
 <p>Comparing every incoming record against every reference record is <span class="math inline">\(O(n \times m)\)</span> — fine at this toy scale, prohibitive at millions of rows. <strong>Blocking</strong> groups records by a cheap, coarse key first (here: a month-year DOB key) and only compares records <em>within</em> the same block, cutting the number of pairwise comparisons by orders of magnitude in practice.</p>
@@ -523,11 +523,11 @@ window.Quarto = {
 5    105 Haynes John Kyle    198801</code></pre>
 </div>
 </div>
-<p>Soundex/NYSIIS codes (<a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>) are the other common blocking key, typically used <em>together</em> with a coarse date block — block on <code>soundex(last_name)</code> + birth year, for instance — to keep block sizes manageable while still catching records where the date itself has a typo.</p>
+<p>Soundex/NYSIIS codes (<a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>) are the other common blocking key, typically used <em>together</em> with a coarse date block — block on <code>soundex(last_name)</code> + birth year, for instance — to keep block sizes manageable while still catching records where the date itself has a typo.</p>
 </section><section id="step-3-score-within-each-block" class="level2" data-number="4.4"><h2 data-number="4.4" class="anchored" data-anchor-id="step-3-score-within-each-block">
 <span class="header-section-number">4.4</span> Step 3: score within each block</h2>
 <p>For the plain Jaro-Winkler and edit-distance methods, <code>fuzzy_match()</code> and <code>fuzzy_top_n()</code> perform this candidate scan directly without allocating an all-pairs score matrix. This example keeps the explicit loop because it uses the specialized token-reordering scorer, which is intentionally not yet part of the lookup method set.</p>
-<p>For each incoming record, find reference records sharing its block, then score name similarity only among those candidates. <code>jaro_winkler_tokens()</code> is used uniformly rather than switching between it and plain <code>jaro_winkler()</code>: it degenerates exactly to ordinary Jaro-Winkler when both names happen to have the same token count and order (<a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>), so there’s no accuracy cost on the “normal” records — and it correctly survives the one record (<code>"Kyle John Haynes"</code>) where the tokens are fully reordered, which plain <code>jaro_winkler()</code> would score badly.</p>
+<p>For each incoming record, find reference records sharing its block, then score name similarity only among those candidates. <code>jaro_winkler_tokens()</code> is used uniformly rather than switching between it and plain <code>jaro_winkler()</code>: it degenerates exactly to ordinary Jaro-Winkler when both names happen to have the same token count and order (<a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>), so there’s no accuracy cost on the “normal” records — and it correctly survives the one record (<code>"Kyle John Haynes"</code>) where the tokens are fully reordered, which plain <code>jaro_winkler()</code> would score badly.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">match_one</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">rec</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">candidates</span> <span class="op">&lt;-</span> <span class="va">reference</span><span class="op">[</span><span class="va">reference</span><span class="op">$</span><span class="va">dob_block</span> <span class="op">==</span> <span class="va">rec</span><span class="op">$</span><span class="va">dob_block</span>, <span class="op">]</span></span>
@@ -569,7 +569,7 @@ window.Quarto = {
 </div>
 </div>
 <p>Every incoming record links to its obvious match, including the fully reordered <code>"Kyle John Haynes"</code> → <code>"Haynes John Kyle"</code> pair — the one case in this dataset where plain <code>jaro_winkler()</code> would have scored well below threshold and <code>jaro_winkler_tokens()</code> is doing real work, not just matching what character-level comparison already would have.</p>
-<p><a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a> now scales the comparison step of this exact pipeline shape up to 3 million rows.</p>
+<p><a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> now scales the comparison step of this exact pipeline shape up to 3 million rows.</p>
 
 
 </section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">

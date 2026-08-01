@@ -480,11 +480,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   
 
 
-</header><p>Every exported function, grouped the same way as the README. Each entry gives the signature, every argument, the return value, and at least one runnable example. This chapter is the detailed reference; <a href="#sec-quickstart" class="quarto-xref"><span class="quarto-unresolved-ref">sec-quickstart</span></a> is the faster tour.</p>
+</header><p>Every exported function, grouped the same way as the README. Each entry gives the signature, every argument, the return value, and at least one runnable example. This chapter is the detailed reference; <a href="02-quickstart.html" class="quarto-xref"><span>Chapter 2</span></a> is the faster tour.</p>
 <section id="matching-substitution" class="level2" data-number="5.1"><h2 data-number="5.1" class="anchored" data-anchor-id="matching-substitution">
 <span class="header-section-number">5.1</span> Matching &amp; substitution</h2>
 <section id="fgrepl" class="level3"><h3 class="anchored" data-anchor-id="fgrepl"><code>fgrepl()</code></h3>
-<p>Equivalent to <code><a href="https://rdrr.io/r/base/grep.html">base::grepl()</a></code>, using PCRE2 and Intel TBB. Large inputs can use multiple cores; the crossover depends on subject length and pattern cost. See <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> for the automatic PCRE-only-syntax fallback to <code>base::grepl(perl = TRUE)</code>. With <code>fixed = TRUE</code>, the byte-oriented pattern is prepared once: one-byte needles use <code>memchr</code>, two- and three-byte needles use <code>memchr</code> plus <code>memcmp</code>, and longer needles use Boyer–Moore–Horspool. <code>ignore.case = TRUE</code> uses a 256-entry byte-folding table without lowercasing each input string.</p>
+<p>Equivalent to <code><a href="https://rdrr.io/r/base/grep.html">base::grepl()</a></code>, using PCRE2 and Intel TBB. Large inputs can use multiple cores; the crossover depends on subject length and pattern cost. See <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the automatic PCRE-only-syntax fallback to <code>base::grepl(perl = TRUE)</code>. With <code>fixed = TRUE</code>, the byte-oriented pattern is prepared once: one-byte needles use <code>memchr</code>, two- and three-byte needles use <code>memchr</code> plus <code>memcmp</code>, and longer needles use Boyer–Moore–Horspool. <code>ignore.case = TRUE</code> uses a 256-entry byte-folding table without lowercasing each input string.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fgrepl</span><span class="op">(</span><span class="va">pattern</span>, <span class="va">x</span>, ignore.case <span class="op">=</span> <span class="cn">FALSE</span>, perl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>       fixed <span class="op">=</span> <span class="cn">FALSE</span>, useBytes <span class="op">=</span> <span class="cn">FALSE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
@@ -919,7 +919,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section><section id="fas.date" class="level3"><h3 class="anchored" data-anchor-id="fas.date"><code>fas.Date()</code></h3>
-<p>Not a drop-in for <code><a href="https://rdrr.io/r/base/as.Date.html">base::as.Date()</a></code> — see <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> for the speed/ strictness trade-off (no days-in-month or leap-year validation).</p>
+<p>Not a drop-in for <code><a href="https://rdrr.io/r/base/as.Date.html">base::as.Date()</a></code> — see <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the speed/ strictness trade-off (no days-in-month or leap-year validation).</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.Date</span><span class="op">(</span><span class="va">x</span>, format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"iso"</span>, <span class="st">"compact"</span>, <span class="st">"dmy"</span>, <span class="st">"ymd_slash"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
 <colgroup>
@@ -950,7 +950,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </section></section><section id="phonetic-blocking-keys" class="level2" data-number="5.4"><h2 data-number="5.4" class="anchored" data-anchor-id="phonetic-blocking-keys">
 <span class="header-section-number">5.4</span> Phonetic blocking keys</h2>
-<p>All four functions have no base R equivalent and are intended as blocking keys ahead of fuzzy name matching (<a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>, <a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a>).</p>
+<p>All four functions have no base R equivalent and are intended as blocking keys ahead of fuzzy name matching (<a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>, <a href="04-record-linkage-workflow.html" class="quarto-xref"><span>Chapter 4</span></a>).</p>
 <section id="soundex" class="level3"><h3 class="anchored" data-anchor-id="soundex"><code>soundex()</code></h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb52"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">soundex</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
@@ -1052,7 +1052,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section></section><section id="fuzzy-string-similarity" class="level2" data-number="5.5"><h2 data-number="5.5" class="anchored" data-anchor-id="fuzzy-string-similarity">
 <span class="header-section-number">5.5</span> Fuzzy string similarity</h2>
 <section id="jaro_winkler" class="level3"><h3 class="anchored" data-anchor-id="jaro_winkler"><code>jaro_winkler()</code></h3>
-<p>Vectorised pairwise Jaro-Winkler similarity. See <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> for the algorithm and the bit-parallel implementation.</p>
+<p>Vectorised pairwise Jaro-Winkler similarity. See <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the algorithm and the bit-parallel implementation.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb64"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span>, use_bytes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
 <colgroup>
@@ -1135,7 +1135,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section><section id="jaro_winkler_tokens" class="level3"><h3 class="anchored" data-anchor-id="jaro_winkler_tokens"><code>jaro_winkler_tokens()</code></h3>
-<p>Token-reorder- and punctuation-aware Jaro-Winkler similarity. Full mechanics in <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>.</p>
+<p>Token-reorder- and punctuation-aware Jaro-Winkler similarity. Full mechanics in <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb74"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0.1</span>, ignore_case <span class="op">=</span> <span class="cn">FALSE</span>, strip <span class="op">=</span> <span class="st">"['’-]"</span>,</span>
 <span>                     extra_penalty <span class="op">=</span> <span class="cn">NULL</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
@@ -1328,7 +1328,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </section></section><section id="q-gram-set-similarity" class="level2" data-number="5.8"><h2 data-number="5.8" class="anchored" data-anchor-id="q-gram-set-similarity">
 <span class="header-section-number">5.8</span> Q-gram set similarity</h2>
-<p><code>jaccard_index()</code>, <code>dice_coefficient()</code>, and <code>tversky_index()</code> compare two strings’ sets of overlapping length-<code>q</code> substrings (“q-grams”). All three share one sorted-merge intersection pass over packed-integer q-gram sets without routing through <code>stringdist</code>’s generic R-level dispatch (<a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a>).</p>
+<p><code>jaccard_index()</code>, <code>dice_coefficient()</code>, and <code>tversky_index()</code> compare two strings’ sets of overlapping length-<code>q</code> substrings (“q-grams”). All three share one sorted-merge intersection pass over packed-integer q-gram sets without routing through <code>stringdist</code>’s generic R-level dispatch (<a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a>).</p>
 <section id="jaccard_index" class="level3"><h3 class="anchored" data-anchor-id="jaccard_index"><code>jaccard_index()</code></h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb110"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">jaccard_index</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, q <span class="op">=</span> <span class="fl">2</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
@@ -1418,7 +1418,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </section></section><section id="fuzzywuzzy-style-ratios" class="level2" data-number="5.9"><h2 data-number="5.9" class="anchored" data-anchor-id="fuzzywuzzy-style-ratios">
 <span class="header-section-number">5.9</span> fuzzywuzzy-style ratios</h2>
-<p>Vectorised ports of Python’s <a href="https://github.com/seatgeek/fuzzywuzzy">fuzzywuzzy</a> package, implementing the same Ratcliff/Obershelp matching-blocks algorithm fuzzywuzzy itself falls back to (the one behind Python’s <code>difflib.SequenceMatcher</code>). All four return <code>0-100</code> like the Python originals; see <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> for the algorithm.</p>
+<p>Vectorised ports of Python’s <a href="https://github.com/seatgeek/fuzzywuzzy">fuzzywuzzy</a> package, implementing the same Ratcliff/Obershelp matching-blocks algorithm fuzzywuzzy itself falls back to (the one behind Python’s <code>difflib.SequenceMatcher</code>). All four return <code>0-100</code> like the Python originals; see <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the algorithm.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb121"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span><span class="fu">fuzz_partial_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span><span class="fu">fuzz_token_sort_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>

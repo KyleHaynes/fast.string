@@ -407,12 +407,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><a href="#why-does-my-function-return-na-for-a-non-na-input" id="toc-why-does-my-function-return-na-for-a-non-na-input" class="nav-link" data-scroll-target="#why-does-my-function-return-na-for-a-non-na-input">Why does my function return <code>NA</code> for a non-<code>NA</code> input?</a></li>
   <li><a href="#fchartr-silently-fell-back-to-basechartr-why" id="toc-fchartr-silently-fell-back-to-basechartr-why" class="nav-link" data-scroll-target="#fchartr-silently-fell-back-to-basechartr-why"><code>fchartr()</code> silently fell back to <code>base::chartr()</code> — why?</a></li>
   <li><a href="#fnchar-bytes-vs.-chars" id="toc-fnchar-bytes-vs.-chars" class="nav-link" data-scroll-target="#fnchar-bytes-vs.-chars"><code>fnchar()</code> bytes vs.&nbsp;chars</a></li>
+  <li><a href="#similarity-bytes-vs.-unicode-code-points" id="toc-similarity-bytes-vs.-unicode-code-points" class="nav-link" data-scroll-target="#similarity-bytes-vs.-unicode-code-points">Similarity bytes vs.&nbsp;Unicode code points</a></li>
   </ul>
 </li>
   <li>
 <a href="#threading" id="toc-threading" class="nav-link" data-scroll-target="#threading"><span class="header-section-number">7.3</span> Threading</a>
   <ul class="collapse">
-<li><a href="#i-set-nthreads-1-for-one-call-and-now-every-call-is-slow" id="toc-i-set-nthreads-1-for-one-call-and-now-every-call-is-slow" class="nav-link" data-scroll-target="#i-set-nthreads-1-for-one-call-and-now-every-call-is-slow">I set <code>nthreads = 1</code> for one call, and now <em>every</em> call is slow</a></li>
+<li><a href="#does-nthreads-affect-later-calls" id="toc-does-nthreads-affect-later-calls" class="nav-link" data-scroll-target="#does-nthreads-affect-later-calls">Does <code>nthreads</code> affect later calls?</a></li>
   <li><a href="#does-nthreads-help-on-a-machine-with-few-cores" id="toc-does-nthreads-help-on-a-machine-with-few-cores" class="nav-link" data-scroll-target="#does-nthreads-help-on-a-machine-with-few-cores">Does <code>nthreads</code> help on a machine with few cores?</a></li>
   </ul>
 </li>
@@ -445,7 +446,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header><section id="installation" class="level2" data-number="7.1"><h2 data-number="7.1" class="anchored" data-anchor-id="installation">
 <span class="header-section-number">7.1</span> Installation</h2>
 <section id="could-not-find-tools-necessary-to-compile-a-package-install-fails" class="level3"><h3 class="anchored" data-anchor-id="could-not-find-tools-necessary-to-compile-a-package-install-fails">“could not find tools necessary to compile a package” / install fails</h3>
-<p><code>fast.string</code> compiles C++ source on install (PCRE2 bindings, RE2, RcppParallel). You need a working toolchain:</p>
+<p><code>fast.string</code> compiles C++ source on install (PCRE2 bindings, prepared literal search, RcppParallel). You need a working toolchain:</p>
 <ul>
 <li>
 <strong>Windows</strong>: install <a href="https://cran.r-project.org/bin/windows/Rtools/">Rtools</a> matching your R version, and make sure it’s on <code>PATH</code> (the Rtools installer offers to do this). Verify with <code>pkgbuild::has_build_tools(debug = TRUE)</code>.</li>
@@ -463,7 +464,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Every function in this package returns <code>NA</code> for <code>NA</code> input — but a few functions also return <code>NA</code> for specific <em>valid-looking but unparseable</em> inputs:</p>
 <ul>
 <li>
-<code>soundex()</code>/<code>nysiis()</code> return <code>NA</code> for strings with <strong>no alphabetic characters at all</strong> (e.g.&nbsp;<code>"123"</code>, <code>""</code>) — there’s no phonetic code for a string with nothing to encode phonetically.</li>
+<code>soundex()</code>/<code>nysiis()</code>/<code>double_metaphone()</code> return <code>NA</code> for strings with <strong>no alphabetic characters at all</strong> (e.g.&nbsp;<code>"123"</code>, <code>""</code>) — there’s no phonetic code for a string with nothing to encode phonetically. <code>caverphone()</code> is the exception: it always returns a 10-character code for non-<code>NA</code> input (even <code>""</code>, which codes as <code>"1111111111"</code>), matching its reference implementation’s behaviour.</li>
 <li>
 <code>fas.Date()</code> returns <code>NA</code> for any string that doesn’t match the specified <code>format</code> <em>exactly</em> (wrong length, wrong separator position, non-digit where a digit is expected) or has an out-of-range month/day. Unlike <code><a href="https://rdrr.io/r/base/as.Date.html">base::as.Date()</a></code>, it does <strong>not</strong> attempt multiple formats or partial parsing.</li>
 </ul>
@@ -499,44 +500,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>[1] 4</code></pre>
 </div>
 </div>
+</section><section id="similarity-bytes-vs.-unicode-code-points" class="level3"><h3 class="anchored" data-anchor-id="similarity-bytes-vs.-unicode-code-points">Similarity bytes vs.&nbsp;Unicode code points</h3>
+<p>Established edit-distance and Jaro-Winkler functions default to <code>use_bytes = TRUE</code> for compatibility. Set <code>use_bytes = FALSE</code> when one accented character or emoji should count as one comparison symbol. Fuzzy lookup defaults to code points. This does not perform Unicode normalization: precomposed and decomposed spellings can still compare differently.</p>
+<p>Bytes-encoded R strings cannot be decoded as Unicode and produce an indexed error in code-point mode; pass <code>use_bytes = TRUE</code> when those bytes are the intended data.</p>
 </section></section><section id="threading" class="level2" data-number="7.3"><h2 data-number="7.3" class="anchored" data-anchor-id="threading">
 <span class="header-section-number">7.3</span> Threading</h2>
-<section id="i-set-nthreads-1-for-one-call-and-now-every-call-is-slow" class="level3"><h3 class="anchored" data-anchor-id="i-set-nthreads-1-for-one-call-and-now-every-call-is-slow">I set <code>nthreads = 1</code> for one call, and now <em>every</em> call is slow</h3>
-<p>This is real, and worth knowing about explicitly: <code><a href="https://rdrr.io/pkg/RcppParallel/man/setThreadOptions.html">RcppParallel::setThreadOptions()</a></code> configures the underlying TBB thread pool <strong>process-wide</strong>, not just for the call that set it. Passing <code>nthreads</code> to any function that accepts it changes the thread count for <em>every subsequent parallel call in the session</em>, until something resets it.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">replicate</a></span><span class="op">(</span><span class="fl">2e6</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">letters</span>, <span class="fl">10</span>, <span class="cn">TRUE</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">""</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
-<span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"a"</span>, nthreads <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>  <span class="co"># a tiny, throwaway call — but it sets the pool to 1 thread</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 1</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
-<span><span class="fu">RcppParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/RcppParallel/man/setThreadOptions.html">setThreadOptions</a></span><span class="op">(</span>numThreads <span class="op">=</span> <span class="st">"auto"</span><span class="op">)</span></span>
-<span><span class="va">t3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"before:            %.2fs\nafter nthreads=1:  %.2fs\nafter reset:       %.2fs\n"</span>, <span class="va">t1</span>, <span class="va">t2</span>, <span class="va">t3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>before:            0.04s
-after nthreads=1:  0.33s
-after reset:       0.04s</code></pre>
-</div>
-</div>
-<p>That single-row, throwaway <code>nthreads = 1</code> call made every later full-vector call run single-threaded too — an 8x+ slowdown on this 16-core machine, silently, with no warning. If you need a one-off thread count for a specific call and want every other call in the session unaffected, reset explicitly afterward:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">RcppParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/RcppParallel/man/setThreadOptions.html">setThreadOptions</a></span><span class="op">(</span>numThreads <span class="op">=</span> <span class="st">"auto"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>A handful of functions (<code>ftrimws()</code>, <code>fsubstr()</code>, <code>fnchar()</code>, <code>fchartr()</code>, the <code>format_date()</code> family, <code>soundex()</code>, <code>nysiis()</code>) don’t take <code>nthreads</code> at all — they always run at whatever the process-wide setting currently is, so they’re affected by this too even though they have no argument that looks like it would be.</p>
+<section id="does-nthreads-affect-later-calls" class="level3"><h3 class="anchored" data-anchor-id="does-nthreads-affect-later-calls">Does <code>nthreads</code> affect later calls?</h3>
+<p>No.&nbsp;Functions that expose <code>nthreads</code> pass it to the native dispatcher as a <strong>per-call cap</strong>; they do not change RcppParallel’s process-wide options. <code>NULL</code> uses the RcppParallel default for that call, a positive integer limits it to at most that many threads, and <code>nthreads = 1</code> forces strict serial execution. A later call without <code>nthreads</code> is unaffected.</p>
+<p>The dispatcher can use fewer threads than the cap when the input contains too little useful work. String-utility, date, and phonetic functions keep their existing signatures and use the default scheduler for their own calls.</p>
 </section><section id="does-nthreads-help-on-a-machine-with-few-cores" class="level3"><h3 class="anchored" data-anchor-id="does-nthreads-help-on-a-machine-with-few-cores">Does <code>nthreads</code> help on a machine with few cores?</h3>
 <p>Not much below 4 cores, and the package’s own size thresholds (<a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>) mean it won’t even try to parallelise small inputs regardless. If you’re running inside a container with a CPU limit lower than <code><a href="https://rdrr.io/r/parallel/detectCores.html">parallel::detectCores()</a></code> reports (common in CI and some cloud environments), set <code>nthreads</code> explicitly to the actual limit — TBB doesn’t know about cgroup CPU quotas and will otherwise oversubscribe.</p>
+<p>The supported Windows build always uses TBB. On a diagnostic build forced to RcppParallel’s TinyThread backend, values above one are advisory because that backend ignores the native thread-count argument; the dispatcher coarsens its ranges to limit useful parallel work instead. <code>nthreads = 1</code> still runs strictly serially on either backend. Set the build variable <code>FAST_STRING_TINYTHREAD=1</code> only when installing such a diagnostic build.</p>
 </section></section><section id="regex-behaviour" class="level2" data-number="7.4"><h2 data-number="7.4" class="anchored" data-anchor-id="regex-behaviour">
 <span class="header-section-number">7.4</span> Regex behaviour</h2>
 <section id="my-pattern-works-in-greplperl-true-but-fgrepl-gave-a-clicli_inform-message-and-fell-back" class="level3"><h3 class="anchored" data-anchor-id="my-pattern-works-in-greplperl-true-but-fgrepl-gave-a-clicli_inform-message-and-fell-back">My pattern works in <code>grepl(perl = TRUE)</code> but <code>fgrepl()</code> gave a <code>cli::cli_inform()</code> message and fell back</h3>
 <p>That’s the intended behaviour, not a bug: the pattern uses PCRE-only syntax (lookaround, atomic groups, possessive quantifiers, named backreferences — the exact list is in <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>), and <code>fast.string</code> delegates to <code>base::grepl(perl = TRUE)</code> automatically rather than risk a subtly different result from its own PCRE2 binding on syntax it hasn’t specifically validated. The result is correct either way; you’re just not getting the parallel speedup for that specific call. Pass <code>perl = TRUE</code> explicitly to skip the syntax check (only do this if you’ve confirmed the pattern behaves identically under <code>fast.string</code>’s PCRE2 path for your actual data).</p>
 </section><section id="catastrophic-backtracking-am-i-safe" class="level3"><h3 class="anchored" data-anchor-id="catastrophic-backtracking-am-i-safe">Catastrophic backtracking — am I safe?</h3>
-<p>Only partially. RE2 (used for <code>fixed = TRUE</code>) is immune by construction. PCRE2 (used for general regex) is <strong>not</strong> — it’s still a backtracking engine, same risk class as base R’s <code>perl = TRUE</code>. If you’re matching untrusted patterns against untrusted input, that risk exists regardless of which package you use; this package doesn’t add to it, but doesn’t remove it either. Prefer <code>fixed = TRUE</code> whenever the pattern is actually a literal string — beyond being immune to backtracking blowup, it’s also the fastest path in the package.</p>
+<p>Only partially. The prepared <code>fixed = TRUE</code> path treats the pattern as literal bytes, so regex backtracking cannot occur. PCRE2 (used for general regex) is <strong>not</strong> immune — it’s still a backtracking engine, in the same risk class as base R’s <code>perl = TRUE</code>. If you’re matching untrusted patterns against untrusted input, that risk exists regardless of which package you use; this package doesn’t add to it, but doesn’t remove it either. Prefer <code>fixed = TRUE</code> whenever the pattern is actually a literal string: it avoids regex backtracking and is also the fastest path in the package.</p>
 </section></section><section id="getting-help" class="level2" data-number="7.5"><h2 data-number="7.5" class="anchored" data-anchor-id="getting-help">
 <span class="header-section-number">7.5</span> Getting help</h2>
 <ul>
-<li>Found a bug, or a discrepancy between <code>fast.string</code> and base R’s behaviour on some input? Open an issue: <a href="https://github.com/KyleHaynes/fast.string/issues" class="uri">https://github.com/KyleHaynes/fast.string/issues</a>.</li>
+<li>Found a bug, or a discrepancy between <code>fast.string</code> and base R’s behaviour on some input? Open an issue: <a href="https://github.com/KyleHaynes/anthropic_fast/issues" class="uri">https://github.com/KyleHaynes/anthropic_fast/issues</a>.</li>
 <li>For the underlying algorithms, <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> has the full detail behind every function’s behaviour.</li>
 <li>For exact argument-by-argument documentation, <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 5</span></a>.</li>
 </ul>
@@ -965,7 +949,7 @@ after reset:       0.04s</code></pre>
 </div> <!-- /content -->
 <footer class="footer"><div class="nav-footer">
     <div class="nav-footer-left">
-<p>fast.string — PCRE2 + RE2 + RcppParallel for R</p>
+<p>fast.string — PCRE2 + prepared literal search + RcppParallel for R</p>
 </div>   
     <div class="nav-footer-center">
       &nbsp;

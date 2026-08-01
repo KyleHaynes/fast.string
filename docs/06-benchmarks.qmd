@@ -27,9 +27,9 @@ Comparison baselines, used wherever they have a real equivalent:
   general string operations (stringr wraps stringi; benchmarks below call
   stringi directly).
 - **stringdist** — `method = "jw"` is the closest equivalent to
-  `jaro_winkler()`; `method = "lv"`/`"dl"`/`"hamming"`/`"jaccard"` are the
-  closest equivalents to `levenshtein()`/`damerau_levenshtein()`/
-  `hamming()`/`jaccard_index()`.
+  `jaro_winkler()`; `method = "lv"`/`"osa"`/`"dl"`/`"hamming"`/`"jaccard"`
+  are the closest equivalents to `levenshtein()`/`osa_distance()`/
+  `damerau_levenshtein()`/`hamming()`/`jaccard_index()`.
 - **RecordLinkage** — `soundex()` and `jarowinkler()` are the closest
   equivalents to this package's phonetic and fuzzy-matching functions.
 - **phonics** — `metaphone()` and `caverphone()` are throughput comparison
