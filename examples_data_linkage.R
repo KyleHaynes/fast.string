@@ -128,10 +128,16 @@ length_score <- (fnchar(postcode_field) == 4)  # All valid Australian postcodes 
 # 8. FCHARTR — Normalize characters for blocking/matching
 # ============================================================================
 
-# Strip punctuation: useful for fuzzy name matching
+# Strip punctuation: useful for fuzzy name matching. fchartr() maps
+# characters one-for-one, so `old` and `new` must be the same length -- it
+# can replace a character but not delete one. Use fgsub() to remove.
 names_with_punct <- c("O'BRIEN", "SMITH-JONES", "MARY-ANN", NA)
-without_punct <- fchartr("'-", "", names_with_punct)
+without_punct <- fgsub("['-]", "", names_with_punct)
 # Result: c("OBRIEN", "SMITHJONES", "MARYANN", NA)
+
+# Replacing punctuation with spaces (rather than deleting it) keeps token
+# boundaries intact for jaro_winkler_tokens() -- that IS a job for fchartr().
+fchartr("'-", "  ", names_with_punct)
 
 # Map accented characters (e.g., for international records)
 accented_names <- c("CAFÉ", "NAÏVE", "JOSÉ", "FRANÇOIS")
@@ -141,9 +147,102 @@ ascii_names <- fchartr("ÀÄÉÏÖÜàäéïöüÑñ", "AAEIOUaaeiouNn", accente
 # Use case: Normalize both sides before jaro_winkler
 record_name <- "O'BRIEN"
 candidate_name <- "OBRIEN"
-normalized_record <- fchartr("'- ", "", record_name)
-normalized_candidate <- fchartr("'- ", "", candidate_name)
+normalized_record <- fgsub("['\\- ]", "", record_name)
+normalized_candidate <- fgsub("['\\- ]", "", candidate_name)
 jaro_winkler(normalized_record, normalized_candidate)
+
+# ============================================================================
+# 9. FCOUNT — Column-level data-quality profiling before matching
+# ============================================================================
+
+# Counting matches per element is the cheapest way to find records that
+# should never reach the matching step at all.
+raw_names <- c("JOHN O'BRIEN", "UNKNOWN 00000000", "Kyle John Haynes", NA)
+
+fcount("[0-9]", raw_names)        # digits in a name field -> placeholder rows
+fcount(" +", ftrimws(raw_names)) + 1L   # token count
+fcount("'", raw_names, fixed = TRUE)    # apostrophes needing normalisation
+
+# Use case: quarantine unmatched-able records up front
+is_placeholder <- fcount("[0-9]", raw_names) > 0
+# raw_names[!is_placeholder & !is.na(raw_names)] goes on to matching
+
+# Matches are counted non-overlapping:
+fcount("aa", "aaaa", fixed = TRUE)   # 2, not 3
+
+# ============================================================================
+# 10. FAS.POSIXCT / FORMAT_DATETIME — Event timestamps without a tz database
+# ============================================================================
+
+received <- c("2024-06-18 09:15:00", "2024-06-18 14:20:00", "not a time")
+loaded <- fas.POSIXct(received)          # UTC POSIXct; malformed -> NA
+
+# Four fixed shapes, on input and output
+fas.POSIXct("2024-06-18T09:15:00Z", "rfc3339")
+fas.POSIXct("20240618091500", "compact")
+fas.POSIXct("2024-06-18T09:15:00+10:00", "iso_offset")  # normalised to UTC
+
+# Unlike fas.Date(), the full calendar is validated:
+fas.Date("29/02/2023", "dmy")         # rolls over -- 2023 is not a leap year
+fas.POSIXct("2023-02-29 08:00:00")    # NA
+
+# Use case: keep the most recent copy of a record received twice in a batch
+# batch <- batch[order(batch$key, -as.numeric(batch$loaded)), ]
+# batch <- batch[!duplicated(batch$key), ]
+
+# Use case: stamp the output batch. "iso_offset" is a fixed offset, not a
+# timezone -- no daylight-saving rules.
+format_datetime(max(loaded, na.rm = TRUE), "rfc3339")
+format_datetime(max(loaded, na.rm = TRUE), "iso_offset", offset = "+10:00")
+format_datetime(max(loaded, na.rm = TRUE), "compact")   # sortable partition key
+
+# ============================================================================
+# 11. REFINED_SOUNDEX / COLOGNE — Blocking keys at two precision settings
+# ============================================================================
+
+surnames <- c("Müller", "Mueller", "Miller", "Smith", "Smyth", "Schmidt")
+
+soundex(surnames)          # 4 chars, coarse
+refined_soundex(surnames)  # encodes vowels, no truncation -> smaller blocks
+cologne(surnames)          # German rules; folds umlauts to base vowels
+
+# refined_soundex() splits "Müller"/"Mueller" (the umlaut is not ASCII);
+# cologne() folds it and groups them. Neither key is right on its own.
+data.frame(
+    name    = surnames,
+    soundex = soundex(surnames),
+    refined = refined_soundex(surnames),
+    cologne = cologne(surnames)
+)
+
+# Use case: multi-key blocking. Encode every token in one vectorised call,
+# then take the union of the candidate sets each scheme produces.
+tokens <- strsplit(c("Hans Müller", "Hans Mueller"), " +")
+data.frame(
+    record = rep(1:2, lengths(tokens)),
+    token  = unlist(tokens),
+    key    = cologne(unlist(tokens))
+)
+
+# ============================================================================
+# 12. COSINE_SIMILARITY — A second, independent scoring signal
+# ============================================================================
+
+# jaccard/dice/tversky compare q-gram SETS (a repeated q-gram counts once).
+# cosine compares q-gram frequency PROFILES, so repetition carries weight.
+jaccard_index("aaaa", "aaab")       # 0.5  -- one of two distinct bigrams
+cosine_similarity("aaaa", "aaab")   # 0.894 -- three "aa" against two
+
+# Repetition is the norm in the identifier/code fields that sit next to
+# names in a linkage file.
+cosine_similarity(c("AAA-111", "0000"), c("AAA-112", "0001"))
+
+# Use case: score candidates on two features that disagree informatively.
+# Token comparison is order-insensitive; cosine is not.
+jaro_winkler_tokens("Kyle John Haynes", "Haynes John Kyle")  # 1
+cosine_similarity("KYLE JOHN HAYNES", "HAYNES JOHN KYLE")    # 0.867
+# A high token score with a lower cosine says "same tokens, different order"
+# -- different evidence from "same order, one typo".
 
 # ============================================================================
 # PRACTICAL PIPELINE: End-to-end record linkage
@@ -166,10 +265,10 @@ reference <- data.frame(
 )
 
 # Step 1: Normalize incoming names
-incoming$name_clean <- fchartr("'- ", "", ftrimws(incoming$name))
+incoming$name_clean <- fgsub("['\\- ]", "", ftrimws(incoming$name))
 
 # Step 2: Normalize reference names
-reference$name_clean <- fchartr("'- ", "", ftrimws(reference$name))
+reference$name_clean <- fgsub("['\\- ]", "", ftrimws(reference$name))
 
 # Step 3: Create date-based blocking key (month-year)
 incoming$dob_block <- fsubstr(format_date(incoming$dob, "compact"), 1, 6)  # YYYYMM
@@ -191,3 +290,67 @@ if (length(block_1) > 0 && length(candidates) > 0) {
 # Step 5: Apply threshold (e.g., 0.85) to determine links
 threshold <- 0.85
 # can_link <- jw_scores > threshold
+
+# ============================================================================
+# PRACTICAL PIPELINE, EXTENDED: profile -> block -> score on two features
+# ============================================================================
+
+# The pipeline above blocks on a date key alone and scores on one metric.
+# A fuller version profiles the input first, blocks on phonetic keys from
+# more than one scheme, and carries two independent similarity features.
+
+# Step A: profile and quarantine
+incoming$n_digits <- fcount("[0-9]", incoming$name)
+usable <- incoming$n_digits == 0
+
+# Step B: block on the phonetic code of EVERY token (names arrive in
+# inconsistent token order), within the same birth year, across two schemes
+block_keys <- function(ids, names_vec, years, scheme) {
+    toks  <- strsplit(names_vec, " +")
+    codes <- scheme(unlist(toks))
+    out <- data.frame(
+        id  = rep(ids, lengths(toks)),
+        key = paste0(codes, ":", rep(years, lengths(toks))),
+        stringsAsFactors = FALSE
+    )
+    out[!is.na(codes) & nzchar(codes), ]
+}
+
+inc_names <- fgsub(" +", " ", fchartr("'-", "  ", ftrimws(incoming$name)))
+ref_names <- fchartr("'-", "  ", ftrimws(reference$name))
+
+inc_keys <- rbind(
+    block_keys(incoming$id[usable], inc_names[usable],
+               date_parts(incoming$dob[usable])$year, refined_soundex),
+    block_keys(incoming$id[usable], inc_names[usable],
+               date_parts(incoming$dob[usable])$year, cologne)
+)
+ref_keys <- rbind(
+    block_keys(reference$ref_id, ref_names, date_parts(reference$dob)$year, refined_soundex),
+    block_keys(reference$ref_id, ref_names, date_parts(reference$dob)$year, cologne)
+)
+names(ref_keys)[1] <- "ref_id"
+
+pairs <- unique(merge(inc_keys, ref_keys, by = "key")[, c("id", "ref_id")])
+nrow(pairs)                            # candidate pairs...
+sum(usable) * nrow(reference)          # ...instead of the full cross product
+
+# Step C: score survivors on two independent features
+pairs$name_a <- inc_names[match(pairs$id, incoming$id)]
+pairs$name_b <- ref_names[match(pairs$ref_id, reference$ref_id)]
+pairs$jw  <- jaro_winkler_tokens(pairs$name_a, pairs$name_b, ignore_case = TRUE)
+pairs$cos <- cosine_similarity(toupper(pairs$name_a), toupper(pairs$name_b))
+pairs$dob_gap <- abs(as.integer(
+    incoming$dob[match(pairs$id, incoming$id)] -
+    reference$dob[match(pairs$ref_id, reference$ref_id)]
+))
+
+# Step D: accept on the threshold, but flag records whose top two candidates
+# are too close to separate -- those belong in a review queue, not a link.
+accepted <- pairs[pairs$jw >= threshold & pairs$dob_gap <= 2, ]
+accepted <- accepted[order(accepted$id, -accepted$jw), ]
+accepted$ambiguous <- table(accepted$id)[as.character(accepted$id)] > 1L
+accepted[, c("id", "name_a", "ref_id", "name_b", "jw", "cos", "ambiguous")]
+
+# See the worked chapter for the full narrative version of this pipeline:
+# https://kylehaynes.github.io/fast.string/04-record-linkage-workflow.html

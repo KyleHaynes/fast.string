@@ -76,6 +76,13 @@ constructs at the edges — the safety net means a pattern either runs
 correctly on the fast path, or falls back to a path R has already battle-
 tested for that exact syntax. It never silently mismatches.
 
+`fcount()` inherits the same net, plus one of its own. Counting means
+looping the match, so it also has to define what happens at the boundaries:
+matches are counted **non-overlapping** (`fcount("aa", "aaaa")` is `2`), and
+an empty pattern — whose base R semantics are counted in characters, while
+the fixed engine works in bytes — is delegated to `base::gregexpr()`
+outright rather than answered in bytes for UTF-8 input.
+
 ## Parallelism: RcppParallel, not `parallel`/`future`
 
 `parallel::mclapply()` and `future::plan(multisession)` parallelise across
@@ -254,6 +261,93 @@ direct explanation for why `nysiis()` benchmarks slower than `soundex()`
 in @sec-benchmarks despite both running through the same parallel
 dispatch.
 
+### Refined Soundex and Cologne
+
+Both are answers to the same complaint about classic Soundex — a
+four-character code is very coarse — from opposite directions.
+
+**Refined Soundex** (the US-English mapping from Apache Commons Codec)
+keeps the first letter verbatim, then emits a class digit for *every*
+letter of the name — the first one included, and vowels included, which
+classic Soundex drops outright. Adjacent identical digits still collapse to
+one, but nothing is truncated or padded, so the code grows with the name.
+The mapping is nine consonant classes rather than Soundex's six
+(`B,P → 1`; `F,V → 2`; `C,K,S → 3`; `G,J → 4`; `Q,X,Z → 5`; `D,T → 6`;
+`L → 7`; `M,N → 8`; `R → 9`), with vowels and `H`/`W`/`Y` sharing `0`.
+`"Robert"` therefore encodes as `R901096`, not `R163`: two names must now
+agree in phonetic class at every position to collide, not just in their
+first three significant consonants.
+
+**Cologne phonetic** (*Kölner Phonetik*, Postel 1969) is built for German
+rather than English. Its distinguishing feature for linkage work is
+explicit **umlaut folding** — `Ä`/`Ö`/`Ü` map to their base vowels and
+`ß`/`ẞ` to `SS`, decoded from UTF-8 before encoding — so `"Müller"` and
+`"Mueller"` reach the same code by rule rather than by accident. Every
+other scheme in this package is ASCII-oriented and simply skips the umlaut
+byte pair, which is why `refined_soundex()` gives `"Müller"` and
+`"Mueller"` different codes.
+
+The practical consequence is block size. Over a list of surnames chosen to
+stress each scheme:
+
+```{r}
+#| label: phonetic-selectivity
+surnames <- c("Smith", "Smyth", "Schmidt", "Schmitt", "Sneath", "Sandy",
+              "Robert", "Rupert", "Rubert", "Ashcraft", "Ashcroft",
+              "Lee", "Law", "Loewe", "Baker", "Barker", "Hansen", "Hanson",
+              "Jackson", "Jaxon", "Tymczak", "Pfister", "Meier", "Meyer",
+              "Mayer", "Mueller", "Müller", "Miller", "Moller", "Malloy")
+
+vapply(
+    list(soundex = soundex, refined_soundex = refined_soundex,
+         cologne = cologne, nysiis = nysiis),
+    function(f) length(unique(f(surnames))),
+    integer(1)
+)
+```
+
+More distinct codes over the same input means smaller blocks, fewer
+candidate pairs, and more missed matches — the recall/precision dial, in
+one number. Soundex puts all six of
+`"Smith"`/`"Smyth"`/`"Schmidt"`/`"Schmitt"`/`"Sneath"`/`"Sandy"` in a
+single block; Refined Soundex splits them three ways:
+
+```{r}
+#| label: phonetic-selectivity-detail
+s <- c("Smith", "Smyth", "Schmidt", "Schmitt", "Sneath", "Sandy")
+data.frame(name = s, soundex = soundex(s), refined = refined_soundex(s),
+           cologne = cologne(s))
+```
+
+Neither setting is correct in the abstract. The strategy that usually
+works is to run more than one and union the candidate blocks, which buys a
+coarse scheme's recall while keeping a fine scheme's precision on the
+records the coarse one over-merges — @sec-workflow does exactly that with
+`refined_soundex()` and `cologne()` together.
+
+Two cross-package notes, in the same spirit as the Soundex `H`/`W`
+disagreement above. Both matter if you are comparing a `fast.string`
+phonetic column against one produced by another tool.
+
+- **`refined_soundex()` does not truncate.** `phonics::refinedSoundex()`
+  caps the code at 10 characters by default (`maxCodeLen = 10L`), so long
+  names produce a shorter, coarser key there. Raise `maxCodeLen` and the
+  two agree exactly; leave it at the default and `phonics` will merge
+  records this package keeps apart.
+- **Cologne's specification leaves two rules open**, and implementations
+  read them differently. `cologne()` agrees with `phonics::cologne()` on
+  the canonical reference names (`"Müller-Lüdenscheidt"`, `"Wikipedia"`,
+  `"Breschnew"`, the `"Meier"`/`"Mayr"`/`"Maier"`/`"Meyer"` group), but the
+  two diverge on a few per cent of random uppercase strings — mainly where
+  an `H` sits between two letters that code to the same digit. This package
+  treats the skipped `H` as still separating them (`cologne("BHB")` is
+  `"11"`, and this is pinned in `tests/testthat/test-phonetic-extended.R`),
+  where `phonics` collapses them to `"1"`. `phonics::cologne()` also
+  returns `NA` with a warning on umlauts rather than folding them.
+
+As with Soundex, neither reading is normatively "correct" — the point is
+to know which one your column was built with before joining on it.
+
 ## Double Metaphone and Caverphone
 
 `soundex()`/`nysiis()` were designed around English/American surnames;
@@ -364,14 +458,14 @@ workers compare immutable code-point arrays. ASCII inputs still use the
 original bit-parallel byte kernels. Code-point mode does not normalize
 canonically equivalent spellings and does not combine grapheme clusters.
 
-## Q-gram set similarity: Jaccard, Dice, Tversky
+## Q-gram similarity: Jaccard, Dice, Tversky, cosine
 
 A different family of similarity entirely: instead of an alignment between
-two character sequences, split each string into its set of overlapping
-length-`q` substrings ("q-grams" — bigrams for the default `q = 2`) and
-compare the two *sets*. This is symmetric in token order and insensitive
-to *where* a difference occurs, which makes it a useful complementary
-signal to edit-distance-style metrics rather than a replacement for them.
+two character sequences, split each string into its overlapping length-`q`
+substrings ("q-grams" — bigrams for the default `q = 2`) and compare those.
+This is insensitive to *where* a difference occurs, which makes it a useful
+complementary signal to edit-distance-style metrics rather than a
+replacement for them.
 
 `jaccard_index()`, `dice_coefficient()`, and `tversky_index()` all reduce
 to the same underlying triple — `|A|`, `|B|`, `|A ∩ B|` — combined three
@@ -397,6 +491,46 @@ through R-level dispatch per pair.
 jaccard_index("night", "nacht")
 dice_coefficient("night", "nacht")
 ```
+
+### Cosine: profiles, not sets
+
+`cosine_similarity()` breaks the pattern above. The other three reduce each
+string to a *set* — a q-gram that occurs four times counts exactly as much
+as one that occurs once. Cosine keeps the counts, treats each string as a
+vector in q-gram space, and returns the cosine of the angle between them:
+
+$$\cos(A, B) = \frac{\sum_g A_g B_g}{\sqrt{\sum_g A_g^2}\sqrt{\sum_g B_g^2}}$$
+
+where $A_g$ is the number of times q-gram $g$ occurs in the first string.
+Implementation-wise this is the same sorted-packed-integer machinery, with
+one change: the q-gram vector is sorted but *not* deduplicated, and the
+merge pass counts run lengths on each side to accumulate
+$\sum A_g^2$, $\sum B_g^2$, and the dot product in a single sweep. Where
+the set metrics normalise by set sizes, cosine normalises by the product
+of the two profile magnitudes.
+
+```{r}
+#| label: cosine-demo
+a <- c("aaaa", "BANANA", "night")
+b <- c("aaab", "BANANAS", "nacht")
+data.frame(a, b,
+           jaccard = jaccard_index(a, b),
+           dice    = dice_coefficient(a, b),
+           cosine  = cosine_similarity(a, b))
+```
+
+`"aaaa"` and `"aaab"` share exactly one of two distinct bigrams, so Jaccard
+reports `0.5` and cannot say more. Cosine sees three occurrences of `"aa"`
+against two and scores the pair far higher. Which behaviour you want is a
+data question: for names, near-duplicate q-grams are rare and the metrics
+mostly agree; for the numeric identifiers, codes, and padded fields that
+sit alongside names in a linkage file, repetition is the norm and the set
+metrics are throwing away most of the signal.
+
+Because they are computed from different information, cosine and
+Jaro-Winkler make a reasonable *pair* of features for a linkage decision —
+@sec-workflow scores candidates on both and treats a wide disagreement
+between them as something to look at rather than average away.
 
 ## fuzzywuzzy-style ratios: Ratcliff/Obershelp matching blocks
 
@@ -455,3 +589,46 @@ been validated or that downstream code will catch the implausible date
 some other way. If you need full calendar validation, `base::as.Date()` is
 still the right tool; `fas.Date()` is for when you already trust the input
 shape and just want it parsed fast.
+
+### Timestamps: `fas.POSIXct()` and `format_datetime()`
+
+The timestamp pair applies the same fixed-shape principle one level up.
+`base::as.POSIXct()` carries the same locale-aware `strptime()` machinery
+as `as.Date()`, plus timezone resolution on top. `fas.POSIXct()` works
+entirely in UTC seconds since the epoch, converting the calendar fields
+arithmetically, and supports exactly four shapes (`iso`, `rfc3339`,
+`compact`, `iso_offset`).
+
+Two design choices are worth knowing before relying on them.
+
+**These functions validate more than the date functions, not less.** Where
+`fas.Date()` checks only that month and day fall in range, `fas.POSIXct()`
+validates the full calendar — days-in-month and leap years included — and
+returns `NA` for anything impossible. The asymmetry is deliberate: a
+timestamp column is usually a load/event stamp that a pipeline reasons
+about (ordering, watermarks, retention windows), so a silently rolled-over
+value is a worse failure there than in a date-of-birth field that a human
+will eyeball.
+
+```{r}
+#| label: datetime-strictness
+fas.Date("2023-02-29", "iso")        # rolls over
+fas.POSIXct("2023-02-29 00:00:00")   # NA
+```
+
+**`"iso_offset"` is an offset, not a timezone.** On input, an offset is
+subtracted to normalise the value to UTC; on output, `format_datetime()`
+adds one fixed offset to every element. There is no daylight-saving rule
+anywhere in this path, and no zone name is ever resolved. For stamping a
+batch whose offset you know, that is exactly right and very cheap. For a
+series that crosses a DST boundary, or for anything that must round-trip
+through a named zone like `"Australia/Sydney"`, use `base::format()` and
+`base::as.POSIXct()` — this is a case where the fast version isn't a
+drop-in replacement, it's a different (narrower) contract.
+
+```{r}
+#| label: datetime-offset
+fas.POSIXct("2024-06-18T09:15:00+10:00", "iso_offset")   # stored as UTC
+format_datetime(fas.POSIXct("2024-06-18 09:15:00"),
+                "iso_offset", offset = "+10:00")          # written back out
+```

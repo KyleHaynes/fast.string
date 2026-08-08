@@ -113,6 +113,26 @@ cat(sprintf("base (5x chained gsub)  %.3fs\nfast.string::gsub_all   %.3fs\n", t_
 record("gsub_all (5 patterns)", "base (chained gsub)", t_base, t_fast)
 ```
 
+`fcount()` is compared against the base idiom it replaces —
+`gregexpr()` plus a `vapply()` — which pays not just for the match loop but
+for allocating an integer vector of match positions per element only to
+take its length, and which needs an explicit `NA` branch to match
+`fcount()`'s missing-value handling. `stri_count_regex()` is the fair third
+baseline.
+
+```{r}
+#| label: bench-count
+t_base <- system.time(vapply(base::gregexpr("[0-9]", x),
+                             function(m) if (is.na(m[1])) NA_integer_
+                                         else if (m[1] < 0L) 0L else length(m),
+                             integer(1)))["elapsed"]
+t_fast <- system.time(fast.string::fcount("[0-9]", x))["elapsed"]
+t_stri <- system.time(stri_count_regex(x, "[0-9]"))["elapsed"]
+cat(sprintf("base gregexpr + vapply     %.3fs\nstringi::stri_count_regex  %.3fs\nfast.string::fcount        %.3fs\n",
+            t_base, t_stri, t_fast))
+record("fcount (regex)", "base gregexpr + vapply", t_base, t_fast)
+```
+
 ## String utilities
 
 ```{r}
@@ -168,6 +188,30 @@ cat(sprintf("base::as.Date     %.3fs\nfast.string::fas.Date %.3fs\n", t_base, t_
 record("fas.Date", "as.Date", t_base, t_fast)
 ```
 
+Timestamps are the larger win of the two, because `base::as.POSIXct()`
+carries `strptime()`'s locale handling *and* timezone resolution, while
+`fas.POSIXct()` does fixed-shape field extraction into UTC epoch seconds —
+and still validates the full calendar, which `fas.Date()` does not.
+
+```{r}
+#| label: bench-datetimes
+stamps <- fast.string::format_datetime(
+    as.POSIXct("1990-01-01", tz = "UTC") + sample(1.1e9, n, replace = TRUE), "iso"
+)
+stamps[na_idx] <- NA_character_
+
+t_base <- system.time(base::as.POSIXct(stamps, tz = "UTC"))["elapsed"]
+t_fast <- system.time(fast.string::fas.POSIXct(stamps, "iso"))["elapsed"]
+cat(sprintf("base::as.POSIXct   %.3fs\nfast.string::fas.POSIXct %.3fs\n", t_base, t_fast))
+record("fas.POSIXct", "as.POSIXct", t_base, t_fast)
+
+parsed <- fast.string::fas.POSIXct(stamps, "iso")
+t_base <- system.time(base::format(parsed, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))["elapsed"]
+t_fast <- system.time(fast.string::format_datetime(parsed, "rfc3339"))["elapsed"]
+cat(sprintf("base format.POSIXct %.3fs\nfast.string::format_datetime %.3fs\n", t_base, t_fast))
+record("format_datetime", "format.POSIXct", t_base, t_fast)
+```
+
 ## Phonetic blocking keys
 
 `soundex()`/`nysiis()` have no base R equivalent; `RecordLinkage::soundex()`
@@ -201,6 +245,38 @@ parallelism gap (both run through the same dispatch), but because NYSIIS's
 rule table is genuinely heavier per element (leading/trailing transforms
 plus a stateful per-letter pass, vs. Soundex's single fixed lookup), as
 described in @sec-theory.
+
+`refined_soundex()` and `cologne()` sit in the same cost class as
+`soundex()` — a table lookup per character, with no truncation for Refined
+Soundex and a small amount of multi-byte decoding for Cologne's umlaut
+folding. `phonics` implements both, and the two baselines differ in kind:
+with truncation disabled (`maxCodeLen` raised above the longest code here),
+`phonics::refinedSoundex()` produces output identical to
+`refined_soundex()`, so that row is a genuine like-for-like comparison.
+`phonics::cologne()` agrees on the canonical reference names but takes a
+different reading of two under-specified rules (@sec-theory), so that row
+is a throughput comparison only.
+
+```{r}
+#| label: bench-phonetic-extended
+t_fast_rs <- system.time(fast.string::refined_soundex(names_x))["elapsed"]
+t_fast_co <- system.time(fast.string::cologne(names_x))["elapsed"]
+cat(sprintf("fast.string::refined_soundex %.3fs\nfast.string::cologne         %.3fs\n",
+            t_fast_rs, t_fast_co))
+
+if (has_phonics) {
+    # maxCodeLen = 40 disables phonics' 10-character default truncation, so
+    # the two implementations are computing the same thing.
+    t_ph_rs <- system.time(phonics::refinedSoundex(names_x, maxCodeLen = 40))["elapsed"]
+    t_ph_co <- system.time(phonics::cologne(names_x))["elapsed"]
+    cat(sprintf("phonics::refinedSoundex %.3fs\nphonics::cologne        %.3fs\n",
+                t_ph_rs, t_ph_co))
+    record("refined_soundex", "phonics::refinedSoundex", t_ph_rs, t_fast_rs)
+    record("cologne", "phonics::cologne (differs on some inputs)", t_ph_co, t_fast_co)
+} else {
+    cat("phonics not installed — skipping cross-package comparison.\n")
+}
+```
 
 `double_metaphone()` and `caverphone()` are considerably heavier rulesets
 again (Double Metaphone's branching is the most involved of the four;
@@ -362,7 +438,7 @@ fast.string::damerau_levenshtein("ca", "abc")
 if (has_stringdist) stringdist::stringdist("ca", "abc", method = "dl")
 ```
 
-## Q-gram set similarity
+## Q-gram similarity
 
 ```{r}
 #| label: bench-qgram
@@ -378,6 +454,23 @@ t_fast_dice <- system.time(fast.string::dice_coefficient(names_x, rev(names_x)))
 t_fast_tver <- system.time(fast.string::tversky_index(names_x, rev(names_x), alpha = 0.3, beta = 0.7))["elapsed"]
 cat(sprintf("fast.string::dice_coefficient %.3fs (no direct stringdist equivalent)\n", t_fast_dice))
 cat(sprintf("fast.string::tversky_index    %.3fs (no direct stringdist equivalent)\n", t_fast_tver))
+```
+
+`cosine_similarity()` does strictly more work than the three set metrics —
+its q-gram vectors are sorted but not deduplicated, so the merge pass
+walks more elements and accumulates three running sums instead of one
+intersection count. `stringdist::stringsim(method = "cosine")` is the
+direct equivalent.
+
+```{r}
+#| label: bench-cosine
+t_fast_cos <- system.time(fast.string::cosine_similarity(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::cosine_similarity %.3fs\n", t_fast_cos))
+if (has_stringdist) {
+    t_sd_cos <- system.time(stringdist::stringsim(names_x, rev(names_x), method = "cosine", q = 2))["elapsed"]
+    cat(sprintf("stringdist::stringsim(cosine)  %.3fs\n", t_sd_cos))
+    record("cosine_similarity", "stringdist::stringsim(cosine)", t_sd_cos, t_fast_cos)
+}
 ```
 
 ## fuzzywuzzy-style ratios
@@ -437,16 +530,37 @@ knitr::kable(
 )
 ```
 
-A few patterns worth drawing out explicitly:
+A few patterns worth drawing out explicitly, in descending order of
+speedup:
 
-- The biggest wins are on operations with **real per-element work** —
-  regex matching/substitution, trimming, phonetic encoding — where
-  parallelising actual computation pays off directly.
-- The smallest (or negative) wins are on operations base R already does
-  close to optimally for a single core (`substr()`); parallelism helps
-  least when there's least work to spread around.
-- Cross-package comparisons (`stringdist`, `RecordLinkage`) confirm
-  *correctness* (the Jaro-Winkler numbers agree to floating-point
-  precision) as much as they confirm speed — agreement there is the more
-  important result, since a faster-but-wrong implementation isn't a
-  useful trade.
+- **The biggest wins aren't parallelism wins at all.** `fas.POSIXct()`,
+  `fas.Date()`, `format_date()`, and `fcount()` land in the hundreds of
+  times faster, and the reason is that they do *less work*, not that they
+  spread the same work over more cores: no locale handling, no timezone
+  database, no `%`-format interpretation, and — for `fcount()` — no
+  per-element allocation of a match-position vector that gets discarded.
+  These are the rows to read with the trade-off in mind: each one accepts a
+  narrower contract (one fixed shape, no format guessing) in exchange, and
+  @sec-theory is explicit about where that narrowness bites.
+- **Phonetic encoding and multi-pattern substitution are the genuine
+  parallelism wins** — roughly 8-60x, on operations with real
+  per-element branching to spread across cores. `cologne()` and
+  `caverphone()` sit at the top of that band mainly because their
+  single-threaded R baselines are expensive.
+- **The smallest wins are where the baseline is already tight C.** The
+  edit-distance and q-gram kernels against `stringdist` run 1.3-1.8x
+  (`damerau_levenshtein` is actually *slower* here, at 0.8x), because
+  `stringdist` is a well-optimised C implementation and there is little
+  headroom beyond threading. Same story for `substr()` at 1.1x, which base
+  R already does close to memcpy speed. `cosine_similarity()` is the
+  exception in that group at 5.7x, since `stringdist` tabulates q-grams
+  generically where this package packs them into integers.
+- Cross-package comparisons (`stringdist`, `RecordLinkage`, `phonics`)
+  confirm *correctness* as much as speed — the Jaro-Winkler numbers agree
+  to floating-point precision, `cosine_similarity()` matches
+  `stringdist`'s cosine, and `refined_soundex()` matches
+  `phonics::refinedSoundex()` once its truncation is disabled. Agreement is
+  the more important result, since a faster-but-wrong implementation isn't
+  a useful trade. Where outputs *don't* agree — `cologne()` versus
+  `phonics::cologne()`, and the Soundex `H`/`W` rule — @sec-theory says
+  exactly which rule each side takes.

@@ -75,6 +75,18 @@ system.time(base::gsub("[0-9]+", "#", x, perl = TRUE))
 system.time(fast.string::fgsub("[0-9]+", "#", x))
 ```
 
+`fcount()` counts non-overlapping matches per element — the counting
+counterpart to `fgrepl()`, replacing the `vapply(gregexpr(...), length, ...)`
+idiom that allocates a vector of match positions per row just to take its
+length.
+
+```{r}
+#| label: count-bench
+system.time(vapply(base::gregexpr("[0-9]", x),
+                   function(m) if (m[1] < 0L) 0L else length(m), integer(1)))
+system.time(fast.string::fcount("[0-9]", x))
+```
+
 `gsub_all()` has no base equivalent: it applies several patterns in a
 single pass, either sequentially (chaining, like repeated `gsub()` calls)
 or as one combined left-to-right scan.
@@ -128,17 +140,53 @@ system.time(fast.string::format_date(dates, "iso"))
 head(fast.string::date_parts(dates))
 ```
 
+`fas.POSIXct()` and `format_datetime()` do the same for timestamps,
+working entirely in UTC seconds since the epoch — no timezone-database
+lookup. Unlike `fas.Date()`, they validate the full calendar (month
+lengths and leap years) and return `NA` for impossible values.
+
+```{r}
+#| label: datetime-bench
+stamps <- format(as.POSIXct("2024-01-01", tz = "UTC") + sample(3e7, n), "%Y-%m-%d %H:%M:%S")
+
+system.time(base::as.POSIXct(stamps, tz = "UTC"))
+system.time(fast.string::fas.POSIXct(stamps))
+```
+
+```{r}
+#| label: datetime-demo
+ts <- fast.string::fas.POSIXct(c("2024-06-18 09:15:00", "2023-02-29 00:00:00"))
+ts
+fast.string::format_datetime(ts, "iso_offset", offset = "+10:00")
+```
+
 ## Phonetic blocking keys
 
-`soundex()` and `nysiis()` have no base R equivalent. They're typically
-used as blocking keys ahead of fuzzy name matching, grouping records that
-are *phonetically* similar before running a more expensive comparison
-like Jaro-Winkler within each block.
+`soundex()`, `nysiis()`, `refined_soundex()`, and `cologne()` have no base
+R equivalent. They're typically used as blocking keys ahead of fuzzy name
+matching, grouping records that are *phonetically* similar before running
+a more expensive comparison like Jaro-Winkler within each block.
 
 ```{r}
 #| label: phonetic-demo
 names_x <- c("Robert", "Rupert", "Ashcraft", "Ashcroft", NA)
 data.frame(name = names_x, soundex = fast.string::soundex(names_x), nysiis = fast.string::nysiis(names_x))
+```
+
+The schemes differ in how coarsely they group. `refined_soundex()` encodes
+vowels too and doesn't truncate, giving smaller blocks; `cologne()` folds
+German umlauts to their base vowels, so spelling variants that ASCII-only
+schemes split are grouped together.
+
+```{r}
+#| label: phonetic-extended-demo
+german <- c("Müller", "Mueller", "Miller", "Schmidt", "Schmitt")
+data.frame(
+    name    = german,
+    soundex = fast.string::soundex(german),
+    refined = fast.string::refined_soundex(german),
+    cologne = fast.string::cologne(german)
+)
 ```
 
 ## Fuzzy string similarity
@@ -159,9 +207,27 @@ candidates_b <- c("Jon Smith", "Mary-Anne Jones", "Rob Brown", "Someone Else")
 fast.string::jaro_winkler_matrix(candidates_a, candidates_b)
 ```
 
+A second, independent similarity signal is often worth carrying alongside
+Jaro-Winkler. `cosine_similarity()` compares q-gram *frequency* profiles,
+so unlike the set-based `jaccard_index()`/`dice_coefficient()`/
+`tversky_index()` it keeps repeated q-grams — and unlike
+`jaro_winkler_tokens()` it is sensitive to token order.
+
+```{r}
+#| label: cosine-demo
+a <- c("aaaa", "KYLE JOHN HAYNES", "night")
+b <- c("aaab", "HAYNES JOHN KYLE", "nacht")
+data.frame(a, b,
+           jaccard = fast.string::jaccard_index(a, b),
+           cosine  = fast.string::cosine_similarity(a, b))
+```
+
 ## Further reading
 
 - [`README.md`](README.md) — quick install and `system.time()` examples.
+- [The documentation book](https://kylehaynes.github.io/fast.string/) — a
+  narrative walkthrough of every function group, the algorithms behind
+  them, and a full worked record-linkage pipeline.
 - [`Benchmarks.R`](Benchmarks.R) — full benchmark suite at 2M-row scale,
   covering every exported function.
 - [`examples_data_linkage.R`](examples_data_linkage.R) — an end-to-end

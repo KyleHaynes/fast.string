@@ -70,6 +70,42 @@ fgrep("^inv", c("invoice", "credit", "invoice2"))
 fgrep("^inv", c("invoice", "credit", "invoice2"), value = TRUE)
 ```
 
+### `fcount()`
+
+No direct base R equivalent (the usual idiom is
+`vapply(gregexpr(...), length, ...)`, which allocates a match-position
+vector per element just to take its length). Counts **non-overlapping**
+matches of one pattern in each element, using the same PCRE2 and
+prepared-fixed-string engines and the same parallel dispatch as `fgrepl()`.
+
+```r
+fcount(pattern, x, ignore.case = FALSE, perl = FALSE,
+       fixed = FALSE, useBytes = FALSE, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `pattern`, `x`, `ignore.case`, `perl`, `fixed`, `useBytes`, `nthreads` | Same as `fgrepl()`. |
+
+**Returns:** integer vector the same length as `x`, with `names(x)`
+preserved. `NA` elements return `NA`; elements with no match return `0L`.
+
+Two cases delegate to `base::gregexpr()` for exactness rather than taking
+the fast path: an empty `pattern` (which has character-position semantics
+in base R, whereas the fixed engine works on bytes), and a pattern using
+PCRE-only syntax without `perl = TRUE` (which emits a message first, the
+same fallback `fgrepl()` uses — see @sec-theory).
+
+```{r}
+fcount("[0-9]", c("a1b2c3", "none", NA))
+fcount("aa", "aaaa", fixed = TRUE)   # 2 -- matches do not overlap
+
+# Column-level data-quality rules, one vectorised call each
+nm <- c("JOHN O'BRIEN", "UNKNOWN 00000000", "Kyle John Haynes")
+fcount("[0-9]", nm)        # digits in a name field
+fcount(" +", nm) + 1L      # token count
+```
+
 ### `fsub()`
 
 Equivalent to `base::sub()`: first-match substitution. Supports `\\1`-`\\9`
@@ -300,10 +336,66 @@ fas.Date(x, format = c("iso", "compact", "dmy", "ymd_slash"))
 fas.Date(c("18/06/2024", "31/12/1999", "not-a-date"), "dmy")
 ```
 
+### `fas.POSIXct()`
+
+Parses strict, locale-free timestamps directly into UTC seconds since the
+Unix epoch — no timezone-database consultation, no multi-format guessing.
+Unlike `fas.Date()`, calendar dates *are* fully validated, including month
+lengths and leap years.
+
+```r
+fas.POSIXct(x, format = c("iso", "rfc3339", "compact", "iso_offset"))
+```
+
+| Argument | Description |
+|---|---|
+| `x` | Character vector. `NA` elements, malformed values, and out-of-range or impossible calendar dates become `NA`. |
+| `format` | `"iso"` (`YYYY-MM-DD HH:MM:SS`), `"rfc3339"` (`YYYY-MM-DDTHH:MM:SSZ`), `"compact"` (`YYYYMMDDHHMMSS`), or `"iso_offset"` (`YYYY-MM-DDTHH:MM:SS+HH:MM`). |
+
+**Returns:** a `POSIXct` vector in UTC, the same length as `x`, with
+`names(x)` preserved.
+
+```{r}
+fas.POSIXct(c("2024-06-18 09:15:00", "not a time"))
+fas.POSIXct("2024-06-18T09:15:00Z", "rfc3339")
+fas.POSIXct("20240618091500", "compact")
+fas.POSIXct("2024-06-18T09:15:00+10:00", "iso_offset")  # normalised to UTC
+fas.POSIXct("2023-02-29 08:00:00")                      # NA -- not a leap year
+```
+
+### `format_datetime()`
+
+The inverse: formats Unix-epoch seconds without locale or
+timezone-database overhead.
+
+```r
+format_datetime(x, format = c("iso", "rfc3339", "compact", "iso_offset"),
+                offset = "Z")
+```
+
+| Argument | Description |
+|---|---|
+| `x` | A `POSIXct` object or numeric vector of seconds since 1970-01-01 00:00:00 UTC. |
+| `format` | The same four formats accepted by `fas.POSIXct()`. |
+| `offset` | Fixed offset written by `format = "iso_offset"`: `"Z"`, or a signed `"+HH:MM"`/`"-HH:MM"` string. Must be `"Z"` for the other three formats, which are emitted in UTC. |
+
+**Returns:** character vector the same length as `x`.
+
+`"iso_offset"` applies one fixed numeric offset to every element. It is not
+a timezone — there are no daylight-saving rules — so use `base::format()`
+with a real timezone when a series crosses a DST boundary.
+
+```{r}
+stamps <- fas.POSIXct(c("2024-06-18 09:15:00", "2024-06-18 23:59:59"))
+format_datetime(stamps, "rfc3339")
+format_datetime(stamps, "compact")
+format_datetime(stamps, "iso_offset", offset = "+10:00")
+```
+
 ## Phonetic blocking keys
 
-All four functions have no base R equivalent and are intended as blocking
-keys ahead of fuzzy name matching (@sec-theory, @sec-workflow).
+None of these functions has a base R equivalent; all are intended as
+blocking keys ahead of fuzzy name matching (@sec-theory, @sec-workflow).
 
 ### `soundex()`
 
@@ -337,6 +429,69 @@ preserved; each element either `NA` or up to 6 characters.
 
 ```{r}
 nysiis(c("Robert", "Rupert", "Ashcraft"))
+```
+
+### `refined_soundex()`
+
+The US-English Refined Soundex mapping from Apache Commons Codec. Where
+classic `soundex()` discards vowels and truncates to four characters,
+Refined Soundex encodes vowels too and emits a code for every change in
+phonetic class, with no truncation — a longer, more discriminating key that
+produces smaller blocks.
+
+```r
+refined_soundex(x)
+```
+
+| Argument | Description |
+|---|---|
+| `x` | Character vector (coerced via `as.character()` if needed). `NA` elements, and elements with no ASCII letters, return `NA`. |
+
+**Returns:** character vector the same length as `x`, with `names(x)`
+preserved. Code length varies with the input and is **not** truncated —
+note that `phonics::refinedSoundex()` caps codes at 10 characters by
+default, so the two agree only once its `maxCodeLen` is raised
+(@sec-theory).
+
+```{r}
+refined_soundex(c("Robert", "Rupert", "Ashcraft"))
+
+# Splits a Soundex block that classic soundex() merges
+data.frame(
+    name    = c("Smith", "Smyth", "Schmidt", "Sandy"),
+    soundex = soundex(c("Smith", "Smyth", "Schmidt", "Sandy")),
+    refined = refined_soundex(c("Smith", "Smyth", "Schmidt", "Sandy"))
+)
+```
+
+### `cologne()`
+
+The Cologne phonetic algorithm (*Kölner Phonetik*), designed for German
+pronunciation. Input is uppercased bytewise, umlauts are mapped to their
+base vowels, sharp s to `SS`, and remaining non-letters ignored before
+encoding — so German spelling variants that ASCII-only schemes split are
+grouped together.
+
+```r
+cologne(x)
+```
+
+| Argument | Description |
+|---|---|
+| `x` | Character vector (coerced via `as.character()` if needed). `NA` elements, and elements with no supported letters, return `NA`. |
+
+**Returns:** character vector the same length as `x`, with `names(x)`
+preserved; a digit string, or `NA`.
+
+```{r}
+cologne(c("Müller-Lüdenscheidt", "Meier", "Meyer"))
+
+# Umlaut folding: refined_soundex() splits this pair, cologne() doesn't
+data.frame(
+    name    = c("Müller", "Mueller"),
+    refined = refined_soundex(c("Müller", "Mueller")),
+    cologne = cologne(c("Müller", "Mueller"))
+)
 ```
 
 ### `double_metaphone()`
@@ -599,13 +754,15 @@ hamming("karolin", "kathrin")
 hamming("abc", "ab")  # Inf -- unequal length
 ```
 
-## Q-gram set similarity
+## Q-gram similarity
 
-`jaccard_index()`, `dice_coefficient()`, and `tversky_index()` compare two
-strings' sets of overlapping length-`q` substrings ("q-grams"). All three
-share one sorted-merge intersection pass over packed-integer q-gram sets
-without routing through `stringdist`'s generic R-level dispatch
-(@sec-benchmarks).
+`jaccard_index()`, `dice_coefficient()`, `tversky_index()`, and
+`cosine_similarity()` compare two strings' overlapping length-`q`
+substrings ("q-grams"). All four share one sorted-merge pass over
+packed-integer q-grams without routing through `stringdist`'s generic
+R-level dispatch (@sec-benchmarks). The first three compare q-gram *sets*
+(a repeated q-gram counts once); `cosine_similarity()` compares frequency
+profiles, so repetition carries weight.
 
 ### `jaccard_index()`
 
@@ -664,6 +821,37 @@ tversky_index(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
 ```{r}
 tversky_index("night", "nacht", alpha = 1, beta = 1)   # == jaccard_index()
 tversky_index("night", "nacht", alpha = 0.5, beta = 0.5) # == dice_coefficient()
+```
+
+### `cosine_similarity()` / `cosine_matrix()`
+
+Builds a q-gram *frequency profile* for each string and returns the cosine
+of the angle between the two profiles — `dot(A, B) / (||A|| * ||B||)`.
+Repeated q-grams keep their multiplicity, which is the whole difference
+from the three set metrics above.
+
+```r
+cosine_similarity(a, b, q = 2, nthreads = NULL)
+cosine_matrix(a, b, q = 2, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `a`, `b`, `q`, `nthreads` | Same as `jaccard_index()`/`jaccard_matrix()`. |
+
+**Returns:** numeric vector of similarities in `[0, 1]`, `length(a)` long
+(or a `length(a)` × `length(b)` matrix). Missing comparisons return `NA`.
+If neither string has a q-gram the similarity is `1`; if only one does,
+it is `0`.
+
+```{r}
+cosine_similarity("night", "nacht")
+
+# Multiplicity: one distinct shared bigram, but different counts
+cosine_similarity("aaaa", "aaab", q = 2)
+jaccard_index("aaaa", "aaab", q = 2)
+
+cosine_matrix(c("JOHN SMITH", "MARY JONES"), c("JON SMYTH", "MARY JONES"))
 ```
 
 ## fuzzywuzzy-style ratios

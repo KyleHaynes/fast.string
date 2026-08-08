@@ -38,6 +38,34 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_regex_count_impl
+IntegerVector fast_regex_count_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int nthreads);
+RcppExport SEXP _fast_string_fast_regex_count_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_regex_count_impl(pattern, x, ignore_case, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_fixed_count_impl
+IntegerVector fast_fixed_count_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int nthreads);
+RcppExport SEXP _fast_string_fast_fixed_count_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fixed_count_impl(pattern, x, ignore_case, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_regex_sub_impl
 CharacterVector fast_regex_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global, int nthreads);
 RcppExport SEXP _fast_string_fast_regex_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP, SEXP nthreadsSEXP) {
@@ -140,6 +168,31 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_parse_datetime_impl
+NumericVector fast_parse_datetime_impl(const StringVector& x, int format_code);
+RcppExport SEXP _fast_string_fast_parse_datetime_impl(SEXP xSEXP, SEXP format_codeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type format_code(format_codeSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_parse_datetime_impl(x, format_code));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_format_datetime_impl
+CharacterVector fast_format_datetime_impl(const NumericVector& x, int format_code, int offset_minutes);
+RcppExport SEXP _fast_string_fast_format_datetime_impl(SEXP xSEXP, SEXP format_codeSEXP, SEXP offset_minutesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type format_code(format_codeSEXP);
+    Rcpp::traits::input_parameter< int >::type offset_minutes(offset_minutesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_format_datetime_impl(x, format_code, offset_minutes));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_date_parts_impl
 List fast_date_parts_impl(const NumericVector& x);
 RcppExport SEXP _fast_string_fast_date_parts_impl(SEXP xSEXP) {
@@ -216,6 +269,28 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     rcpp_result_gen = Rcpp::wrap(fast_nysiis_impl(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_refined_soundex_impl
+CharacterVector fast_refined_soundex_impl(const StringVector& x);
+RcppExport SEXP _fast_string_fast_refined_soundex_impl(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_refined_soundex_impl(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_cologne_impl
+CharacterVector fast_cologne_impl(const StringVector& x);
+RcppExport SEXP _fast_string_fast_cologne_impl(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_cologne_impl(x));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -586,10 +661,40 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_cosine_impl
+NumericVector fast_cosine_impl(const StringVector& a, const StringVector& b, int q, int nthreads);
+RcppExport SEXP _fast_string_fast_cosine_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_cosine_impl(a, b, q, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_cosine_matrix_impl
+NumericMatrix fast_cosine_matrix_impl(const StringVector& a, const StringVector& b, int q, int nthreads);
+RcppExport SEXP _fast_string_fast_cosine_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_cosine_matrix_impl(a, b, q, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_grepl_impl", (DL_FUNC) &_fast_string_fast_grepl_impl, 4},
     {"_fast_string_fast_fixed_impl", (DL_FUNC) &_fast_string_fast_fixed_impl, 4},
+    {"_fast_string_fast_regex_count_impl", (DL_FUNC) &_fast_string_fast_regex_count_impl, 4},
+    {"_fast_string_fast_fixed_count_impl", (DL_FUNC) &_fast_string_fast_fixed_count_impl, 4},
     {"_fast_string_fast_regex_sub_impl", (DL_FUNC) &_fast_string_fast_regex_sub_impl, 6},
     {"_fast_string_fast_fixed_gsub_all_impl", (DL_FUNC) &_fast_string_fast_fixed_gsub_all_impl, 6},
     {"_fast_string_fast_regex_gsub_all_impl", (DL_FUNC) &_fast_string_fast_regex_gsub_all_impl, 6},
@@ -597,12 +702,16 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_format_date_impl", (DL_FUNC) &_fast_string_fast_format_date_impl, 2},
     {"_fast_string_fast_format_date_parts_impl", (DL_FUNC) &_fast_string_fast_format_date_parts_impl, 4},
     {"_fast_string_fast_parse_date_impl", (DL_FUNC) &_fast_string_fast_parse_date_impl, 2},
+    {"_fast_string_fast_parse_datetime_impl", (DL_FUNC) &_fast_string_fast_parse_datetime_impl, 2},
+    {"_fast_string_fast_format_datetime_impl", (DL_FUNC) &_fast_string_fast_format_datetime_impl, 3},
     {"_fast_string_fast_date_parts_impl", (DL_FUNC) &_fast_string_fast_date_parts_impl, 1},
     {"_fast_string_fast_jaro_winkler_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_impl, 5},
     {"_fast_string_fast_jaro_winkler_matrix_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_matrix_impl, 5},
     {"_fast_string_fast_jaro_winkler_tokens_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_tokens_impl, 6},
     {"_fast_string_fast_soundex_impl", (DL_FUNC) &_fast_string_fast_soundex_impl, 1},
     {"_fast_string_fast_nysiis_impl", (DL_FUNC) &_fast_string_fast_nysiis_impl, 1},
+    {"_fast_string_fast_refined_soundex_impl", (DL_FUNC) &_fast_string_fast_refined_soundex_impl, 1},
+    {"_fast_string_fast_cologne_impl", (DL_FUNC) &_fast_string_fast_cologne_impl, 1},
     {"_fast_string_fast_double_metaphone_impl", (DL_FUNC) &_fast_string_fast_double_metaphone_impl, 1},
     {"_fast_string_fast_caverphone_impl", (DL_FUNC) &_fast_string_fast_caverphone_impl, 1},
     {"_fast_string_fast_trimws_impl", (DL_FUNC) &_fast_string_fast_trimws_impl, 2},
@@ -629,6 +738,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_dice_matrix_impl", (DL_FUNC) &_fast_string_fast_dice_matrix_impl, 4},
     {"_fast_string_fast_tversky_impl", (DL_FUNC) &_fast_string_fast_tversky_impl, 6},
     {"_fast_string_fast_tversky_matrix_impl", (DL_FUNC) &_fast_string_fast_tversky_matrix_impl, 6},
+    {"_fast_string_fast_cosine_impl", (DL_FUNC) &_fast_string_fast_cosine_impl, 4},
+    {"_fast_string_fast_cosine_matrix_impl", (DL_FUNC) &_fast_string_fast_cosine_matrix_impl, 4},
     {NULL, NULL, 0}
 };
 

@@ -5,3 +5,7 @@
 ^docs/site_libs$
 ^docs/.*\.html$
 ^docs/search\.json$
+^\.codex-verify-lib$
+^\.test-lib$
+^fast\.string\.Rcheck$
+^fast\.string_[0-9.]+\.tar\.gz$

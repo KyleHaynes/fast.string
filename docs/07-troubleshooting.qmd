@@ -41,21 +41,28 @@ Every function in this package returns `NA` for `NA` input — but a few
 functions also return `NA` for specific *valid-looking but unparseable*
 inputs:
 
-- `soundex()`/`nysiis()`/`double_metaphone()` return `NA` for strings with
-  **no alphabetic characters at all** (e.g. `"123"`, `""`) — there's no
-  phonetic code for a string with nothing to encode phonetically.
-  `caverphone()` is the exception: it always returns a 10-character code
-  for non-`NA` input (even `""`, which codes as `"1111111111"`), matching
-  its reference implementation's behaviour.
+- `soundex()`/`nysiis()`/`refined_soundex()`/`double_metaphone()` return
+  `NA` for strings with **no alphabetic characters at all** (e.g. `"123"`,
+  `""`) — there's no phonetic code for a string with nothing to encode
+  phonetically. `cologne()` does the same, counting umlauts and `ß` as
+  letters it can encode. `caverphone()` is the exception: it always returns
+  a 10-character code for non-`NA` input (even `""`, which codes as
+  `"1111111111"`), matching its reference implementation's behaviour.
 - `fas.Date()` returns `NA` for any string that doesn't match the
   specified `format` *exactly* (wrong length, wrong separator position,
   non-digit where a digit is expected) or has an out-of-range month/day.
   Unlike `base::as.Date()`, it does **not** attempt multiple formats or
   partial parsing.
+- `fas.POSIXct()` is stricter still: on top of the same exact-shape rule,
+  it validates the **whole calendar**, so `"2023-02-29 00:00:00"` is `NA`
+  even though every field is individually in range. This is deliberate and
+  is the one place the timestamp functions are less permissive than the
+  date functions — see @sec-theory.
 
 ```{r}
 soundex(c("Smith", "123", "", NA))
 fas.Date(c("2024-06-18", "2024/06/18", "2024-13-01"), "iso")  # 2nd: wrong separator, 3rd: month 13
+fas.POSIXct(c("2024-06-18 09:15:00", "2023-02-29 00:00:00"))  # 2nd: not a leap year
 ```
 
 ### `fchartr()` silently fell back to `base::chartr()` — why?
@@ -141,6 +148,12 @@ getting the parallel speedup for that specific call. Pass `perl = TRUE`
 explicitly to skip the syntax check (only do this if you've confirmed the
 pattern behaves identically under `fast.string`'s PCRE2 path for your
 actual data).
+
+`fgrep()`, `fsub()`, `fgsub()`, and `fcount()` all share this fallback.
+`fcount()` has one additional delegation of its own: an empty `pattern`
+always goes to `base::gregexpr()`, because base R counts empty-pattern
+matches in characters while the fixed engine works in bytes, and the two
+answers differ for UTF-8 input.
 
 ### Catastrophic backtracking — am I safe?
 

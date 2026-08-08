@@ -46,6 +46,22 @@ fsub("-([0-9]+)$", "_\\1", x)
 fgsub("[0-9]", "#", x)
 ```
 
+`fcount()` counts non-overlapping matches per element — the counting
+counterpart to `fgrepl()`, replacing the
+`vapply(gregexpr(...), length, ...)` idiom, which allocates a vector of
+match positions per row only to take its length.
+
+```{r}
+#| label: counting
+fcount("[0-9]", x)
+fcount("-", x, fixed = TRUE)
+
+# Column-level quality rules in one call each
+names_in <- c("JOHN O'BRIEN", "UNKNOWN 00000000", "Kyle John Haynes")
+fcount("[0-9]", names_in)          # digits in a name field: placeholder rows
+fcount(" +", names_in) + 1L        # token count
+```
+
 `gsub_all()` has no base R equivalent: it applies several patterns in one
 pass, either sequentially (chained, like calling `gsub()` repeatedly) or as
 a single combined left-to-right scan where the first matching pattern at
@@ -92,14 +108,40 @@ date_parts(dates)
 fas.Date(c("18/06/2024", "31/12/1999"), "dmy")
 ```
 
+`fas.POSIXct()` and `format_datetime()` are the timestamp equivalents,
+covering four fixed shapes (`iso`, `rfc3339`, `compact`, `iso_offset`).
+Everything is handled as UTC seconds since the epoch — no timezone-database
+lookup — and `"iso_offset"` writes one fixed numeric offset rather than a
+real timezone (no daylight-saving rules).
+
+```{r}
+#| label: datetimes
+stamps <- fas.POSIXct(c("2024-06-18 09:15:00", "2024-06-18 23:59:59", "not a time"))
+stamps
+
+format_datetime(stamps, "rfc3339")
+format_datetime(stamps, "compact")
+format_datetime(stamps, "iso_offset", offset = "+10:00")
+```
+
+Unlike `fas.Date()`, which validates field ranges only, `fas.POSIXct()`
+validates the whole calendar — month lengths and leap years included:
+
+```{r}
+#| label: date-strictness
+fas.Date("29/02/2023", "dmy")       # rolls over -- 2023 is not a leap year
+fas.POSIXct("2023-02-29 08:00:00")  # NA
+```
+
 ## Phonetic blocking keys
 
-`soundex()`, `nysiis()`, `double_metaphone()`, and `caverphone()` have no
-base R equivalent. They're typically used to group records that *sound*
-alike before running a more expensive pairwise comparison only within each
-group, rather than comparing every record against every other record.
-Different rulesets group different near-miss spellings together, so trying
-more than one can catch matches a single phonetic key misses.
+`soundex()`, `nysiis()`, `refined_soundex()`, `cologne()`,
+`double_metaphone()`, and `caverphone()` have no base R equivalent. They're
+typically used to group records that *sound* alike before running a more
+expensive pairwise comparison only within each group, rather than comparing
+every record against every other record. Different rulesets group different
+near-miss spellings together, so trying more than one can catch matches a
+single phonetic key misses.
 
 ```{r}
 #| label: phonetic
@@ -108,6 +150,7 @@ data.frame(
     name       = names_x,
     soundex    = soundex(names_x),
     nysiis     = nysiis(names_x),
+    refined    = refined_soundex(names_x),
     caverphone = caverphone(names_x)
 )
 double_metaphone(c("Smith", "Schmidt", "Catherine", "Kathryn"))
@@ -126,6 +169,30 @@ one side's codes matches *any* of the other's. `"Catherine"` and
 `"Kathryn"` sharing the code `K0RN` despite no letters lining up is the
 kind of match Soundex/NYSIIS — designed around English/American surnames —
 typically miss.
+
+The two newer schemes sit at opposite ends of the precision/recall
+trade-off. `refined_soundex()` encodes vowels instead of discarding them,
+so it produces a longer, more discriminating code — smaller blocks, fewer
+false candidates. `cologne()` targets German pronunciation and folds
+umlauts to their base vowels, so spelling variants that ASCII-only schemes
+split are grouped together:
+
+```{r}
+#| label: phonetic-extended
+german <- c("Müller", "Mueller", "Miller", "Meier", "Meyer", "Schmidt", "Schmitt")
+data.frame(
+    name    = german,
+    soundex = soundex(german),
+    refined = refined_soundex(german),
+    cologne = cologne(german)
+)
+```
+
+`refined_soundex()` splits `"Müller"` off from `"Mueller"`/`"Miller"`,
+because the umlaut isn't an ASCII vowel it can encode; `cologne()` folds it
+and puts all three in one block. Neither is "right" — they're different
+recall/precision settings, and @sec-workflow uses both at once and takes
+the union of the candidate blocks.
 
 ## Fuzzy string similarity
 
@@ -188,13 +255,13 @@ fuzzy_match(c("SMITH", "JONES"), choices)
 fuzzy_top_n("kitten", choices, method = "levenshtein", top_n = 2)
 ```
 
-## Q-gram set similarity
+## Q-gram similarity
 
-`jaccard_index()`, `dice_coefficient()`, and `tversky_index()` compare two
-strings' sets of overlapping length-`q` substrings ("q-grams") rather than
-their character-by-character alignment — symmetric in token order and
-insensitive to *where* a difference occurs, which makes them a useful
-second signal alongside Jaro-Winkler/edit-distance.
+`jaccard_index()`, `dice_coefficient()`, `tversky_index()`, and
+`cosine_similarity()` compare two strings' overlapping length-`q`
+substrings ("q-grams") rather than their character-by-character
+alignment — insensitive to *where* a difference occurs, which makes them a
+useful second signal alongside Jaro-Winkler/edit-distance.
 
 ```{r}
 #| label: qgram
@@ -203,10 +270,31 @@ dice_coefficient("night", "nacht")     # weights shared q-grams more heavily
 tversky_index("night", "nacht", alpha = 1, beta = 1)  # == jaccard_index()
 ```
 
-`tversky_index()` generalises both: `alpha = beta = 1` is Jaccard,
+`tversky_index()` generalises the first two: `alpha = beta = 1` is Jaccard,
 `alpha = beta = 0.5` is Dice, and asymmetric weights are useful when one
 side is a query and the other a reference and the two kinds of mismatch
 shouldn't be penalised equally.
+
+`cosine_similarity()` is the one that isn't a set metric. The other three
+reduce each string to a *set* of distinct q-grams, so a repeated q-gram
+counts once; cosine keeps the frequency profile and compares it as a
+vector, so repetition carries weight:
+
+```{r}
+#| label: cosine
+a <- c("aaaa", "BANANA", "night")
+b <- c("aaab", "BANANAS", "nacht")
+data.frame(a, b,
+           jaccard = jaccard_index(a, b),
+           dice    = dice_coefficient(a, b),
+           cosine  = cosine_similarity(a, b))
+```
+
+`"aaaa"`/`"aaab"` share only the bigram `"aa"` out of two distinct
+bigrams — Jaccard `0.5` — but that bigram occurs three times on one side
+and twice on the other, which cosine sees and Jaccard cannot. Repetition
+like this is common in the numeric and code-like fields (`"0000"`,
+`"AAA-111"`) that sit next to names in a linkage file.
 
 ## fuzzywuzzy-style ratios
 
@@ -227,8 +315,10 @@ fuzz_token_set_ratio("fuzzy was a bear", "fuzzy fuzzy bear was a bear")
 
 ## Putting it together
 
-A typical pipeline normalises with `fchartr()`/`ftrimws()`, builds a
-blocking key with `soundex()`/`nysiis()`/`format_date()`, then scores
-candidates within each block with `jaro_winkler_matrix()` or
-`jaro_winkler_tokens()`. @sec-workflow walks through exactly that, end to
-end, on a small linkage example.
+A typical pipeline profiles the input with `fcount()`, parses dates and
+load timestamps with `fas.Date()`/`fas.POSIXct()`, normalises with
+`fchartr()`/`ftrimws()`, builds blocking keys with
+`refined_soundex()`/`cologne()`/`format_date()`, scores candidates within
+each block with `jaro_winkler_tokens()` and `cosine_similarity()`, and
+stamps the result with `format_datetime()`. @sec-workflow walks through
+exactly that, end to end, on a small linkage example.

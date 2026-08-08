@@ -293,6 +293,198 @@ CharacterVector fast_nysiis_impl(const StringVector& x) {
     return result;
 }
 
+static bool clean_ascii_letters(const char* input,
+                                std::size_t length,
+                                std::string& output) {
+    output.clear();
+    output.reserve(length);
+    for (std::size_t i = 0; i < length; ++i) {
+        const unsigned char value = static_cast<unsigned char>(input[i]);
+        if (is_alpha_ascii(value)) output.push_back(to_upper_ascii(value));
+    }
+    return !output.empty();
+}
+
+static bool refined_soundex_code(const char* input,
+                                 std::size_t length,
+                                 std::string& output) {
+    static const char MAPPING[] = "01360240043788015936020505";
+    std::string word;
+    if (!clean_ascii_letters(input, length, word)) return false;
+
+    output.clear();
+    output.reserve(word.size() + 1);
+    output.push_back(word.front());
+    char previous = '*';
+    for (char value : word) {
+        const char code = MAPPING[value - 'A'];
+        if (code != previous) output.push_back(code);
+        previous = code;
+    }
+    return true;
+}
+
+static bool clean_cologne_letters(const char* input,
+                                  std::size_t length,
+                                  std::string& output) {
+    output.clear();
+    output.reserve(length);
+    for (std::size_t i = 0; i < length; ++i) {
+        const unsigned char value = static_cast<unsigned char>(input[i]);
+        if (is_alpha_ascii(value)) {
+            output.push_back(to_upper_ascii(value));
+            continue;
+        }
+        if (value == 0xC3 && i + 1 < length) {
+            const unsigned char next = static_cast<unsigned char>(input[i + 1]);
+            if (next == 0x84 || next == 0xA4) output.push_back('A');
+            else if (next == 0x96 || next == 0xB6) output.push_back('O');
+            else if (next == 0x9C || next == 0xBC) output.push_back('U');
+            else if (next == 0x9F) output.append("SS");
+            else continue;
+            ++i;
+        } else if (value == 0xE1 && i + 2 < length &&
+                   static_cast<unsigned char>(input[i + 1]) == 0xBA &&
+                   static_cast<unsigned char>(input[i + 2]) == 0x9E) {
+            output.append("SS");
+            i += 2;
+        }
+    }
+    return !output.empty();
+}
+
+static inline bool one_of(char value, const char* values) {
+    return std::strchr(values, value) != nullptr;
+}
+
+static inline void cologne_put(char code,
+                               std::string& output,
+                               char& previous_code) {
+    if (code != '-' && code != previous_code &&
+        (code != '0' || output.empty()))
+        output.push_back(code);
+    // Vowels are omitted except at the start, but they still split duplicate
+    // consonant codes. Ignored H resets the duplicate state without output.
+    previous_code = code;
+}
+
+static bool cologne_code(const char* input,
+                         std::size_t length,
+                         std::string& output) {
+    std::string word;
+    if (!clean_cologne_letters(input, length, word)) return false;
+
+    output.clear();
+    output.reserve(word.size() * 2);
+    char previous_code = '/';
+    char previous_char = '-';
+    for (std::size_t i = 0; i < word.size(); ++i) {
+        const char value = word[i];
+        const char next = i + 1 < word.size() ? word[i + 1] : '-';
+        if (one_of(value, "AEIJOUY")) {
+            cologne_put('0', output, previous_code);
+        } else if (value == 'B' || (value == 'P' && next != 'H')) {
+            cologne_put('1', output, previous_code);
+        } else if (one_of(value, "DT") && !one_of(next, "CSZ")) {
+            cologne_put('2', output, previous_code);
+        } else if (one_of(value, "FPVW")) {
+            cologne_put('3', output, previous_code);
+        } else if (one_of(value, "GKQ")) {
+            cologne_put('4', output, previous_code);
+        } else if (value == 'C') {
+            if (output.empty()) {
+                cologne_put(
+                    one_of(next, "AHKLOQRUX") ? '4' : '8',
+                    output, previous_code
+                );
+            } else {
+                cologne_put(
+                    one_of(previous_char, "SZ") ||
+                        !one_of(next, "AHKOQUX") ? '8' : '4',
+                    output, previous_code
+                );
+            }
+        } else if (value == 'X' && !one_of(previous_char, "CKQ")) {
+            cologne_put('4', output, previous_code);
+            cologne_put('8', output, previous_code);
+        } else if (value == 'L') {
+            cologne_put('5', output, previous_code);
+        } else if (one_of(value, "MN")) {
+            cologne_put('6', output, previous_code);
+        } else if (value == 'R') {
+            cologne_put('7', output, previous_code);
+        } else if (value == 'H') {
+            cologne_put('-', output, previous_code);
+        } else if (one_of(value, "SZDTX")) {
+            cologne_put('8', output, previous_code);
+        }
+        previous_char = value;
+    }
+    return true;
+}
+
+typedef bool (*PhoneticStringFunction)(
+    const char*, std::size_t, std::string&
+);
+
+struct DynamicPhoneticWorker : public Worker {
+    const StringView* strings;
+    PhoneticStringFunction encode;
+    std::vector<std::string>& output;
+    std::vector<std::uint8_t>& missing;
+
+    DynamicPhoneticWorker(const StringView* strings_,
+                          PhoneticStringFunction encode_,
+                          std::vector<std::string>& output_,
+                          std::vector<std::uint8_t>& missing_)
+        : strings(strings_), encode(encode_), output(output_), missing(missing_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        for (std::size_t i = begin; i < end; ++i) {
+            const StringView& value = strings[i];
+            if (value.is_na() ||
+                !encode(value.data, value.size, output[i])) {
+                missing[i] = 1;
+            }
+        }
+    }
+};
+
+static CharacterVector run_dynamic_phonetic(const StringVector& x,
+                                            PhoneticStringFunction encode) {
+    const StringSnapshot snapshot(x);
+    const std::size_t n = snapshot.size();
+    std::vector<std::string> encoded(n);
+    std::vector<std::uint8_t> missing(n, 0);
+    DynamicPhoneticWorker worker(
+        snapshot.data(), encode, encoded, missing
+    );
+    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000);
+
+    CharacterVector result(static_cast<R_xlen_t>(n));
+    for (std::size_t i = 0; i < n; ++i) {
+        SET_STRING_ELT(
+            result, static_cast<R_xlen_t>(i),
+            missing[i]
+                ? NA_STRING
+                : Rf_mkCharLen(
+                    encoded[i].data(), static_cast<int>(encoded[i].size())
+                )
+        );
+    }
+    return result;
+}
+
+// [[Rcpp::export]]
+CharacterVector fast_refined_soundex_impl(const StringVector& x) {
+    return run_dynamic_phonetic(x, refined_soundex_code);
+}
+
+// [[Rcpp::export]]
+CharacterVector fast_cologne_impl(const StringVector& x) {
+    return run_dynamic_phonetic(x, cologne_code);
+}
+
 struct DoubleMetaphoneWorker : public Worker {
     const StringView* strings;
     char* primary;

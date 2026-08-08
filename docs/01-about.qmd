@@ -11,15 +11,19 @@ gap none of them cover on another:
 | Regex matching/substitution | yes (TRE/PCRE) | yes (ICU) | — | — | yes (PCRE2) |
 | Parallelised across cores | no | no | partial (`nthread`) | no | **yes (TBB)** |
 | Literal/fixed-string fast path | no | yes | — | — | yes (prepared byte search) |
+| Per-element match counting | `gregexpr()` + `length()` | `stri_count()` | — | — | **yes, parallelised** (`fcount()`) |
 | Multi-pattern substitution in one scan | no | no | — | — | **yes** (`gsub_all()`) |
 | Fast fixed-format date parse/format | no | no | — | — | **yes** |
+| Fast fixed-format timestamp parse/format | no | no | — | — | **yes** (`fas.POSIXct()`, `format_datetime()`) |
 | Soundex / NYSIIS phonetic codes | no | no | `phonetic()`/`soundex` | `soundex()` | **yes, parallelised** |
+| Refined Soundex / Cologne phonetic codes | no | no | no | no | **yes** (`refined_soundex()`, `cologne()`) |
 | Double Metaphone / Caverphone 2.0 | no | no | no | no | **yes** (`double_metaphone()`, `caverphone()`) |
 | Jaro-Winkler similarity | no | no | `stringdist(method="jw")` | `jarowinkler()` | **yes, parallelised** |
 | Token-reorder-aware name comparison | no | no | no | no | **yes** (`jaro_winkler_tokens()`) |
 | Levenshtein / OSA / unrestricted Damerau-Levenshtein / Hamming | no | no | `stringdist(method=...)` | no | **yes, parallelised** |
 | Best/top-N fuzzy table lookup without a score matrix | `agrep()` (limited) | no | `amatch()` (best only) | no | **yes** (`fuzzy_match()`, `fuzzy_top_n()`) |
-| Jaccard / Dice / Tversky q-gram similarity | no | no | `stringdist(method="jaccard")` only | no | **yes, parallelised** |
+| Jaccard / cosine q-gram similarity | no | no | `stringdist(method="jaccard"/"cosine")` | no | **yes, parallelised** |
+| Dice / Tversky q-gram similarity | no | no | no | no | **yes, parallelised** |
 | fuzzywuzzy-style ratios | no | no | no | no | **yes** (port of Python's `fuzzywuzzy`) |
 
 A few things worth calling out explicitly:
@@ -33,11 +37,12 @@ A few things worth calling out explicitly:
 - **stringdist** is the closest relative for the fuzzy-matching half of
   this package. `fast.string` now covers most of the same distance-metric
   ground (Levenshtein, OSA, unrestricted Damerau-Levenshtein, Hamming, Jaro-Winkler,
-  Jaccard), plus a few `stringdist` doesn't have at all (Dice, Tversky,
-  token-reorder-aware comparison, fuzzywuzzy-style ratios). The benchmark
-  chapter measures the overlapping kernels on the current checkout. What it
-  still doesn't have is the regex/substitution side or `stringdist`'s full
-  breadth of more exotic metrics (cosine, LCS, full q-gram tabulation).
+  Jaccard, cosine), plus a few `stringdist` doesn't have at all (Dice,
+  Tversky, token-reorder-aware comparison, fuzzywuzzy-style ratios). The
+  benchmark chapter measures the overlapping kernels on the current
+  checkout. What `stringdist` still has that this package doesn't is LCS
+  and raw q-gram-count distance — and it has nothing on the
+  regex/substitution side, which is the other half of `fast.string`.
 - **RecordLinkage** is a full record-linkage *framework* (blocking,
   EM-based classification, training), not a string-function library. Its
   `soundex()`/`jarowinkler()` are useful comparison points (used directly

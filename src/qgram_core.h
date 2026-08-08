@@ -2,6 +2,7 @@
 #define FAST_STRING_QGRAM_CORE_H
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -22,8 +23,8 @@
 // sorted-string path, since q-grams that long are rare for the short
 // name/address strings this package targets.
 
-static inline void qgram_keys_packed(const char* s, int n, int q,
-                                      std::vector<uint64_t>& out) {
+static inline void qgram_keys_packed_all(const char* s, int n, int q,
+                                         std::vector<uint64_t>& out) {
     out.clear();
     if (n < q) return;
     out.reserve((std::size_t)(n - q + 1));
@@ -35,16 +36,26 @@ static inline void qgram_keys_packed(const char* s, int n, int q,
         out.push_back(key);
     }
     std::sort(out.begin(), out.end());
+}
+
+static inline void qgram_keys_packed(const char* s, int n, int q,
+                                      std::vector<uint64_t>& out) {
+    qgram_keys_packed_all(s, n, q, out);
     out.erase(std::unique(out.begin(), out.end()), out.end());
 }
 
-static inline void qgram_keys_strings(const char* s, int n, int q,
-                                       std::vector<std::string>& out) {
+static inline void qgram_keys_strings_all(const char* s, int n, int q,
+                                          std::vector<std::string>& out) {
     out.clear();
     if (n < q) return;
     out.reserve((std::size_t)(n - q + 1));
     for (int i = 0; i + q <= n; ++i) out.emplace_back(s + i, (std::size_t)q);
     std::sort(out.begin(), out.end());
+}
+
+static inline void qgram_keys_strings(const char* s, int n, int q,
+                                       std::vector<std::string>& out) {
+    qgram_keys_strings_all(s, n, q, out);
     out.erase(std::unique(out.begin(), out.end()), out.end());
 }
 
@@ -69,6 +80,57 @@ static inline std::size_t sorted_intersection_size(const std::vector<T>& a,
 // Sizes of the two q-gram sets plus their intersection size -- everything
 // downstream (Jaccard/Dice/Tversky) needs.
 struct QgramOverlap { std::size_t size_a, size_b, inter; };
+
+struct QgramFrequencyOverlap {
+    double squared_a;
+    double squared_b;
+    double dot;
+};
+
+template <typename T>
+static inline QgramFrequencyOverlap qgram_frequency_overlap(
+        const T* a, std::size_t size_a,
+        const T* b, std::size_t size_b) {
+    std::size_t i = 0, j = 0;
+    double squared_a = 0.0, squared_b = 0.0, dot = 0.0;
+    while (i < size_a || j < size_b) {
+        if (j == size_b || (i < size_a && a[i] < b[j])) {
+            const std::size_t begin = i++;
+            while (i < size_a && a[i] == a[begin]) ++i;
+            const double count = static_cast<double>(i - begin);
+            squared_a += count * count;
+        } else if (i == size_a || b[j] < a[i]) {
+            const std::size_t begin = j++;
+            while (j < size_b && b[j] == b[begin]) ++j;
+            const double count = static_cast<double>(j - begin);
+            squared_b += count * count;
+        } else {
+            const std::size_t begin_a = i++;
+            const std::size_t begin_b = j++;
+            while (i < size_a && a[i] == a[begin_a]) ++i;
+            while (j < size_b && b[j] == b[begin_b]) ++j;
+            const double count_a = static_cast<double>(i - begin_a);
+            const double count_b = static_cast<double>(j - begin_b);
+            squared_a += count_a * count_a;
+            squared_b += count_b * count_b;
+            dot += count_a * count_b;
+        }
+    }
+    return QgramFrequencyOverlap{squared_a, squared_b, dot};
+}
+
+template <typename T>
+static inline QgramFrequencyOverlap qgram_frequency_overlap(
+        const std::vector<T>& a, const std::vector<T>& b) {
+    return qgram_frequency_overlap(a.data(), a.size(), b.data(), b.size());
+}
+
+static inline double qgram_cosine_from_frequency(
+        const QgramFrequencyOverlap& overlap) {
+    if (overlap.squared_a == 0.0 && overlap.squared_b == 0.0) return 1.0;
+    if (overlap.squared_a == 0.0 || overlap.squared_b == 0.0) return 0.0;
+    return overlap.dot / std::sqrt(overlap.squared_a * overlap.squared_b);
+}
 
 static inline double qgram_jaccard_from_overlap(const QgramOverlap& o) {
     if (o.size_a == 0 && o.size_b == 0) return 1.0;
@@ -125,6 +187,20 @@ static inline double qgram_tversky_sim(const char* s1, int l1, const char* s2, i
     return qgram_tversky_from_overlap(
         qgram_overlap(s1, l1, s2, l2, q), alpha, beta
     );
+}
+
+static inline double qgram_cosine_sim(const char* s1, int l1,
+                                      const char* s2, int l2, int q) {
+    if (q <= 8) {
+        std::vector<uint64_t> a, b;
+        qgram_keys_packed_all(s1, l1, q, a);
+        qgram_keys_packed_all(s2, l2, q, b);
+        return qgram_cosine_from_frequency(qgram_frequency_overlap(a, b));
+    }
+    std::vector<std::string> a, b;
+    qgram_keys_strings_all(s1, l1, q, a);
+    qgram_keys_strings_all(s2, l2, q, b);
+    return qgram_cosine_from_frequency(qgram_frequency_overlap(a, b));
 }
 
 #endif // FAST_STRING_QGRAM_CORE_H

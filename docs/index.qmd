@@ -26,19 +26,22 @@ files. Individually each call is fast; in aggregate, on a 5M-row file, they
 add up to minutes of CPU time spent doing work a single core could be doing
 across eight or sixteen instead.
 
-Three things are conspicuously *not* one function each in base R, despite
+Four things are conspicuously *not* one function each in base R, despite
 being everywhere in this kind of pipeline:
 
-- **Phonetic blocking keys** (Soundex, NYSIIS) — used to group
-  *probably-same* names before running an expensive pairwise comparison
-  within each group, rather than comparing every record against every
-  other record.
-- **Fuzzy string similarity** (Jaro-Winkler) — base R has no notion of
-  "how similar are these two strings," only exact (`==`) or pattern
-  (`grepl()`) matching.
+- **Phonetic blocking keys** (Soundex, NYSIIS, Refined Soundex, Cologne,
+  Double Metaphone, Caverphone) — used to group *probably-same* names
+  before running an expensive pairwise comparison within each group, rather
+  than comparing every record against every other record.
+- **Fuzzy string similarity** (Jaro-Winkler, edit distance, q-gram
+  overlap) — base R has no notion of "how similar are these two strings,"
+  only exact (`==`) or pattern (`grepl()`) matching.
 - **Multi-token name comparison** — `"Kyle John Haynes"` and
   `"John Kylie Haynes"` are obviously the same person with two tokens
   swapped, but a plain character-by-character comparison scores that badly.
+- **Per-element match counting** — `grepl()` answers "is there a match";
+  counting how *many* means `gregexpr()` plus a `vapply()` that allocates a
+  position vector per row only to take its length.
 
 `fast.string` exists to make all of the above fast enough to run
 unblinkingly on real-sized data, and to package the boring-but-essential
@@ -65,10 +68,11 @@ scale.
   (@sec-quickstart).
 - **Under the hood** — the algorithms (@sec-theory): how regex and
   fixed-literal matching differ, how the bit-parallel Jaro-Winkler
-  implementation works, and how multi-token name comparison resolves
-  reordered tokens — followed by a
-  full worked record-linkage pipeline (@sec-workflow) putting the pieces
-  together.
+  implementation works, how the phonetic schemes trade block size against
+  recall, and how multi-token name comparison resolves reordered tokens —
+  followed by a full worked record-linkage pipeline (@sec-workflow) that
+  takes a messy incoming batch through profiling, parsing, deduplication,
+  multi-key blocking, scoring, and a defensible accept/review decision.
 - **Reference** — an exhaustive per-function reference with every
   argument and runnable examples (@sec-reference); the heavy benchmark
   chapter at **3 million strings**, with `base`, `stringi`, `stringdist`,

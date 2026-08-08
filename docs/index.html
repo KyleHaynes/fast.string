@@ -5,7 +5,7 @@
 <meta name="generator" content="quarto-1.9.38">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <meta name="author" content="Kyle Haynes">
-<meta name="dcterms.date" content="2026-08-01">
+<meta name="dcterms.date" content="2026-08-08">
 <title>fast.string</title>
 <style>
 /* Default styles provided by pandoc.
@@ -427,7 +427,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">1 August 2026</p>
+      <p class="date">8 August 2026</p>
     </div>
   </div>
   
@@ -441,14 +441,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Large workloads are parallelised via Intel TBB (through <a href="https://rcppcore.github.io/RcppParallel/">RcppParallel</a>), with <a href="https://www.pcre.org/">PCRE2</a> doing the regex work and a prepared byte-oriented searcher handling fixed/literal matching. Performance depends on string length, match density, value reuse, matrix shape, and available cores. Some operations (parallel Jaro-Winkler, multi-pattern substitution in one pass) have no base R equivalent at all.</p>
 <section id="why-this-exists" class="level2"><h2 class="anchored" data-anchor-id="why-this-exists">Why this exists</h2>
 <p>Record linkage and data-cleaning pipelines spend a surprising fraction of their wall-clock time in string operations that look trivial in isolation — <code><a href="https://rdrr.io/r/base/trimws.html">trimws()</a></code> on a column, a <code><a href="https://rdrr.io/r/base/grep.html">gsub()</a></code> to strip punctuation, <code><a href="https://rdrr.io/r/base/grep.html">grepl()</a></code> to flag a pattern — but get called over and over on multi-million-row name/address files. Individually each call is fast; in aggregate, on a 5M-row file, they add up to minutes of CPU time spent doing work a single core could be doing across eight or sixteen instead.</p>
-<p>Three things are conspicuously <em>not</em> one function each in base R, despite being everywhere in this kind of pipeline:</p>
+<p>Four things are conspicuously <em>not</em> one function each in base R, despite being everywhere in this kind of pipeline:</p>
 <ul>
 <li>
-<strong>Phonetic blocking keys</strong> (Soundex, NYSIIS) — used to group <em>probably-same</em> names before running an expensive pairwise comparison within each group, rather than comparing every record against every other record.</li>
+<strong>Phonetic blocking keys</strong> (Soundex, NYSIIS, Refined Soundex, Cologne, Double Metaphone, Caverphone) — used to group <em>probably-same</em> names before running an expensive pairwise comparison within each group, rather than comparing every record against every other record.</li>
 <li>
-<strong>Fuzzy string similarity</strong> (Jaro-Winkler) — base R has no notion of “how similar are these two strings,” only exact (<code>==</code>) or pattern (<code><a href="https://rdrr.io/r/base/grep.html">grepl()</a></code>) matching.</li>
+<strong>Fuzzy string similarity</strong> (Jaro-Winkler, edit distance, q-gram overlap) — base R has no notion of “how similar are these two strings,” only exact (<code>==</code>) or pattern (<code><a href="https://rdrr.io/r/base/grep.html">grepl()</a></code>) matching.</li>
 <li>
 <strong>Multi-token name comparison</strong> — <code>"Kyle John Haynes"</code> and <code>"John Kylie Haynes"</code> are obviously the same person with two tokens swapped, but a plain character-by-character comparison scores that badly.</li>
+<li>
+<strong>Per-element match counting</strong> — <code><a href="https://rdrr.io/r/base/grep.html">grepl()</a></code> answers “is there a match”; counting how <em>many</em> means <code><a href="https://rdrr.io/r/base/grep.html">gregexpr()</a></code> plus a <code><a href="https://rdrr.io/r/base/lapply.html">vapply()</a></code> that allocates a position vector per row only to take its length.</li>
 </ul>
 <p><code>fast.string</code> exists to make all of the above fast enough to run unblinkingly on real-sized data, and to package the boring-but-essential 80% (trimming, substitution, date parsing) so a project doesn’t need five different dependencies for five different speed problems.</p>
 </section><section id="how-it-fits-with-record-linkage-packages" class="level2"><h2 class="anchored" data-anchor-id="how-it-fits-with-record-linkage-packages">How it fits with record-linkage packages</h2>
@@ -458,7 +460,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>
 <strong>Getting started</strong> — what <code>fast.string</code> is for and how it’s positioned against base R, <code>stringi</code>/<code>stringr</code>, <code>stringdist</code>, and <code>RecordLinkage</code> (<a href="01-about.html" class="quarto-xref"><span>1&nbsp; About fast.string</span></a>), then a hands-on tour of every function group (<a href="02-quickstart.html" class="quarto-xref"><span>2&nbsp; Quickstart</span></a>).</li>
 <li>
-<strong>Under the hood</strong> — the algorithms (<a href="03-theory.html" class="quarto-xref"><span>3&nbsp; Algorithms under the hood</span></a>): how regex and fixed-literal matching differ, how the bit-parallel Jaro-Winkler implementation works, and how multi-token name comparison resolves reordered tokens — followed by a full worked record-linkage pipeline (<a href="04-record-linkage-workflow.html" class="quarto-xref"><span>4&nbsp; A worked record-linkage pipeline</span></a>) putting the pieces together.</li>
+<strong>Under the hood</strong> — the algorithms (<a href="03-theory.html" class="quarto-xref"><span>3&nbsp; Algorithms under the hood</span></a>): how regex and fixed-literal matching differ, how the bit-parallel Jaro-Winkler implementation works, how the phonetic schemes trade block size against recall, and how multi-token name comparison resolves reordered tokens — followed by a full worked record-linkage pipeline (<a href="04-record-linkage-workflow.html" class="quarto-xref"><span>4&nbsp; A worked record-linkage pipeline</span></a>) that takes a messy incoming batch through profiling, parsing, deduplication, multi-key blocking, scoring, and a defensible accept/review decision.</li>
 <li>
 <strong>Reference</strong> — an exhaustive per-function reference with every argument and runnable examples (<a href="05-function-reference.html" class="quarto-xref"><span>5&nbsp; Function reference</span></a>); the heavy benchmark chapter at <strong>3 million strings</strong>, with <code>base</code>, <code>stringi</code>, <code>stringdist</code>, and <code>RecordLinkage</code> as comparison baselines (<a href="06-benchmarks.html" class="quarto-xref"><span>6&nbsp; Benchmarks at scale</span></a>); and a troubleshooting/FAQ chapter (<a href="07-troubleshooting.html" class="quarto-xref"><span>7&nbsp; Troubleshooting &amp; FAQ</span></a>).</li>
 </ul></section><section id="a-quick-taste" class="level2"><h2 class="anchored" data-anchor-id="a-quick-taste">A quick taste</h2>
@@ -469,12 +471,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">base</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">grepl</a></span><span class="op">(</span><span class="st">"Smith"</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.05    0.00    0.05 </code></pre>
+   0.07    0.00    0.06 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fgrepl.html">fgrepl</a></span><span class="op">(</span><span class="st">"Smith"</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.01    0.00    0.02 </code></pre>
+   0.07    0.06    0.00 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/jaro_winkler_tokens.html">jaro_winkler_tokens</a></span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">

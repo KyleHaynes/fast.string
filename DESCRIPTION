@@ -9,9 +9,12 @@ Description: Fast equivalents of grepl(), grep(), sub(), and gsub() that
     use PCRE2 for regular expressions and prepared literal search for fixed
     strings, parallelised across CPU cores via Intel TBB through
     RcppParallel. Also provides byte- and Unicode-aware string similarities,
-    edit distances, and memory-efficient top-N fuzzy lookup without allocating
-    a full comparison matrix. Includes a reproducible benchmark harness for
-    measuring workload- and platform-specific performance.
+    edit distances, q-gram set and cosine similarity, phonetic blocking keys
+    (Soundex, Refined Soundex, NYSIIS, Cologne, Double Metaphone,
+    Caverphone), fixed-format date and timestamp parsing, and
+    memory-efficient top-N fuzzy lookup without allocating a full comparison
+    matrix. Includes a reproducible benchmark harness for measuring
+    workload- and platform-specific performance.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

@@ -422,10 +422,15 @@ window.Quarto = {
    
   <ul>
 <li><a href="#the-data" id="toc-the-data" class="nav-link active" data-scroll-target="#the-data"><span class="header-section-number">4.1</span> The data</a></li>
-  <li><a href="#step-1-normalise" id="toc-step-1-normalise" class="nav-link" data-scroll-target="#step-1-normalise"><span class="header-section-number">4.2</span> Step 1: normalise</a></li>
-  <li><a href="#step-2-block" id="toc-step-2-block" class="nav-link" data-scroll-target="#step-2-block"><span class="header-section-number">4.3</span> Step 2: block</a></li>
-  <li><a href="#step-3-score-within-each-block" id="toc-step-3-score-within-each-block" class="nav-link" data-scroll-target="#step-3-score-within-each-block"><span class="header-section-number">4.4</span> Step 3: score within each block</a></li>
-  <li><a href="#step-4-threshold" id="toc-step-4-threshold" class="nav-link" data-scroll-target="#step-4-threshold"><span class="header-section-number">4.5</span> Step 4: threshold</a></li>
+  <li><a href="#step-1-profile-before-you-match" id="toc-step-1-profile-before-you-match" class="nav-link" data-scroll-target="#step-1-profile-before-you-match"><span class="header-section-number">4.2</span> Step 1: profile before you match</a></li>
+  <li><a href="#step-2-parse-dates-and-timestamps" id="toc-step-2-parse-dates-and-timestamps" class="nav-link" data-scroll-target="#step-2-parse-dates-and-timestamps"><span class="header-section-number">4.3</span> Step 2: parse dates and timestamps</a></li>
+  <li><a href="#step-3-normalise-and-quarantine" id="toc-step-3-normalise-and-quarantine" class="nav-link" data-scroll-target="#step-3-normalise-and-quarantine"><span class="header-section-number">4.4</span> Step 3: normalise and quarantine</a></li>
+  <li><a href="#step-4-collapse-duplicates-inside-the-batch" id="toc-step-4-collapse-duplicates-inside-the-batch" class="nav-link" data-scroll-target="#step-4-collapse-duplicates-inside-the-batch"><span class="header-section-number">4.5</span> Step 4: collapse duplicates inside the batch</a></li>
+  <li><a href="#step-5-block-on-more-than-one-phonetic-key" id="toc-step-5-block-on-more-than-one-phonetic-key" class="nav-link" data-scroll-target="#step-5-block-on-more-than-one-phonetic-key"><span class="header-section-number">4.6</span> Step 5: block on more than one phonetic key</a></li>
+  <li><a href="#step-6-score-the-candidates" id="toc-step-6-score-the-candidates" class="nav-link" data-scroll-target="#step-6-score-the-candidates"><span class="header-section-number">4.7</span> Step 6: score the candidates</a></li>
+  <li><a href="#step-7-decide-and-admit-ambiguity" id="toc-step-7-decide-and-admit-ambiguity" class="nav-link" data-scroll-target="#step-7-decide-and-admit-ambiguity"><span class="header-section-number">4.8</span> Step 7: decide, and admit ambiguity</a></li>
+  <li><a href="#step-8-stamp-the-output" id="toc-step-8-stamp-the-output" class="nav-link" data-scroll-target="#step-8-stamp-the-output"><span class="header-section-number">4.9</span> Step 8: stamp the output</a></li>
+  <li><a href="#why-the-fast-versions-matter-here" id="toc-why-the-fast-versions-matter-here" class="nav-link" data-scroll-target="#why-the-fast-versions-matter-here"><span class="header-section-number">4.10</span> Why the fast versions matter here</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/04-record-linkage-workflow.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
@@ -445,30 +450,43 @@ window.Quarto = {
 
 
 </header><p>This chapter strings every piece from <a href="02-quickstart.html" class="quarto-xref"><span>Chapter 2</span></a> together into a single, realistic linkage pipeline: an incoming batch of records needs to be matched against a reference database. It’s the same shape of problem <code>examples_data_linkage.R</code> in the repo demonstrates, written out here as a narrative.</p>
+<p>The batch arrives the way batches actually arrive — names in mixed case with punctuation, dates as strings in a local format, a load timestamp per row, a junk record that should never have been sent, and the same person submitted twice. Getting from that to a defensible set of links is eight steps, and most of the functions in this package show up in one of them.</p>
 <section id="the-data" class="level2" data-number="4.1"><h2 data-number="4.1" class="anchored" data-anchor-id="the-data">
 <span class="header-section-number">4.1</span> The data</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
-<span>    id   <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span>,</span>
-<span>    name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"  JOHN O'BRIEN  "</span>, <span class="st">"MARY-JANE SMITH"</span>, <span class="st">"ROBERT BROWN"</span>, <span class="st">"Kyle John Haynes"</span><span class="op">)</span>,</span>
-<span>    dob  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1985-03-15"</span>, <span class="st">"1990-07-22"</span>, <span class="st">"1975-12-01"</span>, <span class="st">"1988-01-05"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    id       <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">7</span>,</span>
+<span>    name     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"  JOHN O'BRIEN  "</span>, <span class="st">"MARY-JANE SMITH"</span>, <span class="st">"ROBERT BROWN"</span>,</span>
+<span>                 <span class="st">"Kyle John Haynes"</span>, <span class="st">"Hans Müller"</span>, <span class="st">"UNKNOWN 00000000"</span>,</span>
+<span>                 <span class="st">"JOHN OBRIEN"</span><span class="op">)</span>,</span>
+<span>    dob      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"15/03/1985"</span>, <span class="st">"22/07/1990"</span>, <span class="st">"01/12/1975"</span>, <span class="st">"05/01/1988"</span>,</span>
+<span>                 <span class="st">"09/09/1971"</span>, <span class="st">"01/01/1900"</span>, <span class="st">"15/03/1985"</span><span class="op">)</span>,</span>
+<span>    received <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"2024-06-18 09:15:00"</span>, <span class="st">"2024-06-18 09:17:42"</span>,</span>
+<span>                 <span class="st">"2024-06-18 11:02:10"</span>, <span class="st">"2024-06-18 11:45:00"</span>,</span>
+<span>                 <span class="st">"2024-06-18 12:00:00"</span>, <span class="st">"2024-06-18 12:30:00"</span>,</span>
+<span>                 <span class="st">"2024-06-18 14:20:00"</span><span class="op">)</span>,</span>
 <span>    stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">reference</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
-<span>    ref_id <span class="op">=</span> <span class="fl">101</span><span class="op">:</span><span class="fl">105</span>,</span>
-<span>    name   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JON OBRIEN"</span>, <span class="st">"MARYANN SMITH"</span>, <span class="st">"ROB BROWN"</span>, <span class="st">"JOHN BRIEN"</span>, <span class="st">"Haynes John Kyle"</span><span class="op">)</span>,</span>
-<span>    dob    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1985-03-14"</span>, <span class="st">"1990-07-20"</span>, <span class="st">"1975-12-02"</span>, <span class="st">"1985-03-15"</span>, <span class="st">"1988-01-05"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    ref_id <span class="op">=</span> <span class="fl">101</span><span class="op">:</span><span class="fl">106</span>,</span>
+<span>    name   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JON OBRIEN"</span>, <span class="st">"MARYANN SMITH"</span>, <span class="st">"ROB BROWN"</span>, <span class="st">"JOHN BRIEN"</span>,</span>
+<span>               <span class="st">"Haynes John Kyle"</span>, <span class="st">"Hans Mueller"</span><span class="op">)</span>,</span>
+<span>    dob    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1985-03-14"</span>, <span class="st">"1990-07-20"</span>, <span class="st">"1975-12-02"</span>,</span>
+<span>                       <span class="st">"1985-03-15"</span>, <span class="st">"1988-01-05"</span>, <span class="st">"1971-09-09"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>    stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">incoming</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  id             name        dob
-1  1   JOHN O'BRIEN   1985-03-15
-2  2  MARY-JANE SMITH 1990-07-22
-3  3     ROBERT BROWN 1975-12-01
-4  4 Kyle John Haynes 1988-01-05</code></pre>
+<pre><code>  id             name        dob            received
+1  1   JOHN O'BRIEN   15/03/1985 2024-06-18 09:15:00
+2  2  MARY-JANE SMITH 22/07/1990 2024-06-18 09:17:42
+3  3     ROBERT BROWN 01/12/1975 2024-06-18 11:02:10
+4  4 Kyle John Haynes 05/01/1988 2024-06-18 11:45:00
+5  5      Hans Müller 09/09/1971 2024-06-18 12:00:00
+6  6 UNKNOWN 00000000 01/01/1900 2024-06-18 12:30:00
+7  7      JOHN OBRIEN 15/03/1985 2024-06-18 14:20:00</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">reference</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -477,99 +495,357 @@ window.Quarto = {
 2    102    MARYANN SMITH 1990-07-20
 3    103        ROB BROWN 1975-12-02
 4    104       JOHN BRIEN 1985-03-15
-5    105 Haynes John Kyle 1988-01-05</code></pre>
+5    105 Haynes John Kyle 1988-01-05
+6    106     Hans Mueller 1971-09-09</code></pre>
 </div>
 </div>
-<p>Four incoming records, five reference records, deliberately messy: inconsistent casing, stray whitespace, punctuation, typos, one straight-up near-duplicate (<code>"JOHN BRIEN"</code> vs.&nbsp;<code>"JOHN O'BRIEN"</code>), and one fully reordered multi-token name (<code>"Kyle John Haynes"</code> vs. <code>"Haynes John Kyle"</code>).</p>
-</section><section id="step-1-normalise" class="level2" data-number="4.2"><h2 data-number="4.2" class="anchored" data-anchor-id="step-1-normalise">
-<span class="header-section-number">4.2</span> Step 1: normalise</h2>
-<p>Strip punctuation and whitespace inconsistencies <em>before</em> comparing, so the comparison step measures genuine name similarity rather than formatting noise.</p>
+<p>Seven incoming records, six reference records, deliberately messy: inconsistent casing, stray whitespace, punctuation, typos, a near-duplicate in the reference file (<code>"JOHN BRIEN"</code> vs.&nbsp;<code>"JON OBRIEN"</code>), a fully reordered multi-token name (<code>"Kyle John Haynes"</code> vs.&nbsp;<code>"Haynes John Kyle"</code>), a German name spelled two ways (<code>"Hans Müller"</code> vs.&nbsp;<code>"Hans Mueller"</code>), a placeholder record (<code>"UNKNOWN 00000000"</code>), and one person submitted twice in the same batch (ids 1 and 7).</p>
+</section><section id="step-1-profile-before-you-match" class="level2" data-number="4.2"><h2 data-number="4.2" class="anchored" data-anchor-id="step-1-profile-before-you-match">
+<span class="header-section-number">4.2</span> Step 1: profile before you match</h2>
+<p>The cheapest way to improve a linkage run is to not feed it rubbish. <code>fcount()</code> counts non-overlapping matches per element, which makes column-level quality rules one vectorised call each: how many digits are in a name field (a name with digits is almost always a placeholder or a concatenated identifier), and how many tokens a name has.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span><span class="op">$</span><span class="va">name_clean</span>  <span class="op">&lt;-</span> <span class="fu">fchartr</span><span class="op">(</span><span class="st">"'-"</span>, <span class="st">"  "</span>, <span class="fu">ftrimws</span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">name</span><span class="op">)</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span><span class="op">$</span><span class="va">n_digits</span> <span class="op">&lt;-</span> <span class="fu">fcount</span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">incoming</span><span class="op">$</span><span class="va">name</span><span class="op">)</span></span>
+<span><span class="va">incoming</span><span class="op">$</span><span class="va">n_tokens</span> <span class="op">&lt;-</span> <span class="fu">fcount</span><span class="op">(</span><span class="st">" +"</span>, <span class="fu">ftrimws</span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">name</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1L</span></span>
+<span></span>
+<span><span class="va">incoming</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name"</span>, <span class="st">"n_digits"</span>, <span class="st">"n_tokens"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  id             name n_digits n_tokens
+1  1   JOHN O'BRIEN          0        2
+2  2  MARY-JANE SMITH        0        2
+3  3     ROBERT BROWN        0        2
+4  4 Kyle John Haynes        0        3
+5  5      Hans Müller        0        2
+6  6 UNKNOWN 00000000        8        2
+7  7      JOHN OBRIEN        0        2</code></pre>
+</div>
+</div>
+<p>Record 6 is the placeholder. <code>fcount()</code> is the counting counterpart to <code>fgrepl()</code> — same PCRE2 and prepared-fixed-string engines, same parallel dispatch — and replaces the <code>vapply(gregexpr(...), length, ...)</code> idiom, which allocates a match-position vector per row just to take its length and needs two explicit branches to reproduce <code>fcount()</code>’s <code>NA</code>-and-zero handling:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html">identical</a></span><span class="op">(</span></span>
+<span>    <span class="fu">fcount</span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">incoming</span><span class="op">$</span><span class="va">name</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">gregexpr</a></span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">incoming</span><span class="op">$</span><span class="va">name</span><span class="op">)</span>,</span>
+<span>           <span class="kw">function</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">m</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="cn">NA_integer_</span></span>
+<span>                       <span class="kw">else</span> <span class="kw">if</span> <span class="op">(</span><span class="va">m</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;</span> <span class="fl">0L</span><span class="op">)</span> <span class="fl">0L</span> <span class="kw">else</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span>,</span>
+<span>           <span class="fu"><a href="https://rdrr.io/r/base/integer.html">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] TRUE</code></pre>
+</div>
+</div>
+</section><section id="step-2-parse-dates-and-timestamps" class="level2" data-number="4.3"><h2 data-number="4.3" class="anchored" data-anchor-id="step-2-parse-dates-and-timestamps">
+<span class="header-section-number">4.3</span> Step 2: parse dates and timestamps</h2>
+<p>The batch carries dates as <code>DD/MM/YYYY</code> strings and a load timestamp per row. <code>fas.Date()</code> and <code>fas.POSIXct()</code> parse one fixed, locale-free shape each — no format guessing, no timezone-database lookup.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span><span class="op">$</span><span class="va">dob_date</span>    <span class="op">&lt;-</span> <span class="fu">fas.Date</span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">dob</span>, <span class="st">"dmy"</span><span class="op">)</span></span>
+<span><span class="va">incoming</span><span class="op">$</span><span class="va">received_ts</span> <span class="op">&lt;-</span> <span class="fu">fas.POSIXct</span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">received</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">incoming</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"dob"</span>, <span class="st">"dob_date"</span>, <span class="st">"received"</span>, <span class="st">"received_ts"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  id        dob   dob_date            received         received_ts
+1  1 15/03/1985 1985-03-15 2024-06-18 09:15:00 2024-06-18 09:15:00
+2  2 22/07/1990 1990-07-22 2024-06-18 09:17:42 2024-06-18 09:17:42
+3  3 01/12/1975 1975-12-01 2024-06-18 11:02:10 2024-06-18 11:02:10
+4  4 05/01/1988 1988-01-05 2024-06-18 11:45:00 2024-06-18 11:45:00
+5  5 09/09/1971 1971-09-09 2024-06-18 12:00:00 2024-06-18 12:00:00
+6  6 01/01/1900 1900-01-01 2024-06-18 12:30:00 2024-06-18 12:30:00
+7  7 15/03/1985 1985-03-15 2024-06-18 14:20:00 2024-06-18 14:20:00</code></pre>
+</div>
+</div>
+<p>The two functions differ in strictness, and it matters when you’re deciding which one is allowed to silently accept bad input. <code>fas.Date()</code> validates field ranges only (month 1-12, day 1-31), so an impossible calendar date rolls over; <code>fas.POSIXct()</code> validates the full calendar, including month lengths and leap years, and returns <code>NA</code>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.Date</span><span class="op">(</span><span class="st">"29/02/2023"</span>, <span class="st">"dmy"</span><span class="op">)</span>          <span class="co"># rolls over -- 2023 is not a leap year</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2023-03-01"</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.POSIXct</span><span class="op">(</span><span class="st">"2023-02-29 08:00:00"</span><span class="op">)</span>     <span class="co"># NA</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] NA</code></pre>
+</div>
+</div>
+<p>So <code>fas.POSIXct()</code> doubles as a validity check on the timestamp column, and an <code>NA</code> there is a legitimate reason to quarantine a row.</p>
+</section><section id="step-3-normalise-and-quarantine" class="level2" data-number="4.4"><h2 data-number="4.4" class="anchored" data-anchor-id="step-3-normalise-and-quarantine">
+<span class="header-section-number">4.4</span> Step 3: normalise and quarantine</h2>
+<p>Strip punctuation and whitespace inconsistencies <em>before</em> comparing, so the comparison step measures genuine name similarity rather than formatting noise — then set aside the rows the profile step flagged.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span><span class="op">$</span><span class="va">name_clean</span> <span class="op">&lt;-</span> <span class="fu">fgsub</span><span class="op">(</span><span class="st">" +"</span>, <span class="st">" "</span>, <span class="fu">fchartr</span><span class="op">(</span><span class="st">"'-"</span>, <span class="st">"  "</span>, <span class="fu">ftrimws</span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">name</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">reference</span><span class="op">$</span><span class="va">name_clean</span> <span class="op">&lt;-</span> <span class="fu">fchartr</span><span class="op">(</span><span class="st">"'-"</span>, <span class="st">"  "</span>, <span class="fu">ftrimws</span><span class="op">(</span><span class="va">reference</span><span class="op">$</span><span class="va">name</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">incoming</span><span class="op">$</span><span class="va">name_clean</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "JOHN O BRIEN"     "MARY JANE SMITH"  "ROBERT BROWN"     "Kyle John Haynes"</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">reference</span><span class="op">$</span><span class="va">name_clean</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "JON OBRIEN"       "MARYANN SMITH"    "ROB BROWN"        "JOHN BRIEN"       "Haynes John Kyle"</code></pre>
-</div>
-</div>
-<p>(<code>jaro_winkler_tokens()</code> does its own internal punctuation stripping and case-folding — see <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 5</span></a> — but normalising up front keeps this example explicit, and matters for <code>jaro_winkler()</code>/<code>jaro_winkler_matrix()</code>, which don’t.)</p>
-</section><section id="step-2-block" class="level2" data-number="4.3"><h2 data-number="4.3" class="anchored" data-anchor-id="step-2-block">
-<span class="header-section-number">4.3</span> Step 2: block</h2>
-<p>Comparing every incoming record against every reference record is <span class="math inline">\(O(n \times m)\)</span> — fine at this toy scale, prohibitive at millions of rows. <strong>Blocking</strong> groups records by a cheap, coarse key first (here: a month-year DOB key) and only compares records <em>within</em> the same block, cutting the number of pairwise comparisons by orders of magnitude in practice.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span><span class="op">$</span><span class="va">dob_block</span>  <span class="op">&lt;-</span> <span class="fu">fsubstr</span><span class="op">(</span><span class="fu">format_date</span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">dob</span>,  <span class="st">"compact"</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">6</span><span class="op">)</span></span>
-<span><span class="va">reference</span><span class="op">$</span><span class="va">dob_block</span> <span class="op">&lt;-</span> <span class="fu">fsubstr</span><span class="op">(</span><span class="fu">format_date</span><span class="op">(</span><span class="va">reference</span><span class="op">$</span><span class="va">dob</span>, <span class="st">"compact"</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">6</span><span class="op">)</span></span>
+<span><span class="va">usable</span> <span class="op">&lt;-</span> <span class="va">incoming</span><span class="op">$</span><span class="va">n_digits</span> <span class="op">==</span> <span class="fl">0L</span> <span class="op">&amp;</span></span>
+<span>    <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">dob_date</span><span class="op">)</span> <span class="op">&amp;</span></span>
+<span>    <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">received_ts</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">incoming</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name"</span>, <span class="st">"dob_block"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span><span class="va">quarantine</span> <span class="op">&lt;-</span> <span class="va">incoming</span><span class="op">[</span><span class="op">!</span><span class="va">usable</span>, <span class="op">]</span></span>
+<span><span class="va">batch</span>      <span class="op">&lt;-</span> <span class="va">incoming</span><span class="op">[</span><span class="va">usable</span>, <span class="op">]</span></span>
+<span></span>
+<span><span class="va">batch</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name_clean"</span>, <span class="st">"dob_date"</span>, <span class="st">"received_ts"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  id             name dob_block
-1  1   JOHN O'BRIEN      198503
-2  2  MARY-JANE SMITH    199007
-3  3     ROBERT BROWN    197512
-4  4 Kyle John Haynes    198801</code></pre>
+<pre><code>  id       name_clean   dob_date         received_ts
+1  1     JOHN O BRIEN 1985-03-15 2024-06-18 09:15:00
+2  2  MARY JANE SMITH 1990-07-22 2024-06-18 09:17:42
+3  3     ROBERT BROWN 1975-12-01 2024-06-18 11:02:10
+4  4 Kyle John Haynes 1988-01-05 2024-06-18 11:45:00
+5  5      Hans Müller 1971-09-09 2024-06-18 12:00:00
+7  7      JOHN OBRIEN 1985-03-15 2024-06-18 14:20:00</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">reference</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ref_id"</span>, <span class="st">"name"</span>, <span class="st">"dob_block"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">quarantine</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  ref_id             name dob_block
-1    101       JON OBRIEN    198503
-2    102    MARYANN SMITH    199007
-3    103        ROB BROWN    197512
-4    104       JOHN BRIEN    198503
-5    105 Haynes John Kyle    198801</code></pre>
+<pre><code>[1] 1</code></pre>
 </div>
 </div>
-<p>Soundex/NYSIIS codes (<a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>) are the other common blocking key, typically used <em>together</em> with a coarse date block — block on <code>soundex(last_name)</code> + birth year, for instance — to keep block sizes manageable while still catching records where the date itself has a typo.</p>
-</section><section id="step-3-score-within-each-block" class="level2" data-number="4.4"><h2 data-number="4.4" class="anchored" data-anchor-id="step-3-score-within-each-block">
-<span class="header-section-number">4.4</span> Step 3: score within each block</h2>
-<p>For the plain Jaro-Winkler and edit-distance methods, <code>fuzzy_match()</code> and <code>fuzzy_top_n()</code> perform this candidate scan directly without allocating an all-pairs score matrix. This example keeps the explicit loop because it uses the specialized token-reordering scorer, which is intentionally not yet part of the lookup method set.</p>
-<p>For each incoming record, find reference records sharing its block, then score name similarity only among those candidates. <code>jaro_winkler_tokens()</code> is used uniformly rather than switching between it and plain <code>jaro_winkler()</code>: it degenerates exactly to ordinary Jaro-Winkler when both names happen to have the same token count and order (<a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>), so there’s no accuracy cost on the “normal” records — and it correctly survives the one record (<code>"Kyle John Haynes"</code>) where the tokens are fully reordered, which plain <code>jaro_winkler()</code> would score badly.</p>
+<p>(<code>jaro_winkler_tokens()</code> does its own internal punctuation stripping and case-folding — see <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 5</span></a> — but normalising up front keeps this example explicit, and matters for <code>jaro_winkler()</code>/<code>jaro_winkler_matrix()</code> and the q-gram metrics, which don’t.)</p>
+</section><section id="step-4-collapse-duplicates-inside-the-batch" class="level2" data-number="4.5"><h2 data-number="4.5" class="anchored" data-anchor-id="step-4-collapse-duplicates-inside-the-batch">
+<span class="header-section-number">4.5</span> Step 4: collapse duplicates inside the batch</h2>
+<p>Ids 1 and 7 are the same person, sent twice. Deduplicating <em>before</em> matching keeps a single incoming record from generating two competing links to the same reference row. The parsed timestamp decides which copy survives — last write wins.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">match_one</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">rec</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">candidates</span> <span class="op">&lt;-</span> <span class="va">reference</span><span class="op">[</span><span class="va">reference</span><span class="op">$</span><span class="va">dob_block</span> <span class="op">==</span> <span class="va">rec</span><span class="op">$</span><span class="va">dob_block</span>, <span class="op">]</span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">candidates</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0L</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/function.html">return</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
-<span>    <span class="va">scores</span> <span class="op">&lt;-</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="va">rec</span><span class="op">$</span><span class="va">name_clean</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">candidates</span><span class="op">)</span><span class="op">)</span>, <span class="va">candidates</span><span class="op">$</span><span class="va">name_clean</span><span class="op">)</span></span>
-<span>    <span class="va">candidates</span><span class="op">$</span><span class="va">score</span> <span class="op">&lt;-</span> <span class="va">scores</span></span>
-<span>    <span class="va">candidates</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">candidates</span><span class="op">$</span><span class="va">score</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ref_id"</span>, <span class="st">"name"</span>, <span class="st">"score"</span><span class="op">)</span><span class="op">]</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">batch</span><span class="op">$</span><span class="va">dedupe_key</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu">fgsub</span><span class="op">(</span><span class="st">" "</span>, <span class="st">""</span>, <span class="fu"><a href="https://rdrr.io/r/base/chartr.html">toupper</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">name_clean</span><span class="op">)</span><span class="op">)</span>, <span class="va">batch</span><span class="op">$</span><span class="va">dob_date</span><span class="op">)</span></span>
+<span><span class="va">batch</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"dedupe_key"</span>, <span class="st">"received_ts"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  id                dedupe_key         received_ts
+1  1     JOHNOBRIEN 1985-03-15 2024-06-18 09:15:00
+2  2  MARYJANESMITH 1990-07-22 2024-06-18 09:17:42
+3  3    ROBERTBROWN 1975-12-01 2024-06-18 11:02:10
+4  4 KYLEJOHNHAYNES 1988-01-05 2024-06-18 11:45:00
+5  5     HANSMÜLLER 1971-09-09 2024-06-18 12:00:00
+7  7     JOHNOBRIEN 1985-03-15 2024-06-18 14:20:00</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">batch</span> <span class="op">&lt;-</span> <span class="va">batch</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">dedupe_key</span>, <span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">received_ts</span><span class="op">)</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">batch</span> <span class="op">&lt;-</span> <span class="va">batch</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html">duplicated</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">dedupe_key</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">batch</span> <span class="op">&lt;-</span> <span class="va">batch</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">id</span><span class="op">)</span>, <span class="op">]</span></span>
+<span></span>
+<span><span class="va">batch</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name_clean"</span>, <span class="st">"dob_date"</span>, <span class="st">"received_ts"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  id       name_clean   dob_date         received_ts
+2  2  MARY JANE SMITH 1990-07-22 2024-06-18 09:17:42
+3  3     ROBERT BROWN 1975-12-01 2024-06-18 11:02:10
+4  4 Kyle John Haynes 1988-01-05 2024-06-18 11:45:00
+5  5      Hans Müller 1971-09-09 2024-06-18 12:00:00
+7  7      JOHN OBRIEN 1985-03-15 2024-06-18 14:20:00</code></pre>
+</div>
+</div>
+<p>Record 1 (09:15) is dropped in favour of record 7 (14:20). Note that this step only catches duplicates that normalise to the <em>same</em> string — genuinely fuzzy within-batch duplicates need the same scoring machinery as the linkage itself, run with <code>batch</code> on both sides.</p>
+</section><section id="step-5-block-on-more-than-one-phonetic-key" class="level2" data-number="4.6"><h2 data-number="4.6" class="anchored" data-anchor-id="step-5-block-on-more-than-one-phonetic-key">
+<span class="header-section-number">4.6</span> Step 5: block on more than one phonetic key</h2>
+<p>Comparing every incoming record against every reference record is <span class="math inline">\(O(n \times m)\)</span> — fine at this toy scale, prohibitive at millions of rows. <strong>Blocking</strong> groups records by a cheap, coarse key first and only compares records <em>within</em> the same block.</p>
+<p>The classic key is <code>soundex()</code> on a surname, but a single key inherits that scheme’s blind spots. Two of the additions here exist precisely to cover different ones:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">german</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Müller"</span>, <span class="st">"Mueller"</span>, <span class="st">"Miller"</span>, <span class="st">"Meier"</span>, <span class="st">"Meyer"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    name    <span class="op">=</span> <span class="va">german</span>,</span>
+<span>    soundex <span class="op">=</span> <span class="fu">soundex</span><span class="op">(</span><span class="va">german</span><span class="op">)</span>,</span>
+<span>    refined <span class="op">=</span> <span class="fu">refined_soundex</span><span class="op">(</span><span class="va">german</span><span class="op">)</span>,</span>
+<span>    cologne <span class="op">=</span> <span class="fu">cologne</span><span class="op">(</span><span class="va">german</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     name soundex refined cologne
+1  Müller    M460   M8709     657
+2 Mueller    M460  M80709     657
+3  Miller    M460  M80709     657
+4   Meier    M600    M809      67
+5   Meyer    M600    M809      67</code></pre>
+</div>
+</div>
+<p>Read that table in the direction of <em>how much each key merges</em>. Classic <code>soundex()</code> does catch <code>"Müller"</code>/<code>"Mueller"</code> here — but only as a side effect of discarding vowels entirely, which is also why it drops <code>"Miller"</code> in with them and collapses <code>"Meier"</code>/<code>"Meyer"</code> to a single <code>M600</code>. That bluntness is the thing you’re trying to get away from at scale: coarse keys make big blocks, and big blocks are what blocking exists to avoid.</p>
+<p><code>refined_soundex()</code> is the precise end. It encodes vowels rather than discarding them and doesn’t truncate, so blocks get smaller — but the umlaut isn’t an ASCII vowel it can encode, so it splits <code>"Müller"</code> (<code>M8709</code>) from <code>"Mueller"</code> (<code>M80709</code>) and on its own would never make that pair a candidate. <code>cologne()</code> folds umlauts by design and gives both <code>657</code>, while staying coarse enough to pull <code>"Miller"</code> in too.</p>
+<p>Neither key is right on its own, and that’s the point: running both and unioning the candidate sets recovers the specific pair the precise key misses without adopting the coarse key’s block sizes everywhere else. <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> quantifies the selectivity difference across a wider surname list.</p>
+<p>Because names arrive in inconsistent token order, block on the phonetic code of <em>every</em> token rather than a positional “surname” — a record is a candidate if it shares any token code, within the same birth year.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">block_keys</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ids</span>, <span class="va">names_vec</span>, <span class="va">years</span>, <span class="va">scheme</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">toks</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/strsplit.html">strsplit</a></span><span class="op">(</span><span class="va">names_vec</span>, <span class="st">" +"</span><span class="op">)</span></span>
+<span>    <span class="va">codes</span> <span class="op">&lt;-</span> <span class="fu">scheme</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="va">toks</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>        id    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="va">ids</span>, <span class="fu"><a href="https://rdrr.io/r/base/lengths.html">lengths</a></span><span class="op">(</span><span class="va">toks</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        key   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="va">codes</span>, <span class="st">":"</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="va">years</span>, <span class="fu"><a href="https://rdrr.io/r/base/lengths.html">lengths</a></span><span class="op">(</span><span class="va">toks</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        token <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="va">toks</span><span class="op">)</span>,</span>
+<span>        stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>    <span class="op">)</span></span>
+<span>    <span class="va">out</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">codes</span><span class="op">)</span> <span class="op">&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/nchar.html">nzchar</a></span><span class="op">(</span><span class="va">codes</span><span class="op">)</span>, <span class="op">]</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">incoming</span><span class="op">)</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">match_one</span><span class="op">(</span><span class="va">incoming</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/function.html">return</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span>incoming_id <span class="op">=</span> <span class="va">incoming</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, incoming_name <span class="op">=</span> <span class="va">incoming</span><span class="op">$</span><span class="va">name</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="va">res</span><span class="op">)</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">results</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span><span class="va">inc_year</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">dob_date</span>, <span class="st">"%Y"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ref_year</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="va">reference</span><span class="op">$</span><span class="va">dob</span>, <span class="st">"%Y"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">inc_keys</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/transform.html">transform</a></span><span class="op">(</span><span class="fu">block_keys</span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">id</span>, <span class="va">batch</span><span class="op">$</span><span class="va">name_clean</span>, <span class="va">inc_year</span>, <span class="va">refined_soundex</span><span class="op">)</span>,</span>
+<span>              scheme <span class="op">=</span> <span class="st">"refined_soundex"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/transform.html">transform</a></span><span class="op">(</span><span class="fu">block_keys</span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">id</span>, <span class="va">batch</span><span class="op">$</span><span class="va">name_clean</span>, <span class="va">inc_year</span>, <span class="va">cologne</span><span class="op">)</span>,</span>
+<span>              scheme <span class="op">=</span> <span class="st">"cologne"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">ref_keys</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/transform.html">transform</a></span><span class="op">(</span><span class="fu">block_keys</span><span class="op">(</span><span class="va">reference</span><span class="op">$</span><span class="va">ref_id</span>, <span class="va">reference</span><span class="op">$</span><span class="va">name_clean</span>, <span class="va">ref_year</span>, <span class="va">refined_soundex</span><span class="op">)</span>,</span>
+<span>              scheme <span class="op">=</span> <span class="st">"refined_soundex"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/transform.html">transform</a></span><span class="op">(</span><span class="fu">block_keys</span><span class="op">(</span><span class="va">reference</span><span class="op">$</span><span class="va">ref_id</span>, <span class="va">reference</span><span class="op">$</span><span class="va">name_clean</span>, <span class="va">ref_year</span>, <span class="va">cologne</span><span class="op">)</span>,</span>
+<span>              scheme <span class="op">=</span> <span class="st">"cologne"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">ref_keys</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ref_id"</span>, <span class="st">"ref_token"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="va">inc_keys</span>, <span class="fl">8</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  incoming_id    incoming_name ref_id             name     score
-4           1   JOHN O'BRIEN      104       JOHN BRIEN 0.9800000
-1           1   JOHN O'BRIEN      101       JON OBRIEN 0.9733333
-2           2  MARY-JANE SMITH    102    MARYANN SMITH 0.9525641
-3           3     ROBERT BROWN    103        ROB BROWN 0.9416667
-5           4 Kyle John Haynes    105 Haynes John Kyle 1.0000000</code></pre>
+<pre><code>  id          key  token          scheme
+1  2   M8090:1990   MARY refined_soundex
+2  2   J4080:1990   JANE refined_soundex
+3  2  S38060:1990  SMITH refined_soundex
+4  3 R901096:1975 ROBERT refined_soundex
+5  3   B1908:1975  BROWN refined_soundex
+6  4   K3070:1988   Kyle refined_soundex
+7  4    J408:1988   John refined_soundex
+8  4   H0803:1988 Haynes refined_soundex</code></pre>
 </div>
 </div>
-</section><section id="step-4-threshold" class="level2" data-number="4.5"><h2 data-number="4.5" class="anchored" data-anchor-id="step-4-threshold">
-<span class="header-section-number">4.5</span> Step 4: threshold</h2>
-<p>Apply a similarity cutoff to decide which candidate pairs are accepted as links. 0.85 is a common starting point for Jaro-Winkler on names; the right value depends on your data and how costly false positives/negatives are relative to each other — tune it against a labelled sample if you have one.</p>
+<p>The whole exploded token vector is encoded in one vectorised call per scheme, so the per-token cost is a parallel C++ pass rather than an R-level loop over records.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">all_results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">results</span><span class="op">)</span></span>
-<span><span class="va">threshold</span> <span class="op">&lt;-</span> <span class="fl">0.85</span></span>
-<span><span class="va">links</span> <span class="op">&lt;-</span> <span class="va">all_results</span><span class="op">[</span><span class="va">all_results</span><span class="op">$</span><span class="va">score</span> <span class="op">&gt;=</span> <span class="va">threshold</span>, <span class="op">]</span></span>
-<span><span class="va">links</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html">duplicated</a></span><span class="op">(</span><span class="va">links</span><span class="op">$</span><span class="va">incoming_id</span><span class="op">)</span>, <span class="op">]</span>  <span class="co"># best link per incoming record</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">hits</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/merge.html">merge</a></span><span class="op">(</span><span class="va">inc_keys</span>, <span class="va">ref_keys</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"key"</span>, <span class="st">"scheme"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">hits</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"ref_id"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">id</span>, <span class="va">pairs</span><span class="op">$</span><span class="va">ref_id</span><span class="op">)</span>, <span class="op">]</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  incoming_id    incoming_name ref_id             name     score
-4           1   JOHN O'BRIEN      104       JOHN BRIEN 0.9800000
-2           2  MARY-JANE SMITH    102    MARYANN SMITH 0.9525641
-3           3     ROBERT BROWN    103        ROB BROWN 0.9416667
-5           4 Kyle John Haynes    105 Haynes John Kyle 1.0000000</code></pre>
+<pre><code>[1] 6</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">batch</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">reference</span><span class="op">)</span>   <span class="co"># the full cross product this replaces</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 30</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pairs</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   id ref_id
+10  2    102
+7   3    103
+4   4    105
+5   5    106
+1   7    101
+2   7    104</code></pre>
 </div>
 </div>
-<p>Every incoming record links to its obvious match, including the fully reordered <code>"Kyle John Haynes"</code> → <code>"Haynes John Kyle"</code> pair — the one case in this dataset where plain <code>jaro_winkler()</code> would have scored well below threshold and <code>jaro_winkler_tokens()</code> is doing real work, not just matching what character-level comparison already would have.</p>
-<p><a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> now scales the comparison step of this exact pipeline shape up to 3 million rows.</p>
+<p>Six candidate pairs instead of thirty. At this scale that saving is cosmetic; the point is the ratio, which is what survives to five million rows — and that every true match is still in the set.</p>
+<p>Keeping the token alongside the key makes the blocking step auditable — you can ask <em>why</em> any given pair is a candidate, which matters when you’re tuning keys and need to know which one is carrying the recall:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">hits</span><span class="op">[</span><span class="va">hits</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="fl">5</span> <span class="op">&amp;</span> <span class="va">hits</span><span class="op">$</span><span class="va">ref_id</span> <span class="op">==</span> <span class="fl">106</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"scheme"</span>, <span class="st">"token"</span>, <span class="st">"ref_token"</span>, <span class="st">"key"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            scheme  token ref_token       key
+5          cologne   Hans      Hans  068:1971
+9          cologne Müller   Mueller  657:1971
+13 refined_soundex   Hans      Hans H083:1971</code></pre>
+</div>
+</div>
+<p>Note what this says, and what it doesn’t. The <code>"Hans Müller"</code> pair is reachable under <em>both</em> schemes, because the given name is identical and <code>refined_soundex()</code> blocks it happily. Cologne’s contribution is the second row: it is the only one of the two that also links the <em>surnames</em> (<code>"Müller"</code>/<code>"Mueller"</code> → <code>657</code>). On this batch that’s redundant — but given names disagree across systems constantly (<code>"Hans"</code>/<code>"Johann"</code>/<code>"H"</code>), and when they do, that surname key is the only thing keeping the pair alive.</p>
+</section><section id="step-6-score-the-candidates" class="level2" data-number="4.7"><h2 data-number="4.7" class="anchored" data-anchor-id="step-6-score-the-candidates">
+<span class="header-section-number">4.7</span> Step 6: score the candidates</h2>
+<p>Score name similarity only among surviving candidates, with two deliberately different metrics. <code>jaro_winkler_tokens()</code> compares names token by token and is insensitive to token order by construction. <code>cosine_similarity()</code> compares q-gram <em>frequency profiles</em> across the whole string, so it is order-sensitive and weights repeated q-grams — an independent signal rather than a restatement of the first.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pairs</span><span class="op">$</span><span class="va">name_a</span>  <span class="op">&lt;-</span> <span class="va">batch</span><span class="op">$</span><span class="va">name_clean</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html">match</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">id</span>, <span class="va">batch</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">pairs</span><span class="op">$</span><span class="va">name_b</span>  <span class="op">&lt;-</span> <span class="va">reference</span><span class="op">$</span><span class="va">name_clean</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html">match</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">ref_id</span>, <span class="va">reference</span><span class="op">$</span><span class="va">ref_id</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">pairs</span><span class="op">$</span><span class="va">dob_gap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/integer.html">as.integer</a></span><span class="op">(</span></span>
+<span>    <span class="va">batch</span><span class="op">$</span><span class="va">dob_date</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html">match</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">id</span>, <span class="va">batch</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">]</span> <span class="op">-</span></span>
+<span>    <span class="va">reference</span><span class="op">$</span><span class="va">dob</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html">match</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">ref_id</span>, <span class="va">reference</span><span class="op">$</span><span class="va">ref_id</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">pairs</span><span class="op">$</span><span class="va">jw</span>  <span class="op">&lt;-</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">name_a</span>, <span class="va">pairs</span><span class="op">$</span><span class="va">name_b</span>, ignore_case <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">pairs</span><span class="op">$</span><span class="va">cos</span> <span class="op">&lt;-</span> <span class="fu">cosine_similarity</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/chartr.html">toupper</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">name_a</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/chartr.html">toupper</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">name_b</span><span class="op">)</span>, q <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">pairs</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">id</span>, <span class="op">-</span><span class="va">pairs</span><span class="op">$</span><span class="va">jw</span><span class="op">)</span>,</span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name_a"</span>, <span class="st">"ref_id"</span>, <span class="st">"name_b"</span>, <span class="st">"jw"</span>, <span class="st">"cos"</span>, <span class="st">"dob_gap"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   id           name_a ref_id           name_b        jw       cos dob_gap
+10  2  MARY JANE SMITH    102    MARYANN SMITH 0.9525641 0.6943651       2
+7   3     ROBERT BROWN    103        ROB BROWN 0.9416667 0.7893522       1
+4   4 Kyle John Haynes    105 Haynes John Kyle 1.0000000 0.8666667       0
+5   5      Hans Müller    106     Hans Mueller 0.9142857 0.7272727       0
+2   7      JOHN OBRIEN    104       JOHN BRIEN 0.9800000 0.8432740       0
+1   7      JOHN OBRIEN    101       JON OBRIEN 0.9733333 0.8432740       1</code></pre>
+</div>
+</div>
+<p>The two scores disagree in informative ways. <code>"Kyle John Haynes"</code> vs. <code>"Haynes John Kyle"</code> is a perfect <code>1.000</code> under token comparison — every token has an exact partner — but <code>0.867</code> under cosine, which sees the reordering as changed bigrams across token boundaries. That gap <em>is</em> the information: a high <code>jw</code> with a lower <code>cos</code> says “same tokens, different arrangement”, which is a different kind of evidence from “same arrangement, one typo”.</p>
+</section><section id="step-7-decide-and-admit-ambiguity" class="level2" data-number="4.8"><h2 data-number="4.8" class="anchored" data-anchor-id="step-7-decide-and-admit-ambiguity">
+<span class="header-section-number">4.8</span> Step 7: decide, and admit ambiguity</h2>
+<p>Apply a cutoff to decide which candidate pairs are accepted as links. 0.85 is a common starting point for Jaro-Winkler on names; the right value depends on your data and how costly false positives/negatives are relative to each other — tune it against a labelled sample if you have one. The date gap is a second field-level filter, tolerating a small typo in the day or month without accepting an unrelated birth date.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">[</span><span class="va">pairs</span><span class="op">$</span><span class="va">jw</span> <span class="op">&gt;=</span> <span class="fl">0.85</span> <span class="op">&amp;</span> <span class="va">pairs</span><span class="op">$</span><span class="va">dob_gap</span> <span class="op">&lt;=</span> <span class="fl">2</span>, <span class="op">]</span></span>
+<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="va">accepted</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="va">accepted</span><span class="op">$</span><span class="va">id</span>, <span class="op">-</span><span class="va">accepted</span><span class="op">$</span><span class="va">jw</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">accepted</span><span class="op">$</span><span class="va">ambiguous</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">accepted</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">accepted</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">]</span> <span class="op">&gt;</span> <span class="fl">1L</span></span>
+<span></span>
+<span><span class="va">accepted</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name_a"</span>, <span class="st">"ref_id"</span>, <span class="st">"name_b"</span>, <span class="st">"jw"</span>, <span class="st">"cos"</span>, <span class="st">"dob_gap"</span>, <span class="st">"ambiguous"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   id           name_a ref_id           name_b        jw       cos dob_gap ambiguous
+10  2  MARY JANE SMITH    102    MARYANN SMITH 0.9525641 0.6943651       2     FALSE
+7   3     ROBERT BROWN    103        ROB BROWN 0.9416667 0.7893522       1     FALSE
+4   4 Kyle John Haynes    105 Haynes John Kyle 1.0000000 0.8666667       0     FALSE
+5   5      Hans Müller    106     Hans Mueller 0.9142857 0.7272727       0     FALSE
+2   7      JOHN OBRIEN    104       JOHN BRIEN 0.9800000 0.8432740       0      TRUE
+1   7      JOHN OBRIEN    101       JON OBRIEN 0.9733333 0.8432740       1      TRUE</code></pre>
+</div>
+</div>
+<p>Every incoming record links to its obvious match, including the fully reordered <code>"Kyle John Haynes"</code> → <code>"Haynes John Kyle"</code> pair — the one case in this dataset where plain <code>jaro_winkler()</code> would have scored well below threshold and <code>jaro_winkler_tokens()</code> is doing real work — and the <code>"Hans Müller"</code> → <code>"Hans Mueller"</code> pair, which clears the threshold at <code>0.914</code> despite the umlaut, because token comparison is scoring the characters rather than a phonetic key.</p>
+<p>Record 7 is the honest case. It has two surviving candidates, <code>0.980</code> and <code>0.973</code>, and <em>identical</em> cosine scores of <code>0.843</code>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">best</span>   <span class="op">&lt;-</span> <span class="va">accepted</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html">duplicated</a></span><span class="op">(</span><span class="va">accepted</span><span class="op">$</span><span class="va">id</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">second</span> <span class="op">&lt;-</span> <span class="va">accepted</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html">duplicated</a></span><span class="op">(</span><span class="va">accepted</span><span class="op">$</span><span class="va">id</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">best</span><span class="op">$</span><span class="va">margin</span> <span class="op">&lt;-</span> <span class="va">best</span><span class="op">$</span><span class="va">jw</span> <span class="op">-</span> <span class="va">second</span><span class="op">$</span><span class="va">jw</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html">match</a></span><span class="op">(</span><span class="va">best</span><span class="op">$</span><span class="va">id</span>, <span class="va">second</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span><span class="va">best</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name_a"</span>, <span class="st">"ref_id"</span>, <span class="st">"name_b"</span>, <span class="st">"jw"</span>, <span class="st">"cos"</span>, <span class="st">"margin"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   id           name_a ref_id           name_b        jw       cos      margin
+10  2  MARY JANE SMITH    102    MARYANN SMITH 0.9525641 0.6943651          NA
+7   3     ROBERT BROWN    103        ROB BROWN 0.9416667 0.7893522          NA
+4   4 Kyle John Haynes    105 Haynes John Kyle 1.0000000 0.8666667          NA
+5   5      Hans Müller    106     Hans Mueller 0.9142857 0.7272727          NA
+2   7      JOHN OBRIEN    104       JOHN BRIEN 0.9800000 0.8432740 0.006666667</code></pre>
+</div>
+</div>
+<p>A margin of 0.007 between the top two candidates is not a decision, it’s a coin toss with extra steps. The second metric doesn’t break the tie here — it agrees — and that agreement is itself the finding: <code>"JOHN OBRIEN"</code> is genuinely close to both <code>"JOHN BRIEN"</code> and <code>"JON OBRIEN"</code>, and no threshold on this evidence can tell you which. The right output is a review queue, not a link. Routing thin-margin pairs to clerical review, rather than letting <code>!duplicated()</code> silently pick the first row, is the difference between a linkage you can defend and one you can’t.</p>
+</section><section id="step-8-stamp-the-output" class="level2" data-number="4.9"><h2 data-number="4.9" class="anchored" data-anchor-id="step-8-stamp-the-output">
+<span class="header-section-number">4.9</span> Step 8: stamp the output</h2>
+<p>Downstream loads need to know which batch they’re looking at. <code>format_datetime()</code> writes the batch watermark without a timezone-database lookup, in UTC or at one fixed offset for a local-time report:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">watermark</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">received_ts</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">format_datetime</span><span class="op">(</span><span class="va">watermark</span>, <span class="st">"rfc3339"</span><span class="op">)</span>                        <span class="co"># UTC, for the audit log</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2024-06-18T14:20:00Z"</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">format_datetime</span><span class="op">(</span><span class="va">watermark</span>, <span class="st">"iso_offset"</span>, offset <span class="op">=</span> <span class="st">"+10:00"</span><span class="op">)</span>  <span class="co"># local time, for humans</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2024-06-19T00:20:00+10:00"</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">format_datetime</span><span class="op">(</span><span class="va">watermark</span>, <span class="st">"compact"</span><span class="op">)</span>                        <span class="co"># sortable partition key</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "20240618142000"</code></pre>
+</div>
+</div>
+<p><code>"iso_offset"</code> applies one fixed numeric offset to every value — it is not a timezone. It has no daylight-saving rules, so a batch spanning a DST boundary needs <code><a href="https://rdrr.io/r/base/format.html">base::format()</a></code> with a real timezone; for stamping a single load with a known offset, this is the cheap and correct tool.</p>
+</section><section id="why-the-fast-versions-matter-here" class="level2" data-number="4.10"><h2 data-number="4.10" class="anchored" data-anchor-id="why-the-fast-versions-matter-here">
+<span class="header-section-number">4.10</span> Why the fast versions matter here</h2>
+<p>Steps 1 and 2 are the ones that quietly dominate a real batch load: they touch every row of every column, before any of the interesting matching work starts. A single timed run on this machine, over 300,000 rows:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">n</span>  <span class="op">&lt;-</span> <span class="fl">3e5</span></span>
+<span><span class="va">nm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"John Smith"</span>, <span class="st">"Mary O'Brien"</span>, <span class="st">"Kyle J Haynes 12"</span><span class="op">)</span>, <span class="va">n</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>             <span class="st">" "</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">999</span>, <span class="va">n</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html">as.POSIXct</a></span><span class="op">(</span><span class="st">"2024-06-18 09:15:00"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">1e7</span>, <span class="va">n</span><span class="op">)</span>, <span class="st">"%Y-%m-%d %H:%M:%S"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">gregexpr</a></span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">nm</span><span class="op">)</span>,</span>
+<span>                   <span class="kw">function</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="va">m</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;</span> <span class="fl">0L</span><span class="op">)</span> <span class="fl">0L</span> <span class="kw">else</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+   1.74    0.11    1.83 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fcount</span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">nm</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+   0.02    0.00    0.01 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html">as.POSIXct</a></span><span class="op">(</span><span class="va">ts</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+   2.74    0.20    2.94 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb53"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fas.POSIXct</span><span class="op">(</span><span class="va">ts</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+   0.01    0.00    0.02 </code></pre>
+</div>
+</div>
+<p>Both are single runs on one machine and will vary with cores and input shape — <a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> is the chapter with the reproducible harness, and it scales the comparison step of this exact pipeline shape up to 3 million rows.</p>
 
 
 </section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">

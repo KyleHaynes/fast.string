@@ -9,6 +9,14 @@ fast_fixed_impl <- function(pattern, x, ignore_case, nthreads) {
     .Call(`_fast_string_fast_fixed_impl`, pattern, x, ignore_case, nthreads)
 }
 
+fast_regex_count_impl <- function(pattern, x, ignore_case, nthreads) {
+    .Call(`_fast_string_fast_regex_count_impl`, pattern, x, ignore_case, nthreads)
+}
+
+fast_fixed_count_impl <- function(pattern, x, ignore_case, nthreads) {
+    .Call(`_fast_string_fast_fixed_count_impl`, pattern, x, ignore_case, nthreads)
+}
+
 fast_regex_sub_impl <- function(pattern, replacement, x, ignore_case, global, nthreads) {
     .Call(`_fast_string_fast_regex_sub_impl`, pattern, replacement, x, ignore_case, global, nthreads)
 }
@@ -37,6 +45,14 @@ fast_parse_date_impl <- function(x, format_code) {
     .Call(`_fast_string_fast_parse_date_impl`, x, format_code)
 }
 
+fast_parse_datetime_impl <- function(x, format_code) {
+    .Call(`_fast_string_fast_parse_datetime_impl`, x, format_code)
+}
+
+fast_format_datetime_impl <- function(x, format_code, offset_minutes) {
+    .Call(`_fast_string_fast_format_datetime_impl`, x, format_code, offset_minutes)
+}
+
 fast_date_parts_impl <- function(x) {
     .Call(`_fast_string_fast_date_parts_impl`, x)
 }
@@ -59,6 +75,14 @@ fast_soundex_impl <- function(x) {
 
 fast_nysiis_impl <- function(x) {
     .Call(`_fast_string_fast_nysiis_impl`, x)
+}
+
+fast_refined_soundex_impl <- function(x) {
+    .Call(`_fast_string_fast_refined_soundex_impl`, x)
+}
+
+fast_cologne_impl <- function(x) {
+    .Call(`_fast_string_fast_cologne_impl`, x)
 }
 
 fast_double_metaphone_impl <- function(x) {
@@ -163,5 +187,13 @@ fast_tversky_impl <- function(a, b, q, alpha, beta, nthreads) {
 
 fast_tversky_matrix_impl <- function(a, b, q, alpha, beta, nthreads) {
     .Call(`_fast_string_fast_tversky_matrix_impl`, a, b, q, alpha, beta, nthreads)
+}
+
+fast_cosine_impl <- function(a, b, q, nthreads) {
+    .Call(`_fast_string_fast_cosine_impl`, a, b, q, nthreads)
+}
+
+fast_cosine_matrix_impl <- function(a, b, q, nthreads) {
+    .Call(`_fast_string_fast_cosine_matrix_impl`, a, b, q, nthreads)
 }
 

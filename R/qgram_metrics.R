@@ -138,3 +138,35 @@ tversky_matrix <- function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL
         .as_nthreads(nthreads)
     )
 }
+
+#' Q-gram cosine similarity
+#'
+#' Builds frequency profiles of overlapping length-`q` substrings and returns
+#' their cosine similarity. Unlike [jaccard_index()], repeated q-grams retain
+#' their multiplicity. Packed integer q-grams and parallel pairwise dispatch
+#' avoid constructing an R-level count table for each comparison.
+#'
+#' @inheritParams qgram_metrics
+#' @return Numeric vector of similarities in `[0, 1]`, `length(a)` long.
+#'   Missing comparisons return `NA`. If neither string has a q-gram the
+#'   similarity is `1`; if only one does, it is `0`.
+#' @seealso [cosine_matrix()], [jaccard_index()]
+#' @examples
+#' cosine_similarity("night", "nacht")
+#' cosine_similarity("aaaa", "aaab", q = 2)
+#' @export
+cosine_similarity <- function(a, b, q = 2, nthreads = NULL) {
+    .qgram_validate(a, b, q)
+    fast_cosine_impl(a, b, as.integer(q), .as_nthreads(nthreads))
+}
+
+#' Q-gram cosine all-pairs similarity matrix
+#'
+#' @inheritParams jaccard_matrix
+#' @return Numeric matrix with `length(a)` rows and `length(b)` columns.
+#' @seealso [cosine_similarity()]
+#' @export
+cosine_matrix <- function(a, b, q = 2, nthreads = NULL) {
+    .qgram_validate_matrix(a, b, q)
+    fast_cosine_matrix_impl(a, b, as.integer(q), .as_nthreads(nthreads))
+}

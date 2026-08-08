@@ -457,6 +457,14 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;">yes (prepared byte search)</td>
 </tr>
 <tr class="even">
+<td>Per-element match counting</td>
+<td style="text-align: center;"><code>gregexpr()</code> + <code>length()</code></td>
+<td style="text-align: center;"><code>stri_count()</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;"><strong>yes, parallelised</strong> (<code>fcount()</code>)</td>
+</tr>
+<tr class="odd">
 <td>Multi-pattern substitution in one scan</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
@@ -464,13 +472,21 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;">—</td>
 <td style="text-align: center;"><strong>yes</strong> (<code>gsub_all()</code>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Fast fixed-format date parse/format</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">—</td>
 <td style="text-align: center;">—</td>
 <td style="text-align: center;"><strong>yes</strong></td>
+</tr>
+<tr class="odd">
+<td>Fast fixed-format timestamp parse/format</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;"><strong>yes</strong> (<code>fas.POSIXct()</code>, <code>format_datetime()</code>)</td>
 </tr>
 <tr class="even">
 <td>Soundex / NYSIIS phonetic codes</td>
@@ -481,6 +497,14 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;"><strong>yes, parallelised</strong></td>
 </tr>
 <tr class="odd">
+<td>Refined Soundex / Cologne phonetic codes</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;"><strong>yes</strong> (<code>refined_soundex()</code>, <code>cologne()</code>)</td>
+</tr>
+<tr class="even">
 <td>Double Metaphone / Caverphone 2.0</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
@@ -488,7 +512,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;">no</td>
 <td style="text-align: center;"><strong>yes</strong> (<code>double_metaphone()</code>, <code>caverphone()</code>)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Jaro-Winkler similarity</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
@@ -496,7 +520,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;"><code>jarowinkler()</code></td>
 <td style="text-align: center;"><strong>yes, parallelised</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Token-reorder-aware name comparison</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
@@ -504,7 +528,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;">no</td>
 <td style="text-align: center;"><strong>yes</strong> (<code>jaro_winkler_tokens()</code>)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Levenshtein / OSA / unrestricted Damerau-Levenshtein / Hamming</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
@@ -512,7 +536,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;">no</td>
 <td style="text-align: center;"><strong>yes, parallelised</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Best/top-N fuzzy table lookup without a score matrix</td>
 <td style="text-align: center;"><code>agrep()</code> (limited)</td>
 <td style="text-align: center;">no</td>
@@ -520,11 +544,19 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;">no</td>
 <td style="text-align: center;"><strong>yes</strong> (<code>fuzzy_match()</code>, <code>fuzzy_top_n()</code>)</td>
 </tr>
+<tr class="odd">
+<td>Jaccard / cosine q-gram similarity</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;"><code>stringdist(method="jaccard"/"cosine")</code></td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;"><strong>yes, parallelised</strong></td>
+</tr>
 <tr class="even">
-<td>Jaccard / Dice / Tversky q-gram similarity</td>
+<td>Dice / Tversky q-gram similarity</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
-<td style="text-align: center;"><code>stringdist(method="jaccard")</code> only</td>
+<td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;"><strong>yes, parallelised</strong></td>
 </tr>
@@ -541,7 +573,7 @@ ul.task-list li input[type="checkbox"] {
 <p>A few things worth calling out explicitly:</p>
 <ul>
 <li><strong>stringi/stringr</strong> are excellent, mature, and already parallel-friendly at the C level for many operations via ICU — but ICU’s regex engine and <code>fast.string</code>’s PCRE2 path land in similar performance territory for <em>regex</em>. Where <code>fast.string</code> pulls ahead is parallelism (stringi’s core loops are single-threaded; this package’s are TBB-parallel) and the data-linkage-specific functions stringi doesn’t have at all.</li>
-<li><strong>stringdist</strong> is the closest relative for the fuzzy-matching half of this package. <code>fast.string</code> now covers most of the same distance-metric ground (Levenshtein, OSA, unrestricted Damerau-Levenshtein, Hamming, Jaro-Winkler, Jaccard), plus a few <code>stringdist</code> doesn’t have at all (Dice, Tversky, token-reorder-aware comparison, fuzzywuzzy-style ratios). The benchmark chapter measures the overlapping kernels on the current checkout. What it still doesn’t have is the regex/substitution side or <code>stringdist</code>’s full breadth of more exotic metrics (cosine, LCS, full q-gram tabulation).</li>
+<li><strong>stringdist</strong> is the closest relative for the fuzzy-matching half of this package. <code>fast.string</code> now covers most of the same distance-metric ground (Levenshtein, OSA, unrestricted Damerau-Levenshtein, Hamming, Jaro-Winkler, Jaccard, cosine), plus a few <code>stringdist</code> doesn’t have at all (Dice, Tversky, token-reorder-aware comparison, fuzzywuzzy-style ratios). The benchmark chapter measures the overlapping kernels on the current checkout. What <code>stringdist</code> still has that this package doesn’t is LCS and raw q-gram-count distance — and it has nothing on the regex/substitution side, which is the other half of <code>fast.string</code>.</li>
 <li><strong>RecordLinkage</strong> is a full record-linkage <em>framework</em> (blocking, EM-based classification, training), not a string-function library. Its <code>soundex()</code>/<code>jarowinkler()</code> are useful comparison points (used directly in <a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a>) but solve a much narrower problem than the package itself.</li>
 </ul>
 <p><a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> puts numbers behind every row in that table at 3-million-row scale.</p>

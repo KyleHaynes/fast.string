@@ -91,3 +91,82 @@ fas.Date <- function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
     class(result) <- "Date"
     result
 }
+
+#' Fast fixed-format timestamp parsing
+#'
+#' Parses strict, locale-free timestamps directly into UTC seconds since the
+#' Unix epoch. Unlike [base::as.POSIXct()], this function does not consult a
+#' timezone database or try multiple formats. Calendar dates are validated,
+#' including month lengths and leap years.
+#'
+#' @param x Character vector. Malformed or out-of-range values become `NA`.
+#' @param format One of `"iso"` (`YYYY-MM-DD HH:MM:SS`), `"rfc3339"`
+#'   (`YYYY-MM-DDTHH:MM:SSZ`), `"compact"` (`YYYYMMDDHHMMSS`), or
+#'   `"iso_offset"` (`YYYY-MM-DDTHH:MM:SS+HH:MM`).
+#' @return A `POSIXct` vector in UTC with the same length and names as `x`.
+#' @seealso [format_datetime()], [fas.Date()]
+#' @export
+fas.POSIXct <- function(
+    x,
+    format = c("iso", "rfc3339", "compact", "iso_offset")
+) {
+    if (!is.character(x)) {
+        if (all(is.na(x))) x <- as.character(x)
+        else stop("`x` must be a character vector.")
+    }
+    format <- match.arg(format)
+    code <- switch(
+        format, iso = 0L, rfc3339 = 1L, compact = 2L, iso_offset = 3L
+    )
+    result <- .copy_names(fast_parse_datetime_impl(x, code), x)
+    structure(result, class = c("POSIXct", "POSIXt"), tzone = "UTC")
+}
+
+#' Fast fixed-format timestamp formatting
+#'
+#' Formats Unix-epoch seconds without locale or timezone-database overhead.
+#' The `"iso_offset"` form applies one fixed numeric offset to every value;
+#' other formats are emitted in UTC.
+#'
+#' @param x A `POSIXct` object or numeric vector of seconds since
+#'   1970-01-01 00:00:00 UTC.
+#' @param format One of the four formats accepted by [fas.POSIXct()].
+#' @param offset Fixed offset written by `format = "iso_offset"`, as `"Z"`
+#'   or a signed `"+HH:MM"`/`"-HH:MM"` string. It must be `"Z"` for other
+#'   formats.
+#' @return Character vector the same length as `x`.
+#' @seealso [fas.POSIXct()], [format_date()]
+#' @export
+format_datetime <- function(
+    x,
+    format = c("iso", "rfc3339", "compact", "iso_offset"),
+    offset = "Z"
+) {
+    if (inherits(x, "POSIXct")) x <- unclass(x)
+    if (!is.numeric(x))
+        stop("`x` must be POSIXct or numeric Unix-epoch seconds.")
+    format <- match.arg(format)
+    offset_minutes <- .datetime_offset_minutes(offset)
+    if (!identical(format, "iso_offset") && offset_minutes != 0L)
+        stop("`offset` must be \"Z\" unless `format = \"iso_offset\"`.")
+    code <- switch(
+        format, iso = 0L, rfc3339 = 1L, compact = 2L, iso_offset = 3L
+    )
+    .copy_names(fast_format_datetime_impl(
+        as.double(x), code, offset_minutes
+    ), x)
+}
+
+.datetime_offset_minutes <- function(offset) {
+    if (!is.character(offset) || length(offset) != 1L || is.na(offset))
+        stop("`offset` must be one non-missing string.")
+    if (identical(offset, "Z")) return(0L)
+    if (!base::grepl("^[+-][0-9]{2}:[0-9]{2}$", offset))
+        stop("`offset` must be \"Z\" or a signed \"+HH:MM\"/\"-HH:MM\" string.")
+    hours <- as.integer(substr(offset, 2L, 3L))
+    minutes <- as.integer(substr(offset, 5L, 6L))
+    if (hours > 23L || minutes > 59L)
+        stop("`offset` hour must be <= 23 and minute must be <= 59.")
+    value <- hours * 60L + minutes
+    if (substr(offset, 1L, 1L) == "-") -value else value
+}

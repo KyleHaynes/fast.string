@@ -561,6 +561,176 @@ LogicalVector fast_fixed_impl(const std::string& pattern,
 }
 
 // ---------------------------------------------------------------------------
+// Match counting -- continue after every non-overlapping match and return one
+// integer per subject. Empty-pattern character semantics are handled in R.
+// ---------------------------------------------------------------------------
+
+static int count_pcre2_matches(pcre2_code* code,
+                               const StringView& value,
+                               bool /* can_match_empty */,
+                               pcre2_match_data* match_data,
+                               int& error) {
+    const PCRE2_SIZE length = static_cast<PCRE2_SIZE>(value.size);
+    PCRE2_SIZE search_offset = 0;
+    int count = 0;
+
+    while (true) {
+        int rc = pcre2_match(
+            code, reinterpret_cast<PCRE2_SPTR8>(value.data), length,
+            search_offset, 0, match_data, NULL
+        );
+        if (rc == PCRE2_ERROR_NOMATCH) break;
+        if (rc < 0) {
+            error = rc;
+            return 0;
+        }
+
+        PCRE2_SIZE* match = pcre2_get_ovector_pointer(match_data);
+        const PCRE2_SIZE start = match[0];
+        const PCRE2_SIZE end = match[1];
+        const bool empty = start == end;
+
+        ++count;
+        if (end == length) break;
+        search_offset = empty ? end + 1 : end;
+        // gregexpr() advances once after an empty match and does not start a
+        // fresh search exactly at the terminal boundary.
+        if (search_offset >= length) break;
+    }
+    return count;
+}
+
+struct PCRE2CountWorker : public Worker {
+    const StringView* strings;
+    pcre2_code* code;
+    bool can_match_empty;
+    RVector<int> out;
+    std::vector<int>& errors;
+
+    PCRE2CountWorker(const StringView* strings_,
+                     pcre2_code* code_,
+                     bool can_match_empty_,
+                     IntegerVector& out_,
+                     std::vector<int>& errors_)
+        : strings(strings_), code(code_),
+          can_match_empty(can_match_empty_), out(out_), errors(errors_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        pcre2_match_data* match_data = pcre2_match_data_create(1, NULL);
+        if (!match_data) {
+            for (std::size_t i = begin; i < end; ++i)
+                errors[i] = PCRE2_ERROR_NOMEMORY;
+            return;
+        }
+        for (std::size_t i = begin; i < end; ++i) {
+            const StringView& value = strings[i];
+            out[i] = value.is_na()
+                ? NA_INTEGER
+                : count_pcre2_matches(
+                    code, value, can_match_empty, match_data, errors[i]
+                );
+        }
+        pcre2_match_data_free(match_data);
+    }
+};
+
+// [[Rcpp::export]]
+IntegerVector fast_regex_count_impl(const std::string& pattern,
+                                    const StringVector& x,
+                                    bool ignore_case,
+                                    int nthreads) {
+    const uint32_t options = ignore_case ? PCRE2_CASELESS : 0;
+    int error_code;
+    PCRE2_SIZE error_offset;
+    pcre2_code* code = pcre2_compile(
+        reinterpret_cast<PCRE2_SPTR8>(pattern.data()), pattern.size(),
+        options, &error_code, &error_offset, NULL
+    );
+    if (!code) {
+        PCRE2_UCHAR8 message[256];
+        pcre2_get_error_message(error_code, message, sizeof(message));
+        stop("Invalid PCRE2 pattern: %s", reinterpret_cast<const char*>(message));
+    }
+    pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
+    uint32_t can_match_empty = 0;
+    pcre2_pattern_info(code, PCRE2_INFO_MATCHEMPTY, &can_match_empty);
+
+    const StringSnapshot snapshot(x);
+    const std::size_t n = snapshot.size();
+    IntegerVector result(static_cast<R_xlen_t>(n));
+    std::vector<int> errors(n, 0);
+    PCRE2CountWorker worker(
+        snapshot.data(), code, can_match_empty != 0, result, errors
+    );
+    dispatch_for(
+        0, n, worker, estimated_string_work(snapshot), 250000, nthreads
+    );
+    pcre2_code_free(code);
+
+    for (std::size_t i = 0; i < errors.size(); ++i) {
+        if (errors[i] == 0) continue;
+        PCRE2_UCHAR8 message[256];
+        pcre2_get_error_message(errors[i], message, sizeof(message));
+        stop(
+            "PCRE2 matching failed at x[%lld]: %s",
+            static_cast<long long>(i + 1),
+            reinterpret_cast<const char*>(message)
+        );
+    }
+    return result;
+}
+
+struct FixedCountWorker : public Worker {
+    const StringView* strings;
+    const PreparedFixedSearch& search;
+    RVector<int> out;
+
+    FixedCountWorker(const StringView* strings_,
+                     const PreparedFixedSearch& search_,
+                     IntegerVector& out_)
+        : strings(strings_), search(search_), out(out_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        const std::size_t pattern_size = search.size();
+        for (std::size_t i = begin; i < end; ++i) {
+            const StringView& value = strings[i];
+            if (value.is_na()) {
+                out[i] = NA_INTEGER;
+                continue;
+            }
+            int count = 0;
+            std::size_t offset = 0;
+            while (offset <= value.size) {
+                const std::size_t found = search.find(
+                    value.data, value.size, offset
+                );
+                if (found == std::string::npos) break;
+                ++count;
+                offset = found + pattern_size;
+            }
+            out[i] = count;
+        }
+    }
+};
+
+// [[Rcpp::export]]
+IntegerVector fast_fixed_count_impl(const std::string& pattern,
+                                    const StringVector& x,
+                                    bool ignore_case,
+                                    int nthreads) {
+    if (pattern.empty()) stop("zero-length pattern");
+    const StringSnapshot snapshot(x);
+    const std::size_t n = snapshot.size();
+    const PreparedFixedSearch search(pattern, ignore_case);
+    IntegerVector result(static_cast<R_xlen_t>(n));
+    FixedCountWorker worker(snapshot.data(), search, result);
+    dispatch_for(
+        0, n, worker, estimated_string_work(snapshot), 250000, nthreads
+    );
+    return result;
+}
+
+// ---------------------------------------------------------------------------
 // String substitution — parallel workers write to std::vector<std::string>
 // (no R API in threads), main thread converts to CharacterVector afterwards.
 // NA elements: worker marks with empty string, main thread restores NA_STRING.
