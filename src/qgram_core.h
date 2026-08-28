@@ -59,6 +59,76 @@ static inline void qgram_keys_strings(const char* s, int n, int q,
     out.erase(std::unique(out.begin(), out.end()), out.end());
 }
 
+// Unicode code points need 21 bits each. Up to three therefore fit exactly
+// in uint64_t; larger q values use non-owning views compared
+// lexicographically. Both representations are collision-free.
+static inline void qgram_keys_codepoints_packed_all(
+        const std::uint32_t* s, int n, int q,
+        std::vector<std::uint64_t>& out) {
+    out.clear();
+    if (n < q) return;
+    out.reserve(static_cast<std::size_t>(n - q + 1));
+    std::uint64_t key = 0;
+    const std::uint64_t mask = q == 3
+        ? ((1ULL << 63) - 1)
+        : ((1ULL << (21 * q)) - 1);
+    for (int i = 0; i < q - 1; ++i)
+        key = (key << 21) | static_cast<std::uint64_t>(s[i]);
+    for (int i = q - 1; i < n; ++i) {
+        key = ((key << 21) | static_cast<std::uint64_t>(s[i])) & mask;
+        out.push_back(key);
+    }
+    std::sort(out.begin(), out.end());
+}
+
+static inline void qgram_keys_codepoints_packed(
+        const std::uint32_t* s, int n, int q,
+        std::vector<std::uint64_t>& out) {
+    qgram_keys_codepoints_packed_all(s, n, q, out);
+    out.erase(std::unique(out.begin(), out.end()), out.end());
+}
+
+struct CodepointQgramView {
+    const std::uint32_t* data;
+    int size;
+
+    bool operator<(const CodepointQgramView& other) const {
+        return std::lexicographical_compare(
+            data, data + size, other.data, other.data + other.size
+        );
+    }
+
+    bool operator==(const CodepointQgramView& other) const {
+        return size == other.size &&
+            std::equal(data, data + size, other.data);
+    }
+};
+
+static inline void qgram_keys_codepoint_views_all(
+        const std::uint32_t* s, int n, int q,
+        std::vector<CodepointQgramView>& out) {
+    out.clear();
+    if (n < q) return;
+    out.reserve(static_cast<std::size_t>(n - q + 1));
+    for (int i = 0; i + q <= n; ++i)
+        out.push_back(CodepointQgramView{s + i, q});
+    std::sort(out.begin(), out.end());
+}
+
+static inline void qgram_keys_codepoint_views(
+        const std::uint32_t* s, int n, int q,
+        std::vector<CodepointQgramView>& out) {
+    qgram_keys_codepoint_views_all(s, n, q, out);
+    out.erase(std::unique(out.begin(), out.end()), out.end());
+}
+
+template <typename Symbol>
+static inline bool qgram_sequences_equal(const Symbol* a, int size_a,
+                                         const Symbol* b, int size_b) {
+    return size_a == size_b &&
+        (size_a == 0 || std::equal(a, a + size_a, b));
+}
+
 template <typename T>
 static inline std::size_t sorted_intersection_size(const T* a, std::size_t na,
                                                     const T* b, std::size_t nb) {
@@ -85,6 +155,7 @@ struct QgramFrequencyOverlap {
     double squared_a;
     double squared_b;
     double dot;
+    double l1_distance;
 };
 
 template <typename T>
@@ -93,17 +164,20 @@ static inline QgramFrequencyOverlap qgram_frequency_overlap(
         const T* b, std::size_t size_b) {
     std::size_t i = 0, j = 0;
     double squared_a = 0.0, squared_b = 0.0, dot = 0.0;
+    double l1_distance = 0.0;
     while (i < size_a || j < size_b) {
         if (j == size_b || (i < size_a && a[i] < b[j])) {
             const std::size_t begin = i++;
             while (i < size_a && a[i] == a[begin]) ++i;
             const double count = static_cast<double>(i - begin);
             squared_a += count * count;
+            l1_distance += count;
         } else if (i == size_a || b[j] < a[i]) {
             const std::size_t begin = j++;
             while (j < size_b && b[j] == b[begin]) ++j;
             const double count = static_cast<double>(j - begin);
             squared_b += count * count;
+            l1_distance += count;
         } else {
             const std::size_t begin_a = i++;
             const std::size_t begin_b = j++;
@@ -114,9 +188,14 @@ static inline QgramFrequencyOverlap qgram_frequency_overlap(
             squared_a += count_a * count_a;
             squared_b += count_b * count_b;
             dot += count_a * count_b;
+            l1_distance += count_a > count_b
+                ? count_a - count_b
+                : count_b - count_a;
         }
     }
-    return QgramFrequencyOverlap{squared_a, squared_b, dot};
+    return QgramFrequencyOverlap{
+        squared_a, squared_b, dot, l1_distance
+    };
 }
 
 template <typename T>
@@ -130,6 +209,11 @@ static inline double qgram_cosine_from_frequency(
     if (overlap.squared_a == 0.0 && overlap.squared_b == 0.0) return 1.0;
     if (overlap.squared_a == 0.0 || overlap.squared_b == 0.0) return 0.0;
     return overlap.dot / std::sqrt(overlap.squared_a * overlap.squared_b);
+}
+
+static inline double qgram_distance_from_frequency(
+        const QgramFrequencyOverlap& overlap) {
+    return overlap.l1_distance;
 }
 
 static inline double qgram_jaccard_from_overlap(const QgramOverlap& o) {
@@ -172,10 +256,12 @@ static inline QgramOverlap qgram_overlap(const char* s1, int l1,
 }
 
 static inline double qgram_jaccard_sim(const char* s1, int l1, const char* s2, int l2, int q) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
     return qgram_jaccard_from_overlap(qgram_overlap(s1, l1, s2, l2, q));
 }
 
 static inline double qgram_dice_sim(const char* s1, int l1, const char* s2, int l2, int q) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
     return qgram_dice_from_overlap(qgram_overlap(s1, l1, s2, l2, q));
 }
 
@@ -184,6 +270,7 @@ static inline double qgram_dice_sim(const char* s1, int l1, const char* s2, int 
 // (non-shared) q-grams count against the score.
 static inline double qgram_tversky_sim(const char* s1, int l1, const char* s2, int l2,
                                         int q, double alpha, double beta) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
     return qgram_tversky_from_overlap(
         qgram_overlap(s1, l1, s2, l2, q), alpha, beta
     );
@@ -191,6 +278,7 @@ static inline double qgram_tversky_sim(const char* s1, int l1, const char* s2, i
 
 static inline double qgram_cosine_sim(const char* s1, int l1,
                                       const char* s2, int l2, int q) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
     if (q <= 8) {
         std::vector<uint64_t> a, b;
         qgram_keys_packed_all(s1, l1, q, a);
@@ -201,6 +289,101 @@ static inline double qgram_cosine_sim(const char* s1, int l1,
     qgram_keys_strings_all(s1, l1, q, a);
     qgram_keys_strings_all(s2, l2, q, b);
     return qgram_cosine_from_frequency(qgram_frequency_overlap(a, b));
+}
+
+static inline double qgram_distance(const char* s1, int l1,
+                                    const char* s2, int l2, int q) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 0.0;
+    if (q <= 8) {
+        std::vector<uint64_t> a, b;
+        qgram_keys_packed_all(s1, l1, q, a);
+        qgram_keys_packed_all(s2, l2, q, b);
+        return qgram_distance_from_frequency(qgram_frequency_overlap(a, b));
+    }
+    std::vector<std::string> a, b;
+    qgram_keys_strings_all(s1, l1, q, a);
+    qgram_keys_strings_all(s2, l2, q, b);
+    return qgram_distance_from_frequency(qgram_frequency_overlap(a, b));
+}
+
+static inline QgramOverlap qgram_overlap_codepoints(
+        const std::uint32_t* s1, int l1,
+        const std::uint32_t* s2, int l2, int q) {
+    if (q <= 3) {
+        std::vector<std::uint64_t> a, b;
+        qgram_keys_codepoints_packed(s1, l1, q, a);
+        qgram_keys_codepoints_packed(s2, l2, q, b);
+        return QgramOverlap{
+            a.size(), b.size(), sorted_intersection_size(a, b)
+        };
+    }
+    std::vector<CodepointQgramView> a, b;
+    qgram_keys_codepoint_views(s1, l1, q, a);
+    qgram_keys_codepoint_views(s2, l2, q, b);
+    return QgramOverlap{
+        a.size(), b.size(), sorted_intersection_size(a, b)
+    };
+}
+
+static inline double qgram_jaccard_sim_codepoints(
+        const std::uint32_t* s1, int l1,
+        const std::uint32_t* s2, int l2, int q) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
+    return qgram_jaccard_from_overlap(
+        qgram_overlap_codepoints(s1, l1, s2, l2, q)
+    );
+}
+
+static inline double qgram_dice_sim_codepoints(
+        const std::uint32_t* s1, int l1,
+        const std::uint32_t* s2, int l2, int q) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
+    return qgram_dice_from_overlap(
+        qgram_overlap_codepoints(s1, l1, s2, l2, q)
+    );
+}
+
+static inline double qgram_tversky_sim_codepoints(
+        const std::uint32_t* s1, int l1,
+        const std::uint32_t* s2, int l2, int q,
+        double alpha, double beta) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
+    return qgram_tversky_from_overlap(
+        qgram_overlap_codepoints(s1, l1, s2, l2, q), alpha, beta
+    );
+}
+
+static inline QgramFrequencyOverlap qgram_frequency_overlap_codepoints(
+        const std::uint32_t* s1, int l1,
+        const std::uint32_t* s2, int l2, int q) {
+    if (q <= 3) {
+        std::vector<std::uint64_t> a, b;
+        qgram_keys_codepoints_packed_all(s1, l1, q, a);
+        qgram_keys_codepoints_packed_all(s2, l2, q, b);
+        return qgram_frequency_overlap(a, b);
+    }
+    std::vector<CodepointQgramView> a, b;
+    qgram_keys_codepoint_views_all(s1, l1, q, a);
+    qgram_keys_codepoint_views_all(s2, l2, q, b);
+    return qgram_frequency_overlap(a, b);
+}
+
+static inline double qgram_cosine_sim_codepoints(
+        const std::uint32_t* s1, int l1,
+        const std::uint32_t* s2, int l2, int q) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
+    return qgram_cosine_from_frequency(
+        qgram_frequency_overlap_codepoints(s1, l1, s2, l2, q)
+    );
+}
+
+static inline double qgram_distance_codepoints(
+        const std::uint32_t* s1, int l1,
+        const std::uint32_t* s2, int l2, int q) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 0.0;
+    return qgram_distance_from_frequency(
+        qgram_frequency_overlap_codepoints(s1, l1, s2, l2, q)
+    );
 }
 
 #endif // FAST_STRING_QGRAM_CORE_H

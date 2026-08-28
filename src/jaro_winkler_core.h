@@ -128,6 +128,9 @@ static inline double jaro_winkler_sim(const char* s1, int l1,
                                        const char* s2, int l2, double p) {
     if (l1 == 0 && l2 == 0) return 1.0;
     if (l1 == 0 || l2 == 0) return 0.0;
+    if (l1 == l2 &&
+        (s1 == s2 || std::memcmp(s1, s2, static_cast<std::size_t>(l1)) == 0))
+        return 1.0;
     double j = (l1 <= 64 && l2 <= 64) ? jaro_sim_bitparallel(s1, l1, s2, l2)
                                        : jaro_sim(s1, l1, s2, l2);
     if (j == 0.0) return 0.0;

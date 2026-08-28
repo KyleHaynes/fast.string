@@ -144,6 +144,54 @@ struct JaroWinklerMatrixWorker : public Worker {
     }
 };
 
+struct JaroWinklerSymmetricMatrixWorker : public Worker {
+    const StringView* bytes;
+    const CodepointView* codepoints;
+    double p;
+    bool use_bytes;
+    std::size_t size;
+    double* out_ptr;
+
+    JaroWinklerSymmetricMatrixWorker(
+            const StringView* bytes_, const CodepointView* codepoints_,
+            double p_, bool use_bytes_, std::size_t size_, double* out_ptr_)
+        : bytes(bytes_), codepoints(codepoints_), p(p_),
+          use_bytes(use_bytes_), size(size_), out_ptr(out_ptr_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        for (std::size_t row = begin; row < end; ++row) {
+            if (bytes[row].is_na()) {
+                out_ptr[row + row * size] = NA_REAL;
+            } else {
+                out_ptr[row + row * size] = 1.0;
+            }
+            for (std::size_t column = row + 1; column < size; ++column) {
+                double score;
+                if (bytes[row].is_na() || bytes[column].is_na()) {
+                    score = NA_REAL;
+                } else {
+                    score = use_bytes ||
+                        (codepoints[row].ascii && codepoints[column].ascii)
+                        ? jaro_winkler_sim(
+                            bytes[row].data,
+                            static_cast<int>(bytes[row].size),
+                            bytes[column].data,
+                            static_cast<int>(bytes[column].size), p
+                        )
+                        : sequence_jaro_winkler_similarity(
+                            codepoints[row].data,
+                            static_cast<int>(codepoints[row].size),
+                            codepoints[column].data,
+                            static_cast<int>(codepoints[column].size), p
+                        );
+                }
+                out_ptr[row + column * size] = score;
+                out_ptr[column + row * size] = score;
+            }
+        }
+    }
+};
+
 // [[Rcpp::export]]
 NumericMatrix fast_jaro_winkler_matrix_impl(const StringVector& a,
                                              const StringVector& b,
@@ -158,6 +206,7 @@ NumericMatrix fast_jaro_winkler_matrix_impl(const StringVector& a,
         na_size > (std::numeric_limits<std::size_t>::max)() / nb_size)
         stop("Requested Jaro-Winkler matrix is too large.");
     const std::size_t cells = na_size * nb_size;
+    const bool symmetric = static_cast<SEXP>(a) == static_cast<SEXP>(b);
 
     StringSnapshot a_snapshot(a);
     StringSnapshot b_snapshot(b);
@@ -167,6 +216,21 @@ NumericMatrix fast_jaro_winkler_matrix_impl(const StringVector& a,
         b_codepoints.reset(new CodepointSnapshot(b, "b"));
     }
     NumericMatrix result(na, nb);
+    if (symmetric) {
+        JaroWinklerSymmetricMatrixWorker worker(
+            a_snapshot.data(),
+            use_bytes ? nullptr : a_codepoints->data(),
+            p, use_bytes, na_size, REAL(result)
+        );
+        const std::size_t estimated_work =
+            estimated_matrix_string_work(a_snapshot, a_snapshot, cells);
+        dispatch_for(
+            0, na_size, worker,
+            estimated_work / 2 + estimated_work % 2,
+            10000, nthreads, 1
+        );
+        return result;
+    }
     JaroWinklerMatrixWorker worker(
         a_snapshot.data(), b_snapshot.data(),
         use_bytes ? nullptr : a_codepoints->data(),

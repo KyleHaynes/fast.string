@@ -149,6 +149,7 @@ static inline int damerau_levenshtein_distance(const char* s1, int l1, const cha
 // method = "hamming" convention) or NA as appropriate.
 static inline int hamming_distance(const char* s1, int l1, const char* s2, int l2) {
     if (l1 != l2) return -1;
+    if (s1 == s2) return 0;
     int d = 0;
     for (int i = 0; i < l1; ++i) d += (s1[i] != s2[i]);
     return d;

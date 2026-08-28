@@ -121,7 +121,7 @@ system.time(fast.string::fnchar(x, "chars"))
 
 ## Dates
 
-`format_date()` / `fas.Date()` trade `base::as.Date()`/`format.Date()`'s
+`format_date()` / `fas.Date()` trade `base::as.Date()`/`format.Date()`\'s
 locale-aware, multi-format flexibility for raw speed on one fixed format
 at a time. `date_parts()` decomposes a `Date` vector into year/month/day
 columns in a single pass — handy for blocking keys in record linkage.

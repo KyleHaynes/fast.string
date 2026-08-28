@@ -105,6 +105,9 @@ static inline int ro_total_matched(const char* a, int la, const char* b, int lb)
 // difflib SequenceMatcher.ratio(): 2*M / T, T = len(a) + len(b).
 static inline double ro_ratio(const char* a, int la, const char* b, int lb) {
     if (la == 0 && lb == 0) return 1.0;
+    if (la == lb &&
+        (a == b || std::memcmp(a, b, static_cast<std::size_t>(la)) == 0))
+        return 1.0;
     int m = ro_total_matched(a, la, b, lb);
     return (2.0 * m) / (double)(la + lb);
 }
@@ -113,6 +116,10 @@ static inline double ro_ratio(const char* a, int la, const char* b, int lb) {
 // matching block's offset into the longer one, take the best full ratio()
 // over those alignments.
 static inline double ro_partial_ratio(const char* s1, int l1, const char* s2, int l2) {
+    if (l1 == l2 &&
+        (l1 == 0 || s1 == s2 ||
+         std::memcmp(s1, s2, static_cast<std::size_t>(l1)) == 0))
+        return 1.0;
     const char* shorter; int ls;
     const char* longer; int ll;
     if (l1 <= l2) { shorter = s1; ls = l1; longer = s2; ll = l2; }

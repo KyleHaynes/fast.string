@@ -72,6 +72,12 @@ struct FuzzWorker : public Worker {
                 out[i] = NA_REAL;
                 continue;
             }
+            if (av.size == bv.size &&
+                (av.data == bv.data ||
+                 std::memcmp(av.data, bv.data, av.size) == 0)) {
+                out[i] = 100.0;
+                continue;
+            }
 
             if (full_process) {
                 fuzz_full_process_ascii(av.data, av.size, normalized_a);

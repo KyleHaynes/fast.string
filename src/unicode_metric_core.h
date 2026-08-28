@@ -10,8 +10,27 @@
 #include <vector>
 
 template <typename Symbol>
+static inline bool sequence_equal(const Symbol* a, int la,
+                                  const Symbol* b, int lb) {
+    if (la != lb) return false;
+    if (la == 0 || a == b) return true;
+    return std::equal(a, a + la, b);
+}
+
+template <typename Symbol>
 static inline int sequence_levenshtein_distance(const Symbol* a, int la,
-                                                const Symbol* b, int lb) {
+                                                 const Symbol* b, int lb) {
+    if (sequence_equal(a, la, b, lb)) return 0;
+    while (la > 0 && lb > 0 && *a == *b) {
+        ++a;
+        ++b;
+        --la;
+        --lb;
+    }
+    while (la > 0 && lb > 0 && a[la - 1] == b[lb - 1]) {
+        --la;
+        --lb;
+    }
     if (la < lb) {
         std::swap(a, b);
         std::swap(la, lb);
@@ -38,7 +57,8 @@ static inline int sequence_levenshtein_distance(const Symbol* a, int la,
 
 template <typename Symbol>
 static inline int sequence_osa_distance(const Symbol* a, int la,
-                                        const Symbol* b, int lb) {
+                                         const Symbol* b, int lb) {
+    if (sequence_equal(a, la, b, lb)) return 0;
     if (la < lb) {
         std::swap(a, b);
         std::swap(la, lb);
@@ -78,6 +98,7 @@ static inline int sequence_damerau_levenshtein_distance_with_workspace(
         const Symbol* a, int la, const Symbol* b, int lb,
         std::vector<int>& matrix,
         std::unordered_map<Symbol, int>& last_row) {
+    if (sequence_equal(a, la, b, lb)) return 0;
     if (la == 0) return lb;
     if (lb == 0) return la;
     const int sentinel = la + lb;
@@ -141,6 +162,20 @@ static inline int sequence_bounded_levenshtein_distance(
         const Symbol* a, int la, const Symbol* b, int lb, int cutoff) {
     if (cutoff < 0) return cutoff + 1;
     if (std::abs(la - lb) > cutoff) return cutoff + 1;
+    if (sequence_equal(a, la, b, lb)) return 0;
+    while (la > 0 && lb > 0 && *a == *b) {
+        ++a;
+        ++b;
+        --la;
+        --lb;
+    }
+    while (la > 0 && lb > 0 && a[la - 1] == b[lb - 1]) {
+        --la;
+        --lb;
+    }
+    const int maximum_distance = std::max(la, lb);
+    if (cutoff >= maximum_distance)
+        return sequence_levenshtein_distance(a, la, b, lb);
     if (la < lb) {
         std::swap(a, b);
         std::swap(la, lb);
@@ -154,7 +189,7 @@ static inline int sequence_bounded_levenshtein_distance(
 
     for (int i = 1; i <= la; ++i) {
         const int first = std::max(1, i - cutoff);
-        const int last = std::min(lb, i + cutoff);
+        const int last = cutoff > lb - i ? lb : i + cutoff;
         current[0] = i <= cutoff ? i : outside;
         if (first > 1) current[static_cast<std::size_t>(first - 1)] = outside;
         int row_minimum = outside;
@@ -181,6 +216,7 @@ static inline double sequence_jaro_similarity(const Symbol* a, int la,
                                                const Symbol* b, int lb) {
     if (la == 0 && lb == 0) return 1.0;
     if (la == 0 || lb == 0) return 0.0;
+    if (sequence_equal(a, la, b, lb)) return 1.0;
     const int range = std::max(0, std::max(la, lb) / 2 - 1);
     std::vector<unsigned char> matched_a(static_cast<std::size_t>(la), 0);
     std::vector<unsigned char> matched_b(static_cast<std::size_t>(lb), 0);
