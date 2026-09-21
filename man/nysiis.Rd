@@ -23,3 +23,15 @@ truncated to 6 characters. Has no \link{base} equivalent; intended to
 complement \code{\link[=jaro_winkler]{jaro_winkler()}} / \code{\link[=jaro_winkler_matrix]{jaro_winkler_matrix()}} as a blocking key
 for fuzzy name matching, typically alongside or instead of \code{\link[=soundex]{soundex()}}.
 }
+\examples{
+nysiis(c("Robert", "Rupert", "Ashcraft", "Ashcroft", NA))
+}
+\seealso{
+Other phonetic codes:
+\code{\link[=caverphone]{caverphone()}},
+\code{\link[=cologne]{cologne()}},
+\code{\link[=double_metaphone]{double_metaphone()}},
+\code{\link[=refined_soundex]{refined_soundex()}},
+\code{\link[=soundex]{soundex()}}
+}
+\concept{phonetic codes}

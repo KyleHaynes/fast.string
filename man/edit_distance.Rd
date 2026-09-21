@@ -57,4 +57,17 @@ levenshtein("kitten", "sitting")
 osa_distance("ca", "abc")
 damerau_levenshtein("ca", "abc")
 levenshtein_similarity("kitten", "sitting")
+hamming("karolin", "kathrin")
+hamming("abc", "abcd")   # unequal lengths are never within Hamming range
 }
+\seealso{
+\code{\link[=fuzzy_match]{fuzzy_match()}} and \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} to search a table with these
+metrics without building a full matrix.
+
+Other edit distance functions:
+\code{\link[=damerau_levenshtein_matrix]{damerau_levenshtein_matrix()}},
+\code{\link[=levenshtein_matrix]{levenshtein_matrix()}},
+\code{\link[=levenshtein_within]{levenshtein_within()}},
+\code{\link[=osa_distance_matrix]{osa_distance_matrix()}}
+}
+\concept{edit distance functions}

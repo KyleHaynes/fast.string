@@ -37,9 +37,23 @@ RcppParallel default. \code{1} forces serial execution.}
 Character vector the same length as \code{x}.
 }
 \description{
-Equivalent to \code{\link[base:grep]{base::gsub()}}, using PCRE2 and Intel TBB. Supports
+Equivalent to \code{\link[base:gsub]{base::gsub()}}, using PCRE2 and Intel TBB. Supports
 \verb{\\\\1}-\verb{\\\\9} capture groups and \verb{\\\\U}/\verb{\\\\L}/\verb{\\\\E} case conversion.
 }
-\seealso{
-\code{\link[base:grep]{base::gsub()}}, \code{\link[=fsub]{fsub()}}
+\examples{
+x <- c("apple pie", "banana split", NA, "cherry tart")
+
+fgsub("[aeiou]", "_", x)                 # every vowel
+fgsub("(^|\\\\s)(\\\\w)", "\\\\1\\\\U\\\\2", x)    # capitalise each word
 }
+\seealso{
+\code{\link[base:gsub]{base::gsub()}}
+
+Other matching and substitution functions:
+\code{\link[=fcount]{fcount()}},
+\code{\link[=fgrep]{fgrep()}},
+\code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fsub]{fsub()}},
+\code{\link[=gsub_all]{gsub_all()}}
+}
+\concept{matching and substitution functions}

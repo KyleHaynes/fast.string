@@ -2,14 +2,15 @@
 % Please edit documentation in R/jaro_winkler.R
 \name{jaro_winkler}
 \alias{jaro_winkler}
-\title{Vectorised Jaro-Winkler similarity.}
+\title{Jaro-Winkler string similarity}
 \usage{
 jaro_winkler(a, b, p = 0.1, nthreads = NULL, use_bytes = TRUE)
 }
 \arguments{
 \item{a, b}{Equal-length character vectors.}
 
-\item{p}{Prefix scaling factor (default 0.1, the standard value).}
+\item{p}{Prefix scaling factor (default 0.1, the standard value). Keep it at
+or below 0.25 so that scores cannot exceed 1.}
 
 \item{nthreads}{Integer thread cap, or \code{NULL} to use the
 RcppParallel default for this call.}
@@ -18,8 +19,35 @@ RcppParallel default for this call.}
 compatibility default), or UTF-8 code points when \code{FALSE}.}
 }
 \value{
-Numeric vector of similarities between 0 and 1.
+Numeric vector of similarities between 0 and 1; \code{NA} where either
+\code{a[i]} or \code{b[i]} is \code{NA}.
 }
 \description{
-Vectorised Jaro-Winkler similarity.
+Scores how alike two strings are on a \verb{[0, 1]} scale, where \code{1} is an exact
+match. Jaro similarity counts matching characters (within a sliding window)
+and transpositions; the Winkler adjustment then boosts pairs that share a
+common prefix of up to four characters, which suits names and other short
+strings where the first characters are the most reliable.
 }
+\details{
+\code{jaro_winkler()} compares \code{a[i]} with \code{b[i]}; \code{jaro_winkler_matrix()}
+scores every combination of \code{a} and \code{b}. Comparison is case-sensitive and
+does no trimming or normalisation, so clean the inputs first (for example
+with \code{\link[=ftrimws]{ftrimws()}} and \code{\link[=toupper]{toupper()}}). Two empty strings score \code{1}, and an
+empty string against a non-empty one scores \code{0}. For strings whose words
+may be reordered, see \code{\link[=jaro_winkler_tokens]{jaro_winkler_tokens()}}.
+}
+\examples{
+jaro_winkler("MARTHA", "MARHTA")
+jaro_winkler(c("JOHN", NA, "MARY"), c("JON", "MARIE", "MARIE"))
+
+# p = 0 gives plain Jaro similarity, without the common-prefix boost.
+jaro_winkler("SMITH", "SMYTH", p = 0)
+jaro_winkler("SMITH", "SMYTH")
+}
+\seealso{
+Other Jaro-Winkler functions:
+\code{\link[=jaro_winkler_matrix]{jaro_winkler_matrix()}},
+\code{\link[=jaro_winkler_tokens]{jaro_winkler_tokens()}}
+}
+\concept{Jaro-Winkler functions}

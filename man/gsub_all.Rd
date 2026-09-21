@@ -45,3 +45,23 @@ combined scan (\code{sequential = FALSE}), parallelised across CPU cores via
 Intel TBB. Non-sequential regular-expression replacement is rejected
 because combined capture/backreference semantics are not implemented.
 }
+\examples{
+x <- c("cat and hat", "a cat")
+gsub_all(c("cat", "hat"), c("dog", "cap"), x, fixed = TRUE)
+
+# Sequential mode chains the patterns, so "a" -> "b" -> "c" cascades...
+gsub_all(c("a", "b"), c("b", "c"), "ab", fixed = TRUE)
+# ...whereas a single scan replaces each position once.
+gsub_all(c("a", "b"), c("b", "c"), "ab", fixed = TRUE, sequential = FALSE)
+}
+\seealso{
+\code{\link[=fgsub]{fgsub()}} for a single pattern.
+
+Other matching and substitution functions:
+\code{\link[=fcount]{fcount()}},
+\code{\link[=fgrep]{fgrep()}},
+\code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fgsub]{fgsub()}},
+\code{\link[=fsub]{fsub()}}
+}
+\concept{matching and substitution functions}

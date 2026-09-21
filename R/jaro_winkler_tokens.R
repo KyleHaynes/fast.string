@@ -91,7 +91,7 @@
 #'
 #' @return Numeric vector of similarities in `[0, 1]`, `length(a)` long.
 #'   `NA` if either `a[i]` or `b[i]` is `NA`.
-#' @seealso [jaro_winkler()], [jaro_winkler_matrix()]
+#' @family Jaro-Winkler functions
 #' @examples
 #' jaro_winkler_tokens("Kyle John Haynes", "John Kylie Haynes")
 #' jaro_winkler_tokens(c("OBrien", "O'Brien"), c("O Brien", "O Brien"))

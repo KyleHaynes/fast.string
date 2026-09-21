@@ -23,5 +23,11 @@ non-letters are ignored before encoding.
 cologne(c("Müller-Lüdenscheidt", "Meier", "Meyer"))
 }
 \seealso{
-\code{\link[=soundex]{soundex()}}, \code{\link[=refined_soundex]{refined_soundex()}}, \code{\link[=double_metaphone]{double_metaphone()}}
+Other phonetic codes:
+\code{\link[=caverphone]{caverphone()}},
+\code{\link[=double_metaphone]{double_metaphone()}},
+\code{\link[=nysiis]{nysiis()}},
+\code{\link[=refined_soundex]{refined_soundex()}},
+\code{\link[=soundex]{soundex()}}
 }
+\concept{phonetic codes}

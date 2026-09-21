@@ -8,7 +8,7 @@
 #' @param x Character vector (coerced with [as.character()] when needed).
 #'   `NA` values and elements with no ASCII letters return `NA`.
 #' @return Character vector the same length as `x`, with names preserved.
-#' @seealso [soundex()], [nysiis()], [cologne()]
+#' @family phonetic codes
 #' @examples
 #' refined_soundex(c("Robert", "Rupert", "Ashcraft"))
 #' @export

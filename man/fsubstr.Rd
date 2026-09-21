@@ -20,6 +20,15 @@ Equivalent to \code{\link[base:substr]{base::substr()}}, parallelised across all
 Intel TBB. \code{start}/\code{stop} are 1-indexed, clamped to each string's bounds,
 and recycled to \code{length(x)}, matching base R semantics.
 }
+\examples{
+fsubstr(c("abcdef", "xyz", NA), 2, 4)   # out-of-range stops are clamped
+}
 \seealso{
 \code{\link[base:substr]{base::substr()}}
+
+Other string utilities:
+\code{\link[=fchartr]{fchartr()}},
+\code{\link[=fnchar]{fnchar()}},
+\code{\link[=ftrimws]{ftrimws()}}
 }
+\concept{string utilities}

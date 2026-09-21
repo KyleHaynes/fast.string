@@ -13,5 +13,21 @@ date_parts(x)
 A data.frame with integer columns \code{year}, \code{month}, \code{day}.
 }
 \description{
-Decompose a Date vector into year, month, day integer columns.
+Splits every date in a single pass, which makes it a cheap way to build
+blocking keys (for example "same birth year and month") in record linkage.
+Missing dates give \code{NA} in all three columns.
 }
+\examples{
+date_parts(as.Date(c("2024-06-18", "1999-12-31", NA)))
+}
+\seealso{
+\code{\link[=format_date_parts]{format_date_parts()}} for the reverse direction.
+
+Other date and timestamp functions:
+\code{\link[=fas.Date]{fas.Date()}},
+\code{\link[=fas.POSIXct]{fas.POSIXct()}},
+\code{\link[=format_date]{format_date()}},
+\code{\link[=format_date_parts]{format_date_parts()}},
+\code{\link[=format_datetime]{format_datetime()}}
+}
+\concept{date and timestamp functions}

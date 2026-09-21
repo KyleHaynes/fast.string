@@ -141,5 +141,8 @@ jaro_winkler_tokens("KYLEHAYNES JOHN", "KYLE JOHN HAYNES", contractions = TRUE)
 jaro_winkler_tokens("HAYNES JOHNKYLE", "KYLEJOHN HAYNES", contractions = TRUE)
 }
 \seealso{
-\code{\link[=jaro_winkler]{jaro_winkler()}}, \code{\link[=jaro_winkler_matrix]{jaro_winkler_matrix()}}
+Other Jaro-Winkler functions:
+\code{\link[=jaro_winkler]{jaro_winkler()}},
+\code{\link[=jaro_winkler_matrix]{jaro_winkler_matrix()}}
 }
+\concept{Jaro-Winkler functions}

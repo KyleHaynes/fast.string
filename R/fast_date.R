@@ -1,11 +1,23 @@
 #' Format a Date vector as strings without locale or timezone overhead.
 #'
+#' Converts days since 1970-01-01 to one of four fixed layouts using pure
+#' integer calendar arithmetic, so it is faster than [base::format()] on a
+#' `Date` but does not honour the locale or accept arbitrary formats.
+#' Fractional days are floored; `NA`, `NaN` and infinite values give `NA`.
+#'
 #' @param x A `Date` object or numeric vector of days since 1970-01-01.
 #' @param format One of `"iso"` (YYYY-MM-DD), `"compact"` (YYYYMMDD),
 #'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
 #' @return Character vector the same length as `x`.
+#' @seealso [fas.Date()] for the reverse direction.
+#' @family date and timestamp functions
+#' @examples
+#' d <- as.Date(c("2024-06-18", "1999-12-31", NA))
+#' format_date(d)
+#' format_date(d, "dmy")
+#' format_date(d, "compact")
 #' @export
-format_date <- function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
+format_date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
     format <- match.arg(format)
     if (inherits(x, "Date")) x <- unclass(x)
     if (!is.numeric(x))
@@ -32,8 +44,12 @@ format_date <- function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
 #' @return Character vector recycled to the common length of `year`,
 #'   `month`, and `day`.
 #' @seealso [date_parts()] for the reverse direction.
+#' @family date and timestamp functions
+#' @examples
+#' format_date_parts(c(2024, 1999), c(6, 12), c(18, 31))
+#' format_date_parts(2024, 6, 18, format = "dmy")
 #' @export
-format_date_parts <- function(year, month, day,
+format_date_parts <-function(year, month, day,
                               format = c("iso", "compact", "dmy", "ymd_slash")) {
     if (!is.numeric(year) || !is.numeric(month) || !is.numeric(day))
         stop("`year`, `month`, and `day` must be numeric vectors.")
@@ -50,10 +66,18 @@ format_date_parts <- function(year, month, day,
 
 #' Decompose a Date vector into year, month, day integer columns.
 #'
+#' Splits every date in a single pass, which makes it a cheap way to build
+#' blocking keys (for example "same birth year and month") in record linkage.
+#' Missing dates give `NA` in all three columns.
+#'
 #' @param x A `Date` object or numeric vector of days since 1970-01-01.
 #' @return A data.frame with integer columns `year`, `month`, `day`.
+#' @seealso [format_date_parts()] for the reverse direction.
+#' @family date and timestamp functions
+#' @examples
+#' date_parts(as.Date(c("2024-06-18", "1999-12-31", NA)))
 #' @export
-date_parts <- function(x) {
+date_parts <-function(x) {
     if (inherits(x, "Date")) x <- unclass(x)
     if (!is.numeric(x))
         stop("`x` must be a Date or numeric vector of days since 1970-01-01.")
@@ -79,8 +103,12 @@ date_parts <- function(x) {
 #'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
 #' @return A `Date` vector the same length as `x`.
 #' @seealso [format_date()] for the reverse direction.
+#' @family date and timestamp functions
+#' @examples
+#' fas.Date(c("2024-06-18", "not a date", NA))   # bad input becomes NA
+#' fas.Date("18/06/2024", format = "dmy")
 #' @export
-fas.Date <- function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
+fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
     if (!is.character(x)) {
         if (all(is.na(x))) x <- as.character(x)
         else stop("`x` must be a character vector.")
@@ -105,8 +133,13 @@ fas.Date <- function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
 #'   `"iso_offset"` (`YYYY-MM-DDTHH:MM:SS+HH:MM`).
 #' @return A `POSIXct` vector in UTC with the same length and names as `x`.
 #' @seealso [format_datetime()], [fas.Date()]
+#' @family date and timestamp functions
+#' @examples
+#' # 2023 is not a leap year, so the second value is NA.
+#' fas.POSIXct(c("2024-06-18 09:15:00", "2023-02-29 00:00:00"))
+#' fas.POSIXct("20240618091500", format = "compact")
 #' @export
-fas.POSIXct <- function(
+fas.POSIXct <-function(
     x,
     format = c("iso", "rfc3339", "compact", "iso_offset")
 ) {
@@ -136,8 +169,14 @@ fas.POSIXct <- function(
 #'   formats.
 #' @return Character vector the same length as `x`.
 #' @seealso [fas.POSIXct()], [format_date()]
+#' @family date and timestamp functions
+#' @examples
+#' ts <- fas.POSIXct("2024-06-18 09:15:00")
+#' format_datetime(ts, "rfc3339")
+#' # The same instant, written with a +10:00 offset (wall-clock 19:15).
+#' format_datetime(ts, "iso_offset", offset = "+10:00")
 #' @export
-format_datetime <- function(
+format_datetime <-function(
     x,
     format = c("iso", "rfc3339", "compact", "iso_offset"),
     offset = "Z"

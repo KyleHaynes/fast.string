@@ -23,5 +23,11 @@ class rather than truncating to the three digits used by classic
 refined_soundex(c("Robert", "Rupert", "Ashcraft"))
 }
 \seealso{
-\code{\link[=soundex]{soundex()}}, \code{\link[=nysiis]{nysiis()}}, \code{\link[=cologne]{cologne()}}
+Other phonetic codes:
+\code{\link[=caverphone]{caverphone()}},
+\code{\link[=cologne]{cologne()}},
+\code{\link[=double_metaphone]{double_metaphone()}},
+\code{\link[=nysiis]{nysiis()}},
+\code{\link[=soundex]{soundex()}}
 }
+\concept{phonetic codes}

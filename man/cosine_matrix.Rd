@@ -22,6 +22,15 @@ Numeric matrix with \code{length(a)} rows and \code{length(b)} columns.
 \description{
 Q-gram cosine all-pairs similarity matrix
 }
-\seealso{
-\code{\link[=cosine_similarity]{cosine_similarity()}}
+\examples{
+cosine_matrix(c("night", "nacht"), c("night", "nacht", "day"))
 }
+\seealso{
+Other q-gram similarity functions:
+\code{\link[=cosine_similarity]{cosine_similarity()}},
+\code{\link[=dice_matrix]{dice_matrix()}},
+\code{\link[=jaccard_matrix]{jaccard_matrix()}},
+\code{\link{qgram_metrics}},
+\code{\link[=tversky_matrix]{tversky_matrix()}}
+}
+\concept{q-gram similarity functions}

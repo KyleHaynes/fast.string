@@ -27,6 +27,8 @@
 #' @return `fuzzy_match()` returns an integer vector of table positions.
 #'   `fuzzy_top_n()` returns a data frame with `query_index`, `table_index`,
 #'   `score`, and `rank`.
+#' @seealso [jaro_winkler()] and [edit_distance] for the scoring metrics, and
+#'   [jaro_winkler_matrix()] when a full score matrix is what you want.
 #' @examples
 #' fuzzy_match(c("SMITH", "JONES"), c("SMYTH", "JONAS", "JONES"))
 #' fuzzy_top_n("kitten", c("sitting", "mitten", "cat"), top_n = 2)

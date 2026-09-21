@@ -24,6 +24,16 @@ Numeric matrix of dimensions n × m.
 \description{
 Q-gram Tversky all-pairs similarity matrix
 }
-\seealso{
-\code{\link[=tversky_index]{tversky_index()}}
+\examples{
+tversky_matrix(c("night", "nacht"), c("night", "nacht", "day"),
+               alpha = 1, beta = 0)
 }
+\seealso{
+Other q-gram similarity functions:
+\code{\link[=cosine_matrix]{cosine_matrix()}},
+\code{\link[=cosine_similarity]{cosine_similarity()}},
+\code{\link[=dice_matrix]{dice_matrix()}},
+\code{\link[=jaccard_matrix]{jaccard_matrix()}},
+\code{\link{qgram_metrics}}
+}
+\concept{q-gram similarity functions}

@@ -21,3 +21,14 @@ Numeric matrix with \code{length(a)} rows and \code{length(b)} columns.
 \description{
 Optimal String Alignment all-pairs distance matrix
 }
+\examples{
+osa_distance_matrix(c("ca", "abc"), c("abc", "ca"))
+}
+\seealso{
+Other edit distance functions:
+\code{\link[=damerau_levenshtein_matrix]{damerau_levenshtein_matrix()}},
+\code{\link{edit_distance}},
+\code{\link[=levenshtein_matrix]{levenshtein_matrix()}},
+\code{\link[=levenshtein_within]{levenshtein_within()}}
+}
+\concept{edit distance functions}

@@ -19,11 +19,16 @@
 #' @return A numeric vector the same length as `a`; `NA` when either input is
 #'   `NA`. Distance functions return raw edit counts. Similarity functions
 #'   return values in `[0, 1]`.
+#' @seealso [fuzzy_match()] and [fuzzy_top_n()] to search a table with these
+#'   metrics without building a full matrix.
+#' @family edit distance functions
 #' @examples
 #' levenshtein("kitten", "sitting")
 #' osa_distance("ca", "abc")
 #' damerau_levenshtein("ca", "abc")
 #' levenshtein_similarity("kitten", "sitting")
+#' hamming("karolin", "kathrin")
+#' hamming("abc", "abcd")   # unequal lengths are never within Hamming range
 #' @name edit_distance
 NULL
 
@@ -58,8 +63,11 @@ levenshtein <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 #'
 #' @inheritParams edit_distance
 #' @return Numeric matrix with `length(a)` rows and `length(b)` columns.
+#' @family edit distance functions
+#' @examples
+#' levenshtein_matrix(c("kitten", "flaw"), c("sitting", "lawn"))
 #' @export
-levenshtein_matrix <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
+levenshtein_matrix <-function(a, b, nthreads = NULL, use_bytes = TRUE) {
     .editdist_validate_matrix(a, b, use_bytes)
     fast_levenshtein_matrix_impl(a, b, .as_nthreads(nthreads), use_bytes)
 }
@@ -75,8 +83,11 @@ osa_distance <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 #'
 #' @inheritParams edit_distance
 #' @return Numeric matrix with `length(a)` rows and `length(b)` columns.
+#' @family edit distance functions
+#' @examples
+#' osa_distance_matrix(c("ca", "abc"), c("abc", "ca"))
 #' @export
-osa_distance_matrix <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
+osa_distance_matrix <-function(a, b, nthreads = NULL, use_bytes = TRUE) {
     .editdist_validate_matrix(a, b, use_bytes)
     fast_osa_distance_matrix_impl(a, b, .as_nthreads(nthreads), use_bytes)
 }
@@ -94,8 +105,12 @@ damerau_levenshtein <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 #'
 #' @inheritParams edit_distance
 #' @return Numeric matrix with `length(a)` rows and `length(b)` columns.
+#' @family edit distance functions
+#' @examples
+#' # Unrestricted transposition scores "ca" -> "abc" as 2, OSA as 3.
+#' damerau_levenshtein_matrix(c("ca", "abc"), c("abc", "ca"))
 #' @export
-damerau_levenshtein_matrix <- function(a, b, nthreads = NULL,
+damerau_levenshtein_matrix <-function(a, b, nthreads = NULL,
                                        use_bytes = TRUE) {
     .editdist_validate_matrix(a, b, use_bytes)
     fast_damerau_levenshtein_matrix_impl(
@@ -146,8 +161,11 @@ damerau_levenshtein_similarity <- function(a, b, nthreads = NULL,
 #' @param max_distance Non-negative integer distance cutoff.
 #' @return Logical vector the same length as `a`, with missing comparisons
 #'   returned as `NA`.
+#' @family edit distance functions
+#' @examples
+#' levenshtein_within(c("kitten", "kitten"), c("sitting", "kitchen"), 2)
 #' @export
-levenshtein_within <- function(a, b, max_distance, nthreads = NULL,
+levenshtein_within <-function(a, b, max_distance, nthreads = NULL,
                                use_bytes = TRUE) {
     .editdist_validate(a, b, use_bytes)
     if (!is.numeric(max_distance) || length(max_distance) != 1L ||

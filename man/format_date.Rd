@@ -16,5 +16,25 @@ format_date(x, format = c("iso", "compact", "dmy", "ymd_slash"))
 Character vector the same length as \code{x}.
 }
 \description{
-Format a Date vector as strings without locale or timezone overhead.
+Converts days since 1970-01-01 to one of four fixed layouts using pure
+integer calendar arithmetic, so it is faster than \code{\link[base:format]{base::format()}} on a
+\code{Date} but does not honour the locale or accept arbitrary formats.
+Fractional days are floored; \code{NA}, \code{NaN} and infinite values give \code{NA}.
 }
+\examples{
+d <- as.Date(c("2024-06-18", "1999-12-31", NA))
+format_date(d)
+format_date(d, "dmy")
+format_date(d, "compact")
+}
+\seealso{
+\code{\link[=fas.Date]{fas.Date()}} for the reverse direction.
+
+Other date and timestamp functions:
+\code{\link[=date_parts]{date_parts()}},
+\code{\link[=fas.Date]{fas.Date()}},
+\code{\link[=fas.POSIXct]{fas.POSIXct()}},
+\code{\link[=format_date_parts]{format_date_parts()}},
+\code{\link[=format_datetime]{format_datetime()}}
+}
+\concept{date and timestamp functions}

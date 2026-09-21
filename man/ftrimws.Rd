@@ -22,6 +22,17 @@ Character vector the same length as \code{x}, with \code{names(x)} preserved.
 Equivalent to \code{\link[base:trimws]{base::trimws()}}, parallelised across all CPU cores via
 Intel TBB. Strips \code{" \\t\\r\\n"} from the ends of each string.
 }
+\examples{
+x <- c("  hi  ", "\tthere\n", NA)
+ftrimws(x)
+ftrimws(x, which = "left")
+}
 \seealso{
 \code{\link[base:trimws]{base::trimws()}}
+
+Other string utilities:
+\code{\link[=fchartr]{fchartr()}},
+\code{\link[=fnchar]{fnchar()}},
+\code{\link[=fsubstr]{fsubstr()}}
 }
+\concept{string utilities}

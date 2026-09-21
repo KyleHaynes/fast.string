@@ -27,6 +27,11 @@
 #'
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::trimws()]
+#' @family string utilities
+#' @examples
+#' x <- c("  hi  ", "\tthere\n", NA)
+#' ftrimws(x)
+#' ftrimws(x, which = "left")
 #' @export
 ftrimws <- function(x, which = c("both", "left", "right"),
                    whitespace = "[ \t\r\n]") {
@@ -53,6 +58,9 @@ ftrimws <- function(x, which = c("both", "left", "right"),
 #'
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::substr()]
+#' @family string utilities
+#' @examples
+#' fsubstr(c("abcdef", "xyz", NA), 2, 4)   # out-of-range stops are clamped
 #' @export
 fsubstr <- function(x, start, stop) {
     if (!is.character(x)) {
@@ -96,6 +104,11 @@ fsubstr <- function(x, start, stop) {
 #'
 #' @return Integer vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::nchar()]
+#' @family string utilities
+#' @examples
+#' x <- c("abc", "h\u00e9llo", NA)
+#' fnchar(x)                    # characters
+#' fnchar(x, type = "bytes")    # the accented letter takes two bytes in UTF-8
 #' @export
 fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA) {
     if (!is.character(x)) x <- as.character(x)
@@ -126,6 +139,9 @@ fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA) {
 #'
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::chartr()]
+#' @family string utilities
+#' @examples
+#' fchartr("abc", "xyz", c("aabbcc", NA))
 #' @export
 fchartr <- function(old, new, x) {
     if (!is.character(x)) {

@@ -23,7 +23,7 @@
 #'
 #' @return Character vector the same length as `x`, with `names(x)`
 #'   preserved, each element either `NA` or exactly 10 characters.
-#' @seealso [soundex()], [nysiis()], [double_metaphone()]
+#' @family phonetic codes
 #' @examples
 #' caverphone(c("Peter", "Tedder", "Stevenson"))
 #' @export

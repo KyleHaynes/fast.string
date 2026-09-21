@@ -2,7 +2,7 @@
 % Please edit documentation in R/jaro_winkler.R
 \name{jaro_winkler_matrix}
 \alias{jaro_winkler_matrix}
-\title{Jaro-Winkler all-pairs similarity matrix.}
+\title{Jaro-Winkler all-pairs similarity matrix}
 \usage{
 jaro_winkler_matrix(a, b, p = 0.1, nthreads = NULL, use_bytes = TRUE)
 }
@@ -20,8 +20,23 @@ RcppParallel default for this call.}
 compatibility default), or UTF-8 code points when \code{FALSE}.}
 }
 \value{
-Numeric matrix with n rows and m columns.
+Numeric matrix with n rows and m columns; a cell is \code{NA} where
+either input is \code{NA}.
 }
 \description{
-Jaro-Winkler all-pairs similarity matrix.
+Scores every element of \code{a} against every element of \code{b}, the usual shape
+of a data-linkage comparison table. See \code{\link[=jaro_winkler]{jaro_winkler()}} for how the score
+is defined.
 }
+\examples{
+round(jaro_winkler_matrix(
+    c("John Smith", "Mary Jones"),
+    c("Jon Smith", "Mary-Anne Jones", "Rob Brown")
+), 2)
+}
+\seealso{
+Other Jaro-Winkler functions:
+\code{\link[=jaro_winkler]{jaro_winkler()}},
+\code{\link[=jaro_winkler_tokens]{jaro_winkler_tokens()}}
+}
+\concept{Jaro-Winkler functions}

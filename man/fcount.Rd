@@ -39,6 +39,20 @@ Counts non-overlapping matches of one pattern in each element of \code{x}.
 This is the counting counterpart to \code{\link[=fgrepl]{fgrepl()}}, using the same PCRE2 and
 prepared fixed-string engines and the same parallel dispatch policy.
 }
-\seealso{
-\code{\link[=fgrepl]{fgrepl()}}, \code{\link[base:grep]{base::gregexpr()}}
+\examples{
+x <- c("apple pie", "banana split", NA, "cherry tart")
+
+fcount("a", x, fixed = TRUE)
+fcount("[aeiou]", x)            # vowels per string
 }
+\seealso{
+\code{\link[base:gregexpr]{base::gregexpr()}}
+
+Other matching and substitution functions:
+\code{\link[=fgrep]{fgrep()}},
+\code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fgsub]{fgsub()}},
+\code{\link[=fsub]{fsub()}},
+\code{\link[=gsub_all]{gsub_all()}}
+}
+\concept{matching and substitution functions}

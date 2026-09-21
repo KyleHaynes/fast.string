@@ -21,3 +21,15 @@ Numeric matrix with \code{length(a)} rows and \code{length(b)} columns.
 \description{
 Unrestricted Damerau-Levenshtein all-pairs distance matrix
 }
+\examples{
+# Unrestricted transposition scores "ca" -> "abc" as 2, OSA as 3.
+damerau_levenshtein_matrix(c("ca", "abc"), c("abc", "ca"))
+}
+\seealso{
+Other edit distance functions:
+\code{\link{edit_distance}},
+\code{\link[=levenshtein_matrix]{levenshtein_matrix()}},
+\code{\link[=levenshtein_within]{levenshtein_within()}},
+\code{\link[=osa_distance_matrix]{osa_distance_matrix()}}
+}
+\concept{edit distance functions}

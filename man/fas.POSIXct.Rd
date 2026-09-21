@@ -18,10 +18,23 @@ A \code{POSIXct} vector in UTC with the same length and names as \code{x}.
 }
 \description{
 Parses strict, locale-free timestamps directly into UTC seconds since the
-Unix epoch. Unlike \code{\link[base:as.POSIXlt]{base::as.POSIXct()}}, this function does not consult a
+Unix epoch. Unlike \code{\link[base:as.POSIXct]{base::as.POSIXct()}}, this function does not consult a
 timezone database or try multiple formats. Calendar dates are validated,
 including month lengths and leap years.
 }
+\examples{
+# 2023 is not a leap year, so the second value is NA.
+fas.POSIXct(c("2024-06-18 09:15:00", "2023-02-29 00:00:00"))
+fas.POSIXct("20240618091500", format = "compact")
+}
 \seealso{
 \code{\link[=format_datetime]{format_datetime()}}, \code{\link[=fas.Date]{fas.Date()}}
+
+Other date and timestamp functions:
+\code{\link[=date_parts]{date_parts()}},
+\code{\link[=fas.Date]{fas.Date()}},
+\code{\link[=format_date]{format_date()}},
+\code{\link[=format_date_parts]{format_date_parts()}},
+\code{\link[=format_datetime]{format_datetime()}}
 }
+\concept{date and timestamp functions}

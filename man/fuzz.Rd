@@ -64,3 +64,7 @@ fuzz_partial_ratio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear")
 fuzz_token_sort_ratio("fuzzy was a bear", "bear was a fuzzy")
 fuzz_token_set_ratio("fuzzy was a bear", "fuzzy fuzzy bear was a bear")
 }
+\seealso{
+\code{\link[=jaro_winkler_tokens]{jaro_winkler_tokens()}} for a word-order-tolerant score built on
+Jaro-Winkler, and \link{edit_distance} for edit-based measures.
+}

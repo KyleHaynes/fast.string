@@ -28,6 +28,20 @@ Formats Unix-epoch seconds without locale or timezone-database overhead.
 The \code{"iso_offset"} form applies one fixed numeric offset to every value;
 other formats are emitted in UTC.
 }
+\examples{
+ts <- fas.POSIXct("2024-06-18 09:15:00")
+format_datetime(ts, "rfc3339")
+# The same instant, written with a +10:00 offset (wall-clock 19:15).
+format_datetime(ts, "iso_offset", offset = "+10:00")
+}
 \seealso{
 \code{\link[=fas.POSIXct]{fas.POSIXct()}}, \code{\link[=format_date]{format_date()}}
+
+Other date and timestamp functions:
+\code{\link[=date_parts]{date_parts()}},
+\code{\link[=fas.Date]{fas.Date()}},
+\code{\link[=fas.POSIXct]{fas.POSIXct()}},
+\code{\link[=format_date]{format_date()}},
+\code{\link[=format_date_parts]{format_date_parts()}}
 }
+\concept{date and timestamp functions}

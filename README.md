@@ -20,20 +20,24 @@ remotes::install_github("KyleHaynes/fast.string")
 
 ## Functions
 
-- **Matching / substitution**: `fgrepl()`, `fgrep()`, `fcount()`, `fsub()`, `fgsub()`, `gsub_all()`
+- **Matching & substitution**: `fgrepl()`, `fgrep()`, `fcount()`, `fsub()`, `fgsub()`, `gsub_all()`
 - **String utilities**: `ftrimws()`, `fsubstr()`, `fnchar()`, `fchartr()`
-- **Dates**: `format_date()`, `format_date_parts()`, `date_parts()`, `fas.Date()`, `format_datetime()`, `fas.POSIXct()`
-- **Phonetic blocking keys**: `soundex()`, `nysiis()`, `refined_soundex()`, `cologne()`, `double_metaphone()`, `caverphone()`
-- **Fuzzy string similarity**: `jaro_winkler()`, `jaro_winkler_matrix()`, `jaro_winkler_tokens()`
+- **Dates & timestamps**: `fas.Date()`, `fas.POSIXct()`, `format_date()`, `format_datetime()`, `date_parts()`, `format_date_parts()`
+- **Phonetic codes** (blocking keys): `soundex()`, `refined_soundex()`, `nysiis()`, `cologne()`, `double_metaphone()`, `caverphone()`
+- **String similarity**
+  - *Jaro-Winkler*: `jaro_winkler()`, `jaro_winkler_matrix()`, `jaro_winkler_tokens()`
+  - *Edit distance*: `levenshtein()`, `osa_distance()`, `damerau_levenshtein()`, `hamming()` (+ `_similarity()`, `_matrix()`, and `levenshtein_within()` variants)
+  - *Q-gram overlap*: `jaccard_index()`, `dice_coefficient()`, `tversky_index()`, `cosine_similarity()` (+ `_matrix()` variants)
+  - *fuzzywuzzy ratios* (R port of Python's `fuzzywuzzy`): `fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_token_sort_ratio()`, `fuzz_token_set_ratio()`
 - **Fuzzy lookup**: `fuzzy_match()`, `fuzzy_top_n()` (streaming best/top-N matches without a full matrix)
-- **Edit distance**: `levenshtein()`, `osa_distance()`, `damerau_levenshtein()`, `hamming()` (+ matrix, normalized-similarity, and bounded variants)
-- **Q-gram similarity**: `jaccard_index()`, `dice_coefficient()`, `tversky_index()`, `cosine_similarity()` (+ matrix variants)
-- **fuzzywuzzy-style ratios** (R port of Python's `fuzzywuzzy`): `fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_token_sort_ratio()`, `fuzz_token_set_ratio()`
 
-Loading the package (`library(fast.string)`) prints a one-time startup
-banner listing all of these with a short description; suppress it with
-`options(fast.string.verbose = FALSE)` (set before `library()`) or
-`suppressPackageStartupMessages()`.
+Loading the package (`library(fast.string)`) prints every exported function
+as a colour-coded tree grouped by these categories, each with a one-line
+description. The same index is the "Function index" section of
+`?fast.string`. Suppress the banner with `options(fast.string.verbose =
+FALSE)` (set before `library()`) or `suppressPackageStartupMessages()`.
+Colour follows your console's support (it is off when output is piped or
+`NO_COLOR` is set), and the tree falls back to ASCII on non-UTF-8 consoles.
 
 The established similarity APIs compare encoded bytes by default for
 compatibility and speed; pass `use_bytes = FALSE` for UTF-8 code-point

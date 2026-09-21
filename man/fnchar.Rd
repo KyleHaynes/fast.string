@@ -28,6 +28,17 @@ Integer vector the same length as \code{x}, with \code{names(x)} preserved.
 Equivalent to \code{\link[base:nchar]{base::nchar()}}, parallelised across all CPU cores via
 Intel TBB.
 }
+\examples{
+x <- c("abc", "h\u00e9llo", NA)
+fnchar(x)                    # characters
+fnchar(x, type = "bytes")    # the accented letter takes two bytes in UTF-8
+}
 \seealso{
 \code{\link[base:nchar]{base::nchar()}}
+
+Other string utilities:
+\code{\link[=fchartr]{fchartr()}},
+\code{\link[=fsubstr]{fsubstr()}},
+\code{\link[=ftrimws]{ftrimws()}}
 }
+\concept{string utilities}

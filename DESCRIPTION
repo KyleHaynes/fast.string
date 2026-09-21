@@ -18,7 +18,6 @@ Description: Fast equivalents of grepl(), grep(), sub(), and gsub() that
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
 Imports:
     cli (>= 3.0.0),
     Rcpp (>= 1.0.0),
@@ -36,3 +35,4 @@ LinkingTo:
     RcppParallel (>= 5.1.1)
 SystemRequirements: C++14, GNU make
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0

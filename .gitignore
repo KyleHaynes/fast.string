@@ -4,3 +4,6 @@
 *.dll
 .Rproj.user
 
+
+/.quarto/
+**/*.quarto_ipynb

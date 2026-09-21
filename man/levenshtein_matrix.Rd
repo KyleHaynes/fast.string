@@ -21,3 +21,14 @@ Numeric matrix with \code{length(a)} rows and \code{length(b)} columns.
 \description{
 Levenshtein all-pairs distance matrix
 }
+\examples{
+levenshtein_matrix(c("kitten", "flaw"), c("sitting", "lawn"))
+}
+\seealso{
+Other edit distance functions:
+\code{\link[=damerau_levenshtein_matrix]{damerau_levenshtein_matrix()}},
+\code{\link{edit_distance}},
+\code{\link[=levenshtein_within]{levenshtein_within()}},
+\code{\link[=osa_distance_matrix]{osa_distance_matrix()}}
+}
+\concept{edit distance functions}

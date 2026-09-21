@@ -21,6 +21,15 @@ Character vector the same length as \code{x}, with \code{names(x)} preserved.
 Equivalent to \code{\link[base:chartr]{base::chartr()}}, using a flat 256-byte lookup table,
 parallelised across all CPU cores via Intel TBB.
 }
+\examples{
+fchartr("abc", "xyz", c("aabbcc", NA))
+}
 \seealso{
 \code{\link[base:chartr]{base::chartr()}}
+
+Other string utilities:
+\code{\link[=fnchar]{fnchar()}},
+\code{\link[=fsubstr]{fsubstr()}},
+\code{\link[=ftrimws]{ftrimws()}}
 }
+\concept{string utilities}

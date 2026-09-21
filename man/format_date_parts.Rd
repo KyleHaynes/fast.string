@@ -32,6 +32,18 @@ and no Date object involved, so it's faster than going through
 inverse of \code{\link[=date_parts]{date_parts()}}, which decomposes a Date into year/month/day
 columns.
 }
+\examples{
+format_date_parts(c(2024, 1999), c(6, 12), c(18, 31))
+format_date_parts(2024, 6, 18, format = "dmy")
+}
 \seealso{
 \code{\link[=date_parts]{date_parts()}} for the reverse direction.
+
+Other date and timestamp functions:
+\code{\link[=date_parts]{date_parts()}},
+\code{\link[=fas.Date]{fas.Date()}},
+\code{\link[=fas.POSIXct]{fas.POSIXct()}},
+\code{\link[=format_date]{format_date()}},
+\code{\link[=format_datetime]{format_datetime()}}
 }
+\concept{date and timestamp functions}

@@ -22,6 +22,15 @@ Numeric matrix of dimensions n × m.
 \description{
 Q-gram Jaccard all-pairs similarity matrix
 }
-\seealso{
-\code{\link[=jaccard_index]{jaccard_index()}}
+\examples{
+jaccard_matrix(c("night", "nacht"), c("night", "nacht", "day"))
 }
+\seealso{
+Other q-gram similarity functions:
+\code{\link[=cosine_matrix]{cosine_matrix()}},
+\code{\link[=cosine_similarity]{cosine_similarity()}},
+\code{\link[=dice_matrix]{dice_matrix()}},
+\code{\link{qgram_metrics}},
+\code{\link[=tversky_matrix]{tversky_matrix()}}
+}
+\concept{q-gram similarity functions}

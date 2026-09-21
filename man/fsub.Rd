@@ -37,9 +37,23 @@ RcppParallel default. \code{1} forces serial execution.}
 Character vector the same length as \code{x}.
 }
 \description{
-Equivalent to \code{\link[base:grep]{base::sub()}}, using PCRE2 and Intel TBB. Supports
+Equivalent to \code{\link[base:sub]{base::sub()}}, using PCRE2 and Intel TBB. Supports
 \verb{\\\\1}-\verb{\\\\9} capture groups and \verb{\\\\U}/\verb{\\\\L}/\verb{\\\\E} case conversion.
 }
-\seealso{
-\code{\link[base:grep]{base::sub()}}, \code{\link[=fgsub]{fgsub()}}
+\examples{
+x <- c("apple pie", "banana split", NA, "cherry tart")
+
+fsub("a", "_", x, fixed = TRUE)          # first "a" only
+fsub("(\\\\w+) (\\\\w+)", "\\\\2 \\\\1", x)      # swap the two words
 }
+\seealso{
+\code{\link[base:sub]{base::sub()}}
+
+Other matching and substitution functions:
+\code{\link[=fcount]{fcount()}},
+\code{\link[=fgrep]{fgrep()}},
+\code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fgsub]{fgsub()}},
+\code{\link[=gsub_all]{gsub_all()}}
+}
+\concept{matching and substitution functions}

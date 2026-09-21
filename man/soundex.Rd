@@ -24,3 +24,15 @@ encodes as \code{"A261"}, not \code{"A2261"}). Has no \link{base} equivalent; in
 to complement \code{\link[=jaro_winkler]{jaro_winkler()}} / \code{\link[=jaro_winkler_matrix]{jaro_winkler_matrix()}} as a blocking
 key for fuzzy name matching.
 }
+\examples{
+soundex(c("Robert", "Rupert", "Ashcraft", "Ashcroft", NA))
+}
+\seealso{
+Other phonetic codes:
+\code{\link[=caverphone]{caverphone()}},
+\code{\link[=cologne]{cologne()}},
+\code{\link[=double_metaphone]{double_metaphone()}},
+\code{\link[=nysiis]{nysiis()}},
+\code{\link[=refined_soundex]{refined_soundex()}}
+}
+\concept{phonetic codes}

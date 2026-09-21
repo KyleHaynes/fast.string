@@ -28,6 +28,18 @@ There is no days-in-month or leap-year check, so e.g. \code{"2024-02-30"}
 parses without error (unlike \code{\link[base:as.Date]{base::as.Date()}}) — this trades strictness
 for speed, by design.
 }
+\examples{
+fas.Date(c("2024-06-18", "not a date", NA))   # bad input becomes NA
+fas.Date("18/06/2024", format = "dmy")
+}
 \seealso{
 \code{\link[=format_date]{format_date()}} for the reverse direction.
+
+Other date and timestamp functions:
+\code{\link[=date_parts]{date_parts()}},
+\code{\link[=fas.POSIXct]{fas.POSIXct()}},
+\code{\link[=format_date]{format_date()}},
+\code{\link[=format_date_parts]{format_date_parts()}},
+\code{\link[=format_datetime]{format_datetime()}}
 }
+\concept{date and timestamp functions}

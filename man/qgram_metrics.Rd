@@ -69,5 +69,13 @@ tversky_index("night", "nacht", alpha = 1, beta = 1) # == jaccard_index()
 jaccard_index(c("Kyle Haynes", "John Smith"), c("Kyle Haynes", "Jon Smith"))
 }
 \seealso{
-\code{\link[=jaccard_matrix]{jaccard_matrix()}}, \code{\link[=dice_matrix]{dice_matrix()}}, \code{\link[=tversky_matrix]{tversky_matrix()}}, \code{\link[=jaro_winkler]{jaro_winkler()}}
+\code{\link[=jaro_winkler]{jaro_winkler()}} for an order-sensitive alternative.
+
+Other q-gram similarity functions:
+\code{\link[=cosine_matrix]{cosine_matrix()}},
+\code{\link[=cosine_similarity]{cosine_similarity()}},
+\code{\link[=dice_matrix]{dice_matrix()}},
+\code{\link[=jaccard_matrix]{jaccard_matrix()}},
+\code{\link[=tversky_matrix]{tversky_matrix()}}
 }
+\concept{q-gram similarity functions}

@@ -20,8 +20,18 @@
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector the same length as `x`.
+#' @seealso [fgsub()] for a single pattern.
+#' @family matching and substitution functions
+#' @examples
+#' x <- c("cat and hat", "a cat")
+#' gsub_all(c("cat", "hat"), c("dog", "cap"), x, fixed = TRUE)
+#'
+#' # Sequential mode chains the patterns, so "a" -> "b" -> "c" cascades...
+#' gsub_all(c("a", "b"), c("b", "c"), "ab", fixed = TRUE)
+#' # ...whereas a single scan replaces each position once.
+#' gsub_all(c("a", "b"), c("b", "c"), "ab", fixed = TRUE, sequential = FALSE)
 #' @export
-gsub_all <- function(patterns, replacements, x,
+gsub_all <-function(patterns, replacements, x,
                      fixed = FALSE, ignore.case = FALSE,
                      sequential = TRUE,
                      nthreads = NULL) {

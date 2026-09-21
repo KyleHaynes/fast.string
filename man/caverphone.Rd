@@ -38,5 +38,11 @@ algorithm everyone else is using, not a personal improvement on it.
 caverphone(c("Peter", "Tedder", "Stevenson"))
 }
 \seealso{
-\code{\link[=soundex]{soundex()}}, \code{\link[=nysiis]{nysiis()}}, \code{\link[=double_metaphone]{double_metaphone()}}
+Other phonetic codes:
+\code{\link[=cologne]{cologne()}},
+\code{\link[=double_metaphone]{double_metaphone()}},
+\code{\link[=nysiis]{nysiis()}},
+\code{\link[=refined_soundex]{refined_soundex()}},
+\code{\link[=soundex]{soundex()}}
 }
+\concept{phonetic codes}

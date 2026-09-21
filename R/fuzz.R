@@ -32,6 +32,8 @@
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Numeric vector of scores in `[0, 100]`, `length(a)` long. `NA` if
 #'   either `a[i]` or `b[i]` is `NA`.
+#' @seealso [jaro_winkler_tokens()] for a word-order-tolerant score built on
+#'   Jaro-Winkler, and [edit_distance] for edit-based measures.
 #' @examples
 #' fuzz_ratio("this is a test", "this is a test!")
 #' fuzz_partial_ratio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear")

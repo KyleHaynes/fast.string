@@ -31,5 +31,11 @@ cosine_similarity("night", "nacht")
 cosine_similarity("aaaa", "aaab", q = 2)
 }
 \seealso{
-\code{\link[=cosine_matrix]{cosine_matrix()}}, \code{\link[=jaccard_index]{jaccard_index()}}
+Other q-gram similarity functions:
+\code{\link[=cosine_matrix]{cosine_matrix()}},
+\code{\link[=dice_matrix]{dice_matrix()}},
+\code{\link[=jaccard_matrix]{jaccard_matrix()}},
+\code{\link{qgram_metrics}},
+\code{\link[=tversky_matrix]{tversky_matrix()}}
 }
+\concept{q-gram similarity functions}

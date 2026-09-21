@@ -25,3 +25,14 @@ returned as \code{NA}.
 Uses a banded dynamic program and returns early when the distance cannot be
 less than or equal to \code{max_distance}.
 }
+\examples{
+levenshtein_within(c("kitten", "kitten"), c("sitting", "kitchen"), 2)
+}
+\seealso{
+Other edit distance functions:
+\code{\link[=damerau_levenshtein_matrix]{damerau_levenshtein_matrix()}},
+\code{\link{edit_distance}},
+\code{\link[=levenshtein_matrix]{levenshtein_matrix()}},
+\code{\link[=osa_distance_matrix]{osa_distance_matrix()}}
+}
+\concept{edit distance functions}

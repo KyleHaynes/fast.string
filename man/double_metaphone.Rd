@@ -40,5 +40,11 @@ uppercasing) — the algorithm itself keys off literal fragments like
 double_metaphone(c("Smith", "Schmidt", "Catherine", "Kathryn"))
 }
 \seealso{
-\code{\link[=soundex]{soundex()}}, \code{\link[=nysiis]{nysiis()}}, \code{\link[=caverphone]{caverphone()}}
+Other phonetic codes:
+\code{\link[=caverphone]{caverphone()}},
+\code{\link[=cologne]{cologne()}},
+\code{\link[=nysiis]{nysiis()}},
+\code{\link[=refined_soundex]{refined_soundex()}},
+\code{\link[=soundex]{soundex()}}
 }
+\concept{phonetic codes}

@@ -22,6 +22,15 @@ Numeric matrix of dimensions n × m.
 \description{
 Q-gram Sorensen-Dice all-pairs similarity matrix
 }
-\seealso{
-\code{\link[=dice_coefficient]{dice_coefficient()}}
+\examples{
+dice_matrix(c("night", "nacht"), c("night", "nacht", "day"))
 }
+\seealso{
+Other q-gram similarity functions:
+\code{\link[=cosine_matrix]{cosine_matrix()}},
+\code{\link[=cosine_similarity]{cosine_similarity()}},
+\code{\link[=jaccard_matrix]{jaccard_matrix()}},
+\code{\link{qgram_metrics}},
+\code{\link[=tversky_matrix]{tversky_matrix()}}
+}
+\concept{q-gram similarity functions}

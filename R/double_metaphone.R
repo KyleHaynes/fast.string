@@ -25,7 +25,7 @@
 #'   `secondary`, each `length(x)` long (`secondary` is empty `""`, not
 #'   `NA`, when the algorithm found no plausible alternate pronunciation —
 #'   only `NA` input produces `NA` output).
-#' @seealso [soundex()], [nysiis()], [caverphone()]
+#' @family phonetic codes
 #' @examples
 #' double_metaphone(c("Smith", "Schmidt", "Catherine", "Kathryn"))
 #' @export

@@ -14,6 +14,9 @@
 #'
 #' @return Character vector the same length as `x`, with `names(x)`
 #'   preserved, each element either `NA` or exactly 4 characters.
+#' @family phonetic codes
+#' @examples
+#' soundex(c("Robert", "Rupert", "Ashcraft", "Ashcroft", NA))
 #' @export
 soundex <- function(x) {
     if (!is.character(x)) x <- as.character(x)

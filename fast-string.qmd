@@ -16,10 +16,14 @@ execute:
 
 `fast.string` provides fast equivalents of common base R string functions
 (`grepl()`, `grep()`, `sub()`, `gsub()`, `trimws()`, `substr()`, `nchar()`,
-`chartr()`), plus date formatting/parsing and phonetic-matching helpers
-(`soundex()`, `nysiis()`, `jaro_winkler()`), with large workloads
-parallelised across CPU cores via Intel TBB (through RcppParallel), PCRE2
-for regex, and a prepared byte-oriented searcher for fixed-string matching.
+`chartr()`), plus date and timestamp parsing/formatting, phonetic blocking
+keys, string-similarity and edit-distance measures, and memory-bounded fuzzy
+lookup. Large workloads are parallelised across CPU cores via Intel TBB
+(through RcppParallel), with PCRE2 for regex and a prepared byte-oriented
+searcher for fixed-string matching.
+
+Loading the package prints every function as a tree grouped by category, and
+`?fast.string` carries the same index. This document follows that order.
 
 Performance depends on string length, match density, value reuse, matrix
 shape, and available cores. The benchmark chapter measures those factors
@@ -82,8 +86,10 @@ length.
 
 ```{r}
 #| label: count-bench
-system.time(vapply(base::gregexpr("[0-9]", x),
-                   function(m) if (m[1] < 0L) 0L else length(m), integer(1)))
+count_matches <- function(m) {
+    if (is.na(m[1])) NA_integer_ else if (m[1] < 0L) 0L else length(m)
+}
+system.time(vapply(base::gregexpr("[0-9]", x), count_matches, integer(1)))
 system.time(fast.string::fcount("[0-9]", x))
 ```
 
@@ -162,10 +168,11 @@ fast.string::format_datetime(ts, "iso_offset", offset = "+10:00")
 
 ## Phonetic blocking keys
 
-`soundex()`, `nysiis()`, `refined_soundex()`, and `cologne()` have no base
-R equivalent. They're typically used as blocking keys ahead of fuzzy name
-matching, grouping records that are *phonetically* similar before running
-a more expensive comparison like Jaro-Winkler within each block.
+`soundex()`, `nysiis()`, `refined_soundex()`, `cologne()`,
+`double_metaphone()`, and `caverphone()` have no base R equivalent. They're
+typically used as blocking keys ahead of fuzzy name matching, grouping
+records that are *phonetically* similar before running a more expensive
+comparison like Jaro-Winkler within each block.
 
 ```{r}
 #| label: phonetic-demo
@@ -189,7 +196,20 @@ data.frame(
 )
 ```
 
-## Fuzzy string similarity
+`double_metaphone()` returns two codes per name, a primary and a secondary
+reading of the sound, and two names are usually treated as a match if *any*
+code from one equals *any* code from the other. `caverphone()` was designed
+for New Zealand electoral-roll names and is widely used in NZ/AU linkage.
+
+```{r}
+#| label: phonetic-more-demo
+fast.string::double_metaphone(c("Smith", "Schmidt", "Catherine", "Kathryn"))
+fast.string::caverphone(c("Peter", "Tedder", "Stevenson"))
+```
+
+## String similarity
+
+### Jaro-Winkler
 
 `jaro_winkler()` compares two equal-length vectors pairwise;
 `jaro_winkler_matrix()` computes the full n × m similarity matrix between
@@ -207,6 +227,37 @@ candidates_b <- c("Jon Smith", "Mary-Anne Jones", "Rob Brown", "Someone Else")
 fast.string::jaro_winkler_matrix(candidates_a, candidates_b)
 ```
 
+### Edit distance
+
+`levenshtein()`, `osa_distance()`, `damerau_levenshtein()`, and `hamming()`
+return raw edit counts. The `_similarity()` variants scale them to 0-1, the
+`_matrix()` variants score every pair, and `levenshtein_within()` gives up as
+soon as a pair cannot be within a cutoff, which makes "within two edits"
+cheap to test across millions of pairs.
+
+```{r}
+#| label: edit-bench
+system.time(fast.string::levenshtein(x, rev(x)))
+system.time(fast.string::levenshtein_within(x, rev(x), 2))
+```
+
+The three edit-distance flavours differ on transpositions. `"ca"` to `"abc"`
+needs the same characters edited twice, which `osa_distance()` forbids and
+`damerau_levenshtein()` allows.
+
+```{r}
+#| label: edit-demo
+c(levenshtein         = fast.string::levenshtein("ca", "abc"),
+  osa                 = fast.string::osa_distance("ca", "abc"),
+  damerau_levenshtein = fast.string::damerau_levenshtein("ca", "abc"))
+```
+
+### Q-gram similarity
+
+`jaccard_index()`, `dice_coefficient()`, and `tversky_index()` compare the
+*sets* of overlapping q-grams two strings share, so they don't care where in
+the string a difference falls.
+
 A second, independent similarity signal is often worth carrying alongside
 Jaro-Winkler. `cosine_similarity()` compares q-gram *frequency* profiles,
 so unlike the set-based `jaccard_index()`/`dice_coefficient()`/
@@ -222,8 +273,46 @@ data.frame(a, b,
            cosine  = fast.string::cosine_similarity(a, b))
 ```
 
+### fuzzywuzzy-style ratios
+
+The four `fuzz_*()` functions are vectorised ports of Python's `fuzzywuzzy`
+scores, on a 0-100 scale. `fuzz_token_sort_ratio()` and
+`fuzz_token_set_ratio()` ignore word order and extra or repeated words, which
+is useful for free-text names and addresses.
+
+```{r}
+#| label: fuzz-demo
+fast.string::fuzz_token_sort_ratio("fuzzy was a bear", "bear was a fuzzy")
+fast.string::fuzz_token_set_ratio("fuzzy was a bear", "fuzzy fuzzy bear was a bear")
+```
+
+## Fuzzy lookup
+
+`fuzzy_match()` and `fuzzy_top_n()` find each query's best (or top-N)
+candidates in a table *without* building the full query by table score
+matrix, so memory grows with `length(x) * top_n` rather than
+`length(x) * length(table)`. `fuzzy_match()` returns table positions, with
+`NA` where nothing reaches `min_score`.
+
+```{r}
+#| label: lookup-demo
+table_names <- c("SMYTH", "JONAS", "JONES", "SMITH")
+fast.string::fuzzy_match(c("SMITH", "JONES", "ZZZZ"), table_names, min_score = 0.8)
+fast.string::fuzzy_top_n("kitten", c("sitting", "mitten", "cat"),
+                         method = "levenshtein", top_n = 2)
+```
+
+```{r}
+#| label: lookup-bench
+queries <- x[1:2000]
+candidates <- unique(x)[1:20000]
+system.time(fast.string::fuzzy_match(queries, candidates))
+```
+
 ## Further reading
 
+- `?fast.string` — the function index, with a help page and runnable
+  examples for every function.
 - [`README.md`](README.md) — quick install and `system.time()` examples.
 - [The documentation book](https://kylehaynes.github.io/fast.string/) — a
   narrative walkthrough of every function group, the algorithms behind

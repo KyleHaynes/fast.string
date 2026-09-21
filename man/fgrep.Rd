@@ -40,8 +40,24 @@ RcppParallel default. \code{1} forces serial execution.}
 Integer vector of indices (or character when \code{value = TRUE}).
 }
 \description{
-Equivalent to \code{\link[base:grep]{base::grep()}}, using PCRE2 and Intel TBB.
+Equivalent to \code{\link[base:grep]{base::grep()}}, using PCRE2 and Intel TBB. \code{NA} elements of
+\code{x} never match (and are never returned, unless \code{invert = TRUE}).
+}
+\examples{
+x <- c("apple pie", "banana split", NA, "cherry tart")
+
+fgrep("an", x)                  # positions
+fgrep("an", x, value = TRUE)    # the matching strings
+fgrep("an", x, invert = TRUE)   # everything else, including the NA
 }
 \seealso{
 \code{\link[base:grep]{base::grep()}}
+
+Other matching and substitution functions:
+\code{\link[=fcount]{fcount()}},
+\code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fgsub]{fgsub()}},
+\code{\link[=fsub]{fsub()}},
+\code{\link[=gsub_all]{gsub_all()}}
 }
+\concept{matching and substitution functions}

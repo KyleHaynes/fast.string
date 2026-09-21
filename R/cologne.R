@@ -8,7 +8,7 @@
 #' @param x Character vector (coerced with [as.character()] when needed).
 #'   `NA` values and elements with no supported letters return `NA`.
 #' @return Character vector the same length as `x`, with names preserved.
-#' @seealso [soundex()], [refined_soundex()], [double_metaphone()]
+#' @family phonetic codes
 #' @examples
 #' cologne(c("Müller-Lüdenscheidt", "Meier", "Meyer"))
 #' @export

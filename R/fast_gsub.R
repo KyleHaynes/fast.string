@@ -12,7 +12,8 @@
 
 #' Fast parallel string matching returning indices or values
 #'
-#' Equivalent to [base::grep()], using PCRE2 and Intel TBB.
+#' Equivalent to [base::grep()], using PCRE2 and Intel TBB. `NA` elements of
+#' `x` never match (and are never returned, unless `invert = TRUE`).
 #'
 #' @param pattern Character scalar. Pattern to search for.
 #' @param x Character vector.
@@ -26,6 +27,13 @@
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Integer vector of indices (or character when `value = TRUE`).
 #' @seealso [base::grep()]
+#' @family matching and substitution functions
+#' @examples
+#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#'
+#' fgrep("an", x)                  # positions
+#' fgrep("an", x, value = TRUE)    # the matching strings
+#' fgrep("an", x, invert = TRUE)   # everything else, including the NA
 #' @export
 fgrep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
                  value = FALSE, fixed = FALSE, useBytes = FALSE,
@@ -51,7 +59,13 @@ fgrep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector the same length as `x`.
-#' @seealso [base::sub()], [fgsub()]
+#' @seealso [base::sub()]
+#' @family matching and substitution functions
+#' @examples
+#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#'
+#' fsub("a", "_", x, fixed = TRUE)          # first "a" only
+#' fsub("(\\w+) (\\w+)", "\\2 \\1", x)      # swap the two words
 #' @export
 fsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
                 fixed = FALSE, useBytes = FALSE, nthreads = NULL) {
@@ -93,7 +107,13 @@ fsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector the same length as `x`.
-#' @seealso [base::gsub()], [fsub()]
+#' @seealso [base::gsub()]
+#' @family matching and substitution functions
+#' @examples
+#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#'
+#' fgsub("[aeiou]", "_", x)                 # every vowel
+#' fgsub("(^|\\s)(\\w)", "\\1\\U\\2", x)    # capitalise each word
 #' @export
 fgsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
                  fixed = FALSE, useBytes = FALSE, nthreads = NULL) {

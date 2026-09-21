@@ -21,8 +21,15 @@
 #'
 #' @return Logical vector the same length as `x`.
 #' @seealso [base::grepl()]
+#' @family matching and substitution functions
+#' @examples
+#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#'
+#' fgrepl("an", x)                 # NA in, NA out
+#' fgrepl("^[ab]", x)              # regular expression (PCRE2)
+#' fgrepl("APPLE", x, fixed = TRUE, ignore.case = TRUE)
 #' @export
-fgrepl <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
+fgrepl <-function(pattern, x, ignore.case = FALSE, perl = FALSE,
                   fixed = FALSE, useBytes = FALSE, nthreads = NULL) {
     if (!is.character(pattern) || length(pattern) != 1L)
         stop("`pattern` must be a single character string.")
@@ -54,7 +61,13 @@ fgrepl <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
 #'
 #' @inheritParams fgrepl
 #' @return Integer vector the same length as `x`. Missing inputs return `NA`.
-#' @seealso [fgrepl()], [base::gregexpr()]
+#' @seealso [base::gregexpr()]
+#' @family matching and substitution functions
+#' @examples
+#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#'
+#' fcount("a", x, fixed = TRUE)
+#' fcount("[aeiou]", x)            # vowels per string
 #' @export
 fcount <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
                    fixed = FALSE, useBytes = FALSE, nthreads = NULL) {

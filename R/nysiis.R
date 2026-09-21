@@ -13,6 +13,9 @@
 #'
 #' @return Character vector the same length as `x`, with `names(x)`
 #'   preserved, each element either `NA` or up to 6 characters.
+#' @family phonetic codes
+#' @examples
+#' nysiis(c("Robert", "Rupert", "Ashcraft", "Ashcroft", NA))
 #' @export
 nysiis <- function(x) {
     if (!is.character(x)) x <- as.character(x)

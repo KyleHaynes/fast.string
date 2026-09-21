@@ -35,16 +35,31 @@ RcppParallel default. \code{1} forces serial execution.}
 Logical vector the same length as \code{x}.
 }
 \description{
-Equivalent to \code{\link[base:grep]{base::grepl()}}, using PCRE2 and Intel TBB.
+Equivalent to \code{\link[base:grepl]{base::grepl()}}, using PCRE2 and Intel TBB.
 Large inputs can use multiple cores; the crossover depends on subject
 length, pattern cost, match density, and the available cores.
 }
 \details{
 Patterns using PCRE-only syntax (lookaheads, lookbehinds, atomic groups,
 possessive quantifiers, named backreferences) are automatically detected
-when \code{perl = FALSE} and delegated to \code{\link[base:grep]{base::grepl()}} with \code{perl = TRUE},
+when \code{perl = FALSE} and delegated to \code{\link[base:grepl]{base::grepl()}} with \code{perl = TRUE},
 so results are always correct.
 }
-\seealso{
-\code{\link[base:grep]{base::grepl()}}
+\examples{
+x <- c("apple pie", "banana split", NA, "cherry tart")
+
+fgrepl("an", x)                 # NA in, NA out
+fgrepl("^[ab]", x)              # regular expression (PCRE2)
+fgrepl("APPLE", x, fixed = TRUE, ignore.case = TRUE)
 }
+\seealso{
+\code{\link[base:grepl]{base::grepl()}}
+
+Other matching and substitution functions:
+\code{\link[=fcount]{fcount()}},
+\code{\link[=fgrep]{fgrep()}},
+\code{\link[=fgsub]{fgsub()}},
+\code{\link[=fsub]{fsub()}},
+\code{\link[=gsub_all]{gsub_all()}}
+}
+\concept{matching and substitution functions}

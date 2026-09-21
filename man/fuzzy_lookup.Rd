@@ -80,3 +80,7 @@ perform Unicode normalization or grapheme-cluster segmentation.
 fuzzy_match(c("SMITH", "JONES"), c("SMYTH", "JONAS", "JONES"))
 fuzzy_top_n("kitten", c("sitting", "mitten", "cat"), top_n = 2)
 }
+\seealso{
+\code{\link[=jaro_winkler]{jaro_winkler()}} and \link{edit_distance} for the scoring metrics, and
+\code{\link[=jaro_winkler_matrix]{jaro_winkler_matrix()}} when a full score matrix is what you want.
+}
