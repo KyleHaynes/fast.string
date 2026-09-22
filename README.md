@@ -39,6 +39,12 @@ FALSE)` (set before `library()`) or `suppressPackageStartupMessages()`.
 Colour follows your console's support (it is off when output is piped or
 `NO_COLOR` is set), and the tree falls back to ASCII on non-UTF-8 consoles.
 
+In interactive sessions, calling `grepl()`, `grep()`, `sub()`, `gsub()`,
+`trimws()`, `substr()`, `nchar()`, or `chartr()` prints a one-time-per-function
+reminder pointing at the fast.string equivalent — the base function still
+runs and returns the same result either way. Turn it off with
+`options(fast.string.reminders = FALSE)`.
+
 The established similarity APIs compare encoded bytes by default for
 compatibility and speed; pass `use_bytes = FALSE` for UTF-8 code-point
 comparison. The new fuzzy lookup APIs use code points by default and retain

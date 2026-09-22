@@ -15,9 +15,20 @@ NULL
 }
 
 .onAttach <- function(libname, pkgname) {
-    if (!isTRUE(getOption("fast.string.verbose", TRUE))) return(invisible())
-    version <- unname(getNamespaceVersion(pkgname))
-    packageStartupMessage(paste(.index_banner(version), collapse = "\n"))
+    if (isTRUE(getOption("fast.string.verbose", TRUE))) {
+        version <- unname(getNamespaceVersion(pkgname))
+        packageStartupMessage(paste(.index_banner(version), collapse = "\n"))
+    }
+    # Reminders mask base functions (grepl(), sub(), nchar(), ...) with
+    # pass-through wrappers on the search path; only worth doing where a
+    # human will see the message. See R/reminders.R.
+    if (interactive() && isTRUE(getOption("fast.string.reminders", TRUE))) {
+        .attach_reminders()
+    }
+}
+
+.onDetach <- function(libpath) {
+    .detach_reminders()
 }
 
 # Detects PCRE-specific syntax not present in the default TRE engine:

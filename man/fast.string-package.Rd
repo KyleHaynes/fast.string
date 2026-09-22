@@ -20,6 +20,12 @@ larger ones are divided between threads.
 Loading the package prints the function index below as a tree. Silence it
 with \code{options(fast.string.verbose = FALSE)} before \code{\link[=library]{library()}}, or wrap the
 call in \code{\link[=suppressPackageStartupMessages]{suppressPackageStartupMessages()}}.
+
+In interactive sessions, calling a base function that has a fast.string
+equivalent (\code{grepl()}, \code{grep()}, \code{sub()}, \code{gsub()}, \code{trimws()}, \code{substr()},
+\code{nchar()}, \code{chartr()}) prints a one-time-per-function reminder naming the
+faster drop-in; the base function still runs unchanged either way. Turn
+this off with \code{options(fast.string.reminders = FALSE)}.
 }
 \section{Function index}{
 

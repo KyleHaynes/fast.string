@@ -14,6 +14,12 @@
 #' with `options(fast.string.verbose = FALSE)` before [library()], or wrap the
 #' call in [suppressPackageStartupMessages()].
 #'
+#' In interactive sessions, calling a base function that has a fast.string
+#' equivalent (`grepl()`, `grep()`, `sub()`, `gsub()`, `trimws()`, `substr()`,
+#' `nchar()`, `chartr()`) prints a one-time-per-function reminder naming the
+#' faster drop-in; the base function still runs unchanged either way. Turn
+#' this off with `options(fast.string.reminders = FALSE)`.
+#'
 #' @eval .index_roxygen()
 #'
 #' @section Conventions:
