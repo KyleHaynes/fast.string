@@ -82,6 +82,9 @@
     "Fuzzy lookup" = list(
         fuzzy_match = "best table match per query",
         fuzzy_top_n = "top-N matches, no full matrix"
+    ),
+    "Benchmarking" = list(
+        run_benchmark_example = "interactive speed demo vs base R"
     )
 )
 

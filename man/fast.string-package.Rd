@@ -119,6 +119,10 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=fuzzy_match]{fuzzy_match()}} - best table match per query
 \item \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} - top-N matches, no full matrix
 }
+\item \strong{Benchmarking}
+\itemize{
+\item \code{\link[=run_benchmark_example]{run_benchmark_example()}} - interactive speed demo vs base R
+}
 }
 }
 

@@ -57,6 +57,8 @@ levenshtein("kitten", "sitting")
 osa_distance("ca", "abc")
 damerau_levenshtein("ca", "abc")
 levenshtein_similarity("kitten", "sitting")
+osa_similarity("ca", "abc")
+damerau_levenshtein_similarity("ca", "abc")
 hamming("karolin", "kathrin")
 hamming("abc", "abcd")   # unequal lengths are never within Hamming range
 }
