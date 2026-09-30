@@ -1,9 +1,11 @@
 // [[Rcpp::depends(RcppParallel)]]
 #include <Rcpp.h>
 #include <RcppParallel.h>
+#include <Rversion.h>
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <vector>
 #include "parallel_dispatch.h"
@@ -28,12 +30,27 @@ static inline cetype_t output_encoding(SEXP charsxp) {
     return encoding == CE_ANY ? CE_NATIVE : encoding;
 }
 
-// ---------------------------------------------------------------------------
-// trimws
-// ---------------------------------------------------------------------------
+static inline bool is_ascii_bytes(const char* data, std::size_t size) {
+    std::uint64_t bits = 0;
+    std::size_t i = 0;
+    for (; i + 8 <= size; i += 8) {
+        std::uint64_t word;
+        std::memcpy(&word, data + i, 8);
+        bits |= word;
+    }
+    for (; i < size; ++i)
+        bits |= static_cast<unsigned char>(data[i]);
+    return (bits & 0x8080808080808080ULL) == 0;
+}
 
-static inline bool is_trim_ws(unsigned char c) {
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+// R 4.5.0 exposed the ASCII flag R keeps on every CHARSXP; before that, scan.
+static inline bool charsxp_is_ascii(SEXP value, std::size_t size) {
+#if R_VERSION >= R_Version(4, 5, 0)
+    (void)size;
+    return Rf_charIsASCII(value);
+#else
+    return is_ascii_bytes(CHAR(value), size);
+#endif
 }
 
 enum SliceKind : std::uint8_t {
@@ -48,73 +65,119 @@ struct SliceResult {
     std::uint8_t kind;
 };
 
-struct TrimWorker : public Worker {
-    const StringView* strings;
-    int which;
-    SliceResult* results;
+// How far ahead the serial loops below prefetch CHARSXPs. Unsorted input
+// reaches them in effectively random heap order, so without this nearly
+// every element is a cache miss.
+static const R_xlen_t PREFETCH_DISTANCE = 8;
 
-    TrimWorker(const StringView* strings_, int which_, SliceResult* results_)
-        : strings(strings_), which(which_), results(results_) {}
+static inline void prefetch_charsxp(const SEXP* strings, R_xlen_t i, R_xlen_t n) {
+#if defined(__GNUC__)
+    if (i + PREFETCH_DISTANCE < n)
+        __builtin_prefetch(strings[i + PREFETCH_DISTANCE]);
+#else
+    (void)strings; (void)i; (void)n;
+#endif
+}
 
-    void operator()(std::size_t begin, std::size_t end) {
-        for (std::size_t i = begin; i < end; ++i) {
-            const StringView& value = strings[i];
-            if (value.is_na()) {
-                results[i] = SliceResult{0, 0, SLICE_NA};
-                continue;
-            }
+// ALTREP string vectors may create CHARSXPs on access; copy them into an
+// ordinary STRSXP so every element stays protected while mkChar allocates
+// and can be read through a plain pointer array.
+static CharacterVector materialized_strings(const StringVector& x) {
+    if (!ALTREP(static_cast<SEXP>(x))) return x;
+    CharacterVector materialized(x.size());
+    for (R_xlen_t i = 0; i < x.size(); ++i)
+        SET_STRING_ELT(materialized, i, STRING_ELT(x, i));
+    return materialized;
+}
 
-            std::size_t start = 0;
-            std::size_t stop = value.size;
-            if (which != 2) {
-                while (start < stop &&
-                       is_trim_ws(static_cast<unsigned char>(value.data[start])))
-                    ++start;
-            }
-            if (which != 1) {
-                while (stop > start &&
-                       is_trim_ws(static_cast<unsigned char>(value.data[stop - 1])))
-                    --stop;
-            }
+// One serial pass that slices and interns each string in turn.
+// Rf_mkCharLenCE() (hash + global CHARSXP cache lookup) dominates these
+// functions and must run on the main thread, so a separate parallel slicing
+// pass only adds memory traffic. When a slice is byte-identical to the
+// previous one (common in sorted or grouped data) the previous CHARSXP is
+// reused instead of being looked up again.
+//
+// slice_of(i, view, encoding) returns the slice of non-NA element i, or
+// SLICE_NA to produce NA (e.g. for an NA start/stop).
+template <typename SliceOf>
+static CharacterVector serial_slice_strings(const StringVector& x,
+                                            SliceOf slice_of) {
+    const CharacterVector source = materialized_strings(x);
+    const SEXP* strings = static_cast<const SEXP*>(DATAPTR_RO(source));
+    const R_xlen_t n = source.size();
+    CharacterVector result(n);
 
-            const std::uint8_t kind =
-                start == 0 && stop == value.size ? SLICE_ORIGINAL : SLICE_RANGE;
-            results[i] = SliceResult{start, stop - start, kind};
+    SEXP previous = NA_STRING;
+    const char* previous_data = nullptr;
+    std::size_t previous_length = 0;
+    cetype_t previous_encoding = CE_NATIVE;
+    for (R_xlen_t i = 0; i < n; ++i) {
+        prefetch_charsxp(strings, i, n);
+        const SEXP value = strings[i];
+        if (value == NA_STRING) {
+            SET_STRING_ELT(result, i, NA_STRING);
+            continue;
         }
+        const cetype_t encoding = output_encoding(value);
+        const StringView view{CHAR(value), static_cast<std::size_t>(LENGTH(value))};
+        const SliceResult slice = slice_of(i, view, encoding);
+        if (slice.kind == SLICE_NA) {
+            SET_STRING_ELT(result, i, NA_STRING);
+            continue;
+        }
+        if (slice.kind == SLICE_ORIGINAL) {
+            SET_STRING_ELT(result, i, value);
+            continue;
+        }
+        if (slice.length == 0) {
+            SET_STRING_ELT(result, i, R_BlankString);
+            continue;
+        }
+        const char* data = view.data + slice.start;
+        if (previous != NA_STRING && slice.length == previous_length &&
+            encoding == previous_encoding &&
+            data[slice.length - 1] == previous_data[slice.length - 1] &&
+            std::memcmp(data, previous_data, slice.length) == 0) {
+            SET_STRING_ELT(result, i, previous);
+            continue;
+        }
+        previous = Rf_mkCharLenCE(data, static_cast<int>(slice.length), encoding);
+        SET_STRING_ELT(result, i, previous);
+        previous_data = CHAR(previous);
+        previous_length = slice.length;
+        previous_encoding = encoding;
     }
-};
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// trimws
+// ---------------------------------------------------------------------------
+
+static inline bool is_trim_ws(unsigned char c) {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
 
 // [[Rcpp::export]]
 CharacterVector fast_trimws_impl(const StringVector& x, int which) {
-    const StringSnapshot snapshot(x);
-    const std::size_t n = snapshot.size();
-    std::vector<SliceResult> slices(n);
-
-    TrimWorker worker(snapshot.data(), which, slices.data());
-    dispatch_for(0, n, worker, string_scan_work(snapshot), 10000);
-
-    CharacterVector result(static_cast<R_xlen_t>(n));
-    for (std::size_t i = 0; i < n; ++i) {
-        const SliceResult& slice = slices[i];
-        if (slice.kind == SLICE_NA) {
-            SET_STRING_ELT(result, static_cast<R_xlen_t>(i), NA_STRING);
-        } else if (slice.kind == SLICE_ORIGINAL) {
-            SET_STRING_ELT(result, static_cast<R_xlen_t>(i), snapshot.charsxp(i));
-        } else {
-            const StringView& value = snapshot[i];
-            const char* data = slice.length == 0 ? "" : value.data + slice.start;
-            SET_STRING_ELT(
-                result,
-                static_cast<R_xlen_t>(i),
-                Rf_mkCharLenCE(
-                    data,
-                    static_cast<int>(slice.length),
-                    output_encoding(snapshot.charsxp(i))
-                )
-            );
+    return serial_slice_strings(x, [which](R_xlen_t, const StringView& value,
+                                           cetype_t) {
+        std::size_t start = 0;
+        std::size_t stop = value.size;
+        if (which != 2) {
+            while (start < stop &&
+                   is_trim_ws(static_cast<unsigned char>(value.data[start])))
+                ++start;
         }
-    }
-    return result;
+        if (which != 1) {
+            while (stop > start &&
+                   is_trim_ws(static_cast<unsigned char>(value.data[stop - 1])))
+                --stop;
+        }
+        const std::uint8_t kind =
+            start == 0 && stop == value.size ? SLICE_ORIGINAL : SLICE_RANGE;
+        return SliceResult{start, stop - start, kind};
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +205,14 @@ static inline SliceResult byte_substr(const StringView& value, int start, int st
 }
 
 static inline SliceResult utf8_substr(const StringView& value, int start, int stop) {
+    // Characters 1..stop are single bytes when the first `stop` bytes are
+    // ASCII, so the character scan below reduces to a byte slice.
+    const std::size_t prefix = stop < 1
+        ? 0
+        : (std::min)(value.size, static_cast<std::size_t>(stop));
+    if (is_ascii_bytes(value.data, prefix))
+        return byte_substr(value, start, stop);
+
     if (start < 1) start = 1;
     if (stop < start)
         return SliceResult{0, 0, SLICE_RANGE};
@@ -212,11 +283,43 @@ struct SubstrWorker : public Worker {
     }
 };
 
+// Beyond this many leading characters the UTF-8 prefix scan dominates the
+// per-string cost, so it is worth scanning in parallel before the serial
+// Rf_mkCharLenCE() pass. Below it, that extra pass only adds overhead.
+static const int SUBSTR_PARALLEL_SCAN_START = 256;
+
+static CharacterVector substr_serial(const StringVector& x,
+                                     const int* start, bool scalar_start,
+                                     const int* stop, bool scalar_stop,
+                                     bool native_utf8) {
+    return serial_slice_strings(x, [=](R_xlen_t i, const StringView& view,
+                                       cetype_t encoding) {
+        const int first = scalar_start ? start[0] : start[i];
+        const int last = scalar_stop ? stop[0] : stop[i];
+        if (first == NA_INTEGER || last == NA_INTEGER)
+            return SliceResult{0, 0, SLICE_NA};
+        const bool utf8 = encoding == CE_UTF8 ||
+            (encoding == CE_NATIVE && native_utf8);
+        return utf8
+            ? utf8_substr(view, first, last)
+            : byte_substr(view, first, last);
+    });
+}
+
 // [[Rcpp::export]]
 CharacterVector fast_substr_impl(const StringVector& x,
                                  const IntegerVector& start,
                                  const IntegerVector& stop,
                                  bool native_utf8) {
+    const int* start_begin = start.begin();
+    const int max_start = start.size() == 0
+        ? NA_INTEGER
+        : *std::max_element(start_begin, start_begin + start.size());
+    if (max_start <= SUBSTR_PARALLEL_SCAN_START) {
+        return substr_serial(x, start_begin, start.size() == 1,
+                             stop.begin(), stop.size() == 1, native_utf8);
+    }
+
     const StringSnapshot snapshot(x);
     const std::size_t n = snapshot.size();
     std::vector<SliceResult> slices(n);
@@ -270,65 +373,72 @@ CharacterVector fast_substr_impl(const StringVector& x,
 // nchar
 // ---------------------------------------------------------------------------
 
-struct NcharWorker : public Worker {
-    const StringView* strings;
-    const std::uint8_t* use_utf8;
-    int type;
-    bool allow_na;
-    RVector<int> out;
+struct PendingCount {
+    R_xlen_t row;
+    StringView value;
+};
 
-    NcharWorker(const StringView* strings_,
-                const std::uint8_t* use_utf8_,
-                int type_,
-                bool allow_na_,
-                IntegerVector& out_)
-        : strings(strings_),
-          use_utf8(use_utf8_),
-          type(type_),
-          allow_na(allow_na_),
-          out(out_) {}
+// Counts UTF-8 characters for the non-ASCII strings fast_nchar_impl()
+// deferred; reads only the byte views resolved on the main thread.
+struct NcharWorker : public Worker {
+    const PendingCount* pending;
+    int* out;
+
+    NcharWorker(const PendingCount* pending_, int* out_)
+        : pending(pending_), out(out_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
-        for (std::size_t i = begin; i < end; ++i) {
-            const StringView& value = strings[i];
-            if (value.is_na()) {
-                out[i] = allow_na ? NA_INTEGER : 2;
-                continue;
-            }
-            if (type == 0 || !use_utf8[i]) {
-                out[i] = static_cast<int>(value.size);
-                continue;
-            }
-
+        for (std::size_t k = begin; k < end; ++k) {
+            const StringView& value = pending[k].value;
             int characters = 0;
             for (std::size_t j = 0; j < value.size; ++j) {
                 if (is_utf8_lead(static_cast<unsigned char>(value.data[j])))
                     ++characters;
             }
-            out[i] = characters;
+            out[pending[k].row] = characters;
         }
     }
 };
 
+// One serial pass answers NA, byte counts, non-UTF-8 and ASCII strings
+// directly from the CHARSXP (touching each element once, with prefetch, is
+// the whole cost for those); only non-ASCII UTF-8 strings are deferred to a
+// character-counting pass, parallel when there is enough of it.
 // [[Rcpp::export]]
 IntegerVector fast_nchar_impl(const StringVector& x,
                               int type,
                               bool allow_na,
                               bool native_utf8) {
-    const StringSnapshot snapshot(x);
-    const std::size_t n = snapshot.size();
-    std::vector<std::uint8_t> use_utf8(n, 0);
-    for (std::size_t i = 0; i < n; ++i) {
-        if (snapshot[i].is_na())
+    const CharacterVector source = materialized_strings(x);
+    const SEXP* strings = static_cast<const SEXP*>(DATAPTR_RO(source));
+    const R_xlen_t n = source.size();
+    IntegerVector result(n);
+    int* out = INTEGER(result);
+
+    std::vector<PendingCount> pending;
+    std::size_t pending_bytes = 0;
+    for (R_xlen_t i = 0; i < n; ++i) {
+        prefetch_charsxp(strings, i, n);
+        const SEXP value = strings[i];
+        if (value == NA_STRING) {
+            out[i] = allow_na ? NA_INTEGER : 2;
             continue;
-        const cetype_t encoding = output_encoding(snapshot.charsxp(i));
-        use_utf8[i] = encoding == CE_UTF8 ||
-            (encoding == CE_NATIVE && native_utf8);
+        }
+        const std::size_t size = static_cast<std::size_t>(LENGTH(value));
+        out[i] = static_cast<int>(size);
+        if (type == 0 || charsxp_is_ascii(value, size)) continue;
+        const cetype_t encoding = output_encoding(value);
+        if (encoding != CE_UTF8 && !(encoding == CE_NATIVE && native_utf8))
+            continue;
+        pending.push_back(PendingCount{i, StringView{CHAR(value), size}});
+        pending_bytes += size;
     }
 
-    IntegerVector result(static_cast<R_xlen_t>(n));
-    NcharWorker worker(snapshot.data(), use_utf8.data(), type, allow_na, result);
-    dispatch_for(0, n, worker, string_scan_work(snapshot), 10000);
+    if (!pending.empty()) {
+        NcharWorker worker(pending.data(), out);
+        const std::size_t work = pending_bytes / 32u + pending.size();
+        dispatch_for(0, pending.size(), worker, work, 10000);
+    }
     return result;
 }
 

@@ -30,6 +30,30 @@ test_that("fsubstr matches base including NA/out-of-range/recycling", {
                       base::substr(x, c(1, 2, 1, 1), c(3, 4, 2, 1)))
 })
 
+test_that("fsubstr matches base on repeated, shuffled, and long-offset inputs", {
+    # Adjacent identical slices take the previous-result reuse path; the
+    # mixed ASCII/UTF-8 values cover the ASCII-prefix shortcut; start > 256
+    # takes the parallel character-scan path.
+    e_acute <- intToUtf8(0xe9)
+    i_diaeresis <- intToUtf8(0xef)
+    x <- sprintf("row-%06d-%s", rep(1:500, each = 7),
+                 c("abc", paste0(e_acute, "t", e_acute),
+                   paste0("na", i_diaeresis, "ve"), "", "x", "zz", "q"))
+    x[c(3, 50, 700)] <- NA
+    shuffled <- x[c(seq(1, length(x), by = 2), seq(2, length(x), by = 2))]
+    expect_identical(fast.string::fsubstr(x, 1, 8), base::substr(x, 1, 8))
+    expect_identical(fast.string::fsubstr(x, 5, 20), base::substr(x, 5, 20))
+    expect_identical(fast.string::fsubstr(shuffled, 12, 14),
+                     base::substr(shuffled, 12, 14))
+    expect_identical(fast.string::fsubstr(x, 0, -1), base::substr(x, 0, -1))
+
+    long <- paste0(strrep(paste0(e_acute, "ab"), 150), seq_len(20))
+    expect_identical(fast.string::fsubstr(long, 300, 310),
+                     base::substr(long, 300, 310))
+    expect_identical(fast.string::fsubstr(long, c(1, 400), c(5, 460)),
+                     base::substr(long, c(1, 400), c(5, 460)))
+})
+
 test_that("fsubstr propagates NA from start/stop", {
     expect_true(is.na(fast.string::fsubstr("hello", NA, 3)))
     expect_true(is.na(fast.string::fsubstr("hello", 1, NA)))
@@ -80,6 +104,35 @@ test_that("fnchar matches base for bytes/chars and NA handling", {
     expect_identical(fast.string::fnchar(x), base::nchar(x))
     expect_identical(fast.string::fnchar(x, "bytes"), base::nchar(x, "bytes"))
     expect_identical(fast.string::fnchar(x, "chars"), base::nchar(x, "chars"))
+})
+
+test_that("fnchar matches base across encodings, serially and in parallel", {
+    # Non-ASCII UTF-8 strings are counted in a deferred pass; enough of them
+    # (and long ones) push that pass over the parallel threshold.
+    latin1 <- rawToChar(as.raw(c(0x63, 0x61, 0x66, 0xe9)))
+    Encoding(latin1) <- "latin1"
+    values <- c("abc", paste0("h", intToUtf8(0xe9), "llo"),
+                intToUtf8(c(0x4f60, 0x597d)), "", NA, latin1,
+                strrep(paste0(intToUtf8(0xe9), "x"), 50), strrep("ascii", 40))
+    for (x in list(values, rep(values, 3000))) {
+        expect_identical(fast.string::fnchar(x, "chars"), base::nchar(x, "chars"))
+        expect_identical(fast.string::fnchar(x, "bytes"), base::nchar(x, "bytes"))
+        expect_identical(fast.string::fnchar(x, keepNA = FALSE),
+                         base::nchar(x, keepNA = FALSE))
+    }
+})
+
+test_that("ftrimws matches base on sorted, shuffled, and one-sided inputs", {
+    x <- sprintf("%s row-%05d\t%s", c(" ", "", "\n"), rep(1:400, each = 3),
+                 c("", " ", "\r\n"))
+    x[c(5, 77)] <- NA
+    x <- c(x, "   ", "", "no-trim", paste0(" ", intToUtf8(0xe9), " "))
+    shuffled <- x[c(seq(1, length(x), by = 2), seq(2, length(x), by = 2))]
+    for (which in c("both", "left", "right")) {
+        expect_identical(fast.string::ftrimws(x, which), base::trimws(x, which))
+        expect_identical(fast.string::ftrimws(shuffled, which),
+                         base::trimws(shuffled, which))
+    }
 })
 
 test_that("fnchar keepNA=FALSE matches base legacy behaviour", {

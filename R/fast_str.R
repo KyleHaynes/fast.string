@@ -14,10 +14,15 @@
     )
 }
 
-#' Fast parallel whitespace trimming
+#' Fast whitespace trimming
 #'
-#' Equivalent to [base::trimws()], parallelised across all CPU cores via
-#' Intel TBB. Strips `" \t\r\n"` from the ends of each string.
+#' Equivalent to [base::trimws()]. Strips `" \t\r\n"` from the ends of each
+#' string.
+#'
+#' Creating each result string goes through R's global string cache, which
+#' is single-threaded, so this runs as one serial pass that prefetches
+#' upcoming strings, returns untouched strings as-is, and reuses the previous
+#' result when adjacent trimmed strings are identical.
 #'
 #' @param x Character vector. `NA` elements return `NA`.
 #' @param which Character scalar. One of `"both"`, `"left"`, or `"right"`.
@@ -46,11 +51,19 @@ ftrimws <- function(x, which = c("both", "left", "right"),
     .copy_names(fast_trimws_impl(x, code), x)
 }
 
-#' Fast parallel substring extraction
+#' Fast substring extraction
 #'
-#' Equivalent to [base::substr()], parallelised across all CPU cores via
-#' Intel TBB. `start`/`stop` are 1-indexed, clamped to each string's bounds,
-#' and recycled to `length(x)`, matching base R semantics.
+#' Equivalent to [base::substr()]. `start`/`stop` are 1-indexed, clamped to
+#' each string's bounds, and recycled to `length(x)`, matching base R
+#' semantics.
+#'
+#' Creating each result string goes through R's global string cache, which
+#' is single-threaded, so the usual case is one serial pass that prefetches
+#' upcoming strings, skips the UTF-8 character scan for ASCII prefixes, and
+#' reuses the previous result when adjacent substrings are identical (as in
+#' sorted or grouped data). When any `start` exceeds 256 characters, the
+#' character scan runs in parallel across all CPU cores via Intel TBB
+#' first.
 #'
 #' @param x Character vector. `NA` elements return `NA`.
 #' @param start,stop Integer (or numeric, coerced via [as.integer()]) vectors
@@ -86,10 +99,13 @@ fsubstr <- function(x, start, stop) {
     )
 }
 
-#' Fast parallel character/byte counting
+#' Fast character/byte counting
 #'
-#' Equivalent to [base::nchar()], parallelised across all CPU cores via
-#' Intel TBB.
+#' Equivalent to [base::nchar()]. Byte counts, and character counts of ASCII
+#' or single-byte-encoded strings, come straight from R's stored string
+#' length in one serial pass; only non-ASCII UTF-8 strings need their
+#' characters counted, which runs in parallel across all CPU cores via
+#' Intel TBB when there is enough of it.
 #'
 #' @param x Vector, coerced to character via [as.character()] if needed.
 #' @param type Character scalar. One of `"bytes"`, `"chars"`, or `"width"`.

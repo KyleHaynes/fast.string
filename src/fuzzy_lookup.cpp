@@ -66,9 +66,7 @@ struct FuzzyLookupWorker : public Worker {
     void operator()(std::size_t begin, std::size_t end) {
         std::vector<Candidate> best;
         best.reserve(top_n + 1);
-        std::vector<int> matrix;
-        std::unordered_map<char, int> byte_last_row;
-        std::unordered_map<std::uint32_t, int> codepoint_last_row;
+        DamerauWorkspace workspace;
         for (std::size_t query = begin; query < end; ++query) {
             best.clear();
             if (query_bytes[query].is_na()) {
@@ -136,15 +134,13 @@ struct FuzzyLookupWorker : public Worker {
                             );
                         if (distance > cutoff) continue;
                     } else if (byte_path) {
-                        distance = metric_distance_bytes_with_workspace(
-                            method, query_bytes[query], table_bytes[choice],
-                            matrix, byte_last_row
+                        distance = metric_distance_bytes(
+                            method, query_bytes[query], table_bytes[choice]
                         );
                     } else {
                         distance = metric_distance_codepoints_with_workspace(
                             method, query_codepoints[query],
-                            table_codepoints[choice], matrix,
-                            codepoint_last_row
+                            table_codepoints[choice], workspace
                         );
                     }
                     if (distance < 0 || distance > cutoff) continue;

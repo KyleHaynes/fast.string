@@ -44,6 +44,49 @@ static inline void qgram_keys_packed(const char* s, int n, int q,
     out.erase(std::unique(out.begin(), out.end()), out.end());
 }
 
+// Per-pair scratch for packed (q <= 8) q-gram keys: a stack array for the
+// short strings this package targets, heap only beyond it. Two heap vectors
+// per pair made malloc/free -- and contention on the CRT heap lock across
+// worker threads -- the dominant cost of the pairwise q-gram metrics.
+static const std::size_t QGRAM_STACK_KEYS = 128;
+
+struct PackedQgramKeys {
+    std::uint64_t stack[QGRAM_STACK_KEYS];
+    std::vector<std::uint64_t> heap;
+    std::uint64_t* data;
+    std::size_t size;
+
+    PackedQgramKeys() : data(stack), size(0) {}
+    PackedQgramKeys(const PackedQgramKeys&) = delete;
+    PackedQgramKeys& operator=(const PackedQgramKeys&) = delete;
+
+    // Sorted multiset of s's q-grams, as qgram_keys_packed_all() builds.
+    void build(const char* s, int n, int q) {
+        size = n < q ? 0 : static_cast<std::size_t>(n - q + 1);
+        if (size <= QGRAM_STACK_KEYS) {
+            data = stack;
+        } else {
+            heap.resize(size);
+            data = heap.data();
+        }
+        if (size == 0) return;
+        const std::uint64_t mask = (q == 8) ? ~0ULL : ((1ULL << (8 * q)) - 1);
+        std::uint64_t key = 0;
+        for (int i = 0; i < q - 1; ++i) key = (key << 8) | (unsigned char)s[i];
+        std::size_t k = 0;
+        for (int i = q - 1; i < n; ++i) {
+            key = ((key << 8) | (unsigned char)s[i]) & mask;
+            data[k++] = key;
+        }
+        std::sort(data, data + size);
+    }
+
+    // Collapse the multiset to the q-gram set, as qgram_keys_packed() does.
+    void deduplicate() {
+        size = static_cast<std::size_t>(std::unique(data, data + size) - data);
+    }
+};
+
 static inline void qgram_keys_strings_all(const char* s, int n, int q,
                                           std::vector<std::string>& out) {
     out.clear();
@@ -243,10 +286,15 @@ static inline double qgram_tversky_from_overlap(const QgramOverlap& o,
 static inline QgramOverlap qgram_overlap(const char* s1, int l1,
                                           const char* s2, int l2, int q) {
     if (q <= 8) {
-        std::vector<uint64_t> a, b;
-        qgram_keys_packed(s1, l1, q, a);
-        qgram_keys_packed(s2, l2, q, b);
-        return QgramOverlap{a.size(), b.size(), sorted_intersection_size(a, b)};
+        PackedQgramKeys a, b;
+        a.build(s1, l1, q);
+        a.deduplicate();
+        b.build(s2, l2, q);
+        b.deduplicate();
+        return QgramOverlap{
+            a.size, b.size,
+            sorted_intersection_size(a.data, a.size, b.data, b.size)
+        };
     } else {
         std::vector<std::string> a, b;
         qgram_keys_strings(s1, l1, q, a);
@@ -280,10 +328,12 @@ static inline double qgram_cosine_sim(const char* s1, int l1,
                                       const char* s2, int l2, int q) {
     if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
     if (q <= 8) {
-        std::vector<uint64_t> a, b;
-        qgram_keys_packed_all(s1, l1, q, a);
-        qgram_keys_packed_all(s2, l2, q, b);
-        return qgram_cosine_from_frequency(qgram_frequency_overlap(a, b));
+        PackedQgramKeys a, b;
+        a.build(s1, l1, q);
+        b.build(s2, l2, q);
+        return qgram_cosine_from_frequency(
+            qgram_frequency_overlap(a.data, a.size, b.data, b.size)
+        );
     }
     std::vector<std::string> a, b;
     qgram_keys_strings_all(s1, l1, q, a);
@@ -295,10 +345,12 @@ static inline double qgram_distance(const char* s1, int l1,
                                     const char* s2, int l2, int q) {
     if (qgram_sequences_equal(s1, l1, s2, l2)) return 0.0;
     if (q <= 8) {
-        std::vector<uint64_t> a, b;
-        qgram_keys_packed_all(s1, l1, q, a);
-        qgram_keys_packed_all(s2, l2, q, b);
-        return qgram_distance_from_frequency(qgram_frequency_overlap(a, b));
+        PackedQgramKeys a, b;
+        a.build(s1, l1, q);
+        b.build(s2, l2, q);
+        return qgram_distance_from_frequency(
+            qgram_frequency_overlap(a.data, a.size, b.data, b.size)
+        );
     }
     std::vector<std::string> a, b;
     qgram_keys_strings_all(s1, l1, q, a);

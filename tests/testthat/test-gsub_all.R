@@ -33,6 +33,18 @@ test_that("gsub_all regex sequential matches chained base gsub with perl", {
     expect_identical(result, expected)
 })
 
+test_that("gsub_all regex mixes literal and backreference replacements like base", {
+    x <- c("a1b22c333", "x$y", "", NA, "aaa 7")
+    x <- c(x, rep(x, 100000L))
+    patterns <- c("[0-9]+", "(a)", "y*", "\\$")
+    repls <- c("#", "<\\1>", "-", "\\\\")
+    expected <- x
+    for (i in seq_along(patterns))
+        expected <- base::gsub(patterns[i], repls[i], expected, perl = TRUE)
+
+    expect_identical(fast.string::gsub_all(patterns, repls, x), expected)
+})
+
 test_that("gsub_all grows PCRE2 buffers for expanding backreferences", {
     x <- rep(strrep("ab", 128L), 1800L)
     patterns <- c("(ab)", "z")

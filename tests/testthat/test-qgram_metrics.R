@@ -85,6 +85,33 @@ test_that("q-gram metrics survive the RcppParallel threshold (n >= 1000)", {
     expect_false(anyNA(fast.string::tversky_index(a, b)))
 })
 
+test_that("jaccard and cosine match stringdist across q and the stack-buffer limit", {
+    skip_if_not_installed("stringdist")
+    # Up to 128 q-grams per string use a stack buffer; longer strings spill
+    # to the heap. Small alphabets force repeated grams (multiset counts).
+    set.seed(3)
+    make <- function(n, alphabet) {
+        paste(sample(alphabet, n, replace = TRUE), collapse = "")
+    }
+    lengths <- c(0:9, 60L, 127:131, 136L, 300L)
+    a <- unlist(lapply(lengths, function(n) c(make(n, c("a", "b")), make(n, letters))))
+    b <- c(rev(a)[-1], "")
+    for (q in 1:8) {
+        # Empty-profile conventions are pinned by their own tests.
+        keep <- nchar(a) >= q & nchar(b) >= q
+        expect_equal(
+            fast.string::jaccard_index(a[keep], b[keep], q = q),
+            stringdist::stringsim(a[keep], b[keep], method = "jaccard", q = q),
+            tolerance = 1e-12, info = paste("q =", q)
+        )
+        expect_equal(
+            fast.string::cosine_similarity(a[keep], b[keep], q = q),
+            stringdist::stringsim(a[keep], b[keep], method = "cosine", q = q),
+            tolerance = 1e-12, info = paste("q =", q)
+        )
+    }
+})
+
 test_that("q-gram metrics error on bad input", {
     expect_error(fast.string::jaccard_index(c("a", "b"), "x"), "same length")
     expect_error(fast.string::jaccard_index(1, "x"), "character vectors")

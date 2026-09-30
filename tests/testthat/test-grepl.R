@@ -94,6 +94,23 @@ test_that("fgsub supports capture groups and case conversion", {
                       base::gsub("(\\w+)", "\\U\\1", x, perl = TRUE))
 })
 
+test_that("literal replacements match base, including escapes and empty matches", {
+    # Replacements without \1-\9 or \U/\L/\E are spliced in directly rather
+    # than expanded by PCRE2; each must still read exactly as R reads it.
+    x <- c("a1b22c333", "no digits", "", NA, "9", "x$y\\z",
+           paste0("caf", intToUtf8(0xe9), " 42"))
+    x <- c(x, rep(x, 60000L))  # also cross the parallel threshold
+    replacements <- c("#", "", "$", "$1", "\\\\", "\\.", "<\\n>", "ab")
+    for (r in replacements) {
+        expect_identical(fast.string::fgsub("[0-9]+", r, x),
+                         base::gsub("[0-9]+", r, x, perl = TRUE), info = r)
+        expect_identical(fast.string::fsub("[0-9]+", r, x),
+                         base::sub("[0-9]+", r, x, perl = TRUE), info = r)
+        expect_identical(fast.string::fgsub("[0-9]*", r, x),
+                         base::gsub("[0-9]*", r, x, perl = TRUE), info = r)
+    }
+})
+
 test_that("PCRE2 substitution grows its buffer for expanding backreferences", {
     x <- rep(strrep("ab", 128L), 1500L)
     replacement <- "\\1\\1\\1\\1"

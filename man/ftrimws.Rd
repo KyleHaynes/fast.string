@@ -2,7 +2,7 @@
 % Please edit documentation in R/fast_str.R
 \name{ftrimws}
 \alias{ftrimws}
-\title{Fast parallel whitespace trimming}
+\title{Fast whitespace trimming}
 \usage{
 ftrimws(x, which = c("both", "left", "right"), whitespace = "[ \\t\\r\\n]")
 }
@@ -19,8 +19,14 @@ delegates to \code{\link[base:trimws]{base::trimws()}}.}
 Character vector the same length as \code{x}, with \code{names(x)} preserved.
 }
 \description{
-Equivalent to \code{\link[base:trimws]{base::trimws()}}, parallelised across all CPU cores via
-Intel TBB. Strips \code{" \\t\\r\\n"} from the ends of each string.
+Equivalent to \code{\link[base:trimws]{base::trimws()}}. Strips \code{" \\t\\r\\n"} from the ends of each
+string.
+}
+\details{
+Creating each result string goes through R's global string cache, which
+is single-threaded, so this runs as one serial pass that prefetches
+upcoming strings, returns untouched strings as-is, and reuses the previous
+result when adjacent trimmed strings are identical.
 }
 \examples{
 x <- c("  hi  ", "\tthere\n", NA)

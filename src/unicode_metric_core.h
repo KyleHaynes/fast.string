@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <unordered_map>
 #include <vector>
 
 template <typename Symbol>
@@ -91,71 +90,8 @@ static inline int sequence_osa_distance(const Symbol* a, int la,
     return row1[static_cast<std::size_t>(lb)];
 }
 
-// Lowrance-Wagner unrestricted Damerau-Levenshtein. Unlike OSA, a
-// substring may participate in more than one edit.
-template <typename Symbol>
-static inline int sequence_damerau_levenshtein_distance_with_workspace(
-        const Symbol* a, int la, const Symbol* b, int lb,
-        std::vector<int>& matrix,
-        std::unordered_map<Symbol, int>& last_row) {
-    if (sequence_equal(a, la, b, lb)) return 0;
-    if (la == 0) return lb;
-    if (lb == 0) return la;
-    const int sentinel = la + lb;
-    const std::size_t columns = static_cast<std::size_t>(lb) + 2;
-    matrix.assign((static_cast<std::size_t>(la) + 2) * columns, 0);
-    const auto at = [&](int i, int j) -> int& {
-        return matrix[static_cast<std::size_t>(i) * columns +
-                      static_cast<std::size_t>(j)];
-    };
-    at(0, 0) = sentinel;
-    for (int i = 0; i <= la; ++i) {
-        at(i + 1, 1) = i;
-        at(i + 1, 0) = sentinel;
-    }
-    for (int j = 0; j <= lb; ++j) {
-        at(1, j + 1) = j;
-        at(0, j + 1) = sentinel;
-    }
-
-    last_row.clear();
-    last_row.reserve(static_cast<std::size_t>(la + lb));
-    for (int i = 1; i <= la; ++i) {
-        int last_match_column = 0;
-        for (int j = 1; j <= lb; ++j) {
-            const auto found = last_row.find(b[j - 1]);
-            const int matching_row = found == last_row.end()
-                ? 0
-                : found->second;
-            const int matching_column = last_match_column;
-            int cost = 1;
-            if (a[i - 1] == b[j - 1]) {
-                cost = 0;
-                last_match_column = j;
-            }
-            at(i + 1, j + 1) = std::min({
-                at(i, j) + cost,
-                at(i + 1, j) + 1,
-                at(i, j + 1) + 1,
-                at(matching_row, matching_column) +
-                    (i - matching_row - 1) + 1 +
-                    (j - matching_column - 1)
-            });
-        }
-        last_row[a[i - 1]] = i;
-    }
-    return at(la + 1, lb + 1);
-}
-
-template <typename Symbol>
-static inline int sequence_damerau_levenshtein_distance(
-        const Symbol* a, int la, const Symbol* b, int lb) {
-    std::vector<int> matrix;
-    std::unordered_map<Symbol, int> last_row;
-    return sequence_damerau_levenshtein_distance_with_workspace(
-        a, la, b, lb, matrix, last_row
-    );
-}
+// Unrestricted Damerau-Levenshtein lives in levenshtein_core.h
+// (damerau_levenshtein_distance / damerau_levenshtein_codepoints).
 
 template <typename Symbol>
 static inline int sequence_bounded_levenshtein_distance(

@@ -2,7 +2,7 @@
 % Please edit documentation in R/fast_str.R
 \name{fsubstr}
 \alias{fsubstr}
-\title{Fast parallel substring extraction}
+\title{Fast substring extraction}
 \usage{
 fsubstr(x, start, stop)
 }
@@ -16,9 +16,18 @@ of length 1 or \code{length(x)}. \code{NA} in either produces \code{NA} for that
 Character vector the same length as \code{x}, with \code{names(x)} preserved.
 }
 \description{
-Equivalent to \code{\link[base:substr]{base::substr()}}, parallelised across all CPU cores via
-Intel TBB. \code{start}/\code{stop} are 1-indexed, clamped to each string's bounds,
-and recycled to \code{length(x)}, matching base R semantics.
+Equivalent to \code{\link[base:substr]{base::substr()}}. \code{start}/\code{stop} are 1-indexed, clamped to
+each string's bounds, and recycled to \code{length(x)}, matching base R
+semantics.
+}
+\details{
+Creating each result string goes through R's global string cache, which
+is single-threaded, so the usual case is one serial pass that prefetches
+upcoming strings, skips the UTF-8 character scan for ASCII prefixes, and
+reuses the previous result when adjacent substrings are identical (as in
+sorted or grouped data). When any \code{start} exceeds 256 characters, the
+character scan runs in parallel across all CPU cores via Intel TBB
+first.
 }
 \examples{
 fsubstr(c("abcdef", "xyz", NA), 2, 4)   # out-of-range stops are clamped

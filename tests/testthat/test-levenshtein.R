@@ -53,6 +53,66 @@ test_that("OSA and unrestricted Damerau-Levenshtein remain distinct", {
     )
 })
 
+test_that("OSA and Damerau-Levenshtein agree with stringdist across dispatch paths", {
+    skip_if_not_installed("stringdist")
+    # Near-duplicates exercise the transposition terms and shared affixes;
+    # lengths straddle the 64-byte bit-vector and 256-byte stack limits.
+    set.seed(42)
+    make <- function(n, alphabet) {
+        paste(sample(alphabet, n, replace = TRUE), collapse = "")
+    }
+    mutate <- function(s) {
+        chars <- strsplit(s, "")[[1]]
+        if (length(chars) < 2L) return(paste0(s, "x"))
+        pos <- sample.int(length(chars) - 1L, 1L)
+        chars[c(pos, pos + 1L)] <- chars[c(pos + 1L, pos)]
+        chars[sample.int(length(chars), 1L)] <- "z"
+        paste(chars, collapse = "")
+    }
+    lengths <- c(0:5, 20L, 63:66, 127L, 255:258, 300L)
+    a <- unlist(lapply(lengths, function(n) c(
+        make(n, c("a", "b")), make(n, letters[1:4]), make(n, letters)
+    )))
+    b <- c(vapply(a, mutate, character(1L), USE.NAMES = FALSE), rev(a))
+    a <- c(a, a)
+
+    expect_identical(
+        fast.string::osa_distance(a, b),
+        stringdist::stringdist(a, b, method = "osa", useBytes = TRUE)
+    )
+    expect_identical(
+        fast.string::damerau_levenshtein(a, b),
+        stringdist::stringdist(a, b, method = "dl", useBytes = TRUE)
+    )
+    expect_identical(
+        fast.string::osa_distance(b, a), fast.string::osa_distance(a, b)
+    )
+    expect_identical(
+        fast.string::damerau_levenshtein(b, a),
+        fast.string::damerau_levenshtein(a, b)
+    )
+})
+
+test_that("code-point Damerau-Levenshtein matches stringdist on non-ASCII text", {
+    skip_if_not_installed("stringdist")
+    pool <- c("a", "b", intToUtf8(0x00e9), intToUtf8(0x4f60), intToUtf8(0x1f600))
+    set.seed(7)
+    a <- vapply(sample(0:12, 200L, TRUE), function(n) {
+        paste(sample(pool, n, TRUE), collapse = "")
+    }, character(1L))
+    b <- vapply(sample(0:12, 200L, TRUE), function(n) {
+        paste(sample(pool, n, TRUE), collapse = "")
+    }, character(1L))
+    expect_identical(
+        fast.string::damerau_levenshtein(a, b, use_bytes = FALSE),
+        stringdist::stringdist(a, b, method = "dl")
+    )
+    expect_identical(
+        fast.string::osa_distance(a, b, use_bytes = FALSE),
+        stringdist::stringdist(a, b, method = "osa")
+    )
+})
+
 test_that("damerau_levenshtein is symmetric with very unequal lengths", {
     short <- "ab"
     long <- paste0("ba", strrep("c", 300L))

@@ -2,7 +2,7 @@
 % Please edit documentation in R/fast_str.R
 \name{fnchar}
 \alias{fnchar}
-\title{Fast parallel character/byte counting}
+\title{Fast character/byte counting}
 \usage{
 fnchar(x, type = "chars", allowNA = FALSE, keepNA = NA)
 }
@@ -25,8 +25,11 @@ behaviour.}
 Integer vector the same length as \code{x}, with \code{names(x)} preserved.
 }
 \description{
-Equivalent to \code{\link[base:nchar]{base::nchar()}}, parallelised across all CPU cores via
-Intel TBB.
+Equivalent to \code{\link[base:nchar]{base::nchar()}}. Byte counts, and character counts of ASCII
+or single-byte-encoded strings, come straight from R's stored string
+length in one serial pass; only non-ASCII UTF-8 strings need their
+characters counted, which runs in parallel across all CPU cores via
+Intel TBB when there is enough of it.
 }
 \examples{
 x <- c("abc", "h\u00e9llo", NA)

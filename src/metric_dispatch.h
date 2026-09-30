@@ -31,11 +31,9 @@ static inline int metric_distance_bytes(MetricMethod method,
     case MetricMethod::levenshtein:
         return levenshtein_distance(a.data, la, b.data, lb);
     case MetricMethod::osa:
-        return damerau_levenshtein_distance(a.data, la, b.data, lb);
+        return osa_distance(a.data, la, b.data, lb);
     case MetricMethod::damerau_levenshtein:
-        return sequence_damerau_levenshtein_distance(
-            a.data, la, b.data, lb
-        );
+        return damerau_levenshtein_distance(a.data, la, b.data, lb);
     case MetricMethod::hamming:
         return hamming_distance(a.data, la, b.data, lb);
     default:
@@ -43,9 +41,9 @@ static inline int metric_distance_bytes(MetricMethod method,
     }
 }
 
-static inline int metric_distance_codepoints(MetricMethod method,
-                                             const CodepointView& a,
-                                             const CodepointView& b) {
+static inline int metric_distance_codepoints_with_workspace(
+        MetricMethod method, const CodepointView& a, const CodepointView& b,
+        DamerauWorkspace& workspace) {
     const int la = static_cast<int>(a.size);
     const int lb = static_cast<int>(b.size);
     switch (method) {
@@ -54,8 +52,8 @@ static inline int metric_distance_codepoints(MetricMethod method,
     case MetricMethod::osa:
         return sequence_osa_distance(a.data, la, b.data, lb);
     case MetricMethod::damerau_levenshtein:
-        return sequence_damerau_levenshtein_distance(
-            a.data, la, b.data, lb
+        return damerau_levenshtein_codepoints(
+            a.data, la, b.data, lb, workspace
         );
     case MetricMethod::hamming:
         if (la != lb) return -1;
@@ -70,28 +68,11 @@ static inline int metric_distance_codepoints(MetricMethod method,
     }
 }
 
-static inline int metric_distance_bytes_with_workspace(
-        MetricMethod method, const StringView& a, const StringView& b,
-        std::vector<int>& matrix,
-        std::unordered_map<char, int>& last_row) {
-    if (method != MetricMethod::damerau_levenshtein)
-        return metric_distance_bytes(method, a, b);
-    return sequence_damerau_levenshtein_distance_with_workspace(
-        a.data, static_cast<int>(a.size),
-        b.data, static_cast<int>(b.size), matrix, last_row
-    );
-}
-
-static inline int metric_distance_codepoints_with_workspace(
-        MetricMethod method, const CodepointView& a, const CodepointView& b,
-        std::vector<int>& matrix,
-        std::unordered_map<std::uint32_t, int>& last_row) {
-    if (method != MetricMethod::damerau_levenshtein)
-        return metric_distance_codepoints(method, a, b);
-    return sequence_damerau_levenshtein_distance_with_workspace(
-        a.data, static_cast<int>(a.size),
-        b.data, static_cast<int>(b.size), matrix, last_row
-    );
+static inline int metric_distance_codepoints(MetricMethod method,
+                                             const CodepointView& a,
+                                             const CodepointView& b) {
+    DamerauWorkspace workspace;
+    return metric_distance_codepoints_with_workspace(method, a, b, workspace);
 }
 
 static inline double metric_similarity_bytes(MetricMethod method,

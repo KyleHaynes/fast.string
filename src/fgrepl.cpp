@@ -82,6 +82,31 @@ static std::string compile_pcre2_replacement(const std::string& replacement) {
     return output;
 }
 
+// The bytes an R replacement string produces when it uses neither \1..\9
+// backreferences nor \U/\L/\E case conversion, resolved with the same rules
+// as compile_pcre2_replacement(). Returns false when the replacement depends
+// on the match, in which case PCRE2 must expand it.
+static bool literal_r_replacement(const std::string& replacement,
+                                  std::string& literal) {
+    literal.clear();
+    literal.reserve(replacement.size());
+    for (std::size_t i = 0; i < replacement.size(); ++i) {
+        const char value = replacement[i];
+        if (value != '\\') {
+            literal.push_back(value);
+            continue;
+        }
+        if (i + 1 == replacement.size())
+            break;
+        const char escaped = replacement[++i];
+        if ((escaped >= '1' && escaped <= '9') ||
+            escaped == 'U' || escaped == 'L' || escaped == 'E')
+            return false;
+        literal.push_back(escaped);
+    }
+    return true;
+}
+
 // Expand exactly the match already stored in match_data and append only the
 // replacement bytes. PCRE2_SUBSTITUTE_REPLACEMENT_ONLY avoids copying the
 // subject on recent PCRE2 versions; the fallback slices the replacement out
@@ -336,7 +361,10 @@ static inline void store_provenanced_text(
 // accepted empty match, R also advances one byte. PCRE2_SUBSTITUTE_GLOBAL uses
 // different empty-match adjacency rules, so this explicit loop is also used
 // when exact source-slice provenance is required.
-// match_data must contain the first successful match on entry.
+// match_data must contain the first successful match on entry. When
+// `literal_replacement` is set, `replacement` holds final bytes (see
+// literal_r_replacement()) and is appended verbatim rather than expanded by
+// pcre2_substitute() per match.
 static int base_global_substitute(
         pcre2_code* code,
         const char* subject,
@@ -348,7 +376,8 @@ static int base_global_substitute(
         pcre2_match_data* match_data,
         std::vector<uint8_t>& replacement_scratch,
         std::vector<uint8_t>& output,
-        SourceSliceProvenance* provenance = nullptr) {
+        SourceSliceProvenance* provenance = nullptr,
+        bool literal_replacement = false) {
     output.clear();
     if (provenance)
         provenance->reset();
@@ -370,7 +399,12 @@ static int base_global_substitute(
             reinterpret_cast<const uint8_t*>(subject + copy_offset),
             reinterpret_cast<const uint8_t*>(subject + start)
         );
-        if (replacement_length != 0) {
+        if (replacement_length != 0 && literal_replacement) {
+            output.insert(output.end(), replacement,
+                          replacement + replacement_length);
+            if (provenance)
+                provenance->constructed(replacement_length);
+        } else if (replacement_length != 0) {
             const std::size_t before_replacement = output.size();
             const int replacement_rc = append_matched_replacement(
                 code, subject, length, search_offset, match_options,
@@ -742,6 +776,8 @@ struct PCRE2SubWorker : public Worker {
     pcre2_code* code;
     const uint8_t* repl_data;
     PCRE2_SIZE repl_len;
+    // Non-null when the replacement is literal (literal_r_replacement()).
+    const std::string* literal;
     uint32_t sub_flags;
     bool can_match_empty;
     std::vector<TextResult>& results;
@@ -752,12 +788,13 @@ struct PCRE2SubWorker : public Worker {
                    const std::vector<TextWorkChunk>& chunks,
                    pcre2_code* code,
                    const uint8_t* repl_data, PCRE2_SIZE repl_len,
+                   const std::string* literal,
                    uint32_t sub_flags, bool can_match_empty,
                    std::vector<TextResult>& results,
                    TextArenas& arenas,
                    std::vector<int>& errors)
         : strings(strings), chunks(chunks), code(code),
-          repl_data(repl_data), repl_len(repl_len),
+          repl_data(repl_data), repl_len(repl_len), literal(literal),
           sub_flags(sub_flags), can_match_empty(can_match_empty),
           results(results), arenas(arenas), errors(errors) {}
 
@@ -819,6 +856,43 @@ struct PCRE2SubWorker : public Worker {
                     store_provenanced_text(
                         i, chunk, value, buf, &provenance,
                         results, arenas
+                    );
+                    continue;
+                }
+
+                // Literal replacement: splice the bytes in directly instead
+                // of asking pcre2_substitute() to re-parse and expand them
+                // for every row (and, for gsub, every match).
+                if (literal && repl_len != 0) {
+                    const uint8_t* lit = reinterpret_cast<const uint8_t*>(
+                        literal->data()
+                    );
+                    if (global) {
+                        const int rc = base_global_substitute(
+                            code, value.data, len, lit,
+                            static_cast<PCRE2_SIZE>(literal->size()),
+                            sub_flags, can_match_empty, mdata,
+                            replacement_scratch, buf, nullptr, true
+                        );
+                        if (rc < 0) {
+                            errors[i] = rc;
+                            continue;
+                        }
+                    } else {
+                        const PCRE2_SIZE* match =
+                            pcre2_get_ovector_pointer(mdata);
+                        const uint8_t* subject =
+                            reinterpret_cast<const uint8_t*>(value.data);
+                        buf.clear();
+                        buf.insert(buf.end(), subject, subject + match[0]);
+                        buf.insert(buf.end(), lit, lit + literal->size());
+                        buf.insert(buf.end(), subject + match[1],
+                                   subject + len);
+                    }
+                    store_text_output(
+                        i, chunk, value,
+                        reinterpret_cast<const char*>(buf.data()),
+                        buf.size(), results, arenas
                     );
                     continue;
                 }
@@ -933,10 +1007,14 @@ CharacterVector fast_regex_sub_impl(const std::string& pattern,
         code, PCRE2_INFO_MATCHEMPTY, &can_match_empty
     );
 
+    std::string literal_replacement;
+    const bool is_literal =
+        literal_r_replacement(replacement, literal_replacement);
     PCRE2SubWorker worker(
         snapshot.data(), chunks, code,
         reinterpret_cast<const uint8_t*>(compiled_replacement.data()),
         static_cast<PCRE2_SIZE>(compiled_replacement.size()),
+        is_literal ? &literal_replacement : nullptr,
         sub_flags, can_match_empty != 0, results, arenas, errors
     );
     dispatch_for(
@@ -1205,8 +1283,11 @@ struct PCRE2MultiSubWorker : public Worker {
     const StringView* strings;
     const std::vector<TextWorkChunk>& chunks;
     const std::vector<pcre2_code*>& codes;
+    // repls[j] holds final bytes when literal[j] (literal_r_replacement()),
+    // otherwise the compiled PCRE2 replacement.
     const std::vector<std::string>& repls;
     const std::vector<uint8_t>& can_match_empty;
+    const std::vector<uint8_t>& literal;
     uint32_t sub_flags;
     std::vector<TextResult>& results;
     TextArenas& arenas;
@@ -1219,13 +1300,15 @@ struct PCRE2MultiSubWorker : public Worker {
             const std::vector<pcre2_code*>& codes,
             const std::vector<std::string>& repls,
             const std::vector<uint8_t>& can_match_empty,
+            const std::vector<uint8_t>& literal,
             uint32_t sub_flags,
             std::vector<TextResult>& results,
             TextArenas& arenas,
             std::vector<int>& errors,
             std::vector<std::size_t>& error_patterns)
         : strings(strings), chunks(chunks), codes(codes), repls(repls),
-          can_match_empty(can_match_empty), sub_flags(sub_flags),
+          can_match_empty(can_match_empty), literal(literal),
+          sub_flags(sub_flags),
           results(results), arenas(arenas),
           errors(errors), error_patterns(error_patterns) {}
 
@@ -1297,7 +1380,7 @@ struct PCRE2MultiSubWorker : public Worker {
                         static_cast<PCRE2_SIZE>(rp.size()),
                         sub_flags, can_match_empty[j] != 0,
                         mdatas[j], replacement_scratch, buf_a,
-                        &step_provenance
+                        &step_provenance, literal[j] != 0
                     );
                     outlen = static_cast<PCRE2_SIZE>(buf_a.size());
                     if (rc < 0) {
@@ -1410,11 +1493,14 @@ CharacterVector fast_regex_gsub_all_impl(
     std::vector<pcre2_code*> codes(np, nullptr);
     std::vector<std::string> repl_strs(np);
     std::vector<uint8_t> can_match_empty(np, 0);
+    std::vector<uint8_t> literal(np, 0);
 
     for (std::size_t j = 0; j < np; ++j) {
-        repl_strs[j] = compile_pcre2_replacement(
-            Rcpp::as<std::string>(replacements[j])
-        );
+        const std::string replacement = Rcpp::as<std::string>(replacements[j]);
+        if (literal_r_replacement(replacement, repl_strs[j]))
+            literal[j] = 1;
+        else
+            repl_strs[j] = compile_pcre2_replacement(replacement);
         std::string pat = Rcpp::as<std::string>(patterns[j]);
         int errcode; PCRE2_SIZE erroffset;
         codes[j] = pcre2_compile(
@@ -1452,7 +1538,7 @@ CharacterVector fast_regex_gsub_all_impl(
 
     PCRE2MultiSubWorker worker(
         snapshot.data(), chunks, codes, repl_strs, can_match_empty,
-        sub_flags, results, arenas, errors,
+        literal, sub_flags, results, arenas, errors,
         error_patterns
     );
     dispatch_for(

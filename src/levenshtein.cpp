@@ -31,9 +31,7 @@ struct DistanceWorker : public Worker {
           method(method_), use_bytes(use_bytes_), output(output_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
-        std::vector<int> matrix;
-        std::unordered_map<char, int> byte_last_row;
-        std::unordered_map<std::uint32_t, int> codepoint_last_row;
+        DamerauWorkspace workspace;
         for (std::size_t i = begin; i < end; ++i) {
             if (a_bytes[i].is_na() || b_bytes[i].is_na()) {
                 output[i] = NA_REAL;
@@ -42,13 +40,12 @@ struct DistanceWorker : public Worker {
             int distance;
             if (use_bytes ||
                 (a_codepoints[i].ascii && b_codepoints[i].ascii)) {
-                distance = metric_distance_bytes_with_workspace(
-                    method, a_bytes[i], b_bytes[i], matrix, byte_last_row
+                distance = metric_distance_bytes(
+                    method, a_bytes[i], b_bytes[i]
                 );
             } else {
                 distance = metric_distance_codepoints_with_workspace(
-                    method, a_codepoints[i], b_codepoints[i],
-                    matrix, codepoint_last_row
+                    method, a_codepoints[i], b_codepoints[i], workspace
                 );
             }
             output[i] = distance < 0
@@ -79,9 +76,7 @@ struct DistanceMatrixWorker : public Worker {
 
     void operator()(std::size_t begin, std::size_t end) {
         if (begin >= end) return;
-        std::vector<int> matrix;
-        std::unordered_map<char, int> byte_last_row;
-        std::unordered_map<std::uint32_t, int> codepoint_last_row;
+        DamerauWorkspace workspace;
         std::size_t column = begin / rows;
         std::size_t row = begin - column * rows;
         for (std::size_t cell = begin; cell < end; ++cell) {
@@ -92,14 +87,13 @@ struct DistanceMatrixWorker : public Worker {
                 if (use_bytes ||
                     (a_codepoints[row].ascii &&
                      b_codepoints[column].ascii)) {
-                    distance = metric_distance_bytes_with_workspace(
-                        method, a_bytes[row], b_bytes[column],
-                        matrix, byte_last_row
+                    distance = metric_distance_bytes(
+                        method, a_bytes[row], b_bytes[column]
                     );
                 } else {
                     distance = metric_distance_codepoints_with_workspace(
                         method, a_codepoints[row], b_codepoints[column],
-                        matrix, codepoint_last_row
+                        workspace
                     );
                 }
                 output[cell] = distance < 0
@@ -132,9 +126,7 @@ struct SimilarityWorker : public Worker {
           method(method_), use_bytes(use_bytes_), output(output_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
-        std::vector<int> matrix;
-        std::unordered_map<char, int> byte_last_row;
-        std::unordered_map<std::uint32_t, int> codepoint_last_row;
+        DamerauWorkspace workspace;
         for (std::size_t i = begin; i < end; ++i) {
             if (a_bytes[i].is_na() || b_bytes[i].is_na()) {
                 output[i] = NA_REAL;
@@ -143,12 +135,9 @@ struct SimilarityWorker : public Worker {
             const bool byte_path = use_bytes ||
                 (a_codepoints[i].ascii && b_codepoints[i].ascii);
             const int distance = byte_path
-                ? metric_distance_bytes_with_workspace(
-                    method, a_bytes[i], b_bytes[i], matrix, byte_last_row
-                )
+                ? metric_distance_bytes(method, a_bytes[i], b_bytes[i])
                 : metric_distance_codepoints_with_workspace(
-                    method, a_codepoints[i], b_codepoints[i],
-                    matrix, codepoint_last_row
+                    method, a_codepoints[i], b_codepoints[i], workspace
                 );
             const int length_a = byte_path
                 ? static_cast<int>(a_bytes[i].size)
