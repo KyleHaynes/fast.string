@@ -51,14 +51,15 @@ struct Candidate {
 // was. `rot_buf` is reused across calls; sized to `la` each time, never
 // reallocated mid-loop since it's filled by clear()+append() per rotation.
 inline double jaro_winkler_sim_best(const char* a, int la, const char* b, int lb,
-                                     double p, std::string& rot_buf) {
-    double best = jaro_winkler_sim(a, la, b, lb, p);
+                                     double p, std::string& rot_buf,
+                                     JaroScratch& jaro) {
+    double best = jaro_winkler_sim(a, la, b, lb, p, jaro);
     if (la != lb || la < 2 || la > ROTATION_LEN_CAP) return best;
     for (int r = 1; r < la; ++r) {
         rot_buf.clear();
         rot_buf.append(a + r, (std::size_t)(la - r));
         rot_buf.append(a, (std::size_t)r);
-        double s = jaro_winkler_sim(rot_buf.data(), la, b, lb, p);
+        double s = jaro_winkler_sim(rot_buf.data(), la, b, lb, p, jaro);
         if (s > best) best = s;
     }
     return best;
@@ -77,6 +78,7 @@ struct TokenScratch {
     std::vector<std::string> bufs_a, bufs_b;
     std::vector<int> order;
     std::string rot_buf;
+    JaroScratch jaro;
 };
 
 inline bool is_token_ws(char c) {
@@ -150,7 +152,7 @@ double token_alignment_score(TokenScratch& sc, double p,
     for (int r = 0; r < mi; ++r)
         for (int c = 0; c < ki; ++c)
             sc.sim[(std::size_t)r * ki + c] =
-                jaro_winkler_sim(sc.ptr_a[r], sc.len_a[r], sc.ptr_b[c], sc.len_b[c], p);
+                jaro_winkler_sim(sc.ptr_a[r], sc.len_a[r], sc.ptr_b[c], sc.len_b[c], p, sc.jaro);
 
     sc.used_a.assign(mi, 0);
     sc.used_b.assign(ki, 0);
@@ -213,9 +215,10 @@ double token_alignment_score_contractions(TokenScratch& sc, double p,
             sc.sim[(std::size_t)r * nb + c] =
                 (a_single && b_single)
                     ? jaro_winkler_sim_best(sc.cand_a[r].ptr, sc.cand_a[r].len,
-                                            sc.cand_b[c].ptr, sc.cand_b[c].len, p, sc.rot_buf)
+                                            sc.cand_b[c].ptr, sc.cand_b[c].len, p,
+                                            sc.rot_buf, sc.jaro)
                     : jaro_winkler_sim(sc.cand_a[r].ptr, sc.cand_a[r].len,
-                                       sc.cand_b[c].ptr, sc.cand_b[c].len, p);
+                                       sc.cand_b[c].ptr, sc.cand_b[c].len, p, sc.jaro);
         }
     }
 
@@ -257,14 +260,15 @@ double token_alignment_score_contractions(TokenScratch& sc, double p,
 double collapsed_score(TokenScratch& sc, double p) {
     if (sc.ptr_a.size() == 1 && sc.ptr_b.size() == 1)
         return jaro_winkler_sim(sc.ptr_a[0], sc.len_a[0],
-                                sc.ptr_b[0], sc.len_b[0], p);
+                                sc.ptr_b[0], sc.len_b[0], p, sc.jaro);
 
     sc.collapsed_a.clear();
     for (std::size_t i = 0; i < sc.ptr_a.size(); ++i) sc.collapsed_a.append(sc.ptr_a[i], sc.len_a[i]);
     sc.collapsed_b.clear();
     for (std::size_t i = 0; i < sc.ptr_b.size(); ++i) sc.collapsed_b.append(sc.ptr_b[i], sc.len_b[i]);
     return jaro_winkler_sim(sc.collapsed_a.data(), (int)sc.collapsed_a.size(),
-                             sc.collapsed_b.data(), (int)sc.collapsed_b.size(), p);
+                             sc.collapsed_b.data(), (int)sc.collapsed_b.size(), p,
+                             sc.jaro);
 }
 
 struct JaroWinklerTokensWorker : public Worker {

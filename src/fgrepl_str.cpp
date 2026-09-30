@@ -65,20 +65,6 @@ struct SliceResult {
     std::uint8_t kind;
 };
 
-// How far ahead the serial loops below prefetch CHARSXPs. Unsorted input
-// reaches them in effectively random heap order, so without this nearly
-// every element is a cache miss.
-static const R_xlen_t PREFETCH_DISTANCE = 8;
-
-static inline void prefetch_charsxp(const SEXP* strings, R_xlen_t i, R_xlen_t n) {
-#if defined(__GNUC__)
-    if (i + PREFETCH_DISTANCE < n)
-        __builtin_prefetch(strings[i + PREFETCH_DISTANCE]);
-#else
-    (void)strings; (void)i; (void)n;
-#endif
-}
-
 // ALTREP string vectors may create CHARSXPs on access; copy them into an
 // ordinary STRSXP so every element stays protected while mkChar allocates
 // and can be read through a plain pointer array.
@@ -97,8 +83,14 @@ static CharacterVector materialized_strings(const StringVector& x) {
 // previous one (common in sorted or grouped data) the previous CHARSXP is
 // reused instead of being looked up again.
 //
-// slice_of(i, view, encoding) returns the slice of non-NA element i, or
-// SLICE_NA to produce NA (e.g. for an NA start/stop).
+// Rf_mkCharLenCE() stores ASCII bytes unmarked whatever encoding it is
+// given, so the per-element R API calls are kept to the ones that matter:
+// an ASCII slice needs no encoding lookup, and a slice byte-identical to an
+// ASCII previous one is that same CHARSXP.
+//
+// slice_of(i, view, value) returns the slice of non-NA element i (value is
+// its CHARSXP, for slicers that need its encoding), or SLICE_NA to produce
+// NA (e.g. for an NA start/stop).
 template <typename SliceOf>
 static CharacterVector serial_slice_strings(const StringVector& x,
                                             SliceOf slice_of) {
@@ -107,22 +99,25 @@ static CharacterVector serial_slice_strings(const StringVector& x,
     const R_xlen_t n = source.size();
     CharacterVector result(n);
 
-    SEXP previous = NA_STRING;
+    const SEXP na = NA_STRING;
+    SEXP previous = na;
+    // Points into the source string the previous result was sliced from,
+    // which `source` keeps alive, rather than into the new CHARSXP.
     const char* previous_data = nullptr;
     std::size_t previous_length = 0;
     cetype_t previous_encoding = CE_NATIVE;
+    bool previous_ascii = true;
     for (R_xlen_t i = 0; i < n; ++i) {
         prefetch_charsxp(strings, i, n);
         const SEXP value = strings[i];
-        if (value == NA_STRING) {
-            SET_STRING_ELT(result, i, NA_STRING);
+        if (value == na) {
+            SET_STRING_ELT(result, i, na);
             continue;
         }
-        const cetype_t encoding = output_encoding(value);
         const StringView view{CHAR(value), static_cast<std::size_t>(LENGTH(value))};
-        const SliceResult slice = slice_of(i, view, encoding);
+        const SliceResult slice = slice_of(i, view, value);
         if (slice.kind == SLICE_NA) {
-            SET_STRING_ELT(result, i, NA_STRING);
+            SET_STRING_ELT(result, i, na);
             continue;
         }
         if (slice.kind == SLICE_ORIGINAL) {
@@ -134,18 +129,21 @@ static CharacterVector serial_slice_strings(const StringVector& x,
             continue;
         }
         const char* data = view.data + slice.start;
-        if (previous != NA_STRING && slice.length == previous_length &&
-            encoding == previous_encoding &&
+        if (previous != na && slice.length == previous_length &&
             data[slice.length - 1] == previous_data[slice.length - 1] &&
-            std::memcmp(data, previous_data, slice.length) == 0) {
+            std::memcmp(data, previous_data, slice.length) == 0 &&
+            (previous_ascii || output_encoding(value) == previous_encoding)) {
             SET_STRING_ELT(result, i, previous);
             continue;
         }
+        const bool ascii = is_ascii_bytes(data, slice.length);
+        const cetype_t encoding = ascii ? CE_NATIVE : output_encoding(value);
         previous = Rf_mkCharLenCE(data, static_cast<int>(slice.length), encoding);
         SET_STRING_ELT(result, i, previous);
-        previous_data = CHAR(previous);
+        previous_data = data;
         previous_length = slice.length;
         previous_encoding = encoding;
+        previous_ascii = ascii;
     }
     return result;
 }
@@ -161,7 +159,7 @@ static inline bool is_trim_ws(unsigned char c) {
 // [[Rcpp::export]]
 CharacterVector fast_trimws_impl(const StringVector& x, int which) {
     return serial_slice_strings(x, [which](R_xlen_t, const StringView& value,
-                                           cetype_t) {
+                                           SEXP) {
         std::size_t start = 0;
         std::size_t stop = value.size;
         if (which != 2) {
@@ -204,15 +202,17 @@ static inline SliceResult byte_substr(const StringView& value, int start, int st
     return SliceResult{first, last - first, kind};
 }
 
-static inline SliceResult utf8_substr(const StringView& value, int start, int stop) {
-    // Characters 1..stop are single bytes when the first `stop` bytes are
-    // ASCII, so the character scan below reduces to a byte slice.
+// Characters 1..stop are single bytes when the first `stop` bytes are ASCII,
+// so every encoding slices them as bytes and no character scan is needed.
+static inline bool ascii_prefix(const StringView& value, int stop) {
     const std::size_t prefix = stop < 1
         ? 0
         : (std::min)(value.size, static_cast<std::size_t>(stop));
-    if (is_ascii_bytes(value.data, prefix))
-        return byte_substr(value, start, stop);
+    return is_ascii_bytes(value.data, prefix);
+}
 
+static inline SliceResult utf8_substr_scan(const StringView& value,
+                                           int start, int stop) {
     if (start < 1) start = 1;
     if (stop < start)
         return SliceResult{0, 0, SLICE_RANGE};
@@ -241,6 +241,12 @@ static inline SliceResult utf8_substr(const StringView& value, int start, int st
     const std::uint8_t kind =
         first == 0 && last == value.size ? SLICE_ORIGINAL : SLICE_RANGE;
     return SliceResult{first, last - first, kind};
+}
+
+static inline SliceResult utf8_substr(const StringView& value, int start, int stop) {
+    return ascii_prefix(value, stop)
+        ? byte_substr(value, start, stop)
+        : utf8_substr_scan(value, start, stop);
 }
 
 struct SubstrWorker : public Worker {
@@ -293,15 +299,19 @@ static CharacterVector substr_serial(const StringVector& x,
                                      const int* stop, bool scalar_stop,
                                      bool native_utf8) {
     return serial_slice_strings(x, [=](R_xlen_t i, const StringView& view,
-                                       cetype_t encoding) {
+                                       SEXP value) {
         const int first = scalar_start ? start[0] : start[i];
         const int last = scalar_stop ? stop[0] : stop[i];
         if (first == NA_INTEGER || last == NA_INTEGER)
             return SliceResult{0, 0, SLICE_NA};
+        // The encoding is only looked up when a character scan might be needed.
+        if (ascii_prefix(view, last))
+            return byte_substr(view, first, last);
+        const cetype_t encoding = output_encoding(value);
         const bool utf8 = encoding == CE_UTF8 ||
             (encoding == CE_NATIVE && native_utf8);
         return utf8
-            ? utf8_substr(view, first, last)
+            ? utf8_substr_scan(view, first, last)
             : byte_substr(view, first, last);
     });
 }
@@ -412,16 +422,19 @@ IntegerVector fast_nchar_impl(const StringVector& x,
     const CharacterVector source = materialized_strings(x);
     const SEXP* strings = static_cast<const SEXP*>(DATAPTR_RO(source));
     const R_xlen_t n = source.size();
-    IntegerVector result(n);
+    // Every element is written by the loop below.
+    IntegerVector result = no_init(n);
     int* out = INTEGER(result);
 
+    const SEXP na = NA_STRING;
+    const int na_count = allow_na ? NA_INTEGER : 2;
     std::vector<PendingCount> pending;
     std::size_t pending_bytes = 0;
     for (R_xlen_t i = 0; i < n; ++i) {
         prefetch_charsxp(strings, i, n);
         const SEXP value = strings[i];
-        if (value == NA_STRING) {
-            out[i] = allow_na ? NA_INTEGER : 2;
+        if (value == na) {
+            out[i] = na_count;
             continue;
         }
         const std::size_t size = static_cast<std::size_t>(LENGTH(value));

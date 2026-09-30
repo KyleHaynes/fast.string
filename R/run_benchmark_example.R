@@ -34,24 +34,50 @@
 
 .bench_pkg <- function(pkg) requireNamespace(pkg, quietly = TRUE)
 
+# Wall-clock seconds. proc.time()'s elapsed counter only advances every
+# 10-20 ms on Windows, which rounds most fast.string calls to zero or one
+# tick; Sys.time() resolves microseconds.
+.bench_now <- function() as.numeric(Sys.time())
+
 # One call, capturing both its elapsed time and its return value (needed for
 # the correctness check afterwards) — system.time() alone discards the value.
 # Errors are caught rather than propagated, since baselines call into
 # Suggested packages this code doesn't control the installed version of.
+#
+# Like system.time(gcFirst = TRUE), every timed call starts right after a full
+# gc(), with the previous repetition's result already dropped. Otherwise a
+# collection owed by earlier allocations (the test data, the previous
+# comparison) lands inside whichever call happens to run next, and a result
+# still alive keeps its strings in R's global string cache, so the next call
+# producing the same strings finds them ready-made.
 .bench_run <- function(call_fn, reps) {
     times <- numeric(reps)
     val <- NULL
     for (i in seq_len(reps)) {
-        t0 <- proc.time()[["elapsed"]]
+        val <- NULL
+        invisible(gc(verbose = FALSE))
+        t0 <- .bench_now()
         val <- tryCatch(call_fn(), error = function(e) {
             return(structure(list(message = conditionMessage(e)), class = "bench_error"))
         })
-        times[i] <- proc.time()[["elapsed"]] - t0
+        times[i] <- .bench_now() - t0
         if (inherits(val, "bench_error")) {
             return(list(value = NULL, elapsed = times[i], ok = FALSE, error = val$message))
         }
     }
     list(value = val, elapsed = min(times), ok = TRUE, error = NULL)
+}
+
+# R's global string cache is a hash table that only ever grows, and a bigger
+# table makes every later string lookup cheaper (about a third faster for
+# 1e6 strings). base::trimws() alone creates length(x) temporary strings, so
+# without this whichever function ran after it got a faster cache than the
+# ones before it. Growing the table once up front, past anything the
+# comparisons allocate, gives every timed call the same one.
+.bench_grow_string_cache <- function(n) {
+    junk <- sprintf("fast.string-bench-%d", seq_len(n))
+    rm(junk)
+    invisible(gc(verbose = FALSE))
 }
 
 # Different packages, different regex engines and string conventions (PCRE2
@@ -76,12 +102,11 @@
     }
 }
 
-# system.time()'s clock resolution is a few ms on most platforms, so a
-# near-instant fast.string call often rounds to exactly 0. When that happens
-# but the baseline's time was clearly measurable, report a conservative
-# lower bound instead of a bogus infinite/undefined ratio.
+# A near-instant fast.string call can still round to exactly 0 at tiny n.
+# When that happens but the baseline's time was clearly measurable, report a
+# conservative lower bound instead of a bogus infinite/undefined ratio.
 .bench_speedup <- function(t_base, t_fast) {
-    clock_res <- 0.01
+    clock_res <- 1e-5
     if (t_fast > 0) {
         list(speedup = t_base / t_fast, label = sprintf("%.1fx", t_base / t_fast))
     } else if (t_base > clock_res) {
@@ -114,6 +139,10 @@
         cli::cli_alert_danger("{op_label}: fast.string call failed — {fast_run$error}")
         return(NULL)
     }
+    # Keep only the timing while the baselines run (see .bench_run()); the
+    # value is recomputed, untimed, for each correctness check below.
+    fast_elapsed <- fast_run$elapsed
+    fast_run <- NULL
 
     rows <- lapply(names(baselines), function(bname) {
         bl <- baselines[[bname]]
@@ -123,14 +152,14 @@
             return(NULL)
         }
 
-        speed <- .bench_speedup(base_run$elapsed, fast_run$elapsed)
-        matches <- .bench_values_match(fast_run$value, base_run$value)
+        speed <- .bench_speedup(base_run$elapsed, fast_elapsed)
+        matches <- .bench_values_match(fast_call(), base_run$value)
         match_symbol <- if (matches) "match" else if (bl$expect_match) "DIFFERS!" else "differs (expected)"
         note_suffix <- if (!is.null(bl$note)) sprintf(" (%s)", bl$note) else ""
 
         txt <- sprintf(
             "%s vs %s: %.4fs → %.4fs (%s) | %s%s",
-            op_label, bname, base_run$elapsed, fast_run$elapsed, speed$label, match_symbol, note_suffix
+            op_label, bname, base_run$elapsed, fast_elapsed, speed$label, match_symbol, note_suffix
         )
         if (matches && !is.na(speed$speedup) && speed$speedup >= 1) {
             cli::cli_alert_success(txt)
@@ -144,7 +173,7 @@
 
         data.frame(
             operation = op_label, baseline = bname,
-            base_s = base_run$elapsed, fast_s = fast_run$elapsed,
+            base_s = base_run$elapsed, fast_s = fast_elapsed,
             speedup = speed$speedup, speedup_label = speed$label,
             match = matches, expect_match = bl$expect_match,
             match_symbol = match_symbol, stringsAsFactors = FALSE
@@ -196,6 +225,8 @@
 .bench_strings <- function(x, reps) {
     cli::cli_h2("String utilities")
     x_ws <- ifelse(is.na(x), NA_character_, paste0("  ", x, "\t\n"))
+    # These comparisons create up to ~3 * length(x) strings between them.
+    .bench_grow_string_cache(3L * length(x))
     rows <- list()
 
     trimws_baselines <- list("base::trimws()" = .bench_baseline(function() base::trimws(x_ws)))
@@ -531,8 +562,11 @@
 #' and repetition count; any argument supplied explicitly (or every
 #' argument, when called non-interactively) skips its prompt.
 #'
-#' Timings come from [system.time()] on your machine, for the input you
-#' choose — they will differ from any number printed elsewhere. For a
+#' Timings are wall-clock ([Sys.time()]) on your machine, for the input you
+#' choose — they will differ from any number printed elsewhere. Each timed
+#' call starts after a full [gc()], as [system.time()] does by default, with
+#' no earlier result still alive, so neither side is charged for the other's
+#' garbage collection or handed strings the other already created. For a
 #' reproducible, full-scale (3M-row) measurement across every function, see
 #' `Rscript bench.R --full` or the benchmarks chapter at
 #' <https://kylehaynes.github.io/fast.string/06-benchmarks.html>.

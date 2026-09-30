@@ -45,9 +45,9 @@ static inline int myers_levenshtein_64(const char* txt, int lt, const char* pat,
 // buffer: thread_local non-POD locals (std::vector, std::string) crash when
 // first touched inside an RcppParallel/TBB worker thread on this toolchain,
 // since those threads aren't created through the CRT path MinGW's
-// thread_local destructor registration relies on. jaro_winkler_core.h's own
-// thread_local usage is safe only because it's a POD array with no
-// constructor/destructor to run.
+// thread_local destructor registration relies on. Even POD thread_local
+// data is slow in per-pair code there, since MinGW emulates TLS with a
+// function call per access; see JaroScratch in jaro_winkler_core.h.
 static inline int levenshtein_dp(const char* s1, int l1, const char* s2, int l2) {
     if (l1 < l2) { std::swap(s1, s2); std::swap(l1, l2); } // keep the shorter row in memory
     // Besides handling the valid empty-row case without allocating scratch

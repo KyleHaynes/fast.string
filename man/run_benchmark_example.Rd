@@ -58,8 +58,11 @@ In an interactive session it asks for the input size, function family,
 and repetition count; any argument supplied explicitly (or every
 argument, when called non-interactively) skips its prompt.
 
-Timings come from \code{\link[=system.time]{system.time()}} on your machine, for the input you
-choose — they will differ from any number printed elsewhere. For a
+Timings are wall-clock (\code{\link[=Sys.time]{Sys.time()}}) on your machine, for the input you
+choose — they will differ from any number printed elsewhere. Each timed
+call starts after a full \code{\link[=gc]{gc()}}, as \code{\link[=system.time]{system.time()}} does by default, with
+no earlier result still alive, so neither side is charged for the other's
+garbage collection or handed strings the other already created. For a
 reproducible, full-scale (3M-row) measurement across every function, see
 \verb{Rscript bench.R --full} or the benchmarks chapter at
 \url{https://kylehaynes.github.io/fast.string/06-benchmarks.html}.

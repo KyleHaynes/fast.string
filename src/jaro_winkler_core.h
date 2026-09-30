@@ -19,28 +19,31 @@ static inline int fastjw_ctz64(uint64_t x) { return __builtin_ctzll(x); }
 // That's exactly "the lowest set bit in (positions of s1[i] in s2) AND
 // (window mask) AND NOT (already-claimed mask)" — so with one 64-bit
 // bitmask per byte value giving s2's occurrence positions, the O(window)
-// linear scan becomes a handful of bitwise ops plus a count-trailing-zeros,
+// linear scan becomes a handful of bitwise ops that isolate that lowest bit,
 // turning the O(l1 * window) double loop into O(l1 + l2).
 //
-// char_mask[] is thread_local so it's zeroed once per worker thread rather
-// than once per call; only the (<=64) distinct bytes actually touched this
-// call are cleared afterwards, so per-call setup/teardown stays O(l2), not
-// O(256).
-static inline double jaro_sim_bitparallel(const char* s1, int l1, const char* s2, int l2) {
+// The 256-entry mask table lives in a caller-owned JaroScratch, zeroed once
+// per worker range rather than once per call; each call clears only the
+// entries of the (<= 64) bytes it set, so per-call setup/teardown stays
+// O(l2), not O(256). It is deliberately not thread_local: MinGW compiles
+// thread_local to emulated TLS, and the __emutls_get_address() lookup (a
+// locked pthread_getspecific() in winpthreads) on every call cost more than
+// the whole Jaro computation for short names.
+struct JaroScratch {
+    uint64_t char_mask[256];
+
+    JaroScratch() { std::memset(char_mask, 0, sizeof(char_mask)); }
+};
+
+static inline double jaro_sim_bitparallel(const char* s1, int l1,
+                                          const char* s2, int l2,
+                                          JaroScratch& scratch) {
     int match_range = std::max(l1, l2) / 2 - 1;
     if (match_range < 0) match_range = 0;
 
-    static thread_local uint64_t char_mask[256];
-    static thread_local bool char_mask_ready = false;
-    if (!char_mask_ready) { std::memset(char_mask, 0, sizeof(char_mask)); char_mask_ready = true; }
-
-    unsigned char touched[64];
-    int n_touched = 0;
-    for (int j = 0; j < l2; ++j) {
-        unsigned char c = (unsigned char)s2[j];
-        if (char_mask[c] == 0) touched[n_touched++] = c;
-        char_mask[c] |= (1ULL << j);
-    }
+    uint64_t* char_mask = scratch.char_mask;
+    for (int j = 0; j < l2; ++j)
+        char_mask[(unsigned char)s2[j]] |= (1ULL << j);
 
     uint64_t used_mask = 0;   // claimed positions in s2
     uint64_t s1_matched = 0;  // which positions in s1 matched
@@ -52,25 +55,26 @@ static inline double jaro_sim_bitparallel(const char* s1, int l1, const char* s2
         uint64_t hi_mask = (hi == 63) ? ~0ULL : ((1ULL << (hi + 1)) - 1);
         uint64_t window  = hi_mask & ~((1ULL << lo) - 1);
         uint64_t cand = char_mask[(unsigned char)s1[i]] & window & ~used_mask;
-        if (cand) {
-            int j = fastjw_ctz64(cand); // lowest set bit == leftmost match, same as the scalar scan order
-            used_mask  |= (1ULL << j);
-            s1_matched |= (1ULL << i);
-            ++matches;
-        }
+        // Claim the lowest set bit (the leftmost match, same as the scalar
+        // scan order) without branching: whether a character matches is
+        // close to a coin flip for unrelated strings, so a branch here
+        // mispredicts often. cand & -cand is 0 when there is no match.
+        const uint64_t found = (uint64_t)(cand != 0);
+        used_mask  |= cand & (0 - cand);
+        s1_matched |= found << i;
+        matches += (int)found;
     }
 
-    for (int k = 0; k < n_touched; ++k) char_mask[touched[k]] = 0;
+    for (int j = 0; j < l2; ++j) char_mask[(unsigned char)s2[j]] = 0;
 
     if (matches == 0) return 0.0;
 
-    int t = 0, k = 0;
-    for (int i = 0; i < l1; ++i) {
-        if (!((s1_matched >> i) & 1ULL)) continue;
-        while (k < l2 && !((used_mask >> k) & 1ULL)) ++k;
-        if (k < l2 && s1[i] != s2[k]) ++t;
-        ++k;
-    }
+    // Transpositions: the k-th matched character of s1 against the k-th
+    // claimed character of s2, walking both bitsets lowest bit first.
+    int t = 0;
+    for (uint64_t am = s1_matched, bm = used_mask; am != 0;
+         am &= am - 1, bm &= bm - 1)
+        t += s1[fastjw_ctz64(am)] != s2[fastjw_ctz64(bm)];
     double m = (double)matches;
     return (m / l1 + m / l2 + (m - t / 2.0) / m) / 3.0;
 }
@@ -124,20 +128,30 @@ static inline double jaro_sim(const char* s1, int l1, const char* s2, int l2) {
 }
 
 // Jaro-Winkler similarity. p = prefix scaling factor (standard default: 0.1).
+// Workers create one JaroScratch per range and pass it to every call.
 static inline double jaro_winkler_sim(const char* s1, int l1,
-                                       const char* s2, int l2, double p) {
+                                       const char* s2, int l2, double p,
+                                       JaroScratch& scratch) {
     if (l1 == 0 && l2 == 0) return 1.0;
     if (l1 == 0 || l2 == 0) return 0.0;
     if (l1 == l2 &&
         (s1 == s2 || std::memcmp(s1, s2, static_cast<std::size_t>(l1)) == 0))
         return 1.0;
-    double j = (l1 <= 64 && l2 <= 64) ? jaro_sim_bitparallel(s1, l1, s2, l2)
-                                       : jaro_sim(s1, l1, s2, l2);
+    double j = (l1 <= 64 && l2 <= 64)
+        ? jaro_sim_bitparallel(s1, l1, s2, l2, scratch)
+        : jaro_sim(s1, l1, s2, l2);
     if (j == 0.0) return 0.0;
     int prefix = 0;
     int maxp = std::min(4, std::min(l1, l2));
     while (prefix < maxp && s1[prefix] == s2[prefix]) ++prefix;
     return j + prefix * p * (1.0 - j);
+}
+
+// One-off form that zeroes a fresh scratch table per call.
+static inline double jaro_winkler_sim(const char* s1, int l1,
+                                       const char* s2, int l2, double p) {
+    JaroScratch scratch;
+    return jaro_winkler_sim(s1, l1, s2, l2, p, scratch);
 }
 
 #endif // FAST_STRING_JARO_WINKLER_CORE_H

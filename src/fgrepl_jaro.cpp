@@ -34,6 +34,7 @@ struct JaroWinklerWorker : public Worker {
           b_codepoints(b_codepoints), p(p), use_bytes(use_bytes), out(out) {}
 
     void operator()(std::size_t begin, std::size_t end) {
+        JaroScratch scratch;
         for (std::size_t i = begin; i < end; ++i) {
             const StringView& ai = a[i];
             const StringView& bi = b[i];
@@ -45,7 +46,7 @@ struct JaroWinklerWorker : public Worker {
                 (a_codepoints[i].ascii && b_codepoints[i].ascii)
                 ? jaro_winkler_sim(
                     ai.data, static_cast<int>(ai.size),
-                    bi.data, static_cast<int>(bi.size), p
+                    bi.data, static_cast<int>(bi.size), p, scratch
                 )
                 : sequence_jaro_winkler_similarity(
                     a_codepoints[i].data,
@@ -73,7 +74,8 @@ NumericVector fast_jaro_winkler_impl(const StringVector& a,
         a_codepoints.reset(new CodepointSnapshot(a, "a"));
         b_codepoints.reset(new CodepointSnapshot(b, "b"));
     }
-    NumericVector result(n);
+    // Every element is written by the worker.
+    NumericVector result = no_init(n);
     JaroWinklerWorker worker(
         a_snapshot.data(), b_snapshot.data(),
         use_bytes ? nullptr : a_codepoints->data(),
@@ -115,6 +117,7 @@ struct JaroWinklerMatrixWorker : public Worker {
 
     void operator()(std::size_t begin, std::size_t end) {
         if (begin >= end) return;
+        JaroScratch scratch;
         std::size_t j = begin / na;
         std::size_t i = begin - j * na;
         for (std::size_t cell = begin; cell < end; ++cell) {
@@ -127,7 +130,7 @@ struct JaroWinklerMatrixWorker : public Worker {
                     (a_codepoints[i].ascii && b_codepoints[j].ascii)
                     ? jaro_winkler_sim(
                         ai.data, static_cast<int>(ai.size),
-                        bj.data, static_cast<int>(bj.size), p
+                        bj.data, static_cast<int>(bj.size), p, scratch
                     )
                     : sequence_jaro_winkler_similarity(
                         a_codepoints[i].data,
@@ -159,6 +162,7 @@ struct JaroWinklerSymmetricMatrixWorker : public Worker {
           use_bytes(use_bytes_), size(size_), out_ptr(out_ptr_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
+        JaroScratch scratch;
         for (std::size_t row = begin; row < end; ++row) {
             if (bytes[row].is_na()) {
                 out_ptr[row + row * size] = NA_REAL;
@@ -176,7 +180,7 @@ struct JaroWinklerSymmetricMatrixWorker : public Worker {
                             bytes[row].data,
                             static_cast<int>(bytes[row].size),
                             bytes[column].data,
-                            static_cast<int>(bytes[column].size), p
+                            static_cast<int>(bytes[column].size), p, scratch
                         )
                         : sequence_jaro_winkler_similarity(
                             codepoints[row].data,

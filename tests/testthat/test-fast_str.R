@@ -99,6 +99,34 @@ test_that("trimmed and substring slices preserve Latin-1 and bytes encodings", {
     expect_identical(charToRaw(substrings[[2L]]), as.raw(0xe9))
 })
 
+test_that("adjacent byte-identical slices are shared only when their encodings match", {
+    # The same two bytes are one character in UTF-8 and two in Latin-1, so
+    # neighbouring results that agree byte-for-byte must stay distinct
+    # strings; ASCII results carry no encoding and can be shared.
+    utf8 <- paste0(" ", intToUtf8(0xe9), " ")
+    latin1 <- utf8
+    Encoding(latin1) <- "latin1"
+    x <- c(utf8, latin1, latin1, utf8, " ab ", " ab ")
+
+    trimmed <- fast.string::ftrimws(x)
+    expect_identical(
+        Encoding(trimmed),
+        c("UTF-8", "latin1", "latin1", "UTF-8", "unknown", "unknown")
+    )
+    expect_identical(charToRaw(trimmed[[1L]]), charToRaw(trimmed[[2L]]))
+    expect_identical(trimmed, base::trimws(x))
+
+    e_acute_x <- paste0(intToUtf8(0xe9), "x")
+    latin1_x <- e_acute_x
+    Encoding(latin1_x) <- "latin1"
+    y <- c(e_acute_x, latin1_x, e_acute_x)
+    stops <- c(1L, 2L, 1L)
+    sliced <- fast.string::fsubstr(y, 1L, stops)
+    expect_identical(Encoding(sliced), c("UTF-8", "latin1", "UTF-8"))
+    expect_identical(charToRaw(sliced[[1L]]), charToRaw(sliced[[2L]]))
+    expect_identical(sliced, base::substr(y, 1L, stops))
+})
+
 test_that("fnchar matches base for bytes/chars and NA handling", {
     x <- c("hello", NA, "", "café")
     expect_identical(fast.string::fnchar(x), base::nchar(x))

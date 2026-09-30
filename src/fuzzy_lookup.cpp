@@ -67,6 +67,7 @@ struct FuzzyLookupWorker : public Worker {
         std::vector<Candidate> best;
         best.reserve(top_n + 1);
         DamerauWorkspace workspace;
+        JaroScratch jaro_scratch;
         for (std::size_t query = begin; query < end; ++query) {
             best.clear();
             if (query_bytes[query].is_na()) {
@@ -89,7 +90,8 @@ struct FuzzyLookupWorker : public Worker {
                             query_bytes[query].data,
                             static_cast<int>(query_bytes[query].size),
                             table_bytes[choice].data,
-                            static_cast<int>(table_bytes[choice].size), p
+                            static_cast<int>(table_bytes[choice].size), p,
+                            jaro_scratch
                         )
                         : sequence_jaro_winkler_similarity(
                             query_codepoints[query].data,

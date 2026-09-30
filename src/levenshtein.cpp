@@ -203,7 +203,8 @@ static NumericVector run_distance(const StringVector& a,
         a_codepoints.reset(new CodepointSnapshot(a, "a"));
         b_codepoints.reset(new CodepointSnapshot(b, "b"));
     }
-    NumericVector result(a.size());
+    // Every element is written by the worker.
+    NumericVector result = no_init(a.size());
     DistanceWorker worker(
         a_bytes.data(), b_bytes.data(),
         use_bytes ? nullptr : a_codepoints->data(),
@@ -319,7 +320,8 @@ NumericVector fast_edit_similarity_impl(const StringVector& a,
         a_codepoints.reset(new CodepointSnapshot(a, "a"));
         b_codepoints.reset(new CodepointSnapshot(b, "b"));
     }
-    NumericVector result(a.size());
+    // Every element is written by the worker.
+    NumericVector result = no_init(a.size());
     SimilarityWorker worker(
         a_bytes.data(), b_bytes.data(),
         use_bytes ? nullptr : a_codepoints->data(),
@@ -346,7 +348,8 @@ LogicalVector fast_levenshtein_within_impl(const StringVector& a,
         a_codepoints.reset(new CodepointSnapshot(a, "a"));
         b_codepoints.reset(new CodepointSnapshot(b, "b"));
     }
-    LogicalVector result(a.size());
+    // Every element is written by the worker.
+    LogicalVector result = no_init(a.size());
     WithinWorker worker(
         a_bytes.data(), b_bytes.data(),
         use_bytes ? nullptr : a_codepoints->data(),
