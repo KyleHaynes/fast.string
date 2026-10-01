@@ -50,7 +50,7 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \itemize{
 \item \emph{Parse}
 \itemize{
-\item \code{\link[=fas.Date]{fas.Date()}} - parse fixed-format dates
+\item \code{\link[=fas.Date]{fas.Date()}} - parse dates or epoch day counts
 \item \code{\link[=fas.POSIXct]{fas.POSIXct()}} - parse fixed-format timestamps
 }
 \item \emph{Format}

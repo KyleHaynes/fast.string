@@ -23,7 +23,7 @@
     ),
     "Dates & timestamps" = list(
         "Parse" = list(
-            fas.Date      = "parse fixed-format dates",
+            fas.Date      = "parse dates or epoch day counts",
             fas.POSIXct   = "parse fixed-format timestamps"
         ),
         "Format" = list(

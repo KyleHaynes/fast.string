@@ -280,7 +280,7 @@ test_that("run_benchmark_example() runs each family non-interactively with expli
     dates <- suppressMessages(
         run_benchmark_example(n = 5000, family = "dates", reps = 1, seed = 1)
     )
-    expect_setequal(unique(dates$operation), c("fas.Date()", "fas.POSIXct()"))
+    expect_setequal(unique(dates$operation), c("fas.Date()", "fas.Date(origin)", "fas.POSIXct()"))
 
     all_families <- suppressMessages(
         run_benchmark_example(n = 5000, family = "all", reps = 1, seed = 1)

@@ -168,6 +168,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_epoch_date_impl
+SEXP fast_epoch_date_impl(SEXP x, const NumericVector& spec);
+RcppExport SEXP _fast_string_fast_epoch_date_impl(SEXP xSEXP, SEXP specSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type spec(specSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_epoch_date_impl(x, spec));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_parse_datetime_impl
 NumericVector fast_parse_datetime_impl(const StringVector& x, int format_code);
 RcppExport SEXP _fast_string_fast_parse_datetime_impl(SEXP xSEXP, SEXP format_codeSEXP) {
@@ -702,6 +713,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_format_date_impl", (DL_FUNC) &_fast_string_fast_format_date_impl, 2},
     {"_fast_string_fast_format_date_parts_impl", (DL_FUNC) &_fast_string_fast_format_date_parts_impl, 4},
     {"_fast_string_fast_parse_date_impl", (DL_FUNC) &_fast_string_fast_parse_date_impl, 2},
+    {"_fast_string_fast_epoch_date_impl", (DL_FUNC) &_fast_string_fast_epoch_date_impl, 2},
     {"_fast_string_fast_parse_datetime_impl", (DL_FUNC) &_fast_string_fast_parse_datetime_impl, 2},
     {"_fast_string_fast_format_datetime_impl", (DL_FUNC) &_fast_string_fast_format_datetime_impl, 3},
     {"_fast_string_fast_date_parts_impl", (DL_FUNC) &_fast_string_fast_date_parts_impl, 1},

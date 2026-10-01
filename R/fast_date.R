@@ -84,40 +84,134 @@ date_parts <-function(x) {
     fast_date_parts_impl(as.double(x))
 }
 
-#' Fast fixed-format date parsing (not a drop-in for base::as.Date())
+#' Fast fixed-format date parsing and epoch day-count conversion
 #'
-#' Parses a character vector into a `Date` object much faster than
-#' [base::as.Date()] by skipping locale handling, [strptime()], and
-#' multi-format auto-detection entirely. In exchange, `x` must be in
-#' exactly one fixed `format` (the same four [format_date()] produces, so
-#' the two are natural round-trip partners), and validation is minimal:
-#' correct length, digit/separator positions, month in 1-12, day in 1-31.
-#' There is no days-in-month or leap-year check, so e.g. `"2024-02-30"`
-#' parses without error (unlike [base::as.Date()]) — this trades strictness
-#' for speed, by design.
+#' For a character vector, parses dates much faster than [base::as.Date()]
+#' by skipping locale handling, [strptime()], and multi-format
+#' auto-detection entirely. In exchange, `x` must be in exactly one fixed
+#' `format` (the same four [format_date()] produces, so the two are natural
+#' round-trip partners), and validation is minimal: correct length,
+#' digit/separator positions, month in 1-12, day in 1-31. There is no
+#' days-in-month or leap-year check, so e.g. `"2024-02-30"` parses without
+#' error (unlike [base::as.Date()]) — this trades strictness for speed, by
+#' design.
 #'
-#' @param x Character vector. `NA` elements, and elements that don't match
+#' For a numeric vector, converts counts from a standard epoch (spreadsheet
+#' serials, SAS/Stata/SPSS dates, MATLAB datenums, Julian days, ...) to
+#' dates in one pass, with no origin string to parse. It replaces
+#' `as.Date(x, origin = ...)`, and the `"excel"` epoch also handles Excel's
+#' phantom 1900-02-29, which `as.Date(x, origin = "1899-12-30")` gets wrong
+#' for serials below 61.
+#'
+#' @section Epochs:
+#' | `origin` | Counts | Day 0 (or 1) |
+#' |---|---|---|
+#' | `"unix"` | days | 0 = 1970-01-01 (R's own `Date`) |
+#' | `"excel"` | days | 1 = 1900-01-01, Excel 1900 date system (Windows, Lotus 1-2-3) |
+#' | `"excel1904"` | days | 0 = 1904-01-01, Excel 1904 date system (old Mac Excel) |
+#' | `"sas"`, `"stata"` | days | 0 = 1960-01-01 (SAS date values, Stata daily dates) |
+#' | `"spss"` | seconds | 0 = 1582-10-14 |
+#' | `"matlab"` | days | 1 = 0000-01-01 (`datenum`) |
+#' | `"julian_day"` | days | 2440588 = 1970-01-01; days begin at noon |
+#' | `"mjd"` | days | 0 = 1858-11-17 (Modified Julian Date) |
+#' | `"rata_die"` | days | 1 = 0001-01-01 |
+#'
+#' Excel's 1900 system counts a 29 February 1900 that never existed, so
+#' serial 60 gives `NA` and serials below it land one day later than a plain
+#' 1899-12-30 origin would put them (as readxl and janitor do). Google
+#' Sheets, LibreOffice and OLE automation dates have no such day: use
+#' `origin = "1899-12-30"` for those.
+#'
+#' Fractional counts are floored to the day containing them, so an Excel
+#' serial carrying a time of day gives that day, and a Julian date gives the
+#' UTC calendar date. Unlike [base::as.Date()], which keeps the fraction
+#' (and `NaN`/`Inf`), the result always holds whole days. Integer `x` on a
+#' zero-offset epoch such as `"unix"` keeps integer storage, as
+#' `base::as.Date(x)` does; every other epoch returns double days.
+#'
+#' @param x Character vector of dates, or numeric vector of counts from
+#'   `origin`. Character `NA` elements, and elements that don't match
 #'   `format` exactly (wrong length/separators/non-digits) or have an
-#'   out-of-range month/day, become `NA`.
-#' @param format One of `"iso"` (YYYY-MM-DD), `"compact"` (YYYYMMDD),
-#'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
-#' @return A `Date` vector the same length as `x`.
+#'   out-of-range month/day, become `NA`. Numeric `NA`, `NaN` and infinite
+#'   values become `NA`.
+#' @param format For character `x`: one of `"iso"` (YYYY-MM-DD),
+#'   `"compact"` (YYYYMMDD), `"dmy"` (DD/MM/YYYY), or `"ymd_slash"`
+#'   (YYYY/MM/DD).
+#' @param origin For numeric `x`: a named epoch from the table under
+#'   **Epochs** (case-insensitive), or any other day 0 as a `Date` or a
+#'   `"YYYY-MM-DD"` string.
+#' @return A `Date` vector with the same length and names as `x`.
 #' @seealso [format_date()] for the reverse direction.
 #' @family date and timestamp functions
 #' @examples
 #' fas.Date(c("2024-06-18", "not a date", NA))   # bad input becomes NA
 #' fas.Date("18/06/2024", format = "dmy")
+#'
+#' # Day counts from standard epochs
+#' fas.Date(c(1, 59, 60, 61, 45000.75), origin = "excel")
+#' fas.Date(23000L, origin = "sas")
+#' fas.Date(2460000.5, origin = "julian_day")
+#' fas.Date(100, origin = "2000-01-01")
 #' @export
-fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
+fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
+                    origin = "unix") {
+    if (is.numeric(x)) {
+        if (!missing(format))
+            stop("`format` applies to character `x`; numeric `x` is read from an `origin`.")
+        if (inherits(x, "integer64")) x <- as.double(x)
+        spec <- if (is.character(origin) && length(origin) == 1L)
+            .date_epochs[[origin]]
+        if (is.null(spec)) spec <- .epoch_spec(origin)
+        return(fast_epoch_date_impl(x, spec))
+    }
     if (!is.character(x)) {
         if (all(is.na(x))) x <- as.character(x)
-        else stop("`x` must be a character vector.")
+        else stop("`x` must be a character vector, or a numeric vector of counts from an `origin`.")
+    } else if (!missing(origin)) {
+        stop("`origin` applies to numeric `x`; character `x` is read with `format`.")
     }
     format <- match.arg(format)
     code <- switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L)
     result <- .copy_names(fast_parse_date_impl(x, code), x)
     class(result) <- "Date"
     result
+}
+
+# A count x from each epoch is floor(x / divisor + frac) + shift days since
+# 1970-01-01; `excel` = 1 also skips Excel's phantom 1900-02-29 (serial 60).
+# Shifts are the 1970-based day number of each epoch's day 0, e.g.
+# as.numeric(as.Date("1960-01-01")) = -3653.
+.date_epochs <- list(
+    unix       = c(divisor = 1,     frac = 0,   shift = 0,        excel = 0),
+    excel      = c(divisor = 1,     frac = 0,   shift = -25569,   excel = 1),
+    excel1904  = c(divisor = 1,     frac = 0,   shift = -24107,   excel = 0),
+    sas        = c(divisor = 1,     frac = 0,   shift = -3653,    excel = 0),
+    stata      = c(divisor = 1,     frac = 0,   shift = -3653,    excel = 0),
+    spss       = c(divisor = 86400, frac = 0,   shift = -141428,  excel = 0),
+    matlab     = c(divisor = 1,     frac = 0,   shift = -719529,  excel = 0),
+    julian_day = c(divisor = 1,     frac = 0.5, shift = -2440588, excel = 0),
+    mjd        = c(divisor = 1,     frac = 0,   shift = -40587,   excel = 0),
+    rata_die   = c(divisor = 1,     frac = 0,   shift = -719163,  excel = 0)
+)
+
+# Slow path of the origin lookup in fas.Date(): other spellings of a named
+# epoch, and custom day 0s given as a Date or "YYYY-MM-DD" string.
+.epoch_spec <- function(origin) {
+    days <- NA_real_
+    if (inherits(origin, "Date")) {
+        if (length(origin) == 1L) days <- floor(unclass(origin))
+    } else if (is.character(origin) && length(origin) == 1L && !is.na(origin)) {
+        spec <- .date_epochs[[tolower(origin)]]
+        if (!is.null(spec)) return(spec)
+        days <- fast_parse_date_impl(origin, 0L)
+        # The parser skips days-in-month checks, so demand an exact round trip.
+        if (!identical(fast_format_date_impl(days, 0L), origin)) days <- NA_real_
+    }
+    if (!is.finite(days))
+        stop("`origin` must be one of ",
+             paste0("\"", names(.date_epochs), "\"", collapse = ", "),
+             ", a Date, or a \"YYYY-MM-DD\" string.")
+    c(divisor = 1, frac = 0, shift = days, excel = 0)
 }
 
 #' Fast fixed-format timestamp parsing

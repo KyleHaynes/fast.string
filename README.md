@@ -22,7 +22,7 @@ remotes::install_github("KyleHaynes/fast.string")
 
 - **Matching & substitution**: `fgrepl()`, `fgrep()`, `fcount()`, `fsub()`, `fgsub()`, `gsub_all()`
 - **String utilities**: `ftrimws()`, `fsubstr()`, `fnchar()`, `fchartr()`
-- **Dates & timestamps**: `fas.Date()`, `fas.POSIXct()`, `format_date()`, `format_datetime()`, `date_parts()`, `format_date_parts()`
+- **Dates & timestamps**: `fas.Date()` (fixed-format strings, or day counts from the Excel, SAS/Stata, SPSS, MATLAB and Julian-day epochs), `fas.POSIXct()`, `format_date()`, `format_datetime()`, `date_parts()`, `format_date_parts()`
 - **Phonetic codes** (blocking keys): `soundex()`, `refined_soundex()`, `nysiis()`, `cologne()`, `double_metaphone()`, `caverphone()`
 - **String similarity**
   - *Jaro-Winkler*: `jaro_winkler()`, `jaro_winkler_matrix()`, `jaro_winkler_tokens()`

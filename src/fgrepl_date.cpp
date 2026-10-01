@@ -4,10 +4,16 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <vector>
 #include "parallel_dispatch.h"
 #include "string_snapshot.h"
+
+#if defined(__x86_64__) && (defined(__GNUC__) || defined(__clang__))
+#include <immintrin.h>
+#define FAST_STRING_EPOCH_AVX 1
+#endif
 
 using namespace Rcpp;
 using namespace RcppParallel;
@@ -349,6 +355,275 @@ NumericVector fast_parse_date_impl(const StringVector& x, int format_code) {
     NumericVector result(static_cast<R_xlen_t>(n));
     DateParseWorker worker(snapshot.data(), format_code, result);
     dispatch_for(0, n, worker, date_parse_work(snapshot), 10000);
+    return result;
+}
+
+// ---- Epoch counts -> Date (numeric fas.Date) -------------------------------
+//
+// A count from an epoch becomes days since 1970-01-01 as
+// floor(x / divisor + frac) + shift. Only spss scales (it counts seconds) and
+// only julian_day has frac = 0.5 (Julian days begin at noon). Excel's 1900
+// date system also counts 1900-02-29, which never existed: serial 60 has no
+// date, and serials below it are one day later than the shift alone gives.
+//
+// One pass that is bound by writing freshly allocated pages, so the kernel has
+// to run at copy speed to keep up with base R's as.Date(x), which only copies.
+// The scalar std::floor is a library call on x86-64 without SSE4.1, so on
+// CPUs with AVX a VEX-encoded 128-bit kernel is chosen at run time. It is as
+// fast as 256-bit vectors here and never spills a 32-byte value, which MinGW
+// cannot align on the stack (GCC bug 54412).
+
+struct EpochSpec {
+    double divisor;
+    double frac;
+    double shift;
+    bool excel_1900;
+    bool scaled;  // divisor != 1 or frac != 0
+    double na;    // NA_REAL, read on the main thread
+};
+
+// Measured on a Ryzen 3700X: up to ~1M elements the input and output stay in
+// L3 and one thread matches a memcpy; beyond it threads halve the time. The
+// integer relabel is a plain copy of half the bytes, and threads only beat a
+// serial memcpy from ~4M elements.
+static const std::size_t EPOCH_PARALLEL_THRESHOLD = std::size_t(1) << 20;
+static const std::size_t EPOCH_COPY_PARALLEL_THRESHOLD = std::size_t(1) << 22;
+static const std::size_t EPOCH_GRAIN = std::size_t(1) << 18;
+// Non-temporal stores skip the read-for-ownership of each output line, but
+// leave the result out of cache, so only use them once the output (512 KB)
+// would not fit in L2 anyway.
+static const std::size_t EPOCH_STREAM_THRESHOLD = std::size_t(1) << 16;
+
+static inline double epoch_day(double whole, const EpochSpec& epoch) {
+    if (!epoch.excel_1900) return whole + epoch.shift;
+    if (whole == 60.0) return epoch.na;
+    return whole + epoch.shift + (whole < 61.0 ? 1.0 : 0.0);
+}
+
+static inline double epoch_day_from_double(double value,
+                                           const EpochSpec& epoch) {
+    if (epoch.scaled) value = value / epoch.divisor + epoch.frac;
+    return std::isfinite(value)
+        ? epoch_day(std::floor(value), epoch)
+        : epoch.na;
+}
+
+static inline double epoch_day_from_int(int value, const EpochSpec& epoch) {
+    if (value == NA_INTEGER) return epoch.na;
+    // floor(v + frac) == v for an integer v, as 0 <= frac < 1.
+    return epoch.divisor == 1.0
+        ? epoch_day(static_cast<double>(value), epoch)
+        : epoch_day_from_double(static_cast<double>(value), epoch);
+}
+
+typedef void (*DoubleEpochKernel)(const double*, double*, std::size_t,
+                                  std::size_t, const EpochSpec&);
+typedef void (*IntEpochKernel)(const int*, double*, std::size_t,
+                               std::size_t, const EpochSpec&);
+
+static void epoch_days_double_scalar(const double* x, double* out,
+                                     std::size_t begin, std::size_t end,
+                                     const EpochSpec& epoch) {
+    for (std::size_t i = begin; i < end; ++i)
+        out[i] = epoch_day_from_double(x[i], epoch);
+}
+
+static void epoch_days_int_scalar(const int* x, double* out,
+                                  std::size_t begin, std::size_t end,
+                                  const EpochSpec& epoch) {
+    for (std::size_t i = begin; i < end; ++i)
+        out[i] = epoch_day_from_int(x[i], epoch);
+}
+
+#ifdef FAST_STRING_EPOCH_AVX
+// Two whole-day values -> two Dates; lanes where `valid` is clear become NA.
+template <bool Excel>
+__attribute__((target("avx")))
+static inline __m128d epoch_day_avx(__m128d whole, __m128d valid,
+                                    const EpochSpec& epoch) {
+    __m128d day = _mm_add_pd(whole, _mm_set1_pd(epoch.shift));
+    if (Excel) {
+        const __m128d before_bug = _mm_cmplt_pd(whole, _mm_set1_pd(61.0));
+        day = _mm_add_pd(day, _mm_and_pd(before_bug, _mm_set1_pd(1.0)));
+        valid = _mm_andnot_pd(_mm_cmpeq_pd(whole, _mm_set1_pd(60.0)), valid);
+    }
+    return _mm_blendv_pd(_mm_set1_pd(epoch.na), day, valid);
+}
+
+template <bool Stream>
+__attribute__((target("avx")))
+static inline void epoch_store_avx(double* out, __m128d day) {
+    if (Stream) _mm_stream_pd(out, day);
+    else _mm_storeu_pd(out, day);
+}
+
+// Streaming stores need 16-byte alignment; R only promises 8.
+static inline std::size_t epoch_align_16(const double* out, std::size_t i,
+                                         std::size_t end) {
+    return i < end && (reinterpret_cast<std::uintptr_t>(out + i) & 15u)
+        ? i + 1
+        : i;
+}
+
+template <bool Excel, bool Scaled, bool Stream>
+__attribute__((target("avx")))
+static void epoch_days_double_avx(const double* x, double* out,
+                                  std::size_t i, std::size_t end,
+                                  const EpochSpec& epoch) {
+    if (Stream) {
+        const std::size_t aligned = epoch_align_16(out, i, end);
+        for (; i < aligned; ++i) out[i] = epoch_day_from_double(x[i], epoch);
+    }
+    const __m128d sign = _mm_set1_pd(-0.0);
+    const __m128d infinity = _mm_set1_pd(std::numeric_limits<double>::infinity());
+    const __m128d divisor = _mm_set1_pd(epoch.divisor);
+    const __m128d frac = _mm_set1_pd(epoch.frac);
+    for (; i + 2 <= end; i += 2) {
+        __m128d value = _mm_loadu_pd(x + i);
+        if (Scaled) value = _mm_add_pd(_mm_div_pd(value, divisor), frac);
+        // |value| < Inf is false for NA, NaN and both infinities.
+        const __m128d finite =
+            _mm_cmplt_pd(_mm_andnot_pd(sign, value), infinity);
+        epoch_store_avx<Stream>(out + i, epoch_day_avx<Excel>(
+            _mm_floor_pd(value), finite, epoch
+        ));
+    }
+    for (; i < end; ++i) out[i] = epoch_day_from_double(x[i], epoch);
+    if (Stream) _mm_sfence();
+}
+
+template <bool Excel, bool Stream>
+__attribute__((target("avx")))
+static void epoch_days_int_avx(const int* x, double* out,
+                               std::size_t i, std::size_t end,
+                               const EpochSpec& epoch) {
+    if (Stream) {
+        const std::size_t aligned = epoch_align_16(out, i, end);
+        for (; i < aligned; ++i) out[i] = epoch_day_from_int(x[i], epoch);
+    }
+    // NA_INTEGER converts exactly, so NA lanes can be found after conversion.
+    const __m128d na_integer = _mm_set1_pd(static_cast<double>(NA_INTEGER));
+    for (; i + 2 <= end; i += 2) {
+        const __m128d whole = _mm_cvtepi32_pd(
+            _mm_loadl_epi64(reinterpret_cast<const __m128i*>(x + i))
+        );
+        epoch_store_avx<Stream>(out + i, epoch_day_avx<Excel>(
+            whole, _mm_cmpneq_pd(whole, na_integer), epoch
+        ));
+    }
+    for (; i < end; ++i) out[i] = epoch_day_from_int(x[i], epoch);
+    if (Stream) _mm_sfence();
+}
+
+static bool epoch_cpu_has_avx() {
+    static const bool has_avx = [] {
+        __builtin_cpu_init();
+        return __builtin_cpu_supports("avx") != 0;
+    }();
+    return has_avx;
+}
+#endif
+
+static DoubleEpochKernel pick_double_epoch_kernel(const EpochSpec& epoch,
+                                                  bool stream) {
+#ifdef FAST_STRING_EPOCH_AVX
+    if (epoch_cpu_has_avx()) {
+        // Excel serials are plain day counts, so Excel never scales.
+        if (epoch.excel_1900)
+            return stream ? epoch_days_double_avx<true, false, true>
+                          : epoch_days_double_avx<true, false, false>;
+        if (epoch.scaled)
+            return stream ? epoch_days_double_avx<false, true, true>
+                          : epoch_days_double_avx<false, true, false>;
+        return stream ? epoch_days_double_avx<false, false, true>
+                      : epoch_days_double_avx<false, false, false>;
+    }
+#endif
+    (void)stream;
+    return epoch_days_double_scalar;
+}
+
+static IntEpochKernel pick_int_epoch_kernel(const EpochSpec& epoch,
+                                            bool stream) {
+#ifdef FAST_STRING_EPOCH_AVX
+    if (epoch.divisor == 1.0 && epoch_cpu_has_avx()) {
+        if (epoch.excel_1900)
+            return stream ? epoch_days_int_avx<true, true>
+                          : epoch_days_int_avx<true, false>;
+        return stream ? epoch_days_int_avx<false, true>
+                      : epoch_days_int_avx<false, false>;
+    }
+#endif
+    (void)stream;
+    return epoch_days_int_scalar;
+}
+
+struct EpochDateWorker : public Worker {
+    const int* ints;        // integer input, or null
+    const double* doubles;  // double input, or null
+    double* days;           // double output, or null when relabelling
+    int* int_days;          // integer output for a zero-offset day epoch
+    IntEpochKernel int_kernel;
+    DoubleEpochKernel double_kernel;
+    EpochSpec epoch;
+
+    EpochDateWorker(const int* ints_, const double* doubles_, double* days_,
+                    int* int_days_, IntEpochKernel int_kernel_,
+                    DoubleEpochKernel double_kernel_, const EpochSpec& epoch_)
+        : ints(ints_), doubles(doubles_), days(days_), int_days(int_days_),
+          int_kernel(int_kernel_), double_kernel(double_kernel_),
+          epoch(epoch_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        if (int_days)
+            std::memcpy(int_days + begin, ints + begin,
+                        (end - begin) * sizeof(int));
+        else if (ints)
+            int_kernel(ints, days, begin, end, epoch);
+        else
+            double_kernel(doubles, days, begin, end, epoch);
+    }
+};
+
+// `spec` is c(divisor, frac, shift, excel_1900) from .date_epochs in R.
+// Integer input on a zero-offset day epoch keeps integer storage, exactly as
+// base::as.Date(x) relabels it; everything else returns double days.
+// [[Rcpp::export(rng = false)]]
+SEXP fast_epoch_date_impl(SEXP x, const NumericVector& spec) {
+    const int type = TYPEOF(x);
+    if (type != INTSXP && type != REALSXP)
+        stop("`x` must be an integer or double vector.");
+    const EpochSpec epoch = {
+        spec[0], spec[1], spec[2], spec[3] != 0.0,
+        spec[0] != 1.0 || spec[1] != 0.0, NA_REAL
+    };
+    const std::size_t n = static_cast<std::size_t>(Rf_xlength(x));
+    const bool relabel = type == INTSXP && !epoch.excel_1900 &&
+        epoch.divisor == 1.0 && epoch.shift == 0.0;
+    const bool stream = n >= EPOCH_STREAM_THRESHOLD;
+
+    SEXP result = PROTECT(Rf_allocVector(
+        relabel ? INTSXP : REALSXP, static_cast<R_xlen_t>(n)
+    ));
+    EpochDateWorker worker(
+        type == INTSXP ? INTEGER(x) : NULL,
+        type == REALSXP ? REAL(x) : NULL,
+        relabel ? NULL : REAL(result),
+        relabel ? INTEGER(result) : NULL,
+        pick_int_epoch_kernel(epoch, stream),
+        pick_double_epoch_kernel(epoch, stream),
+        epoch
+    );
+    dispatch_for(0, n, worker, n,
+                 relabel ? EPOCH_COPY_PARALLEL_THRESHOLD
+                         : EPOCH_PARALLEL_THRESHOLD,
+                 -1, EPOCH_GRAIN);
+
+    SEXP names = Rf_getAttrib(x, R_NamesSymbol);
+    if (names != R_NilValue) Rf_setAttrib(result, R_NamesSymbol, names);
+    SEXP date_class = PROTECT(Rf_mkString("Date"));
+    Rf_setAttrib(result, R_ClassSymbol, date_class);
+    UNPROTECT(2);
     return result;
 }
 

@@ -45,6 +45,10 @@ fast_parse_date_impl <- function(x, format_code) {
     .Call(`_fast_string_fast_parse_date_impl`, x, format_code)
 }
 
+fast_epoch_date_impl <- function(x, spec) {
+    .Call(`_fast_string_fast_epoch_date_impl`, x, spec)
+}
+
 fast_parse_datetime_impl <- function(x, format_code) {
     .Call(`_fast_string_fast_parse_datetime_impl`, x, format_code)
 }

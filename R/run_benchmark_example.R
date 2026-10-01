@@ -260,6 +260,9 @@
     cli::cli_h2("Dates & timestamps")
     days <- as.Date("1950-01-01") + sample(0:27000, n, replace = TRUE)
     date_strings <- format_date(days, "iso")
+    # Excel serials as an integer column would arrive from a CSV export; all
+    # are past serial 60, where the base idiom below is also correct.
+    excel_serials <- as.integer(days) + 25569L
     stamps <- as.POSIXct("1990-01-01", tz = "UTC") + sample(0:1e9, n, replace = TRUE)
     stamp_strings <- format_datetime(stamps, "iso")
 
@@ -267,6 +270,11 @@
         as_date = .bench_compare(
             "fas.Date()", function() fas.Date(date_strings, "iso"),
             list("base::as.Date()" = .bench_baseline(function() base::as.Date(date_strings, format = "%Y-%m-%d"))),
+            reps
+        ),
+        as_date_epoch = .bench_compare(
+            "fas.Date(origin)", function() fas.Date(excel_serials, origin = "excel"),
+            list("base::as.Date(origin)" = .bench_baseline(function() base::as.Date(excel_serials, origin = "1899-12-30"))),
             reps
         ),
         as_posixct = .bench_compare(

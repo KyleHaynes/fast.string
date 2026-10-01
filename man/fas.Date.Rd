@@ -2,35 +2,85 @@
 % Please edit documentation in R/fast_date.R
 \name{fas.Date}
 \alias{fas.Date}
-\title{Fast fixed-format date parsing (not a drop-in for base::as.Date())}
+\title{Fast fixed-format date parsing and epoch day-count conversion}
 \usage{
-fas.Date(x, format = c("iso", "compact", "dmy", "ymd_slash"))
+fas.Date(x, format = c("iso", "compact", "dmy", "ymd_slash"), origin = "unix")
 }
 \arguments{
-\item{x}{Character vector. \code{NA} elements, and elements that don't match
+\item{x}{Character vector of dates, or numeric vector of counts from
+\code{origin}. Character \code{NA} elements, and elements that don't match
 \code{format} exactly (wrong length/separators/non-digits) or have an
-out-of-range month/day, become \code{NA}.}
+out-of-range month/day, become \code{NA}. Numeric \code{NA}, \code{NaN} and infinite
+values become \code{NA}.}
 
-\item{format}{One of \code{"iso"} (YYYY-MM-DD), \code{"compact"} (YYYYMMDD),
-\code{"dmy"} (DD/MM/YYYY), or \code{"ymd_slash"} (YYYY/MM/DD).}
+\item{format}{For character \code{x}: one of \code{"iso"} (YYYY-MM-DD),
+\code{"compact"} (YYYYMMDD), \code{"dmy"} (DD/MM/YYYY), or \code{"ymd_slash"}
+(YYYY/MM/DD).}
+
+\item{origin}{For numeric \code{x}: a named epoch from the table under
+\strong{Epochs} (case-insensitive), or any other day 0 as a \code{Date} or a
+\code{"YYYY-MM-DD"} string.}
 }
 \value{
-A \code{Date} vector the same length as \code{x}.
+A \code{Date} vector with the same length and names as \code{x}.
 }
 \description{
-Parses a character vector into a \code{Date} object much faster than
-\code{\link[base:as.Date]{base::as.Date()}} by skipping locale handling, \code{\link[=strptime]{strptime()}}, and
-multi-format auto-detection entirely. In exchange, \code{x} must be in
-exactly one fixed \code{format} (the same four \code{\link[=format_date]{format_date()}} produces, so
-the two are natural round-trip partners), and validation is minimal:
-correct length, digit/separator positions, month in 1-12, day in 1-31.
-There is no days-in-month or leap-year check, so e.g. \code{"2024-02-30"}
-parses without error (unlike \code{\link[base:as.Date]{base::as.Date()}}) — this trades strictness
-for speed, by design.
+For a character vector, parses dates much faster than \code{\link[base:as.Date]{base::as.Date()}}
+by skipping locale handling, \code{\link[=strptime]{strptime()}}, and multi-format
+auto-detection entirely. In exchange, \code{x} must be in exactly one fixed
+\code{format} (the same four \code{\link[=format_date]{format_date()}} produces, so the two are natural
+round-trip partners), and validation is minimal: correct length,
+digit/separator positions, month in 1-12, day in 1-31. There is no
+days-in-month or leap-year check, so e.g. \code{"2024-02-30"} parses without
+error (unlike \code{\link[base:as.Date]{base::as.Date()}}) — this trades strictness for speed, by
+design.
 }
+\details{
+For a numeric vector, converts counts from a standard epoch (spreadsheet
+serials, SAS/Stata/SPSS dates, MATLAB datenums, Julian days, ...) to
+dates in one pass, with no origin string to parse. It replaces
+\code{as.Date(x, origin = ...)}, and the \code{"excel"} epoch also handles Excel's
+phantom 1900-02-29, which \code{as.Date(x, origin = "1899-12-30")} gets wrong
+for serials below 61.
+}
+\section{Epochs}{
+\tabular{lll}{
+   \code{origin} \tab Counts \tab Day 0 (or 1) \cr
+   \code{"unix"} \tab days \tab 0 = 1970-01-01 (R's own \code{Date}) \cr
+   \code{"excel"} \tab days \tab 1 = 1900-01-01, Excel 1900 date system (Windows, Lotus 1-2-3) \cr
+   \code{"excel1904"} \tab days \tab 0 = 1904-01-01, Excel 1904 date system (old Mac Excel) \cr
+   \code{"sas"}, \code{"stata"} \tab days \tab 0 = 1960-01-01 (SAS date values, Stata daily dates) \cr
+   \code{"spss"} \tab seconds \tab 0 = 1582-10-14 \cr
+   \code{"matlab"} \tab days \tab 1 = 0000-01-01 (\code{datenum}) \cr
+   \code{"julian_day"} \tab days \tab 2440588 = 1970-01-01; days begin at noon \cr
+   \code{"mjd"} \tab days \tab 0 = 1858-11-17 (Modified Julian Date) \cr
+   \code{"rata_die"} \tab days \tab 1 = 0001-01-01 \cr
+}
+
+
+Excel's 1900 system counts a 29 February 1900 that never existed, so
+serial 60 gives \code{NA} and serials below it land one day later than a plain
+1899-12-30 origin would put them (as readxl and janitor do). Google
+Sheets, LibreOffice and OLE automation dates have no such day: use
+\code{origin = "1899-12-30"} for those.
+
+Fractional counts are floored to the day containing them, so an Excel
+serial carrying a time of day gives that day, and a Julian date gives the
+UTC calendar date. Unlike \code{\link[base:as.Date]{base::as.Date()}}, which keeps the fraction
+(and \code{NaN}/\code{Inf}), the result always holds whole days. Integer \code{x} on a
+zero-offset epoch such as \code{"unix"} keeps integer storage, as
+\code{base::as.Date(x)} does; every other epoch returns double days.
+}
+
 \examples{
 fas.Date(c("2024-06-18", "not a date", NA))   # bad input becomes NA
 fas.Date("18/06/2024", format = "dmy")
+
+# Day counts from standard epochs
+fas.Date(c(1, 59, 60, 61, 45000.75), origin = "excel")
+fas.Date(23000L, origin = "sas")
+fas.Date(2460000.5, origin = "julian_day")
+fas.Date(100, origin = "2000-01-01")
 }
 \seealso{
 \code{\link[=format_date]{format_date()}} for the reverse direction.
