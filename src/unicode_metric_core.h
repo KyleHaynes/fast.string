@@ -8,6 +8,21 @@
 #include <limits>
 #include <vector>
 
+// Per-call scratch: a stack array for the short strings this package
+// targets, the heap only beyond it. A std::vector per pair made malloc/free
+// -- and contention on the CRT heap lock across worker threads -- the
+// dominant cost of the code-point metrics (see levenshtein_dp()).
+template <typename T, std::size_t N = 260>
+struct SmallScratch {
+    T stack[N];
+    std::vector<T> heap;
+    T* get(std::size_t n) {
+        if (n <= N) return stack;
+        heap.resize(n);
+        return heap.data();
+    }
+};
+
 template <typename Symbol>
 static inline bool sequence_equal(const Symbol* a, int la,
                                   const Symbol* b, int lb) {
@@ -35,7 +50,8 @@ static inline int sequence_levenshtein_distance(const Symbol* a, int la,
         std::swap(la, lb);
     }
     if (lb == 0) return la;
-    std::vector<int> row(static_cast<std::size_t>(lb) + 1);
+    SmallScratch<int> scratch;
+    int* row = scratch.get(static_cast<std::size_t>(lb) + 1);
     for (int j = 0; j <= lb; ++j) row[static_cast<std::size_t>(j)] = j;
     for (int i = 1; i <= la; ++i) {
         int previous_diagonal = row[0];
@@ -63,10 +79,15 @@ static inline int sequence_osa_distance(const Symbol* a, int la,
         std::swap(la, lb);
     }
     if (lb == 0) return la;
-    std::vector<int> row0(static_cast<std::size_t>(lb) + 1, 0);
-    std::vector<int> row1(static_cast<std::size_t>(lb) + 1);
-    std::vector<int> row2(static_cast<std::size_t>(lb) + 1);
-    for (int j = 0; j <= lb; ++j) row1[static_cast<std::size_t>(j)] = j;
+    const std::size_t width = static_cast<std::size_t>(lb) + 1;
+    SmallScratch<int, 780> scratch;
+    int* row0 = scratch.get(3 * width);
+    int* row1 = row0 + width;
+    int* row2 = row1 + width;
+    for (int j = 0; j <= lb; ++j) {
+        row0[static_cast<std::size_t>(j)] = 0;
+        row1[static_cast<std::size_t>(j)] = j;
+    }
     for (int i = 1; i <= la; ++i) {
         row2[0] = i;
         for (int j = 1; j <= lb; ++j) {
@@ -84,8 +105,8 @@ static inline int sequence_osa_distance(const Symbol* a, int la,
             }
             row2[static_cast<std::size_t>(j)] = best;
         }
-        row0.swap(row1);
-        row1.swap(row2);
+        std::swap(row0, row1);
+        std::swap(row1, row2);
     }
     return row1[static_cast<std::size_t>(lb)];
 }
@@ -118,8 +139,11 @@ static inline int sequence_bounded_levenshtein_distance(
     }
     if (lb == 0) return la <= cutoff ? la : cutoff + 1;
     const int outside = cutoff + 1;
-    std::vector<int> previous(static_cast<std::size_t>(lb) + 1, outside);
-    std::vector<int> current(static_cast<std::size_t>(lb) + 1, outside);
+    const std::size_t width = static_cast<std::size_t>(lb) + 1;
+    SmallScratch<int, 520> scratch;
+    int* previous = scratch.get(2 * width);
+    int* current = previous + width;
+    std::fill(previous, previous + 2 * width, outside);
     for (int j = 0; j <= std::min(lb, cutoff); ++j)
         previous[static_cast<std::size_t>(j)] = j;
 
@@ -141,7 +165,7 @@ static inline int sequence_bounded_levenshtein_distance(
         }
         if (last < lb) current[static_cast<std::size_t>(last + 1)] = outside;
         if (row_minimum > cutoff) return outside;
-        previous.swap(current);
+        std::swap(previous, current);
     }
     const int result = previous[static_cast<std::size_t>(lb)];
     return result <= cutoff ? result : outside;
@@ -154,8 +178,12 @@ static inline double sequence_jaro_similarity(const Symbol* a, int la,
     if (la == 0 || lb == 0) return 0.0;
     if (sequence_equal(a, la, b, lb)) return 1.0;
     const int range = std::max(0, std::max(la, lb) / 2 - 1);
-    std::vector<unsigned char> matched_a(static_cast<std::size_t>(la), 0);
-    std::vector<unsigned char> matched_b(static_cast<std::size_t>(lb), 0);
+    SmallScratch<unsigned char, 512> scratch;
+    unsigned char* matched_a = scratch.get(
+        static_cast<std::size_t>(la) + static_cast<std::size_t>(lb)
+    );
+    unsigned char* matched_b = matched_a + la;
+    std::fill(matched_a, matched_a + la + lb, static_cast<unsigned char>(0));
     int matches = 0;
     for (int i = 0; i < la; ++i) {
         const int first = std::max(0, i - range);
