@@ -247,9 +247,11 @@ static inline QgramFrequencyOverlap qgram_frequency_overlap(
     return qgram_frequency_overlap(a.data(), a.size(), b.data(), b.size());
 }
 
+// The *_from_* scorers only see q-gram counts. Callers return 1 for
+// identical strings first, so two strings that both have no q-grams (both
+// shorter than q) reach these only when they differ, and score 0.
 static inline double qgram_cosine_from_frequency(
         const QgramFrequencyOverlap& overlap) {
-    if (overlap.squared_a == 0.0 && overlap.squared_b == 0.0) return 1.0;
     if (overlap.squared_a == 0.0 || overlap.squared_b == 0.0) return 0.0;
     return overlap.dot / std::sqrt(overlap.squared_a * overlap.squared_b);
 }
@@ -260,23 +262,21 @@ static inline double qgram_distance_from_frequency(
 }
 
 static inline double qgram_jaccard_from_overlap(const QgramOverlap& o) {
-    if (o.size_a == 0 && o.size_b == 0) return 1.0;
     std::size_t uni = o.size_a + o.size_b - o.inter;
-    return uni == 0 ? 1.0 : (double)o.inter / (double)uni;
+    return uni == 0 ? 0.0 : (double)o.inter / (double)uni;
 }
 
 static inline double qgram_dice_from_overlap(const QgramOverlap& o) {
-    if (o.size_a == 0 && o.size_b == 0) return 1.0;
     std::size_t denom = o.size_a + o.size_b;
-    return denom == 0 ? 1.0 : (2.0 * (double)o.inter) / (double)denom;
+    return denom == 0 ? 0.0 : (2.0 * (double)o.inter) / (double)denom;
 }
 
 static inline double qgram_tversky_from_overlap(const QgramOverlap& o,
                                                  double alpha, double beta) {
-    if (o.size_a == 0 && o.size_b == 0) return 1.0;
+    // A zero denominator means no shared q-grams (and alpha = beta = 0).
     double denom = (double)o.inter + alpha * (double)(o.size_a - o.inter)
                                     + beta  * (double)(o.size_b - o.inter);
-    return denom == 0 ? 1.0 : (double)o.inter / denom;
+    return denom == 0 ? 0.0 : (double)o.inter / denom;
 }
 
 // Deliberately plain (non-thread_local) locals: thread_local non-POD

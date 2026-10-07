@@ -58,10 +58,12 @@ test_that("q-gram sets deduplicate repeated grams and handle short strings", {
         fast.string::dice_coefficient("aaaa", "aaab", q = 2L),
         2 / 3
     )
+    # Neither string has an 8-gram, but they differ, so nothing is shared.
     expect_equal(
         fast.string::jaccard_index("short", "tiny", q = 8L),
-        1
+        0
     )
+    expect_equal(fast.string::jaccard_index("short", "short", q = 8L), 1)
     expect_equal(
         fast.string::jaccard_index("short", "long enough", q = 8L),
         0
@@ -180,4 +182,30 @@ test_that("q-gram matrix threshold rejection preserves exact results", {
             nrow = length(a)
         )
     )
+})
+
+test_that("strings without q-grams only match themselves", {
+    a <- c("a", "ab", "", "ab")
+    b <- c("b", "ab", "", "cd")
+    for (fn in list(fast.string::jaccard_index, fast.string::dice_coefficient,
+                    fast.string::tversky_index, fast.string::cosine_similarity)) {
+        expect_identical(fn(a, b, q = 3), c(0, 1, 1, 0))
+    }
+    # The prepared matrix path (>= 4096 cells) agrees with the pairwise one.
+    x <- rep(c("a", "b", "ab", "abc", "abd"), 20)
+    for (pair in list(
+        list(fast.string::jaccard_matrix, fast.string::jaccard_index),
+        list(fast.string::cosine_matrix, fast.string::cosine_similarity))) {
+        m <- pair[[1]](x, x, q = 3)
+        expect_identical(as.vector(m),
+                         pair[[2]](rep(x, times = 100), rep(x, each = 100), q = 3))
+    }
+    # alpha = beta = 0 leaves 0/0 for disjoint sets: no overlap, so 0.
+    expect_identical(fast.string::tversky_index("abc", "xyz", alpha = 0, beta = 0), 0)
+})
+
+test_that("q-gram arguments are validated", {
+    expect_error(fast.string::jaccard_index("a", "b", q = NA), "integer >= 1")
+    expect_error(fast.string::jaccard_index("a", "b", q = 2.5), "integer >= 1")
+    expect_error(fast.string::tversky_index("a", "b", alpha = NA), "non-negative")
 })

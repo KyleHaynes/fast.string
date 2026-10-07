@@ -36,8 +36,9 @@
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Numeric vector of similarities in `[0, 1]`, `length(a)` long.
-#'   `NA` if either `a[i]` or `b[i]` is `NA`. Two strings shorter than `q`
-#'   (so neither has any q-grams) compare equal (`1`).
+#'   `NA` if either `a[i]` or `b[i]` is `NA`. Identical strings score `1`;
+#'   different strings that share no q-gram score `0` -- including two
+#'   different strings that are both shorter than `q` and so have none.
 #' @seealso [jaro_winkler()] for an order-sensitive alternative.
 #' @family q-gram similarity functions
 #' @examples
@@ -49,8 +50,15 @@
 NULL
 
 .qgram_validate_q <- function(q) {
-    if (!is.numeric(q) || length(q) != 1L || q < 1)
+    if (!is.numeric(q) || length(q) != 1L || is.na(q) || q < 1 ||
+        q != floor(q) || q > .Machine$integer.max)
         stop("`q` must be a single integer >= 1.")
+}
+
+.qgram_validate_weight <- function(value, name) {
+    if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+        !is.finite(value) || value < 0)
+        stop("`", name, "` must be a single non-negative number.")
 }
 
 .qgram_validate <- function(a, b, q) {
@@ -115,10 +123,8 @@ dice_matrix <-function(a, b, q = 2, nthreads = NULL) {
 #' @export
 tversky_index <- function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL) {
     .qgram_validate(a, b, q)
-    if (!is.numeric(alpha) || length(alpha) != 1L || alpha < 0)
-        stop("`alpha` must be a single non-negative number.")
-    if (!is.numeric(beta) || length(beta) != 1L || beta < 0)
-        stop("`beta` must be a single non-negative number.")
+    .qgram_validate_weight(alpha, "alpha")
+    .qgram_validate_weight(beta, "beta")
     fast_tversky_impl(
         a, b, as.integer(q), as.double(alpha), as.double(beta),
         .as_nthreads(nthreads)
@@ -137,10 +143,8 @@ tversky_index <- function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
 #' @export
 tversky_matrix <-function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL) {
     .qgram_validate_matrix(a, b, q)
-    if (!is.numeric(alpha) || length(alpha) != 1L || alpha < 0)
-        stop("`alpha` must be a single non-negative number.")
-    if (!is.numeric(beta) || length(beta) != 1L || beta < 0)
-        stop("`beta` must be a single non-negative number.")
+    .qgram_validate_weight(alpha, "alpha")
+    .qgram_validate_weight(beta, "beta")
     fast_tversky_matrix_impl(
         a, b, as.integer(q), as.double(alpha), as.double(beta),
         .as_nthreads(nthreads)
@@ -156,8 +160,8 @@ tversky_matrix <-function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
 #'
 #' @inheritParams qgram_metrics
 #' @return Numeric vector of similarities in `[0, 1]`, `length(a)` long.
-#'   Missing comparisons return `NA`. If neither string has a q-gram the
-#'   similarity is `1`; if only one does, it is `0`.
+#'   Missing comparisons return `NA`. Identical strings score `1`; otherwise
+#'   the similarity is `0` when either string has no q-gram.
 #' @family q-gram similarity functions
 #' @examples
 #' cosine_similarity("night", "nacht")

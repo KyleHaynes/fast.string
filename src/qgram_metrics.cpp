@@ -40,6 +40,9 @@ struct PackedSlice {
     std::size_t offset;
     std::size_t size;
     bool is_na;
+    // One id per distinct CHARSXP, i.e. per distinct string: lets the
+    // workers score identical strings 1 even when neither has a q-gram.
+    std::size_t id;
 };
 
 struct UniquePackedString {
@@ -166,12 +169,12 @@ static bool prepare_packed_qgrams(const StringSnapshot& a_snapshot,
             qgram_keys_packed(value.data, value.size, q, scratch);
         else
             qgram_keys_packed_all(value.data, value.size, q, scratch);
-        PackedSlice slice{arena.keys.size(), scratch.size(), false};
+        PackedSlice slice{arena.keys.size(), scratch.size(), false, id};
         arena.keys.insert(arena.keys.end(), scratch.begin(), scratch.end());
         unique_slices[id] = slice;
     }
 
-    const PackedSlice missing{0, 0, true};
+    const PackedSlice missing{0, 0, true, 0};
     for (std::size_t i = 0; i < na; ++i)
         arena.a[i] = a_ids[i] == missing_id ? missing : unique_slices[a_ids[i]];
     for (std::size_t j = 0; j < nb; ++j)
@@ -218,6 +221,10 @@ struct PreparedQgramMatrixWorker : public Worker {
                 const PackedSlice& as = a[i + k];
                 if (as.is_na || bs.is_na) {
                     out[begin + k] = NA_REAL;
+                    continue;
+                }
+                if (as.size == 0 && bs.size == 0) {
+                    out[begin + k] = as.id == bs.id ? 1.0 : 0.0;
                     continue;
                 }
 
@@ -297,7 +304,7 @@ struct PreparedCosineMatrixWorker : public Worker {
                 if (as.is_na || bs.is_na) {
                     out[begin + k] = NA_REAL;
                 } else if (as.size == 0 && bs.size == 0) {
-                    out[begin + k] = 1.0;
+                    out[begin + k] = as.id == bs.id ? 1.0 : 0.0;
                 } else if (as.size == 0 || bs.size == 0) {
                     out[begin + k] = 0.0;
                 } else {

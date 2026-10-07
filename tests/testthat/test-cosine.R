@@ -9,7 +9,8 @@ test_that("cosine_similarity matches hand-computed q-gram profiles", {
 
 test_that("cosine_similarity has explicit empty-profile behavior", {
     expect_identical(fast.string::cosine_similarity("", "", q = 2L), 1)
-    expect_identical(fast.string::cosine_similarity("a", "b", q = 2L), 1)
+    expect_identical(fast.string::cosine_similarity("a", "b", q = 2L), 0)
+    expect_identical(fast.string::cosine_similarity("a", "a", q = 2L), 1)
     expect_identical(fast.string::cosine_similarity("a", "ab", q = 2L), 0)
     expect_true(is.na(fast.string::cosine_similarity(NA_character_, "ab")))
 })

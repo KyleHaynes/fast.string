@@ -27,8 +27,9 @@ Dice). Non-negative scalars.}
 }
 \value{
 Numeric vector of similarities in \verb{[0, 1]}, \code{length(a)} long.
-\code{NA} if either \code{a[i]} or \code{b[i]} is \code{NA}. Two strings shorter than \code{q}
-(so neither has any q-grams) compare equal (\code{1}).
+\code{NA} if either \code{a[i]} or \code{b[i]} is \code{NA}. Identical strings score \code{1};
+different strings that share no q-gram score \code{0} -- including two
+different strings that are both shorter than \code{q} and so have none.
 }
 \description{
 Three related measures of how much two strings' sets of overlapping

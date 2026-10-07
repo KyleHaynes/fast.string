@@ -17,8 +17,8 @@ RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Numeric vector of similarities in \verb{[0, 1]}, \code{length(a)} long.
-Missing comparisons return \code{NA}. If neither string has a q-gram the
-similarity is \code{1}; if only one does, it is \code{0}.
+Missing comparisons return \code{NA}. Identical strings score \code{1}; otherwise
+the similarity is \code{0} when either string has no q-gram.
 }
 \description{
 Builds frequency profiles of overlapping length-\code{q} substrings and returns
