@@ -19,10 +19,15 @@ fuzz_token_set_ratio(a, b, full_process = TRUE, nthreads = NULL)
 \arguments{
 \item{a, b}{Equal-length character vectors.}
 
-\item{full_process}{Logical (default \code{TRUE}, matching fuzzywuzzy's
-default). Lowercases and replaces runs of non-alphanumeric characters
-with a single space before comparing, same as fuzzywuzzy's
-\code{full_process()} preprocessing step.}
+\item{full_process}{Logical (default \code{TRUE}). Preprocess both strings as
+fuzzywuzzy's \code{full_process()} does: delete the characters U+0080 to
+U+00FF (its default \code{force_ascii}), turn every other character except
+letters, digits and \verb{_} into a space, lowercase, and trim. Characters
+from U+0100 up are kept unchanged. This is fuzzywuzzy's default for
+\code{token_sort_ratio()} and \code{token_set_ratio()}; its \code{ratio()} and
+\code{partial_ratio()} never preprocess, so use \code{full_process = FALSE} to
+reproduce those (\code{fuzz_ratio()} with preprocessing is fuzzywuzzy's
+\code{QRatio()}).}
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
@@ -57,6 +62,10 @@ order stops mattering.
 shared-token core against each side's leftovers, taking the best of the
 three pairwise ratios — robust to one side simply having extra words.
 }
+
+Scores follow fuzzywuzzy's own rules for equal and empty strings: equal
+inputs score 100, and an empty input scores 0. With \code{full_process = TRUE}
+an input that processes to nothing (only punctuation, say) also scores 0.
 }
 \examples{
 fuzz_ratio("this is a test", "this is a test!")

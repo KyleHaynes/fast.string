@@ -3,8 +3,9 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
+#include <cstdint>
 #include <cstring>
+#include <utility>
 #include <string>
 #include <vector>
 
@@ -22,22 +23,54 @@
 
 struct ROBlock { int a, b, size; };
 
-// Bucket b's byte positions directly by byte value (0-255) -- exact and
-// hash-free, unlike difflib's b2j dict keyed by arbitrary characters.
-struct ROIndex {
+// Positions of every symbol of b, ascending. Bytes are bucketed directly by
+// value -- exact and hash-free, unlike difflib's b2j dict keyed by arbitrary
+// characters; code points (used for non-ASCII text, so that a multi-byte
+// character counts once, as in Python) go through a sorted table.
+struct ROIndexBytes {
     std::array<std::vector<int>, 256> pos;
-    ROIndex(const char* b, int lb) {
+    ROIndexBytes(const char* b, int lb) {
         for (int j = 0; j < lb; ++j) pos[(unsigned char)b[j]].push_back(j);
     }
+    const std::vector<int>& at(char c) const { return pos[(unsigned char)c]; }
 };
+
+struct ROIndexCodepoints {
+    std::vector<std::pair<std::uint32_t, std::vector<int>>> entries;
+    std::vector<int> none;
+    ROIndexCodepoints(const std::uint32_t* b, int lb) {
+        std::vector<std::pair<std::uint32_t, int>> order;
+        order.reserve(static_cast<std::size_t>(lb));
+        for (int j = 0; j < lb; ++j) order.emplace_back(b[j], j);
+        std::sort(order.begin(), order.end());
+        for (const auto& item : order) {
+            if (entries.empty() || entries.back().first != item.first)
+                entries.emplace_back(item.first, std::vector<int>());
+            entries.back().second.push_back(item.second);
+        }
+    }
+    const std::vector<int>& at(std::uint32_t c) const {
+        const auto it = std::lower_bound(
+            entries.begin(), entries.end(), c,
+            [](const std::pair<std::uint32_t, std::vector<int>>& entry,
+               std::uint32_t value) { return entry.first < value; }
+        );
+        return it != entries.end() && it->first == c ? it->second : none;
+    }
+};
+
+template <typename Sym> struct ROIndexFor;
+template <> struct ROIndexFor<char> { typedef ROIndexBytes type; };
+template <> struct ROIndexFor<std::uint32_t> { typedef ROIndexCodepoints type; };
 
 // Longest matching block within a[alo,ahi) vs b[blo,bhi), mirroring
 // difflib.SequenceMatcher.find_longest_match. `len_at`/`new_len_at` are
 // caller-owned scratch buffers (size >= lb+1) reused across calls to avoid
 // reallocating on every recursive step.
-static inline ROBlock ro_find_longest_match(const char* a, int alo, int ahi,
-                                             const char* b, int blo, int bhi,
-                                             const ROIndex& idx,
+template <typename Sym, typename Index>
+static inline ROBlock ro_find_longest_match(const Sym* a, int alo, int ahi,
+                                             int blo, int bhi,
+                                             const Index& idx,
                                              std::vector<int>& len_at,
                                              std::vector<int>& new_len_at) {
     int besti = alo, bestj = blo, bestsize = 0;
@@ -46,7 +79,7 @@ static inline ROBlock ro_find_longest_match(const char* a, int alo, int ahi,
 
     for (int i = alo; i < ahi; ++i) {
         std::fill(new_len_at.begin(), new_len_at.begin() + n, 0);
-        const std::vector<int>& js = idx.pos[(unsigned char)a[i]];
+        const std::vector<int>& js = idx.at(a[i]);
         auto it = std::lower_bound(js.begin(), js.end(), blo);
         for (; it != js.end() && *it < bhi; ++it) {
             int j = *it;
@@ -61,15 +94,15 @@ static inline ROBlock ro_find_longest_match(const char* a, int alo, int ahi,
 }
 
 // All matching blocks between a[0,la) and b[0,lb), sorted by (a, b) position,
-// same contract as difflib.SequenceMatcher.get_matching_blocks() (minus the
-// dummy zero-size terminal block difflib appends, which callers don't need
-// here since we always sum or scan, never index off the end).
-static inline std::vector<ROBlock> ro_matching_blocks(const char* a, int la,
-                                                       const char* b, int lb) {
+// same contract as difflib.SequenceMatcher.get_matching_blocks() minus the
+// zero-size terminal block difflib appends (ro_partial_ratio() adds it back).
+template <typename Sym>
+static inline std::vector<ROBlock> ro_matching_blocks(const Sym* a, int la,
+                                                       const Sym* b, int lb) {
     std::vector<ROBlock> blocks;
     if (la == 0 || lb == 0) return blocks;
 
-    ROIndex idx(b, lb);
+    const typename ROIndexFor<Sym>::type idx(b, lb);
     std::vector<int> len_at((std::size_t)lb + 1, 0);
     std::vector<int> new_len_at((std::size_t)lb + 1, 0);
 
@@ -80,7 +113,7 @@ static inline std::vector<ROBlock> ro_matching_blocks(const char* a, int la,
     while (!stack.empty()) {
         Range r = stack.back();
         stack.pop_back();
-        ROBlock m = ro_find_longest_match(a, r.alo, r.ahi, b, r.blo, r.bhi,
+        ROBlock m = ro_find_longest_match(a, r.alo, r.ahi, r.blo, r.bhi,
                                            idx, len_at, new_len_at);
         if (m.size > 0) {
             blocks.push_back(m);
@@ -96,18 +129,22 @@ static inline std::vector<ROBlock> ro_matching_blocks(const char* a, int la,
     return blocks;
 }
 
-static inline int ro_total_matched(const char* a, int la, const char* b, int lb) {
+template <typename Sym>
+static inline int ro_total_matched(const Sym* a, int la, const Sym* b, int lb) {
     int m = 0;
     for (const ROBlock& blk : ro_matching_blocks(a, la, b, lb)) m += blk.size;
     return m;
 }
 
+template <typename Sym>
+static inline bool ro_equal(const Sym* a, int la, const Sym* b, int lb) {
+    return la == lb && (la == 0 || a == b || std::equal(a, a + la, b));
+}
+
 // difflib SequenceMatcher.ratio(): 2*M / T, T = len(a) + len(b).
-static inline double ro_ratio(const char* a, int la, const char* b, int lb) {
-    if (la == 0 && lb == 0) return 1.0;
-    if (la == lb &&
-        (a == b || std::memcmp(a, b, static_cast<std::size_t>(la)) == 0))
-        return 1.0;
+template <typename Sym>
+static inline double ro_ratio(const Sym* a, int la, const Sym* b, int lb) {
+    if (ro_equal(a, la, b, lb)) return 1.0;
     int m = ro_total_matched(a, la, b, lb);
     return (2.0 * m) / (double)(la + lb);
 }
@@ -115,19 +152,20 @@ static inline double ro_ratio(const char* a, int la, const char* b, int lb) {
 // fuzzywuzzy fuzz.partial_ratio(): align the shorter string against every
 // matching block's offset into the longer one, take the best full ratio()
 // over those alignments.
-static inline double ro_partial_ratio(const char* s1, int l1, const char* s2, int l2) {
-    if (l1 == l2 &&
-        (l1 == 0 || s1 == s2 ||
-         std::memcmp(s1, s2, static_cast<std::size_t>(l1)) == 0))
-        return 1.0;
-    const char* shorter; int ls;
-    const char* longer; int ll;
+template <typename Sym>
+static inline double ro_partial_ratio(const Sym* s1, int l1, const Sym* s2, int l2) {
+    if (ro_equal(s1, l1, s2, l2)) return 1.0;
+    const Sym* shorter; int ls;
+    const Sym* longer; int ll;
     if (l1 <= l2) { shorter = s1; ls = l1; longer = s2; ll = l2; }
     else          { shorter = s2; ls = l2; longer = s1; ll = l1; }
     if (ls == 0) return (ll == 0) ? 1.0 : 0.0;
 
     std::vector<ROBlock> blocks = ro_matching_blocks(shorter, ls, longer, ll);
-    if (blocks.empty()) return 0.0;
+    // difflib ends get_matching_blocks() with a (len(a), len(b), 0) block, and
+    // fuzzywuzzy scores its window too: the shorter string aligned with the
+    // end of the longer one.
+    blocks.push_back(ROBlock{ls, ll, 0});
 
     double best = 0.0;
     for (const ROBlock& blk : blocks) {
@@ -145,13 +183,20 @@ static inline double ro_partial_ratio(const char* s1, int l1, const char* s2, in
 // Tokenisation helpers shared by token_sort_ratio / token_set_ratio.
 // ---------------------------------------------------------------------------
 
+// The ASCII characters Python's str.split() splits on. (The locale's
+// isspace() could also match bytes inside UTF-8 characters.)
+static inline bool ro_is_space(char c) {
+    const unsigned char u = static_cast<unsigned char>(c);
+    return u == ' ' || (u >= '\t' && u <= '\r') || (u >= 0x1C && u <= 0x1F);
+}
+
 static inline std::vector<std::pair<const char*, int>> ro_tokenize(const char* s, int n) {
     std::vector<std::pair<const char*, int>> toks;
     int i = 0;
     while (i < n) {
-        while (i < n && std::isspace((unsigned char)s[i])) ++i;
+        while (i < n && ro_is_space(s[i])) ++i;
         int start = i;
-        while (i < n && !std::isspace((unsigned char)s[i])) ++i;
+        while (i < n && !ro_is_space(s[i])) ++i;
         if (i > start) toks.emplace_back(s + start, i - start);
     }
     return toks;
@@ -194,8 +239,11 @@ static inline std::string ro_join(const std::vector<std::string>& a,
 
 // fuzzywuzzy fuzz.token_set_ratio() (the non-partial variant: ratio_func =
 // ratio): split into token sets, build the "intersection", "intersection +
-// A-only", "intersection + B-only" strings, take the best pairwise ratio().
-static inline double ro_token_set_ratio(const char* a, int la, const char* b, int lb) {
+// A-only", "intersection + B-only" strings, take the best pairwise
+// `ratio(t_i, t_j)` of those std::strings.
+template <typename RatioFn>
+static inline double ro_token_set_ratio(const char* a, int la, const char* b, int lb,
+                                        RatioFn ratio) {
     std::vector<std::string> A = ro_unique_sorted_tokens(a, la);
     std::vector<std::string> B = ro_unique_sorted_tokens(b, lb);
 
@@ -213,10 +261,7 @@ static inline double ro_token_set_ratio(const char* a, int la, const char* b, in
     std::string t1 = ro_join(inter, only_a);
     std::string t2 = ro_join(inter, only_b);
 
-    double r01 = ro_ratio(t0.data(), (int)t0.size(), t1.data(), (int)t1.size());
-    double r02 = ro_ratio(t0.data(), (int)t0.size(), t2.data(), (int)t2.size());
-    double r12 = ro_ratio(t1.data(), (int)t1.size(), t2.data(), (int)t2.size());
-    return std::max({r01, r02, r12});
+    return std::max({ratio(t0, t1), ratio(t0, t2), ratio(t1, t2)});
 }
 
 #endif // FAST_STRING_RATCLIFF_OBERSHELP_CORE_H

@@ -23,11 +23,20 @@
 #'   shared-token core against each side's leftovers, taking the best of the
 #'   three pairwise ratios — robust to one side simply having extra words.
 #'
+#' Scores follow fuzzywuzzy's own rules for equal and empty strings: equal
+#' inputs score 100, and an empty input scores 0. With `full_process = TRUE`
+#' an input that processes to nothing (only punctuation, say) also scores 0.
+#'
 #' @param a,b Equal-length character vectors.
-#' @param full_process Logical (default `TRUE`, matching fuzzywuzzy's
-#'   default). Lowercases and replaces runs of non-alphanumeric characters
-#'   with a single space before comparing, same as fuzzywuzzy's
-#'   `full_process()` preprocessing step.
+#' @param full_process Logical (default `TRUE`). Preprocess both strings as
+#'   fuzzywuzzy's `full_process()` does: delete the characters U+0080 to
+#'   U+00FF (its default `force_ascii`), turn every other character except
+#'   letters, digits and `_` into a space, lowercase, and trim. Characters
+#'   from U+0100 up are kept unchanged. This is fuzzywuzzy's default for
+#'   `token_sort_ratio()` and `token_set_ratio()`; its `ratio()` and
+#'   `partial_ratio()` never preprocess, so use `full_process = FALSE` to
+#'   reproduce those (`fuzz_ratio()` with preprocessing is fuzzywuzzy's
+#'   `QRatio()`).
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Numeric vector of scores in `[0, 100]`, `length(a)` long. `NA` if
