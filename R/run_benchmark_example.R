@@ -130,13 +130,13 @@
 # two sides' *output* actually agreed — not just how fast each one was.
 .bench_compare <- function(op_label, fast_call, baselines, reps) {
     if (!length(baselines)) {
-        cli::cli_alert_warning("{op_label}: no comparison package installed for this operation — skipped.")
+        cli::cli_alert_warning("{op_label}: no comparison package installed for this operation \u2014 skipped.")
         return(NULL)
     }
     cli::cli_alert("Running {op_label} ...")
     fast_run <- .bench_run(fast_call, reps)
     if (!fast_run$ok) {
-        cli::cli_alert_danger("{op_label}: fast.string call failed — {fast_run$error}")
+        cli::cli_alert_danger("{op_label}: fast.string call failed \u2014 {fast_run$error}")
         return(NULL)
     }
     # Keep only the timing while the baselines run (see .bench_run()); the
@@ -148,7 +148,7 @@
         bl <- baselines[[bname]]
         base_run <- .bench_run(bl$call, reps)
         if (!base_run$ok) {
-            cli::cli_alert_danger("{op_label} vs {bname}: call failed — {base_run$error} (skipped)")
+            cli::cli_alert_danger("{op_label} vs {bname}: call failed \u2014 {base_run$error} (skipped)")
             return(NULL)
         }
 
@@ -158,7 +158,7 @@
         note_suffix <- if (!is.null(bl$note)) sprintf(" (%s)", bl$note) else ""
 
         txt <- sprintf(
-            "%s vs %s: %.4fs → %.4fs (%s) | %s%s",
+            "%s vs %s: %.4fs \u2192 %.4fs (%s) | %s%s",
             op_label, bname, base_run$elapsed, fast_elapsed, speed$label, match_symbol, note_suffix
         )
         if (matches && !is.na(speed$speedup) && speed$speedup >= 1) {
@@ -290,7 +290,7 @@
 .bench_similarity <- function(n, reps) {
     cli::cli_h2("String similarity & edit distance")
     if (!.bench_pkg("stringdist") && !.bench_pkg("RecordLinkage")) {
-        cli::cli_alert_warning("Neither {.pkg stringdist} nor {.pkg RecordLinkage} is installed — skipping this family.")
+        cli::cli_alert_warning("Neither {.pkg stringdist} nor {.pkg RecordLinkage} is installed \u2014 skipping this family.")
         return(list())
     }
     a <- .bench_test_names(n)
@@ -357,7 +357,7 @@
 .bench_phonetic <- function(n, reps) {
     cli::cli_h2("Phonetic codes")
     if (!.bench_pkg("RecordLinkage") && !.bench_pkg("phonics")) {
-        cli::cli_alert_warning("Neither {.pkg RecordLinkage} nor {.pkg phonics} is installed — skipping this family.")
+        cli::cli_alert_warning("Neither {.pkg RecordLinkage} nor {.pkg phonics} is installed \u2014 skipping this family.")
         return(list())
     }
     # Single-token names: phonics's functions warn ("unknown characters
@@ -483,10 +483,10 @@
         cli::cli_alert_info("{matched}/{total} compared outputs matched.")
     }
     if (expected_diff > 0) {
-        cli::cli_alert_info("{expected_diff} differ by design (different algorithm/revision) — see the Match column and notes above.")
+        cli::cli_alert_info("{expected_diff} differ by design (different algorithm/revision) \u2014 see the Match column and notes above.")
     }
     if (unexpected > 0) {
-        cli::cli_alert_danger("{unexpected} differ UNEXPECTEDLY — investigate before trusting these numbers. See the rows marked \"DIFFERS!\" above.")
+        cli::cli_alert_danger("{unexpected} differ UNEXPECTEDLY \u2014 investigate before trusting these numbers. See the rows marked \"DIFFERS!\" above.")
     }
 }
 
@@ -496,7 +496,7 @@
     if (!nzchar(ans)) return(default)
     val <- suppressWarnings(as.integer(ans))
     if (is.na(val) || val < 1L) {
-        cli::cli_alert_warning("Not a positive whole number — using {format(default, big.mark = ',', scientific = FALSE)}.")
+        cli::cli_alert_warning("Not a positive whole number \u2014 using {format(default, big.mark = ',', scientific = FALSE)}.")
         return(default)
     }
     val
@@ -526,7 +526,7 @@
     if (!nzchar(ans)) return(default)
     val <- suppressWarnings(as.integer(ans))
     if (is.na(val) || val < 1L) {
-        cli::cli_alert_warning("Not a positive whole number — using {default}.")
+        cli::cli_alert_warning("Not a positive whole number \u2014 using {default}.")
         return(default)
     }
     val
@@ -614,7 +614,7 @@ run_benchmark_example <- function(n = NULL, family = NULL, reps = NULL, seed = 1
     )
     cli::cli_text(paste(
         "Test data is freshly {.strong randomly} generated for this run (seeded, so it's",
-        "reproducible with the same {.arg seed}) — rerun to see natural variance. Different",
+        "reproducible with the same {.arg seed}) \u2014 rerun to see natural variance. Different",
         "packages can use different regex engines or string conventions, so every",
         "comparison's {.emph output} is checked for equality after timing, not just its speed;",
         "see the {.strong Match} column and the closing {.strong Correctness} summary."

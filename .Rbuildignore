@@ -9,3 +9,16 @@
 ^\.test-lib$
 ^fast\.string\.Rcheck$
 ^fast\.string_[0-9.]+\.tar\.gz$
+^\.Rhistory$
+^\.quarto$
+^\.claude$
+^\.github$
+^docs$
+^bench\.R$
+^Benchmarks\.R$
+^benchmark_helpers\.R$
+^benchmark-results$
+^examples_data_linkage\.R$
+^examples_fast_str\.md$
+^fast-string\.qmd$
+^fast\.string-workspace\.code-workspace$

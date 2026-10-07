@@ -1,7 +1,0 @@
-CXX_STD = CXX14
-PKG_CPPFLAGS = -I. -DNDEBUG
-ifeq ($(FAST_STRING_TINYTHREAD),1)
-PKG_CXXFLAGS += -DRCPP_PARALLEL_USE_TBB=0 -DFAST_STRING_ALLOW_TINYTHREAD=1
-endif
-PKG_LIBS += -lpcre2-8
-PKG_LIBS += $(shell "${R_HOME}/bin/Rscript" --vanilla -e "RcppParallel::RcppParallelLibs()")

@@ -131,17 +131,24 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \itemize{
 \item \strong{Missing values} propagate: an \code{NA} input gives an \code{NA} result, and the
 comparison functions return \code{NA} when either side is \code{NA}.
-\item \strong{Threads}: every parallel function takes \code{nthreads}. \code{NULL} (the
-default) uses the RcppParallel setting, see
-\code{\link[RcppParallel:setThreadOptions]{RcppParallel::setThreadOptions()}}; \code{1} forces serial execution.
+\item \strong{Threads}: the matching, substitution, similarity and lookup
+functions take \code{nthreads}. \code{NULL} (the default) uses the RcppParallel
+setting, see \code{\link[RcppParallel:setThreadOptions]{RcppParallel::setThreadOptions()}}; \code{1} forces serial
+execution. The remaining parallel functions (phonetic codes, dates,
+\code{\link[=fnchar]{fnchar()}}, \code{\link[=fsubstr]{fsubstr()}}, \code{\link[=fchartr]{fchartr()}}) always use that setting.
 \item \strong{Bytes or code points}: \code{\link[=jaro_winkler]{jaro_winkler()}} and the \link{edit_distance}
 functions compare encoded bytes by default (\code{use_bytes = TRUE}) for
 compatibility and speed; pass \code{use_bytes = FALSE} to compare UTF-8 code
 points. \code{\link[=fuzzy_match]{fuzzy_match()}} and \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} default to code points.
-\item \strong{PCRE-only syntax}: \code{\link[=fgrepl]{fgrepl()}}, \code{\link[=fcount]{fcount()}}, \code{\link[=fsub]{fsub()}}, \code{\link[=fgsub]{fgsub()}} and
-\code{\link[=gsub_all]{gsub_all()}} detect lookarounds, atomic groups and similar syntax when
-\code{perl = FALSE}, and pass the call to base R with \code{perl = TRUE} (with a
-message) so results stay correct.
+\item \strong{Regular expressions}: \code{\link[=fgrepl]{fgrepl()}}, \code{\link[=fcount]{fcount()}}, \code{\link[=fsub]{fsub()}}, \code{\link[=fgsub]{fgsub()}}
+and \code{\link[=gsub_all]{gsub_all()}} run every pattern on PCRE2. With \code{perl = FALSE} they
+follow base R's default (TRE) regular expressions, except that the
+first matching alternative wins rather than the longest; patterns with
+PCRE-only syntax (lookarounds, atomic groups, ...) get \code{perl = TRUE}
+semantics. Text is matched by UTF-8 character, translating \code{latin1}
+input, unless \code{useBytes = TRUE}.
+\item \strong{Phonetic codes} fold accented Latin letters to ASCII first, so
+accented and plain spellings of a name get the same code.
 }
 }
 

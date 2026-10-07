@@ -1,7 +1,6 @@
 # fast.string
 
-[![R-CMD-check](https://github.com/KyleHaynes/graphfast/workflows/R-CMD-check/badge.svg)](https://github.com/KyleHaynes/graphfast/actions)
-[![Status](https://img.shields.io/badge/status-development-orange)](https://github.com/KyleHaynes/graphfast)
+[![Status](https://img.shields.io/badge/status-development-orange)](https://github.com/KyleHaynes/fast.string)
 
 
 Parallel string, date, fuzzy-matching, and phonetic-coding functions for R,
@@ -81,10 +80,12 @@ fcount("[0-9]", incoming$name)
 incoming$dob_date <- fas.Date(incoming$dob, "dmy")
 incoming$loaded   <- fas.POSIXct(incoming$received)
 
-# 3. Block on more than one phonetic key and union the candidates —
-#    refined_soundex() is precise, cologne() folds umlauts.
-refined_soundex(c("Müller", "Mueller"))   #> "M8709"  "M80709"  -- split
-cologne(c("Müller", "Mueller"))           #> "657"    "657"     -- merged
+# 3. Block on more than one phonetic key and union the candidates. Accented
+#    letters are folded first, so "Müller" and "Mueller" share a key, and
+#    cologne() also groups German spellings that soundex() keeps apart.
+soundex(c("Müller", "Mueller"))           #> "M460"   "M460"
+soundex(c("Philipp", "Filip"))            #> "P410"   "F410"   -- split
+cologne(c("Philipp", "Filip"))            #> "351"    "351"    -- merged
 
 # 4. Score survivors on two independent signals: token comparison
 #    (order-insensitive) and q-gram cosine (order- and frequency-sensitive).

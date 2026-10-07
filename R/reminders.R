@@ -36,7 +36,7 @@
 
     info <- .reminder_map[[base_fn]]
     cli::cli_inform(
-        c("i" = "{.fn {base_fn}} called — {.fn {info$fast}} is a faster drop-in, {info$speedup} on 3M-row benchmarks ({info$note}); see {.url https://kylehaynes.github.io/fast.string/} for more information.",
+        c("i" = "{.fn {base_fn}} called \u2014 {.fn {info$fast}} is a faster drop-in, {info$speedup} on 3M-row benchmarks ({info$note}); see {.url https://kylehaynes.github.io/fast.string/} for more information.",
           " " = "Silence with {.code options(fast.string.reminders = FALSE)}."),
         .frequency = "once",
         .frequency_id = paste0("fast.string::", base_fn)

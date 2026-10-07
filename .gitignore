@@ -7,3 +7,10 @@
 
 /.quarto/
 **/*.quarto_ipynb
+
+# Build, check and install output
+fast.string.Rcheck/
+fast.string_*.tar.gz
+.test-lib/
+.codex-verify-lib/
+.Rhistory

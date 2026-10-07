@@ -25,17 +25,24 @@
 #' @section Conventions:
 #' * **Missing values** propagate: an `NA` input gives an `NA` result, and the
 #'   comparison functions return `NA` when either side is `NA`.
-#' * **Threads**: every parallel function takes `nthreads`. `NULL` (the
-#'   default) uses the RcppParallel setting, see
-#'   [RcppParallel::setThreadOptions()]; `1` forces serial execution.
+#' * **Threads**: the matching, substitution, similarity and lookup
+#'   functions take `nthreads`. `NULL` (the default) uses the RcppParallel
+#'   setting, see [RcppParallel::setThreadOptions()]; `1` forces serial
+#'   execution. The remaining parallel functions (phonetic codes, dates,
+#'   [fnchar()], [fsubstr()], [fchartr()]) always use that setting.
 #' * **Bytes or code points**: [jaro_winkler()] and the [edit_distance]
 #'   functions compare encoded bytes by default (`use_bytes = TRUE`) for
 #'   compatibility and speed; pass `use_bytes = FALSE` to compare UTF-8 code
 #'   points. [fuzzy_match()] and [fuzzy_top_n()] default to code points.
-#' * **PCRE-only syntax**: [fgrepl()], [fcount()], [fsub()], [fgsub()] and
-#'   [gsub_all()] detect lookarounds, atomic groups and similar syntax when
-#'   `perl = FALSE`, and pass the call to base R with `perl = TRUE` (with a
-#'   message) so results stay correct.
+#' * **Regular expressions**: [fgrepl()], [fcount()], [fsub()], [fgsub()]
+#'   and [gsub_all()] run every pattern on PCRE2. With `perl = FALSE` they
+#'   follow base R's default (TRE) regular expressions, except that the
+#'   first matching alternative wins rather than the longest; patterns with
+#'   PCRE-only syntax (lookarounds, atomic groups, ...) get `perl = TRUE`
+#'   semantics. Text is matched by UTF-8 character, translating `latin1`
+#'   input, unless `useBytes = TRUE`.
+#' * **Phonetic codes** fold accented Latin letters to ASCII first, so
+#'   accented and plain spellings of a name get the same code.
 #'
 #' @examples
 #' raw <- c("  Smith, John ", "SMITH,  JON", "Jones, Mary", NA)
