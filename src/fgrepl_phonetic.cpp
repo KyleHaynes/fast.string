@@ -10,6 +10,7 @@
 #include <vector>
 #include "caverphone_core.h"
 #include "double_metaphone_core.h"
+#include "latin_fold.h"
 #include "parallel_dispatch.h"
 #include "string_snapshot.h"
 
@@ -17,6 +18,16 @@ using namespace Rcpp;
 using namespace RcppParallel;
 
 static const std::uint8_t PHONETIC_NA_LENGTH = 255;
+
+// Every encoder sees its input with accented Latin letters folded to ASCII
+// (see latin_fold.h), from a snapshot that has translated latin1 to UTF-8.
+static inline StringView fold_for_phonetics(const StringView& value,
+                                            std::string& scratch,
+                                            const char* c_cedilla = "C") {
+    if (!fold_latin_letters(value.data, value.size, scratch, c_cedilla))
+        return value;
+    return StringView{scratch.data(), scratch.size()};
+}
 
 static inline bool is_alpha_ascii(unsigned char value) {
     return (value >= 'A' && value <= 'Z') ||
@@ -105,21 +116,23 @@ struct SoundexWorker : public Worker {
         : strings(strings_), bytes(bytes_), lengths(lengths_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
+        std::string scratch;
         for (std::size_t i = begin; i < end; ++i) {
-            const StringView& value = strings[i];
-            if (value.is_na() ||
-                !soundex_code(value.data, value.size, bytes + i * 4u)) {
+            if (strings[i].is_na()) {
                 lengths[i] = PHONETIC_NA_LENGTH;
-            } else {
-                lengths[i] = 4;
+                continue;
             }
+            const StringView value = fold_for_phonetics(strings[i], scratch);
+            lengths[i] = soundex_code(value.data, value.size, bytes + i * 4u)
+                ? 4
+                : PHONETIC_NA_LENGTH;
         }
     }
 };
 
 // [[Rcpp::export]]
 CharacterVector fast_soundex_impl(const StringVector& x) {
-    const StringSnapshot snapshot(x);
+    const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<char> bytes(checked_slots(n, 4));
     std::vector<std::uint8_t> lengths(n, PHONETIC_NA_LENGTH);
@@ -141,13 +154,35 @@ CharacterVector fast_soundex_impl(const StringVector& x) {
     return result;
 }
 
-static inline void nysiis_push(char value,
-                               std::string& key,
-                               char& previous) {
-    if (value != previous) {
-        key.push_back(value);
-        previous = value;
+// NYSIIS as Apache Commons Codec's Nysiis implements it (in strict mode, so
+// keys are capped at six characters). Letters are transcoded in place, left
+// to right, so the H and W rules see the previous letter as already
+// transcoded -- a vowel there has become A, never E/I/O/U.
+static inline int nysiis_transcode(char previous, char current, char next,
+                                   char after_next, char* out) {
+    if (current == 'E' && next == 'V') { out[0] = 'A'; out[1] = 'F'; return 2; }
+    if (is_vowel(current)) { out[0] = 'A'; return 1; }
+    if (current == 'Q') { out[0] = 'G'; return 1; }
+    if (current == 'Z') { out[0] = 'S'; return 1; }
+    if (current == 'M') { out[0] = 'N'; return 1; }
+    if (current == 'K') {
+        if (next == 'N') { out[0] = 'N'; out[1] = 'N'; return 2; }
+        out[0] = 'C';
+        return 1;
     }
+    if (current == 'S' && next == 'C' && after_next == 'H') {
+        out[0] = out[1] = out[2] = 'S';
+        return 3;
+    }
+    if (current == 'P' && next == 'H') { out[0] = 'F'; out[1] = 'F'; return 2; }
+    // A letter past either end counts as a non-vowel.
+    if (current == 'H' && (!is_vowel(previous) || !is_vowel(next))) {
+        out[0] = previous;
+        return 1;
+    }
+    if (current == 'W' && is_vowel(previous)) { out[0] = previous; return 1; }
+    out[0] = current;
+    return 1;
 }
 
 static bool nysiis_code(const char* input,
@@ -192,49 +227,28 @@ static bool nysiis_code(const char* input,
     }
 
     std::string key(1, word[0]);
-    char previous = word[0];
     n = word.size();
-    for (std::size_t i = 1; i < n;) {
-        const char value = word[i];
-        const char before = word[i - 1];
-        const char after = i + 1 < n ? word[i + 1] : '\0';
-        if (value == 'E' && after == 'V') {
-            nysiis_push('A', key, previous);
-            nysiis_push('F', key, previous);
-            i += 2;
-            continue;
-        }
-
-        char translated;
-        if (is_vowel(value))
-            translated = 'A';
-        else if (value == 'Q')
-            translated = 'G';
-        else if (value == 'Z')
-            translated = 'S';
-        else if (value == 'M')
-            translated = 'N';
-        else if (value == 'K')
-            translated = after == 'N' ? 'N' : 'C';
-        else if (value == 'H')
-            translated = !is_vowel(before) ||
-                (after != '\0' && !is_vowel(after)) ? before : value;
-        else if (value == 'W' && is_vowel(before))
-            translated = 'A';
-        else
-            translated = value;
-
-        nysiis_push(translated, key, previous);
-        ++i;
+    for (std::size_t i = 1; i < n; ++i) {
+        const char next = i + 1 < n ? word[i + 1] : ' ';
+        const char after_next = i + 2 < n ? word[i + 2] : ' ';
+        char transcoded[3];
+        const int count = nysiis_transcode(
+            word[i - 1], word[i], next, after_next, transcoded
+        );
+        for (int k = 0; k < count; ++k) word[i + k] = transcoded[k];
+        if (word[i] != word[i - 1]) key.push_back(word[i]);
     }
 
-    if (key.size() > 1 && key.back() == 'S')
-        key.pop_back();
-    if (key.size() >= 2 &&
-        key[key.size() - 2] == 'A' && key.back() == 'Y')
-        key.erase(key.size() - 2, 1);
-    if (key.size() > 1 && key.back() == 'A')
-        key.pop_back();
+    if (key.size() > 1) {
+        char last = key.back();
+        if (last == 'S') {
+            key.pop_back();
+            last = key.back();
+        }
+        if (key.size() > 2 && key[key.size() - 2] == 'A' && last == 'Y')
+            key.erase(key.size() - 2, 1);
+        if (last == 'A') key.pop_back();
+    }
     if (key.size() > 6)
         key.resize(6);
     output.swap(key);
@@ -252,11 +266,15 @@ struct NysiisWorker : public Worker {
         : strings(strings_), bytes(bytes_), lengths(lengths_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
-        std::string code;
+        std::string code, scratch;
         for (std::size_t i = begin; i < end; ++i) {
-            const StringView& value = strings[i];
             code.clear();
-            if (value.is_na() || !nysiis_code(value.data, value.size, code)) {
+            if (strings[i].is_na()) {
+                lengths[i] = PHONETIC_NA_LENGTH;
+                continue;
+            }
+            const StringView value = fold_for_phonetics(strings[i], scratch);
+            if (!nysiis_code(value.data, value.size, code)) {
                 lengths[i] = PHONETIC_NA_LENGTH;
                 continue;
             }
@@ -268,7 +286,7 @@ struct NysiisWorker : public Worker {
 
 // [[Rcpp::export]]
 CharacterVector fast_nysiis_impl(const StringVector& x) {
-    const StringSnapshot snapshot(x);
+    const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<char> bytes(checked_slots(n, 6));
     std::vector<std::uint8_t> lengths(n, PHONETIC_NA_LENGTH);
@@ -324,35 +342,6 @@ static bool refined_soundex_code(const char* input,
     return true;
 }
 
-static bool clean_cologne_letters(const char* input,
-                                  std::size_t length,
-                                  std::string& output) {
-    output.clear();
-    output.reserve(length);
-    for (std::size_t i = 0; i < length; ++i) {
-        const unsigned char value = static_cast<unsigned char>(input[i]);
-        if (is_alpha_ascii(value)) {
-            output.push_back(to_upper_ascii(value));
-            continue;
-        }
-        if (value == 0xC3 && i + 1 < length) {
-            const unsigned char next = static_cast<unsigned char>(input[i + 1]);
-            if (next == 0x84 || next == 0xA4) output.push_back('A');
-            else if (next == 0x96 || next == 0xB6) output.push_back('O');
-            else if (next == 0x9C || next == 0xBC) output.push_back('U');
-            else if (next == 0x9F) output.append("SS");
-            else continue;
-            ++i;
-        } else if (value == 0xE1 && i + 2 < length &&
-                   static_cast<unsigned char>(input[i + 1]) == 0xBA &&
-                   static_cast<unsigned char>(input[i + 2]) == 0x9E) {
-            output.append("SS");
-            i += 2;
-        }
-    }
-    return !output.empty();
-}
-
 static inline bool one_of(char value, const char* values) {
     return std::strchr(values, value) != nullptr;
 }
@@ -371,8 +360,9 @@ static inline void cologne_put(char code,
 static bool cologne_code(const char* input,
                          std::size_t length,
                          std::string& output) {
+    // Umlauts and sharp s arrive folded to A/O/U and SS (fold_for_phonetics).
     std::string word;
-    if (!clean_cologne_letters(input, length, word)) return false;
+    if (!clean_ascii_letters(input, length, word)) return false;
 
     output.clear();
     output.reserve(word.size() * 2);
@@ -440,19 +430,22 @@ struct DynamicPhoneticWorker : public Worker {
         : strings(strings_), encode(encode_), output(output_), missing(missing_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
+        std::string scratch;
         for (std::size_t i = begin; i < end; ++i) {
-            const StringView& value = strings[i];
-            if (value.is_na() ||
-                !encode(value.data, value.size, output[i])) {
+            if (strings[i].is_na()) {
                 missing[i] = 1;
+                continue;
             }
+            const StringView value = fold_for_phonetics(strings[i], scratch);
+            if (!encode(value.data, value.size, output[i]))
+                missing[i] = 1;
         }
     }
 };
 
 static CharacterVector run_dynamic_phonetic(const StringVector& x,
                                             PhoneticStringFunction encode) {
-    const StringSnapshot snapshot(x);
+    const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<std::string> encoded(n);
     std::vector<std::uint8_t> missing(n, 0);
@@ -506,13 +499,16 @@ struct DoubleMetaphoneWorker : public Worker {
     void operator()(std::size_t begin, std::size_t end) {
         std::string first;
         std::string second;
+        std::string scratch;
         for (std::size_t i = begin; i < end; ++i) {
-            const StringView& value = strings[i];
-            if (value.is_na()) {
+            if (strings[i].is_na()) {
                 primary_lengths[i] = PHONETIC_NA_LENGTH;
                 secondary_lengths[i] = PHONETIC_NA_LENGTH;
                 continue;
             }
+            // Commons Codec codes C with cedilla as S (and N with tilde as N).
+            const StringView value =
+                fold_for_phonetics(strings[i], scratch, "S");
             double_metaphone_code(
                 std::string(value.data, value.size),
                 first,
@@ -534,7 +530,7 @@ struct DoubleMetaphoneWorker : public Worker {
 
 // [[Rcpp::export]]
 List fast_double_metaphone_impl(const StringVector& x) {
-    const StringSnapshot snapshot(x);
+    const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<char> primary(checked_slots(n, 4));
     std::vector<char> secondary(checked_slots(n, 4));
@@ -591,12 +587,13 @@ struct CaverphoneWorker : public Worker {
         : strings(strings_), bytes(bytes_), lengths(lengths_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
+        std::string scratch;
         for (std::size_t i = begin; i < end; ++i) {
-            const StringView& value = strings[i];
-            if (value.is_na()) {
+            if (strings[i].is_na()) {
                 lengths[i] = PHONETIC_NA_LENGTH;
                 continue;
             }
+            const StringView value = fold_for_phonetics(strings[i], scratch);
             const std::string code = caverphone2_code(
                 std::string(value.data, value.size)
             );
@@ -608,7 +605,7 @@ struct CaverphoneWorker : public Worker {
 
 // [[Rcpp::export]]
 CharacterVector fast_caverphone_impl(const StringVector& x) {
-    const StringSnapshot snapshot(x);
+    const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<char> bytes(checked_slots(n, 10));
     std::vector<std::uint8_t> lengths(n, PHONETIC_NA_LENGTH);

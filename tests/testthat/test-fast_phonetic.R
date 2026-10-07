@@ -63,3 +63,41 @@ test_that("soundex/nysiis handle a vector with mixed NA and valid entries", {
     expect_true(is.na(ny[2]) && is.na(ny[4]))
     expect_false(is.na(ny[1]) || is.na(ny[3]))
 })
+
+test_that("nysiis transcodes in place like Apache Commons Codec", {
+    # The H and W rules copy the previous letter after it was transcoded,
+    # so vowels other than A never reach the key.
+    expect_identical(fast.string::nysiis(c("Johnson", "Jonson")),
+                     c("JANSAN", "JANSAN"))
+    # PH and SCH are also rewritten inside the name.
+    expect_identical(fast.string::nysiis(c("Stephens", "Raphael", "Bischoff")),
+                     c("STAFAN", "RAFAL", "BASAF"))
+    # A final H after a vowel takes that vowel, which is then dropped.
+    expect_identical(fast.string::nysiis(c("Sarah", "Hannah")), c("SAR", "HAN"))
+    surnames <- c("Johnson", "Johnston", "Johns", "Gutierrez", "Heitschmidt",
+                  "Westphal", "Rickert", "Carraway", "Yamada", "Macintosh")
+    expect_false(any(grepl("^.+[EIOU]", fast.string::nysiis(surnames))))
+    expect_identical(
+        fast.string::nysiis(c("MACINTOSH", "KNUTH", "WESTERLUND", "CASSTEVENS",
+                              "HEITSCHMIDT", "MCKNIGHT", "DEUTSCH", "CARRAWAY")),
+        c("MCANT", "NAT", "WASTAR", "CASTAF", "HATSNA", "MCNAGT", "DAT", "CARY")
+    )
+})
+
+test_that("phonetic codes fold accented Latin letters", {
+    u <- function(...) intToUtf8(c(...))
+    accented <- c(paste0(u(0xc9), "mile"), paste0("Nu", u(0xf1), "ez"),
+                  paste0(u(0x141), "ukasz"), paste0("Dvo", u(0x159), u(0xe1), "k"),
+                  paste0("M", u(0xfc), "ller"))
+    plain <- c("Emile", "Nunez", "Lukasz", "Dvorak", "Muller")
+    for (encode in list(fast.string::soundex, fast.string::refined_soundex,
+                        fast.string::nysiis, fast.string::cologne,
+                        fast.string::caverphone)) {
+        expect_identical(encode(accented), encode(plain))
+    }
+    expect_identical(fast.string::double_metaphone(accented),
+                     fast.string::double_metaphone(plain))
+    # latin1-encoded input is folded too.
+    latin1 <- iconv(accented[c(1, 2, 5)], "UTF-8", "latin1")
+    expect_identical(fast.string::soundex(latin1), fast.string::soundex(plain[c(1, 2, 5)]))
+})

@@ -83,7 +83,8 @@ inline std::string caverphone2_code(const std::string& word_in) {
     using namespace caverphone_detail;
     std::string txt;
     txt.reserve(word_in.size());
-    for (char c : word_in) txt.push_back((char)std::tolower((unsigned char)c));
+    for (char c : word_in)
+        txt.push_back(c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c);
     remove_non_az(txt);
     replace_suffix(txt, "e", "");
 

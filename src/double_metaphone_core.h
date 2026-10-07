@@ -358,9 +358,15 @@ inline std::size_t handle_z(const std::string& v, Result& r, std::size_t i, bool
 inline void double_metaphone_code(const std::string& word_in,
                                    std::string& primary_out, std::string& secondary_out) {
     using namespace dm_detail;
+    // ASCII whitespace only: the locale's isspace() can match bytes of
+    // UTF-8 characters (0xA0, 0x85) in a single-byte locale.
+    const auto is_space = [](char c) {
+        return c == ' ' || c == '\t' || c == '\n' || c == '\v' ||
+            c == '\f' || c == '\r';
+    };
     std::size_t b = 0, e = word_in.size();
-    while (b < e && std::isspace((unsigned char)word_in[b])) ++b;
-    while (e > b && std::isspace((unsigned char)word_in[e - 1])) --e;
+    while (b < e && is_space(word_in[b])) ++b;
+    while (e > b && is_space(word_in[e - 1])) --e;
     if (b == e) { primary_out.clear(); secondary_out.clear(); return; }
 
     std::string v;
