@@ -147,10 +147,11 @@ fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA) {
 #' Equivalent to [base::chartr()], using a flat 256-byte lookup table,
 #' parallelised across all CPU cores via Intel TBB.
 #'
-#' @param old,new Single strings with the same number of characters (not
-#'   bytes — `old`/`new` may differ in byte length, as in base R, as long as
-#'   the character counts match). Each character of `old` is translated to
-#'   the corresponding character of `new`.
+#' @param old,new Single strings specifying the translation, as in
+#'   [base::chartr()]: each character of `old` becomes the corresponding
+#'   character of `new`, ranges such as `"a-z"` are expanded, and `new` may
+#'   be longer than `old` (the extra characters are ignored) but not shorter.
+#'   Specifications with non-ASCII characters are passed to [base::chartr()].
 #' @param x Character vector. `NA` elements return `NA`.
 #'
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
@@ -158,6 +159,7 @@ fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA) {
 #' @family string utilities
 #' @examples
 #' fchartr("abc", "xyz", c("aabbcc", NA))
+#' fchartr("a-cx", "A-CX", "abcxyz")      # ranges, as in base R
 #' @export
 fchartr <- function(old, new, x) {
     if (!is.character(x)) {
@@ -168,13 +170,17 @@ fchartr <- function(old, new, x) {
         base::stop("`old` must be a single string.")
     if (!is.character(new) || length(new) != 1L)
         base::stop("`new` must be a single string.")
-    if (base::nchar(old, type = "chars") != base::nchar(new, type = "chars"))
-        base::stop("`old` and `new` must have the same number of characters.")
-    # Fall back to base R when either string contains multi-byte characters:
-    # the fast path is a flat byte-for-byte lookup table, valid only when
-    # every character in both `old` and `new` is a single byte (ASCII).
-    if (base::nchar(old, type = "bytes") != base::nchar(old, type = "chars") ||
-        base::nchar(new, type = "bytes") != base::nchar(new, type = "chars"))
+    # The fast path is a byte-for-byte table, which only works when every
+    # character of `old` and `new` is ASCII; anything else goes to base R.
+    if (anyNA(c(old, new)) ||
+        base::grepl("[^\\x01-\\x7f]", old, perl = TRUE, useBytes = TRUE) ||
+        base::grepl("[^\\x01-\\x7f]", new, perl = TRUE, useBytes = TRUE))
         return(base::chartr(old, new, x))
-    .copy_names(fast_chartr_impl(old, new, x), x)
+    # base::chartr() builds the table by translating every ASCII character,
+    # so ranges, repeated characters and argument errors are exactly base R's.
+    translated <- base::chartr(old, new, .ascii_characters)
+    .copy_names(fast_chartr_impl(.ascii_characters, translated, x), x)
 }
+
+# The 127 non-NUL ASCII characters, in byte order.
+.ascii_characters <- rawToChar(as.raw(1:127))

@@ -120,6 +120,7 @@ jaro_winkler_tokens <- function(a, b, p = 0.1, ignore_case = FALSE,
         stop("`a` and `b` must be character vectors.")
     if (length(a) != length(b))
         stop("`a` and `b` must have the same length.")
+    .validate_prefix_scale(p)
     if (!is.null(extra_penalty) &&
         (!is.numeric(extra_penalty) || length(extra_penalty) != 1L || extra_penalty < 0))
         stop("`extra_penalty` must be NULL or a single non-negative number.")

@@ -13,7 +13,7 @@ format_date(x, format = c("iso", "compact", "dmy", "ymd_slash"))
 \code{"dmy"} (DD/MM/YYYY), or \code{"ymd_slash"} (YYYY/MM/DD).}
 }
 \value{
-Character vector the same length as \code{x}.
+Character vector the same length as \code{x}, with \code{names(x)} preserved.
 }
 \description{
 Converts days since 1970-01-01 to one of four fixed layouts using pure

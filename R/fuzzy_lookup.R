@@ -44,9 +44,7 @@ NULL
         method,
         c("jaro_winkler", "levenshtein", "osa", "damerau_levenshtein")
     )
-    if (!is.numeric(p) || length(p) != 1L || is.na(p) ||
-        !is.finite(p) || p < 0 || p > 0.25)
-        stop("`p` must be a number between 0 and 0.25.")
+    .validate_prefix_scale(p)
     if (!is.numeric(min_score) || length(min_score) != 1L ||
         is.na(min_score) || !is.finite(min_score) ||
         min_score < 0 || min_score > 1)

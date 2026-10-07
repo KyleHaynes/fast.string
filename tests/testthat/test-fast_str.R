@@ -199,8 +199,15 @@ test_that("fchartr allows equal character count with unequal byte count", {
     expect_identical(fast.string::fchartr(old, new, "ab"), base::chartr(old, new, "ab"))
 })
 
-test_that("fchartr errors when old/new have different character counts", {
-    expect_error(fast.string::fchartr("ab", "a", "ab"), "same number of characters")
+test_that("fchartr follows base for ranges and unequal lengths", {
+    x <- c("abc-def", "xyz", NA)
+    for (spec in list(c("a-c", "A-C"), c("a-cx", "A-CX"), c("ab", "xyz"),
+                      c("-a", "_b"), c("a-ca", "xyzw"))) {
+        expect_identical(fast.string::fchartr(spec[1], spec[2], x),
+                         base::chartr(spec[1], spec[2], x), info = spec[1])
+    }
+    expect_error(fast.string::fchartr("ab", "a", "ab"), "longer than")
+    expect_error(fast.string::fchartr("c-a", "xyz", "abc"), "decreasing range")
 })
 
 test_that("fchartr preserves names", {

@@ -8,7 +8,7 @@
 #' @param x A `Date` object or numeric vector of days since 1970-01-01.
 #' @param format One of `"iso"` (YYYY-MM-DD), `"compact"` (YYYYMMDD),
 #'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
-#' @return Character vector the same length as `x`.
+#' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [fas.Date()] for the reverse direction.
 #' @family date and timestamp functions
 #' @examples
@@ -23,7 +23,7 @@ format_date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
     if (!is.numeric(x))
         stop("`x` must be a Date or numeric vector of days since 1970-01-01.")
     code <- switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L)
-    fast_format_date_impl(as.double(x), code)
+    .copy_names(fast_format_date_impl(as.double(x), code), x)
 }
 
 #' Concatenate separate year/month/day fields into a formatted date string.

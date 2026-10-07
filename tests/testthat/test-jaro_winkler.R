@@ -125,3 +125,11 @@ test_that("jaro_winkler_matrix NA propagates per cell", {
 test_that("jaro_winkler_matrix errors on non-character input", {
     expect_error(fast.string::jaro_winkler_matrix(1, "x"), "character vectors")
 })
+
+test_that("the prefix scale p is validated", {
+    for (fn in list(fast.string::jaro_winkler, fast.string::jaro_winkler_matrix,
+                    fast.string::jaro_winkler_tokens)) {
+        expect_error(fn("abc", "abd", p = 0.5), "between 0 and 0.25")
+        expect_error(fn("abc", "abd", p = NA), "between 0 and 0.25")
+    }
+})

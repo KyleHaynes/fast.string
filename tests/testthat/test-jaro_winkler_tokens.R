@@ -209,3 +209,15 @@ test_that("token whitespace remains deliberately narrower than isspace", {
         1
     )
 })
+
+test_that("the default strip leaves non-ASCII letters intact", {
+    # The default strip class holds U+2019, whose UTF-8 bytes also occur
+    # inside letters such as U+0119 (C4 99); stripping must work by character.
+    name <- paste0("K", intToUtf8(0x119), "sicki")
+    expect_identical(fast.string::jaro_winkler_tokens(name, name), 1)
+    expect_lt(fast.string::jaro_winkler_tokens(name, "Kesicki"), 1)
+    expect_identical(
+        fast.string::jaro_winkler_tokens(paste0("O", intToUtf8(0x2019), "Brien"), "OBrien"),
+        1
+    )
+})

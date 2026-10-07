@@ -7,10 +7,11 @@
 fchartr(old, new, x)
 }
 \arguments{
-\item{old, new}{Single strings with the same number of characters (not
-bytes — \code{old}/\code{new} may differ in byte length, as in base R, as long as
-the character counts match). Each character of \code{old} is translated to
-the corresponding character of \code{new}.}
+\item{old, new}{Single strings specifying the translation, as in
+\code{\link[base:chartr]{base::chartr()}}: each character of \code{old} becomes the corresponding
+character of \code{new}, ranges such as \code{"a-z"} are expanded, and \code{new} may
+be longer than \code{old} (the extra characters are ignored) but not shorter.
+Specifications with non-ASCII characters are passed to \code{\link[base:chartr]{base::chartr()}}.}
 
 \item{x}{Character vector. \code{NA} elements return \code{NA}.}
 }
@@ -23,6 +24,7 @@ parallelised across all CPU cores via Intel TBB.
 }
 \examples{
 fchartr("abc", "xyz", c("aabbcc", NA))
+fchartr("a-cx", "A-CX", "abcxyz")      # ranges, as in base R
 }
 \seealso{
 \code{\link[base:chartr]{base::chartr()}}

@@ -9,8 +9,8 @@ jaro_winkler(a, b, p = 0.1, nthreads = NULL, use_bytes = TRUE)
 \arguments{
 \item{a, b}{Equal-length character vectors.}
 
-\item{p}{Prefix scaling factor (default 0.1, the standard value). Keep it at
-or below 0.25 so that scores cannot exceed 1.}
+\item{p}{Prefix scaling factor (default 0.1, the standard value), between
+0 and 0.25 so that scores cannot exceed 1.}
 
 \item{nthreads}{Integer thread cap, or \code{NULL} to use the
 RcppParallel default for this call.}

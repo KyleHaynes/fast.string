@@ -14,8 +14,8 @@
 #' may be reordered, see [jaro_winkler_tokens()].
 #'
 #' @param a,b Equal-length character vectors.
-#' @param p Prefix scaling factor (default 0.1, the standard value). Keep it at
-#'   or below 0.25 so that scores cannot exceed 1.
+#' @param p Prefix scaling factor (default 0.1, the standard value), between
+#'   0 and 0.25 so that scores cannot exceed 1.
 #' @param nthreads Integer thread cap, or `NULL` to use the
 #'   RcppParallel default for this call.
 #' @param use_bytes Logical scalar. Compare encoded bytes when `TRUE` (the
@@ -38,6 +38,7 @@ jaro_winkler <- function(a, b, p = 0.1, nthreads = NULL,
     if (length(a) != length(b))
         stop("`a` and `b` must have the same length.")
     .validate_use_bytes(use_bytes)
+    .validate_prefix_scale(p)
     fast_jaro_winkler_impl(
         a, b, as.double(p), .as_nthreads(nthreads), use_bytes
     )
@@ -69,7 +70,15 @@ jaro_winkler_matrix <- function(a, b, p = 0.1, nthreads = NULL,
     if (!is.character(a) || !is.character(b))
         stop("`a` and `b` must be character vectors.")
     .validate_use_bytes(use_bytes)
+    .validate_prefix_scale(p)
     fast_jaro_winkler_matrix_impl(
         a, b, as.double(p), .as_nthreads(nthreads), use_bytes
     )
+}
+
+.validate_prefix_scale <- function(p) {
+    if (!is.numeric(p) || length(p) != 1L || is.na(p) || !is.finite(p) ||
+        p < 0 || p > 0.25)
+        stop("`p` must be a number between 0 and 0.25.")
+    invisible(p)
 }
