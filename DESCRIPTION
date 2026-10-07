@@ -21,7 +21,8 @@ Roxygen: list(markdown = TRUE)
 Imports:
     cli (>= 3.0.0),
     Rcpp (>= 1.0.0),
-    RcppParallel (>= 5.1.1)
+    RcppParallel (>= 5.1.1),
+    rlang (>= 1.0.0)
 Suggests:
     testthat (>= 3.0.0),
     stringi,
@@ -33,6 +34,7 @@ Suggests:
 LinkingTo:
     Rcpp,
     RcppParallel (>= 5.1.1)
-SystemRequirements: C++14, GNU make
+SystemRequirements: C++14, GNU make, PCRE2 (libpcre2-dev on Debian/Ubuntu,
+    pcre2-devel on Fedora, pcre2 on Homebrew)
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.0

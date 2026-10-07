@@ -17,19 +17,23 @@ fgrep(
 )
 }
 \arguments{
-\item{pattern}{Character scalar. Pattern to search for.}
+\item{pattern}{Character scalar. Pattern to search for. \code{NA} gives an all
+\code{NA} result, as in base R.}
 
 \item{x}{Character vector.}
 
-\item{ignore.case}{Logical. Case-insensitive matching.}
+\item{ignore.case}{Logical. Case-insensitive matching. With
+\code{fixed = TRUE} only ASCII letters are folded.}
 
-\item{perl}{Logical. If \code{TRUE}, skip PCRE-only syntax check.}
+\item{perl}{Logical. Use PCRE (Perl-compatible) regular expression
+semantics instead of base R's default ones; see Details.}
 
 \item{value}{Logical. Return matching elements instead of indices.}
 
-\item{fixed}{Logical. Treat \code{pattern} as a literal string.}
+\item{fixed}{Logical. Treat \code{pattern} as a literal string (fastest path).}
 
-\item{useBytes}{Logical. Ignored; included for signature compatibility.}
+\item{useBytes}{Logical. If \code{TRUE}, match byte by byte rather than by
+UTF-8 character, as in base R.}
 
 \item{invert}{Logical. Return non-matching indices/values.}
 

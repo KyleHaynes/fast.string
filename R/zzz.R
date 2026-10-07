@@ -1,7 +1,10 @@
 #' @useDynLib fast.string, .registration = TRUE
 #' @importFrom Rcpp evalCpp
 #' @importFrom RcppParallel RcppParallelLibs
+#' @importFrom rlang inform
 NULL
+# rlang is imported because cli::cli_inform(), used for the reminders, is a
+# wrapper around rlang::inform() and cli itself only suggests rlang.
 
 .as_nthreads <- function(nthreads) {
     if (is.null(nthreads)) return(-1L)
@@ -33,8 +36,9 @@ NULL
 
 # Detects PCRE-specific syntax not present in the default TRE engine:
 # lookaheads, lookbehinds, atomic groups, possessive quantifiers, named
-# backreferences, and recursive constructs. When detected with perl = FALSE,
-# we delegate to base::grepl(perl = TRUE) so behavior is always correct.
+# backreferences, and recursive constructs. Base R would reject these with
+# perl = FALSE, so such patterns are run with perl = TRUE semantics instead
+# of the TRE emulation (see .regex_spec()).
 .has_pcre_only_syntax <- function(pattern) {
     base::grepl(
         paste0(
@@ -48,6 +52,6 @@ NULL
             "|\\(\\?[0-9]",     # (?1) (?2) … numbered group recursion
             "|\\(\\?&"          # (?&name) named group recursion
         ),
-        pattern, perl = TRUE
+        pattern, perl = TRUE, useBytes = TRUE
     )
 }

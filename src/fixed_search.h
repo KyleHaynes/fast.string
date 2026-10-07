@@ -17,9 +17,12 @@ public:
         : needle_(pattern),
           ignore_case_(ignore_case),
           strategy_(select_strategy(pattern.size())) {
+        // ASCII-only folding: the locale's tolower() would also fold bytes
+        // >= 0x80, which in a single-byte locale rewrites UTF-8 lead and
+        // continuation bytes and can match across unrelated characters.
         for (std::size_t i = 0; i < fold_.size(); ++i) {
-            fold_[i] = ignore_case_
-                ? static_cast<unsigned char>(std::tolower(static_cast<unsigned char>(i)))
+            fold_[i] = ignore_case_ && i >= 'A' && i <= 'Z'
+                ? static_cast<unsigned char>(i + ('a' - 'A'))
                 : static_cast<unsigned char>(i);
         }
         if (ignore_case_) {

@@ -1,13 +1,45 @@
 .validate_sub_args <- function(pattern, replacement, x, nthreads) {
+    pattern <- .na_as_character(pattern)
+    replacement <- .na_as_character(replacement)
     if (!is.character(pattern) || length(pattern) != 1L)
         stop("`pattern` must be a single character string.")
     if (!is.character(replacement) || length(replacement) != 1L)
         stop("`replacement` must be a single character string.")
-    if (!is.character(x)) {
-        if (all(is.na(x))) x <- as.character(x)
-        else stop("`x` must be a character vector.")
+    list(pattern = pattern, replacement = replacement, x = .character_x(x),
+         threads = .as_nthreads(nthreads))
+}
+
+# Shared body of fsub() and fgsub().
+.substitute <- function(pattern, replacement, x, ignore.case, perl, fixed,
+                        useBytes, nthreads, global) {
+    args <- .validate_sub_args(pattern, replacement, x, nthreads)
+    pattern <- args$pattern
+    replacement <- args$replacement
+    x <- args$x
+    # As in base R: an NA pattern gives NA everywhere, and an NA replacement
+    # gives NA wherever it would be used.
+    if (is.na(pattern)) return(rep(NA_character_, length(x)))
+    if (isTRUE(fixed) && identical(pattern, ""))
+        stop("zero-length pattern")
+    if (is.na(replacement)) {
+        hit <- fgrepl(pattern, x, ignore.case = ignore.case, perl = perl,
+                      fixed = fixed, useBytes = useBytes,
+                      nthreads = nthreads)
+        x[!is.na(hit) & hit] <- NA_character_
+        return(unname(x))
     }
-    list(x = x, threads = .as_nthreads(nthreads))
+
+    spec <- .regex_spec(pattern, perl, fixed, useBytes, replacement)
+    if (isTRUE(fixed)) {
+        return(fast_fixed_sub_impl(
+            spec$pattern, spec$replacement, x, isTRUE(ignore.case), global,
+            spec$use_bytes, args$threads
+        ))
+    }
+    fast_regex_sub_impl(
+        spec$pattern, spec$replacement, x, isTRUE(ignore.case), global,
+        spec$syntax, spec$use_bytes, args$threads
+    )
 }
 
 #' Fast parallel string matching returning indices or values
@@ -15,16 +47,10 @@
 #' Equivalent to [base::grep()], using PCRE2 and Intel TBB. `NA` elements of
 #' `x` never match (and are never returned, unless `invert = TRUE`).
 #'
-#' @param pattern Character scalar. Pattern to search for.
+#' @inheritParams fgrepl
 #' @param x Character vector.
-#' @param ignore.case Logical. Case-insensitive matching.
-#' @param perl Logical. If `TRUE`, skip PCRE-only syntax check.
 #' @param value Logical. Return matching elements instead of indices.
-#' @param fixed Logical. Treat `pattern` as a literal string.
-#' @param useBytes Logical. Ignored; included for signature compatibility.
 #' @param invert Logical. Return non-matching indices/values.
-#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
-#'   RcppParallel default. `1` forces serial execution.
 #' @return Integer vector of indices (or character when `value = TRUE`).
 #' @seealso [base::grep()]
 #' @family matching and substitution functions
@@ -38,8 +64,12 @@
 fgrep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
                  value = FALSE, fixed = FALSE, useBytes = FALSE,
                  invert = FALSE, nthreads = NULL) {
+    pattern <- .na_as_character(pattern)
+    if (is.character(pattern) && length(pattern) == 1L && is.na(pattern))
+        return(base::grep(pattern, .character_x(x), value = value,
+                          invert = invert))
     m <- fgrepl(pattern, x, ignore.case = ignore.case, perl = perl,
-               fixed = fixed, nthreads = nthreads)
+               fixed = fixed, useBytes = useBytes, nthreads = nthreads)
     keep <- if (isTRUE(invert)) is.na(m) | !m else !is.na(m) & m
     if (isTRUE(value)) x[keep] else unname(which(keep))
 }
@@ -47,17 +77,13 @@ fgrep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
 #' Fast parallel first-match substitution
 #'
 #' Equivalent to [base::sub()], using PCRE2 and Intel TBB. Supports
-#' `\\1`-`\\9` capture groups and `\\U`/`\\L`/`\\E` case conversion.
+#' `\\1`-`\\9` capture groups and `\\U`/`\\L`/`\\E` case conversion (the
+#' latter with `perl = FALSE` too, unlike base R). See [fgrepl()] for how
+#' `perl = FALSE` patterns are interpreted.
 #'
-#' @param pattern Character scalar. Pattern to search for.
-#' @param replacement Character scalar. Replacement string.
-#' @param x Character vector. `NA` elements return `NA`.
-#' @param ignore.case Logical. Case-insensitive matching.
-#' @param perl Logical. If `TRUE`, skip PCRE-only syntax check.
-#' @param fixed Logical. Treat `pattern` as a literal string.
-#' @param useBytes Logical. Ignored; included for signature compatibility.
-#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
-#'   RcppParallel default. `1` forces serial execution.
+#' @inheritParams fgrepl
+#' @param replacement Character scalar. Replacement string. If `NA`, every
+#'   element that matches becomes `NA`, as in base R.
 #' @return Character vector the same length as `x`.
 #' @seealso [base::sub()]
 #' @family matching and substitution functions
@@ -69,43 +95,18 @@ fgrep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
 #' @export
 fsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
                 fixed = FALSE, useBytes = FALSE, nthreads = NULL) {
-    validated <- .validate_sub_args(pattern, replacement, x, nthreads)
-    x <- validated$x
-    threads <- validated$threads
-
-    if (isTRUE(fixed)) {
-        if (identical(pattern, ""))
-            stop("zero-length pattern")
-        return(fast_fixed_sub_impl(
-            pattern, replacement, x, isTRUE(ignore.case), FALSE,
-            threads
-        ))
-    }
-
-    if (!isTRUE(perl) && .has_pcre_only_syntax(pattern)) {
-        cli::cli_inform("Pattern has PCRE-only syntax; delegating to {.fn base::sub} with {.code perl = TRUE}.")
-        return(base::sub(pattern, replacement, x, ignore.case = ignore.case, perl = TRUE))
-    }
-
-    fast_regex_sub_impl(
-        pattern, replacement, x, isTRUE(ignore.case), FALSE, threads
-    )
+    .substitute(pattern, replacement, x, ignore.case, perl, fixed, useBytes,
+                nthreads, global = FALSE)
 }
 
 #' Fast parallel global substitution
 #'
 #' Equivalent to [base::gsub()], using PCRE2 and Intel TBB. Supports
-#' `\\1`-`\\9` capture groups and `\\U`/`\\L`/`\\E` case conversion.
+#' `\\1`-`\\9` capture groups and `\\U`/`\\L`/`\\E` case conversion (the
+#' latter with `perl = FALSE` too, unlike base R). See [fgrepl()] for how
+#' `perl = FALSE` patterns are interpreted.
 #'
-#' @param pattern Character scalar. Pattern to search for.
-#' @param replacement Character scalar. Replacement string.
-#' @param x Character vector. `NA` elements return `NA`.
-#' @param ignore.case Logical. Case-insensitive matching.
-#' @param perl Logical. If `TRUE`, skip PCRE-only syntax check.
-#' @param fixed Logical. Treat `pattern` as a literal string.
-#' @param useBytes Logical. Ignored; included for signature compatibility.
-#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
-#'   RcppParallel default. `1` forces serial execution.
+#' @inheritParams fsub
 #' @return Character vector the same length as `x`.
 #' @seealso [base::gsub()]
 #' @family matching and substitution functions
@@ -117,25 +118,6 @@ fsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
 #' @export
 fgsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
                  fixed = FALSE, useBytes = FALSE, nthreads = NULL) {
-    validated <- .validate_sub_args(pattern, replacement, x, nthreads)
-    x <- validated$x
-    threads <- validated$threads
-
-    if (isTRUE(fixed)) {
-        if (identical(pattern, ""))
-            stop("zero-length pattern")
-        return(fast_fixed_sub_impl(
-            pattern, replacement, x, isTRUE(ignore.case), TRUE,
-            threads
-        ))
-    }
-
-    if (!isTRUE(perl) && .has_pcre_only_syntax(pattern)) {
-        cli::cli_inform("Pattern has PCRE-only syntax; delegating to {.fn base::gsub} with {.code perl = TRUE}.")
-        return(base::gsub(pattern, replacement, x, ignore.case = ignore.case, perl = TRUE))
-    }
-
-    fast_regex_sub_impl(
-        pattern, replacement, x, isTRUE(ignore.case), TRUE, threads
-    )
+    .substitute(pattern, replacement, x, ignore.case, perl, fixed, useBytes,
+                nthreads, global = TRUE)
 }

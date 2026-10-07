@@ -179,10 +179,15 @@ inline SEXP make_text_charsxp(const char* data,
     );
 }
 
+// Encodings follow base R's sub()/gsub(): unchanged strings keep their own
+// CHARSXP, and new strings are UTF-8 -- except under useBytes (`byte_mode`),
+// where they are marked native, or "bytes" when the input element was. A
+// slice of a string the snapshot translated to UTF-8 is UTF-8 too.
 inline Rcpp::CharacterVector finalize_text_results(
         const StringSnapshot& snapshot,
         const std::vector<TextResult>& records,
-        const TextArenas& arenas) {
+        const TextArenas& arenas,
+        bool byte_mode = false) {
     const R_xlen_t n = static_cast<R_xlen_t>(snapshot.size());
     Rcpp::CharacterVector output(n);
     for (R_xlen_t i = 0; i < n; ++i) {
@@ -202,7 +207,9 @@ inline Rcpp::CharacterVector finalize_text_results(
                     make_text_charsxp(
                         snapshot[row].data + record.offset,
                         record.length,
-                        Rf_getCharCE(source)
+                        snapshot.translated(row)
+                            ? CE_UTF8
+                            : Rf_getCharCE(source)
                     )
                 );
                 break;
@@ -212,9 +219,15 @@ inline Rcpp::CharacterVector finalize_text_results(
                 const char* data = record.length == 0
                     ? ""
                     : arena.data() + record.offset;
+                cetype_t encoding = CE_UTF8;
+                if (byte_mode) {
+                    encoding = Rf_getCharCE(snapshot.charsxp(row)) == CE_BYTES
+                        ? CE_BYTES
+                        : CE_NATIVE;
+                }
                 SET_STRING_ELT(
                     output, i,
-                    make_text_charsxp(data, record.length, CE_UTF8)
+                    make_text_charsxp(data, record.length, encoding)
                 );
                 break;
             }

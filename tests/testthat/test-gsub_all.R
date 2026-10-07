@@ -106,10 +106,10 @@ test_that("gsub_all preserves pure source-slice encodings", {
     Encoding(prefixed) <- "latin1"
 
     fixed_slice <- fast.string::gsub_all(
-        "x", "", prefixed, fixed = TRUE, nthreads = 2L
+        "x", "", prefixed, fixed = TRUE, nthreads = 2L, useBytes = TRUE
     )
     regex_slice <- fast.string::gsub_all(
-        "^x", "", prefixed, nthreads = 2L
+        "^x", "", prefixed, nthreads = 2L, useBytes = TRUE
     )
     expect_identical(Encoding(fixed_slice), "latin1")
     expect_identical(Encoding(regex_slice), "latin1")
@@ -122,21 +122,21 @@ test_that("gsub_all does not tag disjoint deletions as source slices", {
     Encoding(x) <- "latin1"
 
     result <- fast.string::gsub_all(
-        "ab", "", x, sequential = TRUE, nthreads = 2L
+        "ab", "", x, sequential = TRUE, nthreads = 2L, useBytes = TRUE
     )
     expect_identical(charToRaw(result), as.raw(c(0xe9, 0x61, 0x61)))
-    expect_identical(Encoding(result), "UTF-8")
+    expect_identical(Encoding(result), "unknown")
 
     for (sequential in c(TRUE, FALSE)) {
         fixed_result <- fast.string::gsub_all(
             "ab", "", x, fixed = TRUE,
-            sequential = sequential, nthreads = 2L
+            sequential = sequential, nthreads = 2L, useBytes = TRUE
         )
         expect_identical(
             charToRaw(fixed_result),
             as.raw(c(0xe9, 0x61, 0x61))
         )
-        expect_identical(Encoding(fixed_result), "UTF-8")
+        expect_identical(Encoding(fixed_result), "unknown")
     }
 })
 
@@ -147,7 +147,7 @@ test_that("later deletions can restore a pure source slice", {
     for (fixed in c(FALSE, TRUE)) {
         result <- fast.string::gsub_all(
             c("a", "b"), "", x, fixed = fixed,
-            sequential = TRUE, nthreads = 2L
+            sequential = TRUE, nthreads = 2L, useBytes = TRUE
         )
         expect_identical(charToRaw(result), as.raw(0xe9))
         expect_identical(Encoding(result), "latin1")
@@ -177,12 +177,58 @@ test_that("gsub_all validates arguments", {
     expect_error(fast.string::gsub_all(c("a", "b"), c("x", "y", "z"), "abc"), "length 1 or the same length")
 })
 
-test_that("gsub_all delegates PCRE-only patterns to base", {
+test_that("gsub_all runs PCRE-only patterns on PCRE2", {
     x <- c("foobar", "foo")
-    expect_message(
-        res <- fast.string::gsub_all("foo(?=bar)", "X", x),
-        "PCRE-only syntax"
+    expect_silent(
+        res <- fast.string::gsub_all("foo(?=bar)", "X", x)
     )
     expected <- base::gsub("foo(?=bar)", "X", x, perl = TRUE)
     expect_identical(res, expected)
+})
+
+test_that("gsub_all treats NA patterns and replacements like chained gsub", {
+    x <- c("cat", "dog", NA)
+    for (fixed in c(FALSE, TRUE)) {
+        expect_identical(
+            fast.string::gsub_all(c("a", NA), "x", x, fixed = fixed),
+            rep(NA_character_, 3L)
+        )
+        expect_identical(
+            fast.string::gsub_all(c("c", "o"), c("C", NA), x, fixed = fixed),
+            unname(base::gsub("o", NA, base::gsub("c", "C", x, fixed = fixed),
+                              fixed = fixed))
+        )
+    }
+    expect_identical(
+        fast.string::gsub_all(c("c", "o"), c("C", NA), x, fixed = TRUE,
+                              sequential = FALSE),
+        c("Cat", NA, NA)
+    )
+})
+
+test_that("gsub_all single scan picks the leftmost match, first pattern on ties", {
+    set.seed(42)
+    patterns <- unique(replicate(40, paste(sample(letters[1:4], 2, TRUE), collapse = "")))
+    x <- replicate(300, paste(sample(letters[1:4], 30, TRUE), collapse = ""))
+    reference <- vapply(x, function(s) {
+        out <- ""
+        pos <- 1L
+        n <- nchar(s)
+        while (pos <= n) {
+            hits <- vapply(patterns, function(p) {
+                at <- regexpr(p, substr(s, pos, n), fixed = TRUE)
+                if (at < 0) NA_integer_ else at + pos - 1L
+            }, 1L)
+            if (all(is.na(hits))) break
+            best <- which.min(hits)
+            out <- paste0(out, substr(s, pos, hits[best] - 1L), toupper(patterns[best]))
+            pos <- hits[best] + nchar(patterns[best])
+        }
+        paste0(out, if (pos <= n) substr(s, pos, n) else "")
+    }, "", USE.NAMES = FALSE)
+    expect_identical(
+        fast.string::gsub_all(patterns, toupper(patterns), x, fixed = TRUE,
+                              sequential = FALSE),
+        reference
+    )
 })

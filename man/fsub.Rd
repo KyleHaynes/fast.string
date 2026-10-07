@@ -16,19 +16,24 @@ fsub(
 )
 }
 \arguments{
-\item{pattern}{Character scalar. Pattern to search for.}
+\item{pattern}{Character scalar. Pattern to search for. \code{NA} gives an all
+\code{NA} result, as in base R.}
 
-\item{replacement}{Character scalar. Replacement string.}
+\item{replacement}{Character scalar. Replacement string. If \code{NA}, every
+element that matches becomes \code{NA}, as in base R.}
 
 \item{x}{Character vector. \code{NA} elements return \code{NA}.}
 
-\item{ignore.case}{Logical. Case-insensitive matching.}
+\item{ignore.case}{Logical. Case-insensitive matching. With
+\code{fixed = TRUE} only ASCII letters are folded.}
 
-\item{perl}{Logical. If \code{TRUE}, skip PCRE-only syntax check.}
+\item{perl}{Logical. Use PCRE (Perl-compatible) regular expression
+semantics instead of base R's default ones; see Details.}
 
-\item{fixed}{Logical. Treat \code{pattern} as a literal string.}
+\item{fixed}{Logical. Treat \code{pattern} as a literal string (fastest path).}
 
-\item{useBytes}{Logical. Ignored; included for signature compatibility.}
+\item{useBytes}{Logical. If \code{TRUE}, match byte by byte rather than by
+UTF-8 character, as in base R.}
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
@@ -38,7 +43,9 @@ Character vector the same length as \code{x}.
 }
 \description{
 Equivalent to \code{\link[base:sub]{base::sub()}}, using PCRE2 and Intel TBB. Supports
-\verb{\\\\1}-\verb{\\\\9} capture groups and \verb{\\\\U}/\verb{\\\\L}/\verb{\\\\E} case conversion.
+\verb{\\\\1}-\verb{\\\\9} capture groups and \verb{\\\\U}/\verb{\\\\L}/\verb{\\\\E} case conversion (the
+latter with \code{perl = FALSE} too, unlike base R). See \code{\link[=fgrepl]{fgrepl()}} for how
+\code{perl = FALSE} patterns are interpreted.
 }
 \examples{
 x <- c("apple pie", "banana split", NA, "cherry tart")

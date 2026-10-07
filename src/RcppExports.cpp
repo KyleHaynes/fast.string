@@ -11,64 +11,70 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // fast_grepl_impl
-LogicalVector fast_grepl_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int nthreads);
-RcppExport SEXP _fast_string_fast_grepl_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+LogicalVector fast_grepl_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int syntax, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_grepl_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP syntaxSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type syntax(syntaxSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_grepl_impl(pattern, x, ignore_case, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_grepl_impl(pattern, x, ignore_case, syntax, use_bytes, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_fixed_impl
-LogicalVector fast_fixed_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int nthreads);
-RcppExport SEXP _fast_string_fast_fixed_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+LogicalVector fast_fixed_impl(const std::string& pattern, const StringVector& x, bool ignore_case, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_fixed_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_fixed_impl(pattern, x, ignore_case, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_fixed_impl(pattern, x, ignore_case, use_bytes, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_regex_count_impl
-IntegerVector fast_regex_count_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int nthreads);
-RcppExport SEXP _fast_string_fast_regex_count_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+IntegerVector fast_regex_count_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int syntax, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_regex_count_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP syntaxSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type syntax(syntaxSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_regex_count_impl(pattern, x, ignore_case, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_regex_count_impl(pattern, x, ignore_case, syntax, use_bytes, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_fixed_count_impl
-IntegerVector fast_fixed_count_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int nthreads);
-RcppExport SEXP _fast_string_fast_fixed_count_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+IntegerVector fast_fixed_count_impl(const std::string& pattern, const StringVector& x, bool ignore_case, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_fixed_count_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_fixed_count_impl(pattern, x, ignore_case, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_fixed_count_impl(pattern, x, ignore_case, use_bytes, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_regex_sub_impl
-CharacterVector fast_regex_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global, int nthreads);
-RcppExport SEXP _fast_string_fast_regex_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP, SEXP nthreadsSEXP) {
+CharacterVector fast_regex_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global, int syntax, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_regex_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP, SEXP syntaxSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -77,14 +83,16 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
     Rcpp::traits::input_parameter< bool >::type global(globalSEXP);
+    Rcpp::traits::input_parameter< int >::type syntax(syntaxSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_regex_sub_impl(pattern, replacement, x, ignore_case, global, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_regex_sub_impl(pattern, replacement, x, ignore_case, global, syntax, use_bytes, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_fixed_gsub_all_impl
-CharacterVector fast_fixed_gsub_all_impl(const StringVector& patterns, const StringVector& replacements, const StringVector& x, bool ignore_case, bool sequential, int nthreads);
-RcppExport SEXP _fast_string_fast_fixed_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP sequentialSEXP, SEXP nthreadsSEXP) {
+CharacterVector fast_fixed_gsub_all_impl(const StringVector& patterns, const StringVector& replacements, const StringVector& x, bool ignore_case, bool sequential, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_fixed_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP sequentialSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -93,14 +101,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
     Rcpp::traits::input_parameter< bool >::type sequential(sequentialSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_fixed_gsub_all_impl(patterns, replacements, x, ignore_case, sequential, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_fixed_gsub_all_impl(patterns, replacements, x, ignore_case, sequential, use_bytes, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_regex_gsub_all_impl
-CharacterVector fast_regex_gsub_all_impl(const StringVector& patterns, const StringVector& replacements, const StringVector& x, bool ignore_case, bool sequential, int nthreads);
-RcppExport SEXP _fast_string_fast_regex_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP sequentialSEXP, SEXP nthreadsSEXP) {
+CharacterVector fast_regex_gsub_all_impl(const StringVector& patterns, const StringVector& replacements, const StringVector& x, bool ignore_case, const IntegerVector& syntax, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_regex_gsub_all_impl(SEXP patternsSEXP, SEXP replacementsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP syntaxSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -108,15 +117,16 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type replacements(replacementsSEXP);
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
-    Rcpp::traits::input_parameter< bool >::type sequential(sequentialSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type syntax(syntaxSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_regex_gsub_all_impl(patterns, replacements, x, ignore_case, sequential, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_regex_gsub_all_impl(patterns, replacements, x, ignore_case, syntax, use_bytes, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_fixed_sub_impl
-CharacterVector fast_fixed_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global, int nthreads);
-RcppExport SEXP _fast_string_fast_fixed_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP, SEXP nthreadsSEXP) {
+CharacterVector fast_fixed_sub_impl(const std::string& pattern, const std::string& replacement, const StringVector& x, bool ignore_case, bool global, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_fixed_sub_impl(SEXP patternSEXP, SEXP replacementSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP globalSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -125,8 +135,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
     Rcpp::traits::input_parameter< bool >::type global(globalSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_fixed_sub_impl(pattern, replacement, x, ignore_case, global, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_fixed_sub_impl(pattern, replacement, x, ignore_case, global, use_bytes, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -702,14 +713,14 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_fast_string_fast_grepl_impl", (DL_FUNC) &_fast_string_fast_grepl_impl, 4},
-    {"_fast_string_fast_fixed_impl", (DL_FUNC) &_fast_string_fast_fixed_impl, 4},
-    {"_fast_string_fast_regex_count_impl", (DL_FUNC) &_fast_string_fast_regex_count_impl, 4},
-    {"_fast_string_fast_fixed_count_impl", (DL_FUNC) &_fast_string_fast_fixed_count_impl, 4},
-    {"_fast_string_fast_regex_sub_impl", (DL_FUNC) &_fast_string_fast_regex_sub_impl, 6},
-    {"_fast_string_fast_fixed_gsub_all_impl", (DL_FUNC) &_fast_string_fast_fixed_gsub_all_impl, 6},
-    {"_fast_string_fast_regex_gsub_all_impl", (DL_FUNC) &_fast_string_fast_regex_gsub_all_impl, 6},
-    {"_fast_string_fast_fixed_sub_impl", (DL_FUNC) &_fast_string_fast_fixed_sub_impl, 6},
+    {"_fast_string_fast_grepl_impl", (DL_FUNC) &_fast_string_fast_grepl_impl, 6},
+    {"_fast_string_fast_fixed_impl", (DL_FUNC) &_fast_string_fast_fixed_impl, 5},
+    {"_fast_string_fast_regex_count_impl", (DL_FUNC) &_fast_string_fast_regex_count_impl, 6},
+    {"_fast_string_fast_fixed_count_impl", (DL_FUNC) &_fast_string_fast_fixed_count_impl, 5},
+    {"_fast_string_fast_regex_sub_impl", (DL_FUNC) &_fast_string_fast_regex_sub_impl, 8},
+    {"_fast_string_fast_fixed_gsub_all_impl", (DL_FUNC) &_fast_string_fast_fixed_gsub_all_impl, 7},
+    {"_fast_string_fast_regex_gsub_all_impl", (DL_FUNC) &_fast_string_fast_regex_gsub_all_impl, 7},
+    {"_fast_string_fast_fixed_sub_impl", (DL_FUNC) &_fast_string_fast_fixed_sub_impl, 7},
     {"_fast_string_fast_format_date_impl", (DL_FUNC) &_fast_string_fast_format_date_impl, 2},
     {"_fast_string_fast_format_date_parts_impl", (DL_FUNC) &_fast_string_fast_format_date_parts_impl, 4},
     {"_fast_string_fast_parse_date_impl", (DL_FUNC) &_fast_string_fast_parse_date_impl, 2},

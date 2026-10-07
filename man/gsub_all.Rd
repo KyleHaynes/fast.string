@@ -11,14 +11,17 @@ gsub_all(
   fixed = FALSE,
   ignore.case = FALSE,
   sequential = TRUE,
-  nthreads = NULL
+  nthreads = NULL,
+  perl = FALSE,
+  useBytes = FALSE
 )
 }
 \arguments{
-\item{patterns}{Character vector of patterns to search for.}
+\item{patterns}{Character vector of patterns to search for. An \code{NA}
+pattern makes every result \code{NA}, as chaining \code{\link[base:gsub]{base::gsub()}} would.}
 
 \item{replacements}{Character scalar or vector the same length as
-\code{patterns}.}
+\code{patterns}. Elements that an \code{NA} replacement applies to become \code{NA}.}
 
 \item{x}{Character vector. \code{NA} elements return \code{NA}.}
 
@@ -34,6 +37,8 @@ scan (first pattern to match at each position wins). This mode requires
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
+
+\item{perl, useBytes}{As in \code{\link[=fgsub]{fgsub()}}.}
 }
 \value{
 Character vector the same length as \code{x}.

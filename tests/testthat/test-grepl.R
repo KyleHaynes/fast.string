@@ -26,10 +26,10 @@ test_that("fgrepl fixed matches base", {
                       base::grepl(".", x, fixed = TRUE))
 })
 
-test_that("fgrepl delegates PCRE-only syntax to base and warns once", {
+test_that("fgrepl runs PCRE-only syntax on PCRE2 like base perl = TRUE", {
     x <- c("foobar", "foo", "bar")
     pattern <- "foo(?=bar)"
-    expect_message(res <- fast.string::fgrepl(pattern, x), "PCRE-only syntax")
+    expect_silent(res <- fast.string::fgrepl(pattern, x))
     expect_identical(res, base::grepl(pattern, x, perl = TRUE))
 })
 
@@ -76,10 +76,10 @@ test_that("fsub NA propagates", {
     expect_true(is.na(fast.string::fsub("x", "y", NA_character_)))
 })
 
-test_that("fsub delegates PCRE-only syntax to base", {
+test_that("fsub runs PCRE-only syntax on PCRE2 like base perl = TRUE", {
     x <- c("foobar", "foo")
     pattern <- "foo(?=bar)"
-    expect_message(res <- fast.string::fsub(pattern, "X", x), "PCRE-only syntax")
+    expect_silent(res <- fast.string::fsub(pattern, "X", x))
     expect_identical(res, base::sub(pattern, "X", x, perl = TRUE))
 })
 
@@ -99,7 +99,7 @@ test_that("literal replacements match base, including escapes and empty matches"
     # than expanded by PCRE2; each must still read exactly as R reads it.
     x <- c("a1b22c333", "no digits", "", NA, "9", "x$y\\z",
            paste0("caf", intToUtf8(0xe9), " 42"))
-    x <- c(x, rep(x, 60000L))  # also cross the parallel threshold
+    big <- c(x, rep(x, 60000L))  # also cross the parallel threshold
     replacements <- c("#", "", "$", "$1", "\\\\", "\\.", "<\\n>", "ab")
     for (r in replacements) {
         expect_identical(fast.string::fgsub("[0-9]+", r, x),
@@ -108,6 +108,14 @@ test_that("literal replacements match base, including escapes and empty matches"
                          base::sub("[0-9]+", r, x, perl = TRUE), info = r)
         expect_identical(fast.string::fgsub("[0-9]*", r, x),
                          base::gsub("[0-9]*", r, x, perl = TRUE), info = r)
+        # identical() rather than expect_identical(): a failure then reports
+        # at once instead of diffing 420,000 strings.
+        expect_true(identical(fast.string::fgsub("[0-9]+", r, big),
+                              base::gsub("[0-9]+", r, big, perl = TRUE)),
+                    info = r)
+        expect_true(identical(fast.string::fgsub("[0-9]*", r, big),
+                              base::gsub("[0-9]*", r, big, perl = TRUE)),
+                    info = r)
     }
 })
 
@@ -159,24 +167,39 @@ test_that("zero-length regex substitution preserves backreferences", {
 })
 
 test_that("disjoint regex deletions are not tagged as source slices", {
+    # Under useBytes a pure slice keeps the source encoding while newly built
+    # text is marked native, so latin1 input shows which path was taken.
     x <- iconv("\u00e9aaba", from = "UTF-8", to = "latin1")
     Encoding(x) <- "latin1"
 
     result <- fast.string::fsub(
-        "ab", "", x, perl = TRUE, nthreads = 2L
+        "ab", "", x, perl = TRUE, useBytes = TRUE, nthreads = 2L
     )
     expect_identical(charToRaw(result), as.raw(c(0xe9, 0x61, 0x61)))
-    expect_identical(Encoding(result), "UTF-8")
+    expect_identical(Encoding(result), "unknown")
 
     for (substitute in list(fast.string::fsub, fast.string::fgsub)) {
         fixed_result <- substitute(
-            "ab", "", x, fixed = TRUE, nthreads = 2L
+            "ab", "", x, fixed = TRUE, useBytes = TRUE, nthreads = 2L
         )
         expect_identical(
             charToRaw(fixed_result),
             as.raw(c(0xe9, 0x61, 0x61))
         )
-        expect_identical(Encoding(fixed_result), "UTF-8")
+        expect_identical(Encoding(fixed_result), "unknown")
+    }
+})
+
+test_that("latin1 input is matched and returned as UTF-8 like base", {
+    x <- iconv(c("\u00e9aaba", "caf\u00e9", "plain"), "UTF-8", "latin1")
+    expect_identical(fast.string::fgrepl("\u00e9", x), c(TRUE, TRUE, FALSE))
+    expect_identical(fast.string::fgrepl("\u00e9", x, fixed = TRUE),
+                     c(TRUE, TRUE, FALSE))
+    for (fixed in c(FALSE, TRUE)) {
+        result <- fast.string::fgsub("a", "", x, fixed = fixed)
+        expect_identical(result, unname(base::gsub("a", "", x, fixed = fixed)))
+        expect_true(all(validUTF8(result)))
+        expect_identical(Encoding(result), c("UTF-8", "UTF-8", "unknown"))
     }
 })
 
@@ -203,15 +226,22 @@ test_that("substitution preserves the encoding of pure source slices", {
     latin1_prefixed <- iconv("x\u00e9clair", from = "UTF-8", to = "latin1")
     Encoding(latin1_prefixed) <- "latin1"
     fixed_slice <- fast.string::fsub(
-        "x", "", latin1_prefixed, fixed = TRUE, nthreads = 2L
+        "x", "", latin1_prefixed, fixed = TRUE, useBytes = TRUE,
+        nthreads = 2L
     )
     regex_slice <- fast.string::fsub(
-        "^x", "", latin1_prefixed, nthreads = 2L
+        "^x", "", latin1_prefixed, useBytes = TRUE, nthreads = 2L
     )
     expect_identical(Encoding(fixed_slice), "latin1")
     expect_identical(Encoding(regex_slice), "latin1")
     expect_identical(charToRaw(fixed_slice), charToRaw(latin1))
     expect_identical(charToRaw(regex_slice), charToRaw(latin1))
+
+    # Without useBytes the latin1 input is translated, so the slice is UTF-8,
+    # as base R returns it.
+    utf8_slice <- fast.string::fsub("^x", "", latin1_prefixed)
+    expect_identical(utf8_slice, base::sub("^x", "", latin1_prefixed))
+    expect_identical(Encoding(utf8_slice), "UTF-8")
 })
 
 test_that("substitution tags newly constructed output as UTF-8", {
@@ -277,4 +307,93 @@ test_that("fgsub fixed matches base", {
 
 test_that("fgsub NA propagates", {
     expect_true(is.na(fast.string::fgsub("x", "y", NA_character_)))
+})
+
+test_that("an NA pattern or replacement behaves as in base", {
+    x <- c("NA", "abc", NA, "banana")
+    expect_identical(fast.string::fgrepl(NA_character_, x), rep(NA, 4L))
+    expect_identical(fast.string::fgrepl(NA, x, fixed = TRUE), rep(NA, 4L))
+    expect_identical(fast.string::fgrep(NA, x), base::grep(NA, x))
+    for (substitute in c("sub", "gsub")) {
+        fast_fn <- getExportedValue("fast.string", paste0("f", substitute))
+        base_fn <- getExportedValue("base", substitute)
+        expect_identical(fast_fn(NA, "x", x), rep(NA_character_, 4L))
+        for (fixed in c(FALSE, TRUE)) {
+            expect_identical(fast_fn("a", NA, x, fixed = fixed),
+                             base_fn("a", NA, x, fixed = fixed))
+        }
+    }
+})
+
+test_that("non-ASCII text is matched by character, as in base", {
+    e <- intToUtf8(0xe9)
+    E <- intToUtf8(0xc9)
+    x <- c(paste0("caf", e, " 42"), paste0(E, "mile"), "plain", NA)
+    for (perl in c(FALSE, TRUE)) {
+        for (pattern in c("[0-9]*", "^.{4}$", ".", "x*", e, E)) {
+            expect_identical(
+                fast.string::fgsub(pattern, "#", x, perl = perl),
+                base::gsub(pattern, "#", x, perl = perl),
+                info = paste(pattern, perl)
+            )
+        }
+        expect_identical(
+            fast.string::fgrepl(E, x, ignore.case = TRUE, perl = perl),
+            c(TRUE, TRUE, FALSE, NA)
+        )
+    }
+    # Unicode-aware classes with perl = FALSE, ASCII-only ones with perl = TRUE.
+    expect_identical(fast.string::fgsub("[[:alpha:]]+", "W", x),
+                     base::gsub("[[:alpha:]]+", "W", x))
+    expect_identical(fast.string::fgsub("\\w", "W", x, perl = TRUE),
+                     base::gsub("\\w", "W", x, perl = TRUE))
+    expect_true(all(validUTF8(fast.string::fgsub("[0-9]*", "#", x))))
+})
+
+test_that("useBytes = TRUE matches byte by byte like base", {
+    x <- paste0("caf", intToUtf8(0xe9))
+    expect_identical(fast.string::fgsub("x*", "-", x, useBytes = TRUE),
+                     base::gsub("x*", "-", x, useBytes = TRUE))
+    expect_identical(fast.string::fgrepl("^.{5}$", x, useBytes = TRUE),
+                     base::grepl("^.{5}$", x, useBytes = TRUE))
+})
+
+test_that("perl = FALSE follows base R's default regular expressions", {
+    x <- c("a\nb", "a\n", "the cat", "other", "d", "1", "\\", "a]b")
+    for (pattern in c("a.b", "a$", "\\<the\\>", "\\<oth", "[\\d]", "[\\w]",
+                      "[a\\]b]", "[][]", "[^]a]")) {
+        expect_identical(fast.string::fgrepl(pattern, x),
+                         base::grepl(pattern, x), info = pattern)
+    }
+    expect_identical(fast.string::fgsub("a.b", "X", x), base::gsub("a.b", "X", x))
+    # perl = TRUE keeps PCRE's own rules.
+    expect_identical(fast.string::fgrepl("a.b", x, perl = TRUE),
+                     base::grepl("a.b", x, perl = TRUE))
+    expect_identical(fast.string::fgrepl("a$", x, perl = TRUE),
+                     base::grepl("a$", x, perl = TRUE))
+    # Wide-character POSIX classes.
+    euro <- intToUtf8(0x20ac)
+    expect_identical(fast.string::fgrepl("[[:punct:]]", c(euro, "a")),
+                     base::grepl("[[:punct:]]", c(euro, "a")))
+    expect_identical(
+        fast.string::fgrepl("[[:upper:]]", c("abc", intToUtf8(0xe9)),
+                            ignore.case = TRUE),
+        base::grepl("[[:upper:]]", c("abc", intToUtf8(0xe9)), ignore.case = TRUE)
+    )
+})
+
+test_that("a match-limit error on one element warns instead of failing", {
+    x <- c(paste0(strrep("a", 30), "!"), "aa", NA)
+    pattern <- "^(a+)+$"
+    expect_warning(res <- fast.string::fgrepl(pattern, x, perl = TRUE),
+                   "match limit")
+    expect_identical(res, c(FALSE, TRUE, NA))
+    expect_warning(res <- fast.string::fgsub(pattern, "X", x, perl = TRUE),
+                   "match limit")
+    expect_identical(res, suppressWarnings(
+        base::gsub(pattern, "X", x, perl = TRUE)
+    ))
+    expect_warning(res <- fast.string::fcount(pattern, x, perl = TRUE),
+                   "match limit")
+    expect_identical(res, c(0L, 1L, NA))
 })

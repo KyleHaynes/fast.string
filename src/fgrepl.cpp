@@ -36,6 +36,230 @@ static std::size_t estimated_string_work(const StringSnapshot& snapshot,
     return static_cast<std::size_t>(work);
 }
 
+// ---------------------------------------------------------------------------
+// Pattern compilation shared by every regex entry point.
+//
+// `syntax` says which base R engine to reproduce:
+//   SYNTAX_PERL      perl = TRUE: PCRE as base R configures it.
+//   SYNTAX_EXTENDED  perl = FALSE: base R's default TRE engine, emulated on
+//                    PCRE2 -- `.` also matches a newline, `$` only matches at
+//                    the very end, a backslash inside a bracket expression is
+//                    a literal, \< and \> are word boundaries, and in UTF-8
+//                    mode \w, \b and [[:alpha:]]-style classes are Unicode
+//                    aware. TRE's leftmost-longest choice between
+//                    alternatives is not reproduced: PCRE2 takes the first
+//                    alternative that matches.
+//
+// UTF mode is used, as in base R, when the pattern or any subject is
+// non-ASCII and useBytes is off; subjects are UTF-8 by then (see
+// SnapshotText::utf8). Invalid UTF-8 never matches instead of being an error
+// where PCRE2 supports that (10.34+).
+// ---------------------------------------------------------------------------
+
+enum RegexSyntax { SYNTAX_PERL = 0, SYNTAX_EXTENDED = 1 };
+
+// Rewrites a TRE (POSIX extended) pattern into equivalent PCRE2 syntax.
+// `ucp`: PCRE2 runs with Unicode properties, where two POSIX classes need
+// widening to match TRE's wide-character classes: [:punct:] also covers
+// symbols such as the euro sign, and under `caseless` [:upper:]/[:lower:]
+// match any cased letter.
+static std::string tre_to_pcre2(const std::string& pattern, bool ucp,
+                                bool caseless) {
+    std::string out;
+    out.reserve(pattern.size() + 16);
+    const std::size_t n = pattern.size();
+    std::size_t i = 0;
+    while (i < n) {
+        const char c = pattern[i];
+        if (c == '\\') {
+            if (i + 1 == n) {
+                out.push_back(c);
+                ++i;
+            } else if (pattern[i + 1] == '<') {
+                out.append("\\b(?=\\w)");
+                i += 2;
+            } else if (pattern[i + 1] == '>') {
+                out.append("\\b(?<=\\w)");
+                i += 2;
+            } else {
+                out.append(pattern, i, 2);
+                i += 2;
+            }
+            continue;
+        }
+        if (c != '[') {
+            out.push_back(c);
+            ++i;
+            continue;
+        }
+
+        // Bracket expression: copied as is, except that its backslashes are
+        // literal in POSIX and so are escaped for PCRE2. A leading `]` (after
+        // an optional `^`) is a member, and [:class:], [.x.] and [=x=] are
+        // copied whole.
+        std::size_t j = i + 1;
+        std::string bracket("[");
+        if (j < n && pattern[j] == '^') bracket.push_back(pattern[j++]);
+        if (j < n && pattern[j] == ']') {
+            bracket.append("\\]");
+            ++j;
+        }
+        bool closed = false;
+        while (j < n) {
+            const char d = pattern[j];
+            if (d == ']') {
+                bracket.push_back(d);
+                ++j;
+                closed = true;
+                break;
+            }
+            if (d == '[' && j + 1 < n &&
+                (pattern[j + 1] == ':' || pattern[j + 1] == '.' ||
+                 pattern[j + 1] == '=')) {
+                const char delimiter[3] = {pattern[j + 1], ']', '\0'};
+                const std::size_t end = pattern.find(delimiter, j + 2);
+                if (end != std::string::npos) {
+                    const std::string name =
+                        pattern.substr(j + 2, end - j - 2);
+                    if (ucp && pattern[j + 1] == ':' && name == "punct") {
+                        bracket.append("[:punct:]\\p{S}");
+                    } else if (ucp && caseless && pattern[j + 1] == ':' &&
+                               (name == "upper" || name == "lower")) {
+                        bracket.append("\\p{L&}");
+                    } else {
+                        bracket.append(pattern, j, end + 2 - j);
+                    }
+                    j = end + 2;
+                    continue;
+                }
+            }
+            if (d == '\\') bracket.append("\\\\");
+            else bracket.push_back(d);
+            ++j;
+        }
+        if (!closed) {
+            // Unterminated: pass the rest through and let PCRE2 report it.
+            out.append(pattern, i, std::string::npos);
+            break;
+        }
+        out.append(bracket);
+        i = j;
+    }
+    return out;
+}
+
+static bool is_ascii_string(const std::string& value) {
+    return bytes_are_ascii(value.data(), value.size());
+}
+
+static pcre2_code* compile_regex(const std::string& pattern,
+                                 bool ignore_case,
+                                 int syntax,
+                                 bool utf,
+                                 std::string& error) {
+    uint32_t options = ignore_case ? PCRE2_CASELESS : 0;
+    if (utf) {
+        options |= PCRE2_UTF;
+#ifdef PCRE2_MATCH_INVALID_UTF
+        options |= PCRE2_MATCH_INVALID_UTF;
+#endif
+    }
+    const std::string* source = &pattern;
+    std::string rewritten;
+    if (syntax == SYNTAX_EXTENDED) {
+        options |= PCRE2_DOTALL | PCRE2_DOLLAR_ENDONLY;
+        if (utf) options |= PCRE2_UCP;
+        rewritten = tre_to_pcre2(pattern, utf, ignore_case);
+        source = &rewritten;
+    }
+    int error_code;
+    PCRE2_SIZE error_offset;
+    pcre2_code* code = pcre2_compile(
+        reinterpret_cast<PCRE2_SPTR8>(source->data()), source->size(),
+        options, &error_code, &error_offset, NULL
+    );
+    if (!code) {
+        PCRE2_UCHAR8 message[256];
+        pcre2_get_error_message(error_code, message, sizeof(message));
+        error = reinterpret_cast<const char*>(message);
+        return nullptr;
+    }
+    // JIT is best-effort: matching falls back to the interpreter without it.
+    pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
+    return code;
+}
+
+static pcre2_code* compile_regex_or_stop(const std::string& pattern,
+                                         bool ignore_case,
+                                         int syntax,
+                                         bool utf) {
+    std::string error;
+    pcre2_code* code = compile_regex(pattern, ignore_case, syntax, utf, error);
+    if (!code) stop("Invalid PCRE2 pattern: %s", error.c_str());
+    return code;
+}
+
+// Offset of the character after the one starting at `offset`, used to step
+// past an empty match: one byte, or one UTF-8 character in UTF mode.
+static inline PCRE2_SIZE step_past_empty(const char* subject,
+                                         PCRE2_SIZE length,
+                                         PCRE2_SIZE offset,
+                                         bool utf) {
+    ++offset;
+    if (utf) {
+        while (offset < length &&
+               (static_cast<unsigned char>(subject[offset]) & 0xC0) == 0x80)
+            ++offset;
+    }
+    return offset;
+}
+
+// Matching errors that base R reports as a warning naming the element, which
+// then counts as not matching, instead of failing the whole call.
+static inline bool soft_pcre2_error(int rc) {
+    return rc == PCRE2_ERROR_MATCHLIMIT || rc == PCRE2_ERROR_DEPTHLIMIT ||
+        rc == PCRE2_ERROR_HEAPLIMIT || rc == PCRE2_ERROR_JIT_STACKLIMIT ||
+        (rc <= PCRE2_ERROR_UTF8_ERR1 && rc >= PCRE2_ERROR_UTF8_ERR21);
+}
+
+// Stops at the first hard error; warns once, naming the first element, when
+// only soft errors occurred. Those elements keep their unmatched result.
+static void report_pcre2_errors(const std::vector<int>& errors,
+                                const char* action,
+                                const std::vector<std::size_t>* patterns
+                                    = nullptr) {
+    std::size_t soft = 0, first_soft = 0;
+    for (std::size_t i = 0; i < errors.size(); ++i) {
+        const int rc = errors[i];
+        if (rc == 0) continue;
+        PCRE2_UCHAR8 message[256];
+        pcre2_get_error_message(rc, message, sizeof(message));
+        if (!soft_pcre2_error(rc)) {
+            if (patterns) {
+                stop("PCRE2 %s failed for pattern[%zu] at x[%lld]: %s",
+                     action, (*patterns)[i], static_cast<long long>(i + 1),
+                     reinterpret_cast<const char*>(message));
+            }
+            stop("PCRE2 %s failed at x[%lld]: %s", action,
+                 static_cast<long long>(i + 1),
+                 reinterpret_cast<const char*>(message));
+        }
+        if (soft++ == 0) first_soft = i;
+    }
+    if (soft == 0) return;
+    PCRE2_UCHAR8 message[256];
+    pcre2_get_error_message(errors[first_soft], message, sizeof(message));
+    if (soft == 1) {
+        Rcpp::warning("PCRE2 error '%s' for element %lld; it is treated as not matching.",
+                      reinterpret_cast<const char*>(message),
+                      static_cast<long long>(first_soft + 1));
+    } else {
+        Rcpp::warning("PCRE2 error '%s' for element %lld and %zu others; they are treated as not matching.",
+                      reinterpret_cast<const char*>(message),
+                      static_cast<long long>(first_soft + 1), soft - 1);
+    }
+}
+
 static inline void append_pcre2_replacement_literal(std::string& output,
                                                     char value) {
     if (value == '$') {
@@ -357,8 +581,8 @@ static inline void store_provenanced_text(
 
 // R resumes at the endpoint of a consuming match. If the next ordinary search
 // returns an empty match exactly there, R suppresses that result and advances
-// one byte; a consuming match at the same endpoint is accepted. After an
-// accepted empty match, R also advances one byte. PCRE2_SUBSTITUTE_GLOBAL uses
+// one character; a consuming match at the same endpoint is accepted. After an
+// accepted empty match, R also advances one character. PCRE2_SUBSTITUTE_GLOBAL uses
 // different empty-match adjacency rules, so this explicit loop is also used
 // when exact source-slice provenance is required.
 // match_data must contain the first successful match on entry. When
@@ -377,7 +601,8 @@ static int base_global_substitute(
         std::vector<uint8_t>& replacement_scratch,
         std::vector<uint8_t>& output,
         SourceSliceProvenance* provenance = nullptr,
-        bool literal_replacement = false) {
+        bool literal_replacement = false,
+        bool utf = false) {
     output.clear();
     if (provenance)
         provenance->reset();
@@ -420,7 +645,10 @@ static int base_global_substitute(
         if (end == length) break;
 
         const bool accepted_empty = start == end;
-        search_offset = accepted_empty ? end + 1 : end;
+        search_offset = accepted_empty
+            ? step_past_empty(subject, length, end, utf)
+            : end;
+        if (search_offset > length) break;
         match_options = 0;
         int match_rc = pcre2_match(
             code, reinterpret_cast<PCRE2_SPTR8>(subject), length,
@@ -429,7 +657,7 @@ static int base_global_substitute(
         if (match_rc >= 0 && can_match_empty && !accepted_empty) {
             PCRE2_SIZE* next = pcre2_get_ovector_pointer(match_data);
             if (next[0] == end && next[1] == end) {
-                search_offset = end + 1;
+                search_offset = step_past_empty(subject, length, end, utf);
                 match_rc = pcre2_match(
                     code, reinterpret_cast<PCRE2_SPTR8>(subject), length,
                     search_offset, 0, match_data, NULL
@@ -501,48 +729,32 @@ struct PCRE2GrepWorker : public Worker {
     }
 };
 
+static inline SnapshotText snapshot_text(bool use_bytes) {
+    return use_bytes ? SnapshotText::raw : SnapshotText::utf8;
+}
+
 // [[Rcpp::export]]
 LogicalVector fast_grepl_impl(const std::string& pattern,
                                const StringVector& x,
                                bool ignore_case,
+                               int syntax,
+                               bool use_bytes,
                                int nthreads) {
-    uint32_t opts = ignore_case ? PCRE2_CASELESS : 0;
-    int errcode;
-    PCRE2_SIZE erroffset;
-    pcre2_code* code = pcre2_compile(
-        (PCRE2_SPTR8)pattern.c_str(), pattern.size(),
-        opts, &errcode, &erroffset, NULL
-    );
-    if (!code) {
-        PCRE2_UCHAR8 msg[256];
-        pcre2_get_error_message(errcode, msg, sizeof(msg));
-        stop("Invalid PCRE2 pattern: %s", (const char*)msg);
-    }
-    // Enable JIT if available (best-effort; no error if JIT is not compiled in)
-    pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
-
     const R_xlen_t n = x.size();
+    StringSnapshot snapshot(x, snapshot_text(use_bytes));
+    const bool utf = !use_bytes && !snapshot.any_bytes() &&
+        (!is_ascii_string(pattern) || snapshot.any_non_ascii());
+    pcre2_code* code = compile_regex_or_stop(pattern, ignore_case, syntax, utf);
+
     LogicalVector result(n, false);
-    StringSnapshot snapshot(x);
     std::vector<int> errors(static_cast<std::size_t>(n), 0);
     PCRE2GrepWorker worker(snapshot.data(), code, result, errors);
     dispatch_for(
         0, static_cast<std::size_t>(n), worker,
         estimated_string_work(snapshot), 250000, nthreads
     );
-
     pcre2_code_free(code);
-    for (std::size_t i = 0; i < errors.size(); ++i) {
-        if (errors[i] == 0) continue;
-        PCRE2_UCHAR8 msg[256];
-        pcre2_get_error_message(errors[i], msg, sizeof(msg));
-        stop(
-            "PCRE2 matching failed at x[%lld]: %s",
-            static_cast<long long>(i + 1),
-            reinterpret_cast<const char*>(msg)
-        );
-    }
-
+    report_pcre2_errors(errors, "matching");
     return result;
 }
 
@@ -580,10 +792,11 @@ struct FixedGrepWorker : public Worker {
 LogicalVector fast_fixed_impl(const std::string& pattern,
                                const StringVector& x,
                                bool ignore_case,
+                               bool use_bytes,
                                int nthreads) {
     const R_xlen_t n = x.size();
     LogicalVector result(n, false);
-    StringSnapshot snapshot(x);
+    StringSnapshot snapshot(x, snapshot_text(use_bytes));
     PreparedFixedSearch search(pattern, ignore_case);
     FixedGrepWorker worker(snapshot.data(), search, result);
     dispatch_for(
@@ -601,7 +814,7 @@ LogicalVector fast_fixed_impl(const std::string& pattern,
 
 static int count_pcre2_matches(pcre2_code* code,
                                const StringView& value,
-                               bool /* can_match_empty */,
+                               bool utf,
                                pcre2_match_data* match_data,
                                int& error) {
     const PCRE2_SIZE length = static_cast<PCRE2_SIZE>(value.size);
@@ -626,7 +839,9 @@ static int count_pcre2_matches(pcre2_code* code,
 
         ++count;
         if (end == length) break;
-        search_offset = empty ? end + 1 : end;
+        search_offset = empty
+            ? step_past_empty(value.data, length, end, utf)
+            : end;
         // gregexpr() advances once after an empty match and does not start a
         // fresh search exactly at the terminal boundary.
         if (search_offset >= length) break;
@@ -637,17 +852,21 @@ static int count_pcre2_matches(pcre2_code* code,
 struct PCRE2CountWorker : public Worker {
     const StringView* strings;
     pcre2_code* code;
-    bool can_match_empty;
+    bool utf;
+    // base R's TRE gregexpr() finds nothing in "", even for patterns that
+    // can match the empty string; PCRE finds one empty match.
+    bool extended;
     RVector<int> out;
     std::vector<int>& errors;
 
     PCRE2CountWorker(const StringView* strings_,
                      pcre2_code* code_,
-                     bool can_match_empty_,
+                     bool utf_,
+                     bool extended_,
                      IntegerVector& out_,
                      std::vector<int>& errors_)
         : strings(strings_), code(code_),
-          can_match_empty(can_match_empty_), out(out_), errors(errors_) {}
+          utf(utf_), extended(extended_), out(out_), errors(errors_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
         pcre2_match_data* match_data = pcre2_match_data_create(1, NULL);
@@ -658,10 +877,13 @@ struct PCRE2CountWorker : public Worker {
         }
         for (std::size_t i = begin; i < end; ++i) {
             const StringView& value = strings[i];
-            out[i] = value.is_na()
-                ? NA_INTEGER
-                : count_pcre2_matches(
-                    code, value, can_match_empty, match_data, errors[i]
+            if (value.is_na())
+                out[i] = NA_INTEGER;
+            else if (extended && value.size == 0)
+                out[i] = 0;
+            else
+                out[i] = count_pcre2_matches(
+                    code, value, utf, match_data, errors[i]
                 );
         }
         pcre2_match_data_free(match_data);
@@ -672,45 +894,25 @@ struct PCRE2CountWorker : public Worker {
 IntegerVector fast_regex_count_impl(const std::string& pattern,
                                     const StringVector& x,
                                     bool ignore_case,
+                                    int syntax,
+                                    bool use_bytes,
                                     int nthreads) {
-    const uint32_t options = ignore_case ? PCRE2_CASELESS : 0;
-    int error_code;
-    PCRE2_SIZE error_offset;
-    pcre2_code* code = pcre2_compile(
-        reinterpret_cast<PCRE2_SPTR8>(pattern.data()), pattern.size(),
-        options, &error_code, &error_offset, NULL
-    );
-    if (!code) {
-        PCRE2_UCHAR8 message[256];
-        pcre2_get_error_message(error_code, message, sizeof(message));
-        stop("Invalid PCRE2 pattern: %s", reinterpret_cast<const char*>(message));
-    }
-    pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
-    uint32_t can_match_empty = 0;
-    pcre2_pattern_info(code, PCRE2_INFO_MATCHEMPTY, &can_match_empty);
+    const StringSnapshot snapshot(x, snapshot_text(use_bytes));
+    const bool utf = !use_bytes && !snapshot.any_bytes() &&
+        (!is_ascii_string(pattern) || snapshot.any_non_ascii());
+    pcre2_code* code = compile_regex_or_stop(pattern, ignore_case, syntax, utf);
 
-    const StringSnapshot snapshot(x);
     const std::size_t n = snapshot.size();
     IntegerVector result(static_cast<R_xlen_t>(n));
     std::vector<int> errors(n, 0);
     PCRE2CountWorker worker(
-        snapshot.data(), code, can_match_empty != 0, result, errors
+        snapshot.data(), code, utf, syntax == SYNTAX_EXTENDED, result, errors
     );
     dispatch_for(
         0, n, worker, estimated_string_work(snapshot), 250000, nthreads
     );
     pcre2_code_free(code);
-
-    for (std::size_t i = 0; i < errors.size(); ++i) {
-        if (errors[i] == 0) continue;
-        PCRE2_UCHAR8 message[256];
-        pcre2_get_error_message(errors[i], message, sizeof(message));
-        stop(
-            "PCRE2 matching failed at x[%lld]: %s",
-            static_cast<long long>(i + 1),
-            reinterpret_cast<const char*>(message)
-        );
-    }
+    report_pcre2_errors(errors, "matching");
     return result;
 }
 
@@ -751,9 +953,10 @@ struct FixedCountWorker : public Worker {
 IntegerVector fast_fixed_count_impl(const std::string& pattern,
                                     const StringVector& x,
                                     bool ignore_case,
+                                    bool use_bytes,
                                     int nthreads) {
     if (pattern.empty()) stop("zero-length pattern");
-    const StringSnapshot snapshot(x);
+    const StringSnapshot snapshot(x, snapshot_text(use_bytes));
     const std::size_t n = snapshot.size();
     const PreparedFixedSearch search(pattern, ignore_case);
     IntegerVector result(static_cast<R_xlen_t>(n));
@@ -780,6 +983,7 @@ struct PCRE2SubWorker : public Worker {
     const std::string* literal;
     uint32_t sub_flags;
     bool can_match_empty;
+    bool utf;
     std::vector<TextResult>& results;
     TextArenas& arenas;
     std::vector<int>& errors;
@@ -789,13 +993,13 @@ struct PCRE2SubWorker : public Worker {
                    pcre2_code* code,
                    const uint8_t* repl_data, PCRE2_SIZE repl_len,
                    const std::string* literal,
-                   uint32_t sub_flags, bool can_match_empty,
+                   uint32_t sub_flags, bool can_match_empty, bool utf,
                    std::vector<TextResult>& results,
                    TextArenas& arenas,
                    std::vector<int>& errors)
         : strings(strings), chunks(chunks), code(code),
           repl_data(repl_data), repl_len(repl_len), literal(literal),
-          sub_flags(sub_flags), can_match_empty(can_match_empty),
+          sub_flags(sub_flags), can_match_empty(can_match_empty), utf(utf),
           results(results), arenas(arenas), errors(errors) {}
 
     void operator()(std::size_t begin, std::size_t end) {
@@ -872,7 +1076,7 @@ struct PCRE2SubWorker : public Worker {
                             code, value.data, len, lit,
                             static_cast<PCRE2_SIZE>(literal->size()),
                             sub_flags, can_match_empty, mdata,
-                            replacement_scratch, buf, nullptr, true
+                            replacement_scratch, buf, nullptr, true, utf
                         );
                         if (rc < 0) {
                             errors[i] = rc;
@@ -903,7 +1107,7 @@ struct PCRE2SubWorker : public Worker {
                         code, value.data, len, repl_data, repl_len,
                         sub_flags, can_match_empty, mdata,
                         replacement_scratch, buf,
-                        repl_len == 0 ? &provenance : nullptr
+                        repl_len == 0 ? &provenance : nullptr, false, utf
                     );
                     if (rc < 0) {
                         errors[i] = rc;
@@ -969,22 +1173,16 @@ CharacterVector fast_regex_sub_impl(const std::string& pattern,
                                      const StringVector& x,
                                      bool ignore_case,
                                      bool global,
+                                     int syntax,
+                                     bool use_bytes,
                                      int nthreads) {
-    uint32_t opts = ignore_case ? PCRE2_CASELESS : 0;
-    int errcode;
-    PCRE2_SIZE erroffset;
-    pcre2_code* code = pcre2_compile(
-        (PCRE2_SPTR8)pattern.c_str(), pattern.size(),
-        opts, &errcode, &erroffset, NULL);
-    if (!code) {
-        PCRE2_UCHAR8 msg[256];
-        pcre2_get_error_message(errcode, msg, sizeof(msg));
-        stop("Invalid PCRE2 pattern: %s", (const char*)msg);
-    }
-    pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
-
     const R_xlen_t n = x.size();
-    StringSnapshot snapshot(x);
+    StringSnapshot snapshot(x, snapshot_text(use_bytes));
+    const bool byte_mode = use_bytes || snapshot.any_bytes();
+    const bool utf = !byte_mode &&
+        (!is_ascii_string(pattern) || snapshot.any_non_ascii());
+    pcre2_code* code = compile_regex_or_stop(pattern, ignore_case, syntax, utf);
+
     const std::size_t estimated_work =
         estimated_string_work(snapshot, 24);
     const std::size_t parallel_threshold = 350000;
@@ -1015,7 +1213,7 @@ CharacterVector fast_regex_sub_impl(const std::string& pattern,
         reinterpret_cast<const uint8_t*>(compiled_replacement.data()),
         static_cast<PCRE2_SIZE>(compiled_replacement.size()),
         is_literal ? &literal_replacement : nullptr,
-        sub_flags, can_match_empty != 0, results, arenas, errors
+        sub_flags, can_match_empty != 0, utf, results, arenas, errors
     );
     dispatch_for(
         0, chunks.size(), worker,
@@ -1024,17 +1222,8 @@ CharacterVector fast_regex_sub_impl(const std::string& pattern,
     );
 
     pcre2_code_free(code);
-
-    for (R_xlen_t i = 0; i < n; ++i) {
-        const int err = errors[(std::size_t)i];
-        if (err == 0) continue;
-        PCRE2_UCHAR8 msg[256];
-        pcre2_get_error_message(err, msg, sizeof(msg));
-        stop("PCRE2 substitution failed at x[%lld]: %s",
-             static_cast<long long>(i + 1), (const char*)msg);
-    }
-
-    return finalize_text_results(snapshot, results, arenas);
+    report_pcre2_errors(errors, "substitution");
+    return finalize_text_results(snapshot, results, arenas, byte_mode);
 }
 
 struct FixedSubWorker : public Worker {
@@ -1136,28 +1325,41 @@ static bool fixed_replace_str(std::string& s,
     return true;
 }
 
+enum class ScanOutcome { unchanged, changed, missing };
+
 // Single-scan leftmost-wins replace: at each position find the earliest matching
-// needle; first needle in list breaks ties at the same position.
-static bool fixed_scan_replace(
+// needle; first needle in list breaks ties at the same position. `next` caches
+// each needle's earliest occurrence at or after the scan position, so a needle
+// is only searched again once the scan has moved past its cached occurrence.
+// A selected needle whose replacement is NA makes the whole result NA.
+static ScanOutcome fixed_scan_replace(
         const char* hay, std::size_t len,
         const std::vector<PreparedFixedSearch>& searches,
         const std::vector<std::string>& repls,
+        const std::vector<uint8_t>& repl_na,
+        std::vector<std::size_t>& next,
         std::string& result,
         SourceSliceProvenance* provenance = nullptr) {
     if (provenance)
         provenance->reset();
+    const std::size_t npos = std::string::npos;
+    next.resize(searches.size());
+    for (std::size_t j = 0; j < searches.size(); ++j)
+        next[j] = searches[j].find(hay, len, 0);
     std::size_t pos = 0;
     bool changed = false;
     while (pos < len) {
-        std::size_t best = std::string::npos, best_idx = 0;
+        std::size_t best = npos, best_idx = 0;
         for (std::size_t j = 0; j < searches.size(); ++j) {
-            std::size_t f = searches[j].find(hay, len, pos);
-            if (f != std::string::npos &&
-                (best == std::string::npos || f < best)) {
+            if (next[j] != npos && next[j] < pos)
+                next[j] = searches[j].find(hay, len, pos);
+            const std::size_t f = next[j];
+            if (f != npos && (best == npos || f < best)) {
                 best = f; best_idx = j;
             }
         }
-        if (best == std::string::npos) break;
+        if (best == npos) break;
+        if (repl_na[best_idx]) return ScanOutcome::missing;
         changed = true;
         if (provenance) {
             provenance->append(pos, best);
@@ -1167,11 +1369,11 @@ static bool fixed_scan_replace(
         result.append(repls[best_idx]);
         pos = best + searches[best_idx].size();
     }
-    if (!changed) return false;
+    if (!changed) return ScanOutcome::unchanged;
     if (provenance)
         provenance->append(pos, len);
     result.append(hay + pos, len - pos);
-    return true;
+    return ScanOutcome::changed;
 }
 
 // ---------------------------------------------------------------------------
@@ -1185,6 +1387,8 @@ struct FixedMultiSubWorker : public Worker {
     const std::vector<TextWorkChunk>& chunks;
     const std::vector<PreparedFixedSearch>& searches;
     const std::vector<std::string>& repls;
+    // repl_na[j]: replacement j is NA, so a row it applies to becomes NA.
+    const std::vector<uint8_t>& repl_na;
     bool sequential;
     std::vector<TextResult>& results;
     TextArenas& arenas;
@@ -1194,16 +1398,18 @@ struct FixedMultiSubWorker : public Worker {
             const std::vector<TextWorkChunk>& chunks,
             const std::vector<PreparedFixedSearch>& searches,
             const std::vector<std::string>& repls,
+            const std::vector<uint8_t>& repl_na,
             bool sequential,
             std::vector<TextResult>& results,
             TextArenas& arenas)
         : strings(strings), chunks(chunks), searches(searches), repls(repls),
-          sequential(sequential),
+          repl_na(repl_na), sequential(sequential),
           results(results), arenas(arenas) {}
 
     void operator()(std::size_t begin, std::size_t end) {
         std::string current, scratch;
         std::vector<SourceRange> source_map, step_ranges, next_source_map;
+        std::vector<std::size_t> next_found;
         for (std::size_t chunk = begin; chunk < end; ++chunk) {
             std::vector<char>& arena = arenas[chunk];
             arena.reserve(chunks[chunk].estimated_bytes);
@@ -1230,7 +1436,17 @@ struct FixedMultiSubWorker : public Worker {
                     append_source_range(
                         source_map, true, 0, value.size
                     );
+                    bool missing = false;
                     for (std::size_t j = 0; j < searches.size(); ++j) {
+                        if (repl_na[j]) {
+                            if (searches[j].find(current.data(),
+                                                 current.size()) !=
+                                    std::string::npos) {
+                                missing = true;
+                                break;
+                            }
+                            continue;
+                        }
                         SourceSliceProvenance step_provenance;
                         step_provenance.transform_pieces = &step_ranges;
                         const bool changed = fixed_replace_str(
@@ -1243,6 +1459,10 @@ struct FixedMultiSubWorker : public Worker {
                             );
                             source_map.swap(next_source_map);
                         }
+                    }
+                    if (missing) {
+                        results[i] = TextResult{TextResultKind::na, 0, 0, 0};
+                        continue;
                     }
                     provenance.contiguous =
                         current.empty() ||
@@ -1257,9 +1477,13 @@ struct FixedMultiSubWorker : public Worker {
                     provenance.length = current.size();
                 } else {
                     current.clear();
-                    if (!fixed_scan_replace(
-                            value.data, value.size, searches, repls,
-                            current, &provenance)) {
+                    const ScanOutcome outcome = fixed_scan_replace(
+                        value.data, value.size, searches, repls, repl_na,
+                        next_found, current, &provenance
+                    );
+                    if (outcome == ScanOutcome::unchanged) continue;
+                    if (outcome == ScanOutcome::missing) {
+                        results[i] = TextResult{TextResultKind::na, 0, 0, 0};
                         continue;
                     }
                 }
@@ -1274,9 +1498,9 @@ struct FixedMultiSubWorker : public Worker {
 };
 
 // ---------------------------------------------------------------------------
-// Multi-pattern PCRE2 substitution worker (always chains patterns in order;
-// sequential=false is a no-op for the regex path — combined-alternation with
-// proper backreference-offset rewriting is deferred future work).
+// Multi-pattern PCRE2 substitution worker. Patterns are always chained in
+// order: gsub_all() rejects sequential = FALSE for regular expressions, as a
+// combined alternation would need backreference offsets rewritten.
 // ---------------------------------------------------------------------------
 
 struct PCRE2MultiSubWorker : public Worker {
@@ -1288,7 +1512,10 @@ struct PCRE2MultiSubWorker : public Worker {
     const std::vector<std::string>& repls;
     const std::vector<uint8_t>& can_match_empty;
     const std::vector<uint8_t>& literal;
+    // repl_na[j]: replacement j is NA, so a row pattern j matches becomes NA.
+    const std::vector<uint8_t>& repl_na;
     uint32_t sub_flags;
+    bool utf;
     std::vector<TextResult>& results;
     TextArenas& arenas;
     std::vector<int>& errors;
@@ -1301,14 +1528,16 @@ struct PCRE2MultiSubWorker : public Worker {
             const std::vector<std::string>& repls,
             const std::vector<uint8_t>& can_match_empty,
             const std::vector<uint8_t>& literal,
+            const std::vector<uint8_t>& repl_na,
             uint32_t sub_flags,
+            bool utf,
             std::vector<TextResult>& results,
             TextArenas& arenas,
             std::vector<int>& errors,
             std::vector<std::size_t>& error_patterns)
         : strings(strings), chunks(chunks), codes(codes), repls(repls),
           can_match_empty(can_match_empty), literal(literal),
-          sub_flags(sub_flags),
+          repl_na(repl_na), sub_flags(sub_flags), utf(utf),
           results(results), arenas(arenas),
           errors(errors), error_patterns(error_patterns) {}
 
@@ -1353,6 +1582,7 @@ struct PCRE2MultiSubWorker : public Worker {
                 PCRE2_SIZE cur_len =
                     static_cast<PCRE2_SIZE>(value.size);
                 bool any_changed = false;
+                bool missing = false;
                 source_map.clear();
                 append_source_range(source_map, true, 0, value.size);
 
@@ -1368,6 +1598,10 @@ struct PCRE2MultiSubWorker : public Worker {
                         error_patterns[i] = j + 1;
                         break;
                     }
+                    if (repl_na[j]) {
+                        missing = true;
+                        break;
+                    }
 
                     const std::string& rp = repls[j];
                     PCRE2_SIZE outlen = 0;
@@ -1380,7 +1614,7 @@ struct PCRE2MultiSubWorker : public Worker {
                         static_cast<PCRE2_SIZE>(rp.size()),
                         sub_flags, can_match_empty[j] != 0,
                         mdatas[j], replacement_scratch, buf_a,
-                        &step_provenance, literal[j] != 0
+                        &step_provenance, literal[j] != 0, utf
                     );
                     outlen = static_cast<PCRE2_SIZE>(buf_a.size());
                     if (rc < 0) {
@@ -1404,7 +1638,12 @@ struct PCRE2MultiSubWorker : public Worker {
                     any_changed = true;
                 }
 
-                if (errors[i] != 0 || !any_changed) continue;
+                if (errors[i] != 0) continue;
+                if (missing) {
+                    results[i] = TextResult{TextResultKind::na, 0, 0, 0};
+                    continue;
+                }
+                if (!any_changed) continue;
                 if (static_cast<std::size_t>(cur_len) == value.size &&
                     (cur_len == 0 ||
                      std::memcmp(cur_data, value.data, value.size) == 0)) {
@@ -1440,20 +1679,26 @@ CharacterVector fast_fixed_gsub_all_impl(
         const StringVector& replacements,
         const StringVector& x,
         bool ignore_case, bool sequential,
+        bool use_bytes,
         int nthreads) {
     const std::size_t np = (std::size_t)patterns.size();
 
     std::vector<PreparedFixedSearch> searches;
     searches.reserve(np);
     std::vector<std::string> repl_strs(np);
+    std::vector<uint8_t> repl_na(np, 0);
     for (std::size_t j = 0; j < np; ++j) {
         const std::string pattern = Rcpp::as<std::string>(patterns[j]);
         if (pattern.empty()) stop("zero-length pattern");
         searches.emplace_back(pattern, ignore_case);
-        repl_strs[j] = Rcpp::as<std::string>(replacements[j]);
+        if (STRING_ELT(replacements, static_cast<R_xlen_t>(j)) == NA_STRING)
+            repl_na[j] = 1;
+        else
+            repl_strs[j] = Rcpp::as<std::string>(replacements[j]);
     }
 
-    StringSnapshot snapshot(x);
+    StringSnapshot snapshot(x, snapshot_text(use_bytes));
+    const bool byte_mode = use_bytes || snapshot.any_bytes();
     const std::size_t estimated_work =
         estimated_string_work(snapshot, 16);
     const std::size_t parallel_threshold = 300000;
@@ -1465,7 +1710,7 @@ CharacterVector fast_fixed_gsub_all_impl(
     TextArenas arenas(chunks.size());
 
     FixedMultiSubWorker worker(
-        snapshot.data(), chunks, searches, repl_strs, sequential,
+        snapshot.data(), chunks, searches, repl_strs, repl_na, sequential,
         results, arenas
     );
     dispatch_for(
@@ -1474,45 +1719,71 @@ CharacterVector fast_fixed_gsub_all_impl(
         work_plan.dispatch_threads, work_plan.grain_size
     );
 
-    return finalize_text_results(snapshot, results, arenas);
+    return finalize_text_results(snapshot, results, arenas, byte_mode);
 }
 
+// Patterns are always applied one after another; `syntax` holds one
+// RegexSyntax per pattern.
 // [[Rcpp::export]]
 CharacterVector fast_regex_gsub_all_impl(
         const StringVector& patterns,
         const StringVector& replacements,
         const StringVector& x,
-        bool ignore_case, bool sequential,
+        bool ignore_case,
+        const IntegerVector& syntax,
+        bool use_bytes,
         int nthreads) {
-    (void)sequential;  // regex path always chains patterns sequentially
     const std::size_t np = (std::size_t)patterns.size();
-    uint32_t opts      = ignore_case ? PCRE2_CASELESS : 0;
     uint32_t sub_flags = PCRE2_SUBSTITUTE_GLOBAL |
         PCRE2_SUBSTITUTE_EXTENDED | PCRE2_SUBSTITUTE_UNSET_EMPTY;
+
+    const R_xlen_t n = x.size();
+    StringSnapshot snapshot(x, snapshot_text(use_bytes));
+    const bool byte_mode = use_bytes || snapshot.any_bytes();
+    bool any_non_ascii_pattern = false;
+    std::vector<std::string> pattern_strs(np);
+    for (std::size_t j = 0; j < np; ++j) {
+        pattern_strs[j] = Rcpp::as<std::string>(patterns[j]);
+        if (!is_ascii_string(pattern_strs[j])) any_non_ascii_pattern = true;
+    }
+    // Earlier replacements can introduce non-ASCII text, so later patterns
+    // must also run in UTF mode when any replacement is non-ASCII.
+    bool any_non_ascii_replacement = false;
+    for (std::size_t j = 0; j < np; ++j) {
+        if (STRING_ELT(replacements, static_cast<R_xlen_t>(j)) != NA_STRING &&
+            !is_ascii_string(Rcpp::as<std::string>(replacements[j])))
+            any_non_ascii_replacement = true;
+    }
+    const bool utf = !byte_mode &&
+        (any_non_ascii_pattern || any_non_ascii_replacement ||
+         snapshot.any_non_ascii());
 
     std::vector<pcre2_code*> codes(np, nullptr);
     std::vector<std::string> repl_strs(np);
     std::vector<uint8_t> can_match_empty(np, 0);
     std::vector<uint8_t> literal(np, 0);
+    std::vector<uint8_t> repl_na(np, 0);
 
     for (std::size_t j = 0; j < np; ++j) {
-        const std::string replacement = Rcpp::as<std::string>(replacements[j]);
-        if (literal_r_replacement(replacement, repl_strs[j]))
+        if (STRING_ELT(replacements, static_cast<R_xlen_t>(j)) == NA_STRING) {
+            repl_na[j] = 1;
             literal[j] = 1;
-        else
-            repl_strs[j] = compile_pcre2_replacement(replacement);
-        std::string pat = Rcpp::as<std::string>(patterns[j]);
-        int errcode; PCRE2_SIZE erroffset;
-        codes[j] = pcre2_compile(
-            (PCRE2_SPTR8)pat.c_str(), pat.size(),
-            opts, &errcode, &erroffset, NULL);
+        } else {
+            const std::string replacement =
+                Rcpp::as<std::string>(replacements[j]);
+            if (literal_r_replacement(replacement, repl_strs[j]))
+                literal[j] = 1;
+            else
+                repl_strs[j] = compile_pcre2_replacement(replacement);
+        }
+        std::string error;
+        codes[j] = compile_regex(
+            pattern_strs[j], ignore_case, syntax[j], utf, error
+        );
         if (!codes[j]) {
             for (std::size_t k = 0; k < j; ++k) pcre2_code_free(codes[k]);
-            PCRE2_UCHAR8 msg[256];
-            pcre2_get_error_message(errcode, msg, sizeof(msg));
-            stop("Invalid PCRE2 pattern[%zu]: %s", j, (const char*)msg);
+            stop("Invalid PCRE2 pattern[%zu]: %s", j + 1, error.c_str());
         }
-        pcre2_jit_compile(codes[j], PCRE2_JIT_COMPLETE);
         uint32_t match_empty = 0;
         pcre2_pattern_info(
             codes[j], PCRE2_INFO_MATCHEMPTY, &match_empty
@@ -1520,8 +1791,6 @@ CharacterVector fast_regex_gsub_all_impl(
         can_match_empty[j] = match_empty != 0;
     }
 
-    const R_xlen_t n = x.size();
-    StringSnapshot snapshot(x);
     const std::size_t estimated_work =
         estimated_string_work(snapshot, 32);
     const std::size_t parallel_threshold = 450000;
@@ -1538,7 +1807,7 @@ CharacterVector fast_regex_gsub_all_impl(
 
     PCRE2MultiSubWorker worker(
         snapshot.data(), chunks, codes, repl_strs, can_match_empty,
-        literal, sub_flags, results, arenas, errors,
+        literal, repl_na, sub_flags, utf, results, arenas, errors,
         error_patterns
     );
     dispatch_for(
@@ -1548,18 +1817,8 @@ CharacterVector fast_regex_gsub_all_impl(
     );
 
     for (std::size_t j = 0; j < np; ++j) pcre2_code_free(codes[j]);
-
-    for (R_xlen_t i = 0; i < n; ++i) {
-        const int err = errors[(std::size_t)i];
-        if (err == 0) continue;
-        PCRE2_UCHAR8 msg[256];
-        pcre2_get_error_message(err, msg, sizeof(msg));
-        stop("PCRE2 substitution failed for pattern[%zu] at x[%lld]: %s",
-             error_patterns[(std::size_t)i],
-             static_cast<long long>(i + 1), (const char*)msg);
-    }
-
-    return finalize_text_results(snapshot, results, arenas);
+    report_pcre2_errors(errors, "substitution", &error_patterns);
+    return finalize_text_results(snapshot, results, arenas, byte_mode);
 }
 
 // [[Rcpp::export]]
@@ -1568,10 +1827,12 @@ CharacterVector fast_fixed_sub_impl(const std::string& pattern,
                                      const StringVector& x,
                                      bool ignore_case,
                                      bool global,
+                                     bool use_bytes,
                                      int nthreads) {
     if (pattern.empty()) stop("zero-length pattern");
 
-    StringSnapshot snapshot(x);
+    StringSnapshot snapshot(x, snapshot_text(use_bytes));
+    const bool byte_mode = use_bytes || snapshot.any_bytes();
     const std::size_t estimated_work =
         estimated_string_work(snapshot, 12);
     const std::size_t parallel_threshold = 300000;
@@ -1592,5 +1853,5 @@ CharacterVector fast_fixed_sub_impl(const std::string& pattern,
         work_plan.dispatch_threads, work_plan.grain_size
     );
 
-    return finalize_text_results(snapshot, results, arenas);
+    return finalize_text_results(snapshot, results, arenas, byte_mode);
 }
