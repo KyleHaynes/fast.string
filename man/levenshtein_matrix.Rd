@@ -16,7 +16,8 @@ RcppParallel default.}
 UTF-8 code points when \code{FALSE}.}
 }
 \value{
-Numeric matrix with \code{length(a)} rows and \code{length(b)} columns.
+Numeric matrix with \code{length(a)} rows and \code{length(b)} columns,
+with \code{names(a)} and \code{names(b)} as row and column names when present.
 }
 \description{
 Levenshtein all-pairs distance matrix

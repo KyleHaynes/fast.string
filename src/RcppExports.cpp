@@ -612,8 +612,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // fast_jaccard_impl
-NumericVector fast_jaccard_impl(const StringVector& a, const StringVector& b, int q, int nthreads);
-RcppExport SEXP _fast_string_fast_jaccard_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP) {
+NumericVector fast_jaccard_impl(const StringVector& a, const StringVector& b, int q, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_jaccard_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -621,13 +621,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
     Rcpp::traits::input_parameter< int >::type q(qSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_jaccard_impl(a, b, q, nthreads));
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_jaccard_impl(a, b, q, nthreads, use_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_jaccard_matrix_impl
-NumericMatrix fast_jaccard_matrix_impl(const StringVector& a, const StringVector& b, int q, int nthreads);
-RcppExport SEXP _fast_string_fast_jaccard_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP) {
+NumericMatrix fast_jaccard_matrix_impl(const StringVector& a, const StringVector& b, int q, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_jaccard_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -635,13 +636,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
     Rcpp::traits::input_parameter< int >::type q(qSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_jaccard_matrix_impl(a, b, q, nthreads));
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_jaccard_matrix_impl(a, b, q, nthreads, use_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_dice_impl
-NumericVector fast_dice_impl(const StringVector& a, const StringVector& b, int q, int nthreads);
-RcppExport SEXP _fast_string_fast_dice_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP) {
+NumericVector fast_dice_impl(const StringVector& a, const StringVector& b, int q, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_dice_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -649,13 +651,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
     Rcpp::traits::input_parameter< int >::type q(qSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_dice_impl(a, b, q, nthreads));
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_dice_impl(a, b, q, nthreads, use_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_dice_matrix_impl
-NumericMatrix fast_dice_matrix_impl(const StringVector& a, const StringVector& b, int q, int nthreads);
-RcppExport SEXP _fast_string_fast_dice_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP) {
+NumericMatrix fast_dice_matrix_impl(const StringVector& a, const StringVector& b, int q, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_dice_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -663,13 +666,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
     Rcpp::traits::input_parameter< int >::type q(qSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_dice_matrix_impl(a, b, q, nthreads));
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_dice_matrix_impl(a, b, q, nthreads, use_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_tversky_impl
-NumericVector fast_tversky_impl(const StringVector& a, const StringVector& b, int q, double alpha, double beta, int nthreads);
-RcppExport SEXP _fast_string_fast_tversky_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP nthreadsSEXP) {
+NumericVector fast_tversky_impl(const StringVector& a, const StringVector& b, int q, double alpha, double beta, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_tversky_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -679,13 +683,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_tversky_impl(a, b, q, alpha, beta, nthreads));
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_tversky_impl(a, b, q, alpha, beta, nthreads, use_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_tversky_matrix_impl
-NumericMatrix fast_tversky_matrix_impl(const StringVector& a, const StringVector& b, int q, double alpha, double beta, int nthreads);
-RcppExport SEXP _fast_string_fast_tversky_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP nthreadsSEXP) {
+NumericMatrix fast_tversky_matrix_impl(const StringVector& a, const StringVector& b, int q, double alpha, double beta, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_tversky_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -695,13 +700,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_tversky_matrix_impl(a, b, q, alpha, beta, nthreads));
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_tversky_matrix_impl(a, b, q, alpha, beta, nthreads, use_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_cosine_impl
-NumericVector fast_cosine_impl(const StringVector& a, const StringVector& b, int q, int nthreads);
-RcppExport SEXP _fast_string_fast_cosine_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP) {
+NumericVector fast_cosine_impl(const StringVector& a, const StringVector& b, int q, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_cosine_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -709,13 +715,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
     Rcpp::traits::input_parameter< int >::type q(qSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_cosine_impl(a, b, q, nthreads));
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_cosine_impl(a, b, q, nthreads, use_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_cosine_matrix_impl
-NumericMatrix fast_cosine_matrix_impl(const StringVector& a, const StringVector& b, int q, int nthreads);
-RcppExport SEXP _fast_string_fast_cosine_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP) {
+NumericMatrix fast_cosine_matrix_impl(const StringVector& a, const StringVector& b, int q, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_cosine_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -723,7 +730,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
     Rcpp::traits::input_parameter< int >::type q(qSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_cosine_matrix_impl(a, b, q, nthreads));
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_cosine_matrix_impl(a, b, q, nthreads, use_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -771,14 +779,14 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_hamming_impl", (DL_FUNC) &_fast_string_fast_hamming_impl, 4},
     {"_fast_string_fast_edit_similarity_impl", (DL_FUNC) &_fast_string_fast_edit_similarity_impl, 5},
     {"_fast_string_fast_levenshtein_within_impl", (DL_FUNC) &_fast_string_fast_levenshtein_within_impl, 5},
-    {"_fast_string_fast_jaccard_impl", (DL_FUNC) &_fast_string_fast_jaccard_impl, 4},
-    {"_fast_string_fast_jaccard_matrix_impl", (DL_FUNC) &_fast_string_fast_jaccard_matrix_impl, 4},
-    {"_fast_string_fast_dice_impl", (DL_FUNC) &_fast_string_fast_dice_impl, 4},
-    {"_fast_string_fast_dice_matrix_impl", (DL_FUNC) &_fast_string_fast_dice_matrix_impl, 4},
-    {"_fast_string_fast_tversky_impl", (DL_FUNC) &_fast_string_fast_tversky_impl, 6},
-    {"_fast_string_fast_tversky_matrix_impl", (DL_FUNC) &_fast_string_fast_tversky_matrix_impl, 6},
-    {"_fast_string_fast_cosine_impl", (DL_FUNC) &_fast_string_fast_cosine_impl, 4},
-    {"_fast_string_fast_cosine_matrix_impl", (DL_FUNC) &_fast_string_fast_cosine_matrix_impl, 4},
+    {"_fast_string_fast_jaccard_impl", (DL_FUNC) &_fast_string_fast_jaccard_impl, 5},
+    {"_fast_string_fast_jaccard_matrix_impl", (DL_FUNC) &_fast_string_fast_jaccard_matrix_impl, 5},
+    {"_fast_string_fast_dice_impl", (DL_FUNC) &_fast_string_fast_dice_impl, 5},
+    {"_fast_string_fast_dice_matrix_impl", (DL_FUNC) &_fast_string_fast_dice_matrix_impl, 5},
+    {"_fast_string_fast_tversky_impl", (DL_FUNC) &_fast_string_fast_tversky_impl, 7},
+    {"_fast_string_fast_tversky_matrix_impl", (DL_FUNC) &_fast_string_fast_tversky_matrix_impl, 7},
+    {"_fast_string_fast_cosine_impl", (DL_FUNC) &_fast_string_fast_cosine_impl, 5},
+    {"_fast_string_fast_cosine_matrix_impl", (DL_FUNC) &_fast_string_fast_cosine_matrix_impl, 5},
     {NULL, NULL, 0}
 };
 

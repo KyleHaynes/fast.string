@@ -169,35 +169,35 @@ fast_levenshtein_within_impl <- function(a, b, max_distance, nthreads, use_bytes
     .Call(`_fast_string_fast_levenshtein_within_impl`, a, b, max_distance, nthreads, use_bytes)
 }
 
-fast_jaccard_impl <- function(a, b, q, nthreads) {
-    .Call(`_fast_string_fast_jaccard_impl`, a, b, q, nthreads)
+fast_jaccard_impl <- function(a, b, q, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_jaccard_impl`, a, b, q, nthreads, use_bytes)
 }
 
-fast_jaccard_matrix_impl <- function(a, b, q, nthreads) {
-    .Call(`_fast_string_fast_jaccard_matrix_impl`, a, b, q, nthreads)
+fast_jaccard_matrix_impl <- function(a, b, q, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_jaccard_matrix_impl`, a, b, q, nthreads, use_bytes)
 }
 
-fast_dice_impl <- function(a, b, q, nthreads) {
-    .Call(`_fast_string_fast_dice_impl`, a, b, q, nthreads)
+fast_dice_impl <- function(a, b, q, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_dice_impl`, a, b, q, nthreads, use_bytes)
 }
 
-fast_dice_matrix_impl <- function(a, b, q, nthreads) {
-    .Call(`_fast_string_fast_dice_matrix_impl`, a, b, q, nthreads)
+fast_dice_matrix_impl <- function(a, b, q, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_dice_matrix_impl`, a, b, q, nthreads, use_bytes)
 }
 
-fast_tversky_impl <- function(a, b, q, alpha, beta, nthreads) {
-    .Call(`_fast_string_fast_tversky_impl`, a, b, q, alpha, beta, nthreads)
+fast_tversky_impl <- function(a, b, q, alpha, beta, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_tversky_impl`, a, b, q, alpha, beta, nthreads, use_bytes)
 }
 
-fast_tversky_matrix_impl <- function(a, b, q, alpha, beta, nthreads) {
-    .Call(`_fast_string_fast_tversky_matrix_impl`, a, b, q, alpha, beta, nthreads)
+fast_tversky_matrix_impl <- function(a, b, q, alpha, beta, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_tversky_matrix_impl`, a, b, q, alpha, beta, nthreads, use_bytes)
 }
 
-fast_cosine_impl <- function(a, b, q, nthreads) {
-    .Call(`_fast_string_fast_cosine_impl`, a, b, q, nthreads)
+fast_cosine_impl <- function(a, b, q, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_cosine_impl`, a, b, q, nthreads, use_bytes)
 }
 
-fast_cosine_matrix_impl <- function(a, b, q, nthreads) {
-    .Call(`_fast_string_fast_cosine_matrix_impl`, a, b, q, nthreads)
+fast_cosine_matrix_impl <- function(a, b, q, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_cosine_matrix_impl`, a, b, q, nthreads, use_bytes)
 }
 

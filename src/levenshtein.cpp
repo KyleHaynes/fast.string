@@ -218,6 +218,49 @@ static NumericVector run_distance(const StringVector& a,
     return result;
 }
 
+// m(x, x): the edit distances are symmetric, so each row computes only the
+// cells right of the diagonal and mirrors them; the diagonal is 0 (NA for
+// NA). Rows never write the same cell.
+struct SymmetricDistanceMatrixWorker : public Worker {
+    const StringView* bytes;
+    const CodepointView* codepoints;
+    MetricMethod method;
+    bool use_bytes;
+    std::size_t size;
+    double* output;
+
+    SymmetricDistanceMatrixWorker(const StringView* bytes_,
+                                  const CodepointView* codepoints_,
+                                  MetricMethod method_, bool use_bytes_,
+                                  std::size_t size_, double* output_)
+        : bytes(bytes_), codepoints(codepoints_), method(method_),
+          use_bytes(use_bytes_), size(size_), output(output_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        DamerauWorkspace workspace;
+        for (std::size_t row = begin; row < end; ++row) {
+            output[row + row * size] = bytes[row].is_na() ? NA_REAL : 0.0;
+            for (std::size_t column = row + 1; column < size; ++column) {
+                double value;
+                if (bytes[row].is_na() || bytes[column].is_na()) {
+                    value = NA_REAL;
+                } else {
+                    const int distance = use_bytes ||
+                        (codepoints[row].ascii && codepoints[column].ascii)
+                        ? metric_distance_bytes(method, bytes[row], bytes[column])
+                        : metric_distance_codepoints_with_workspace(
+                            method, codepoints[row], codepoints[column],
+                            workspace
+                        );
+                    value = static_cast<double>(distance);
+                }
+                output[row + column * size] = value;
+                output[column + row * size] = value;
+            }
+        }
+    }
+};
+
 static NumericMatrix run_distance_matrix(const StringVector& a,
                                          const StringVector& b,
                                          MetricMethod method, int nthreads,
@@ -228,13 +271,27 @@ static NumericMatrix run_distance_matrix(const StringVector& a,
         rows > (std::numeric_limits<std::size_t>::max)() / columns)
         stop("Requested pairwise matrix is too large.");
     const std::size_t cells = rows * columns;
-    StringSnapshot a_bytes(a), b_bytes(b);
+    const bool symmetric = static_cast<SEXP>(a) == static_cast<SEXP>(b);
+    StringSnapshot a_bytes(a);
+    std::unique_ptr<StringSnapshot> b_owned;
+    if (!symmetric) b_owned.reset(new StringSnapshot(b));
+    const StringSnapshot& b_bytes = symmetric ? a_bytes : *b_owned;
     std::unique_ptr<CodepointSnapshot> a_codepoints, b_codepoints;
     if (!use_bytes) {
         a_codepoints.reset(new CodepointSnapshot(a, "a"));
-        b_codepoints.reset(new CodepointSnapshot(b, "b"));
+        if (!symmetric) b_codepoints.reset(new CodepointSnapshot(b, "b"));
     }
     NumericMatrix result(a.size(), b.size());
+    if (symmetric) {
+        SymmetricDistanceMatrixWorker worker(
+            a_bytes.data(), use_bytes ? nullptr : a_codepoints->data(),
+            method, use_bytes, rows, REAL(result)
+        );
+        const std::size_t work =
+            estimated_matrix_string_work(a_bytes, a_bytes, cells);
+        dispatch_for(0, rows, worker, work / 2 + work % 2, 10000, nthreads, 1);
+        return result;
+    }
     DistanceMatrixWorker worker(
         a_bytes.data(), b_bytes.data(),
         use_bytes ? nullptr : a_codepoints->data(),

@@ -35,6 +35,9 @@
 #'   Dice). Non-negative scalars.
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
+#' @param use_bytes Logical scalar. Build q-grams from encoded bytes when
+#'   `TRUE` (the compatibility default), or from UTF-8 code points when
+#'   `FALSE`, so that an accented letter counts as one character.
 #' @return Numeric vector of similarities in `[0, 1]`, `length(a)` long.
 #'   `NA` if either `a[i]` or `b[i]` is `NA`. Identical strings score `1`;
 #'   different strings that share no q-gram score `0` -- including two
@@ -61,25 +64,27 @@ NULL
         stop("`", name, "` must be a single non-negative number.")
 }
 
-.qgram_validate <- function(a, b, q) {
+.qgram_validate <- function(a, b, q, use_bytes = TRUE) {
     if (!is.character(a) || !is.character(b))
         stop("`a` and `b` must be character vectors.")
     if (length(a) != length(b))
         stop("`a` and `b` must have the same length.")
     .qgram_validate_q(q)
+    .validate_use_bytes(use_bytes)
 }
 
-.qgram_validate_matrix <- function(a, b, q) {
+.qgram_validate_matrix <- function(a, b, q, use_bytes = TRUE) {
     if (!is.character(a) || !is.character(b))
         stop("`a` and `b` must be character vectors.")
     .qgram_validate_q(q)
+    .validate_use_bytes(use_bytes)
 }
 
 #' @rdname qgram_metrics
 #' @export
-jaccard_index <- function(a, b, q = 2, nthreads = NULL) {
-    .qgram_validate(a, b, q)
-    fast_jaccard_impl(a, b, as.integer(q), .as_nthreads(nthreads))
+jaccard_index <- function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
+    .qgram_validate(a, b, q, use_bytes)
+    fast_jaccard_impl(a, b, as.integer(q), .as_nthreads(nthreads), use_bytes)
 }
 
 #' Q-gram Jaccard all-pairs similarity matrix
@@ -89,45 +94,48 @@ jaccard_index <- function(a, b, q = 2, nthreads = NULL) {
 #' @param q Q-gram length (default `2`).
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
-#' @return Numeric matrix of dimensions n × m.
+#' @inheritParams qgram_metrics
+#' @return Numeric matrix with `length(a)` rows and `length(b)` columns,
+#'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family q-gram similarity functions
 #' @examples
 #' jaccard_matrix(c("night", "nacht"), c("night", "nacht", "day"))
 #' @export
-jaccard_matrix <-function(a, b, q = 2, nthreads = NULL) {
-    .qgram_validate_matrix(a, b, q)
-    fast_jaccard_matrix_impl(a, b, as.integer(q), .as_nthreads(nthreads))
+jaccard_matrix <-function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
+    .qgram_validate_matrix(a, b, q, use_bytes)
+    .matrix_dimnames(fast_jaccard_matrix_impl(a, b, as.integer(q), .as_nthreads(nthreads), use_bytes), a, b)
 }
 
 #' @rdname qgram_metrics
 #' @export
-dice_coefficient <- function(a, b, q = 2, nthreads = NULL) {
-    .qgram_validate(a, b, q)
-    fast_dice_impl(a, b, as.integer(q), .as_nthreads(nthreads))
+dice_coefficient <- function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
+    .qgram_validate(a, b, q, use_bytes)
+    fast_dice_impl(a, b, as.integer(q), .as_nthreads(nthreads), use_bytes)
 }
 
 #' Q-gram Sorensen-Dice all-pairs similarity matrix
 #'
 #' @inheritParams jaccard_matrix
-#' @return Numeric matrix of dimensions n × m.
+#' @return Numeric matrix with `length(a)` rows and `length(b)` columns,
+#'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family q-gram similarity functions
 #' @examples
 #' dice_matrix(c("night", "nacht"), c("night", "nacht", "day"))
 #' @export
-dice_matrix <-function(a, b, q = 2, nthreads = NULL) {
-    .qgram_validate_matrix(a, b, q)
-    fast_dice_matrix_impl(a, b, as.integer(q), .as_nthreads(nthreads))
+dice_matrix <-function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
+    .qgram_validate_matrix(a, b, q, use_bytes)
+    .matrix_dimnames(fast_dice_matrix_impl(a, b, as.integer(q), .as_nthreads(nthreads), use_bytes), a, b)
 }
 
 #' @rdname qgram_metrics
 #' @export
-tversky_index <- function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL) {
-    .qgram_validate(a, b, q)
+tversky_index <- function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL, use_bytes = TRUE) {
+    .qgram_validate(a, b, q, use_bytes)
     .qgram_validate_weight(alpha, "alpha")
     .qgram_validate_weight(beta, "beta")
     fast_tversky_impl(
         a, b, as.integer(q), as.double(alpha), as.double(beta),
-        .as_nthreads(nthreads)
+        .as_nthreads(nthreads), use_bytes
     )
 }
 
@@ -135,20 +143,21 @@ tversky_index <- function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
 #'
 #' @inheritParams jaccard_matrix
 #' @param alpha,beta Tversky asymmetry weights (default `0.5` each).
-#' @return Numeric matrix of dimensions n × m.
+#' @return Numeric matrix with `length(a)` rows and `length(b)` columns,
+#'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family q-gram similarity functions
 #' @examples
 #' tversky_matrix(c("night", "nacht"), c("night", "nacht", "day"),
 #'                alpha = 1, beta = 0)
 #' @export
-tversky_matrix <-function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL) {
-    .qgram_validate_matrix(a, b, q)
+tversky_matrix <-function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL, use_bytes = TRUE) {
+    .qgram_validate_matrix(a, b, q, use_bytes)
     .qgram_validate_weight(alpha, "alpha")
     .qgram_validate_weight(beta, "beta")
-    fast_tversky_matrix_impl(
+    .matrix_dimnames(fast_tversky_matrix_impl(
         a, b, as.integer(q), as.double(alpha), as.double(beta),
-        .as_nthreads(nthreads)
-    )
+        .as_nthreads(nthreads), use_bytes
+    ), a, b)
 }
 
 #' Q-gram cosine similarity
@@ -167,20 +176,21 @@ tversky_matrix <-function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
 #' cosine_similarity("night", "nacht")
 #' cosine_similarity("aaaa", "aaab", q = 2)
 #' @export
-cosine_similarity <- function(a, b, q = 2, nthreads = NULL) {
-    .qgram_validate(a, b, q)
-    fast_cosine_impl(a, b, as.integer(q), .as_nthreads(nthreads))
+cosine_similarity <- function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
+    .qgram_validate(a, b, q, use_bytes)
+    fast_cosine_impl(a, b, as.integer(q), .as_nthreads(nthreads), use_bytes)
 }
 
 #' Q-gram cosine all-pairs similarity matrix
 #'
 #' @inheritParams jaccard_matrix
-#' @return Numeric matrix with `length(a)` rows and `length(b)` columns.
+#' @return Numeric matrix with `length(a)` rows and `length(b)` columns,
+#'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family q-gram similarity functions
 #' @examples
 #' cosine_matrix(c("night", "nacht"), c("night", "nacht", "day"))
 #' @export
-cosine_matrix <-function(a, b, q = 2, nthreads = NULL) {
-    .qgram_validate_matrix(a, b, q)
-    fast_cosine_matrix_impl(a, b, as.integer(q), .as_nthreads(nthreads))
+cosine_matrix <-function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
+    .qgram_validate_matrix(a, b, q, use_bytes)
+    .matrix_dimnames(fast_cosine_matrix_impl(a, b, as.integer(q), .as_nthreads(nthreads), use_bytes), a, b)
 }

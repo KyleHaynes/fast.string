@@ -55,7 +55,8 @@ jaro_winkler <- function(a, b, p = 0.1, nthreads = NULL,
 #' @param p Prefix scaling factor (default 0.1).
 #' @param nthreads Integer thread cap, or `NULL` to use the
 #'   RcppParallel default for this call.
-#' @return Numeric matrix with n rows and m columns; a cell is `NA` where
+#' @return Numeric matrix with n rows and m columns (named by `names(a)` and
+#'   `names(b)` when present); a cell is `NA` where
 #'   either input is `NA`.
 #' @inheritParams jaro_winkler
 #' @family Jaro-Winkler functions
@@ -71,9 +72,9 @@ jaro_winkler_matrix <- function(a, b, p = 0.1, nthreads = NULL,
         stop("`a` and `b` must be character vectors.")
     .validate_use_bytes(use_bytes)
     .validate_prefix_scale(p)
-    fast_jaro_winkler_matrix_impl(
+    .matrix_dimnames(fast_jaro_winkler_matrix_impl(
         a, b, as.double(p), .as_nthreads(nthreads), use_bytes
-    )
+    ), a, b)
 }
 
 .validate_prefix_scale <- function(p) {

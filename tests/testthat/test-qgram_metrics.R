@@ -209,3 +209,25 @@ test_that("q-gram arguments are validated", {
     expect_error(fast.string::jaccard_index("a", "b", q = 2.5), "integer >= 1")
     expect_error(fast.string::tversky_index("a", "b", alpha = NA), "non-negative")
 })
+
+test_that("use_bytes = FALSE builds q-grams from code points", {
+    e <- intToUtf8(0xe9)
+    a <- paste0("caf", e)
+    b <- "cafe"
+    # Bytes: "c3 a9" adds two byte bigrams; code points: one.
+    expect_equal(fast.string::jaccard_index(a, b, use_bytes = FALSE), 2 / 4)
+    expect_equal(fast.string::jaccard_index(a, b), 2 / 5)
+    skip_if_not_installed("stringdist")
+    x <- c(a, paste0(e, e, "ab"), "abc", paste0("x", e, "yz"))
+    y <- c(b, paste0(e, "ab"), "abd", paste0("x", e, "y"))
+    for (q in 1:3) {
+        expect_equal(fast.string::jaccard_index(x, y, q = q, use_bytes = FALSE),
+                     stringdist::stringsim(x, y, "jaccard", q = q))
+        expect_equal(fast.string::cosine_similarity(x, y, q = q, use_bytes = FALSE),
+                     stringdist::stringsim(x, y, "cosine", q = q))
+    }
+    m <- fast.string::dice_matrix(x, y, use_bytes = FALSE)
+    expect_identical(as.vector(m), fast.string::dice_coefficient(
+        rep(x, length(y)), rep(y, each = length(x)), use_bytes = FALSE
+    ))
+})

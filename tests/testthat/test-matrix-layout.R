@@ -59,3 +59,23 @@ test_that("Tversky matrices retain asymmetric input orientation", {
     expect_equal(reverse[[1L]], 2 / (2 + 0.2))
     expect_false(isTRUE(all.equal(forward[[1L]], reverse[[1L]])))
 })
+
+test_that("self matrices are mirrored exactly and carry names", {
+    x <- c(a = "kitten", b = "sitting", c = NA, d = "", e = "mitten")
+    y <- x[seq_along(x)]  # the same values in a different R object
+    for (fn in list(fast.string::levenshtein_matrix, fast.string::osa_distance_matrix,
+                    fast.string::damerau_levenshtein_matrix, fast.string::jaro_winkler_matrix,
+                    fast.string::jaccard_matrix, fast.string::dice_matrix,
+                    fast.string::cosine_matrix, fast.string::tversky_matrix)) {
+        m <- fn(x, x)
+        expect_identical(m, fn(x, y))
+        expect_identical(dimnames(m), list(names(x), names(x)))
+    }
+    expect_null(dimnames(fast.string::levenshtein_matrix(unname(x), unname(x))))
+    # The prepared q-gram path (>= 4096 cells) mirrors exactly too.
+    z <- rep(c("night", "nacht", "a", "b", NA, ""), 15)
+    expect_identical(fast.string::jaccard_matrix(z, z),
+                     fast.string::jaccard_matrix(z, z[seq_along(z)]))
+    expect_identical(fast.string::cosine_matrix(z, z),
+                     fast.string::cosine_matrix(z, z[seq_along(z)]))
+})

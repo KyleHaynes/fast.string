@@ -48,6 +48,13 @@ NULL
     .validate_use_bytes(use_bytes)
 }
 
+# Row and column names from names(a) and names(b), as outer() gives.
+.matrix_dimnames <- function(m, a, b) {
+    if (!is.null(names(a)) || !is.null(names(b)))
+        dimnames(m) <- list(names(a), names(b))
+    m
+}
+
 .validate_use_bytes <- function(use_bytes) {
     if (!is.logical(use_bytes) || length(use_bytes) != 1L || is.na(use_bytes))
         stop("`use_bytes` must be TRUE or FALSE.")
@@ -64,14 +71,15 @@ levenshtein <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 #' Levenshtein all-pairs distance matrix
 #'
 #' @inheritParams edit_distance
-#' @return Numeric matrix with `length(a)` rows and `length(b)` columns.
+#' @return Numeric matrix with `length(a)` rows and `length(b)` columns,
+#'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family edit distance functions
 #' @examples
 #' levenshtein_matrix(c("kitten", "flaw"), c("sitting", "lawn"))
 #' @export
 levenshtein_matrix <-function(a, b, nthreads = NULL, use_bytes = TRUE) {
     .editdist_validate_matrix(a, b, use_bytes)
-    fast_levenshtein_matrix_impl(a, b, .as_nthreads(nthreads), use_bytes)
+    .matrix_dimnames(fast_levenshtein_matrix_impl(a, b, .as_nthreads(nthreads), use_bytes), a, b)
 }
 
 #' @rdname edit_distance
@@ -84,14 +92,15 @@ osa_distance <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 #' Optimal String Alignment all-pairs distance matrix
 #'
 #' @inheritParams edit_distance
-#' @return Numeric matrix with `length(a)` rows and `length(b)` columns.
+#' @return Numeric matrix with `length(a)` rows and `length(b)` columns,
+#'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family edit distance functions
 #' @examples
 #' osa_distance_matrix(c("ca", "abc"), c("abc", "ca"))
 #' @export
 osa_distance_matrix <-function(a, b, nthreads = NULL, use_bytes = TRUE) {
     .editdist_validate_matrix(a, b, use_bytes)
-    fast_osa_distance_matrix_impl(a, b, .as_nthreads(nthreads), use_bytes)
+    .matrix_dimnames(fast_osa_distance_matrix_impl(a, b, .as_nthreads(nthreads), use_bytes), a, b)
 }
 
 #' @rdname edit_distance
@@ -106,7 +115,8 @@ damerau_levenshtein <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 #' Unrestricted Damerau-Levenshtein all-pairs distance matrix
 #'
 #' @inheritParams edit_distance
-#' @return Numeric matrix with `length(a)` rows and `length(b)` columns.
+#' @return Numeric matrix with `length(a)` rows and `length(b)` columns,
+#'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family edit distance functions
 #' @examples
 #' # Unrestricted transposition scores "ca" -> "abc" as 2, OSA as 3.
@@ -115,9 +125,9 @@ damerau_levenshtein <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 damerau_levenshtein_matrix <-function(a, b, nthreads = NULL,
                                        use_bytes = TRUE) {
     .editdist_validate_matrix(a, b, use_bytes)
-    fast_damerau_levenshtein_matrix_impl(
+    .matrix_dimnames(fast_damerau_levenshtein_matrix_impl(
         a, b, .as_nthreads(nthreads), use_bytes
-    )
+    ), a, b)
 }
 
 #' @rdname edit_distance

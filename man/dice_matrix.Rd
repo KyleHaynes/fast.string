@@ -4,7 +4,7 @@
 \alias{dice_matrix}
 \title{Q-gram Sorensen-Dice all-pairs similarity matrix}
 \usage{
-dice_matrix(a, b, q = 2, nthreads = NULL)
+dice_matrix(a, b, q = 2, nthreads = NULL, use_bytes = TRUE)
 }
 \arguments{
 \item{a}{Character vector of length n (rows).}
@@ -15,9 +15,14 @@ dice_matrix(a, b, q = 2, nthreads = NULL)
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
+
+\item{use_bytes}{Logical scalar. Build q-grams from encoded bytes when
+\code{TRUE} (the compatibility default), or from UTF-8 code points when
+\code{FALSE}, so that an accented letter counts as one character.}
 }
 \value{
-Numeric matrix of dimensions n × m.
+Numeric matrix with \code{length(a)} rows and \code{length(b)} columns,
+with \code{names(a)} and \code{names(b)} as row and column names when present.
 }
 \description{
 Q-gram Sorensen-Dice all-pairs similarity matrix

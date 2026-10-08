@@ -4,7 +4,7 @@
 \alias{cosine_similarity}
 \title{Q-gram cosine similarity}
 \usage{
-cosine_similarity(a, b, q = 2, nthreads = NULL)
+cosine_similarity(a, b, q = 2, nthreads = NULL, use_bytes = TRUE)
 }
 \arguments{
 \item{a, b}{Equal-length character vectors.}
@@ -14,6 +14,10 @@ Must be a single integer >= 1.}
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
+
+\item{use_bytes}{Logical scalar. Build q-grams from encoded bytes when
+\code{TRUE} (the compatibility default), or from UTF-8 code points when
+\code{FALSE}, so that an accented letter counts as one character.}
 }
 \value{
 Numeric vector of similarities in \verb{[0, 1]}, \code{length(a)} long.

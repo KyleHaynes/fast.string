@@ -7,11 +7,19 @@
 \alias{tversky_index}
 \title{Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky}
 \usage{
-jaccard_index(a, b, q = 2, nthreads = NULL)
+jaccard_index(a, b, q = 2, nthreads = NULL, use_bytes = TRUE)
 
-dice_coefficient(a, b, q = 2, nthreads = NULL)
+dice_coefficient(a, b, q = 2, nthreads = NULL, use_bytes = TRUE)
 
-tversky_index(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
+tversky_index(
+  a,
+  b,
+  q = 2,
+  alpha = 0.5,
+  beta = 0.5,
+  nthreads = NULL,
+  use_bytes = TRUE
+)
 }
 \arguments{
 \item{a, b}{Equal-length character vectors.}
@@ -21,6 +29,10 @@ Must be a single integer >= 1.}
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
+
+\item{use_bytes}{Logical scalar. Build q-grams from encoded bytes when
+\code{TRUE} (the compatibility default), or from UTF-8 code points when
+\code{FALSE}, so that an accented letter counts as one character.}
 
 \item{alpha, beta}{Tversky asymmetry weights (default \code{0.5} each, matching
 Dice). Non-negative scalars.}

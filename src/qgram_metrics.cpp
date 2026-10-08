@@ -6,6 +6,7 @@
 #include <limits>
 #include <unordered_map>
 #include <vector>
+#include "codepoint_snapshot.h"
 #include "parallel_dispatch.h"
 #include "qgram_core.h"
 #include "pairwise_worker.h"
@@ -195,133 +196,143 @@ static double prepared_tversky(const QgramOverlap& overlap, const QCtx& ctx) {
     return qgram_tversky_from_overlap(overlap, ctx.alpha, ctx.beta);
 }
 
+// Scores one prepared cell. Different strings with no q-grams score 0;
+// the slice id identifies the same string.
 template <PreparedScore Score>
-struct PreparedQgramMatrixWorker : public Worker {
+struct SetOverlapCell {
     const uint64_t* keys;
+    QCtx ctx;
+
+    double operator()(const PackedSlice& as, const PackedSlice& bs) const {
+        if (as.is_na || bs.is_na) return NA_REAL;
+        if (as.size == 0 && bs.size == 0) return as.id == bs.id ? 1.0 : 0.0;
+        const std::size_t inter = (as.size == 0 || bs.size == 0) ? 0 :
+            sorted_intersection_size(keys + as.offset, as.size,
+                                     keys + bs.offset, bs.size);
+        return Score(QgramOverlap{as.size, bs.size, inter}, ctx);
+    }
+};
+
+struct CosineCell {
+    const uint64_t* keys;
+
+    double operator()(const PackedSlice& as, const PackedSlice& bs) const {
+        if (as.is_na || bs.is_na) return NA_REAL;
+        if (as.size == 0 && bs.size == 0) return as.id == bs.id ? 1.0 : 0.0;
+        if (as.size == 0 || bs.size == 0) return 0.0;
+        return qgram_cosine_from_frequency(qgram_frequency_overlap(
+            keys + as.offset, as.size, keys + bs.offset, bs.size
+        ));
+    }
+};
+
+template <typename Cell>
+struct PreparedMatrixWorker : public Worker {
     const PackedSlice* a;
     const PackedSlice* b;
     std::size_t na;
-    QCtx ctx;
+    Cell cell;
     double* out;
 
-    PreparedQgramMatrixWorker(const PackedQgramArena& arena,
-                              std::size_t na, const QCtx& ctx, double* out)
-        : keys(arena.keys.data()), a(arena.a.data()), b(arena.b.data()),
-          na(na), ctx(ctx), out(out) {}
+    PreparedMatrixWorker(const PackedQgramArena& arena, std::size_t na_,
+                         const Cell& cell_, double* out_)
+        : a(arena.a.data()), b(arena.b.data()), na(na_), cell(cell_),
+          out(out_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
         if (begin >= end || na == 0) return;
         std::size_t j = begin / na;
         std::size_t i = begin - j * na;
-
         while (begin < end) {
             const std::size_t run = (std::min)(end - begin, na - i);
             const PackedSlice& bs = b[j];
-            for (std::size_t k = 0; k < run; ++k) {
-                const PackedSlice& as = a[i + k];
-                if (as.is_na || bs.is_na) {
-                    out[begin + k] = NA_REAL;
-                    continue;
-                }
-                if (as.size == 0 && bs.size == 0) {
-                    out[begin + k] = as.id == bs.id ? 1.0 : 0.0;
-                    continue;
-                }
-
-                const std::size_t inter =
-                    (as.size == 0 || bs.size == 0) ? 0 :
-                    sorted_intersection_size(
-                        keys + as.offset, as.size,
-                        keys + bs.offset, bs.size
-                    );
-                out[begin + k] = Score(
-                    QgramOverlap{as.size, bs.size, inter}, ctx
-                );
-            }
+            for (std::size_t k = 0; k < run; ++k)
+                out[begin + k] = cell(a[i + k], bs);
             begin += run;
             ++j;
             i = 0;
         }
     }
 };
+
+// m(x, x) for a symmetric score: each row computes only the cells right of
+// the diagonal and mirrors them (the diagonal is a string against itself:
+// 1, or NA). Rows never write the same cell.
+template <typename Cell>
+struct PreparedSymmetricWorker : public Worker {
+    const PackedSlice* slices;
+    std::size_t size;
+    Cell cell;
+    double* out;
+
+    PreparedSymmetricWorker(const PackedQgramArena& arena, std::size_t size_,
+                            const Cell& cell_, double* out_)
+        : slices(arena.a.data()), size(size_), cell(cell_), out(out_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        for (std::size_t row = begin; row < end; ++row) {
+            out[row + row * size] = slices[row].is_na ? NA_REAL : 1.0;
+            for (std::size_t column = row + 1; column < size; ++column) {
+                const double value = cell(slices[row], slices[column]);
+                out[row + column * size] = value;
+                out[column + row * size] = value;
+            }
+        }
+    }
+};
+
+// Shared driver: prepares packed q-grams once (q <= 8, enough cells), then
+// fills the matrix with `cell`; returns false to fall back to the generic
+// pairwise matrix. `symmetric` means b is the same vector as a and the
+// score is symmetric.
+template <typename Cell>
+static bool run_prepared_matrix(const StringVector& a, const StringVector& b,
+                                int q, bool deduplicate, bool symmetric,
+                                int nthreads, Cell cell_template,
+                                NumericMatrix& result) {
+    const std::size_t na = static_cast<std::size_t>(a.size());
+    const std::size_t nb = static_cast<std::size_t>(b.size());
+    const std::size_t cells = na * nb;
+    if (q > 8 || cells < PREPARED_MIN_CELLS) return false;
+    StringSnapshot a_snapshot(a), b_snapshot(b);
+    PackedQgramArena arena;
+    if (!prepare_packed_qgrams(a_snapshot, b_snapshot, q, cells, deduplicate,
+                               arena))
+        return false;
+    result = NumericMatrix(a.size(), b.size());
+    Cell cell = cell_template;
+    cell.keys = arena.keys.data();
+    const std::size_t work =
+        estimated_matrix_string_work(a_snapshot, b_snapshot, cells);
+    if (symmetric) {
+        PreparedSymmetricWorker<Cell> worker(arena, na, cell, REAL(result));
+        dispatch_for(0, na, worker, work / 2 + work % 2, 10000, nthreads, 1);
+    } else {
+        PreparedMatrixWorker<Cell> worker(arena, na, cell, REAL(result));
+        dispatch_for(0, cells, worker, work, 10000, nthreads, MATRIX_GRAIN);
+    }
+    return true;
+}
 
 template <double (*PairFn)(const char*, int, const char*, int, const QCtx&),
           PreparedScore Score>
 static NumericMatrix run_qgram_matrix(const StringVector& a,
                                       const StringVector& b,
                                       const QCtx& ctx,
-                                      int nthreads) {
+                                      int nthreads,
+                                      bool symmetric_score = true) {
     const std::size_t na = static_cast<std::size_t>(a.size());
     const std::size_t nb = static_cast<std::size_t>(b.size());
     if (na != 0 && nb > (std::numeric_limits<std::size_t>::max)() / na)
         stop("Requested matrix is too large.");
-    const std::size_t cells = na * nb;
-
-    if (ctx.q <= 8 && cells >= PREPARED_MIN_CELLS) {
-        StringSnapshot a_snapshot(a), b_snapshot(b);
-        PackedQgramArena arena;
-        if (prepare_packed_qgrams(
-                a_snapshot, b_snapshot, ctx.q, cells, true, arena)) {
-            NumericMatrix result(a.size(), b.size());
-            PreparedQgramMatrixWorker<Score> worker(
-                arena, na, ctx, REAL(result)
-            );
-            dispatch_for(
-                0, cells, worker,
-                estimated_matrix_string_work(
-                    a_snapshot, b_snapshot, cells
-                ),
-                10000, nthreads, MATRIX_GRAIN
-            );
-            return result;
-        }
-    }
-
+    const bool symmetric = symmetric_score &&
+        static_cast<SEXP>(a) == static_cast<SEXP>(b);
+    NumericMatrix result;
+    if (run_prepared_matrix(a, b, ctx.q, true, symmetric, nthreads,
+                            SetOverlapCell<Score>{nullptr, ctx}, result))
+        return result;
     return run_pairwise_matrix<QCtx, PairFn>(a, b, ctx, nthreads);
 }
-
-struct PreparedCosineMatrixWorker : public Worker {
-    const uint64_t* keys;
-    const PackedSlice* a;
-    const PackedSlice* b;
-    std::size_t na;
-    double* out;
-
-    PreparedCosineMatrixWorker(const PackedQgramArena& arena,
-                               std::size_t na_, double* out_)
-        : keys(arena.keys.data()), a(arena.a.data()), b(arena.b.data()),
-          na(na_), out(out_) {}
-
-    void operator()(std::size_t begin, std::size_t end) {
-        if (begin >= end || na == 0) return;
-        std::size_t j = begin / na;
-        std::size_t i = begin - j * na;
-        while (begin < end) {
-            const std::size_t run = (std::min)(end - begin, na - i);
-            const PackedSlice& bs = b[j];
-            for (std::size_t k = 0; k < run; ++k) {
-                const PackedSlice& as = a[i + k];
-                if (as.is_na || bs.is_na) {
-                    out[begin + k] = NA_REAL;
-                } else if (as.size == 0 && bs.size == 0) {
-                    out[begin + k] = as.id == bs.id ? 1.0 : 0.0;
-                } else if (as.size == 0 || bs.size == 0) {
-                    out[begin + k] = 0.0;
-                } else {
-                    out[begin + k] = qgram_cosine_from_frequency(
-                        qgram_frequency_overlap(
-                            keys + as.offset, as.size,
-                            keys + bs.offset, bs.size
-                        )
-                    );
-                }
-            }
-            begin += run;
-            ++j;
-            i = 0;
-        }
-    }
-};
 
 static NumericMatrix run_qgram_cosine_matrix(const StringVector& a,
                                               const StringVector& b,
@@ -331,101 +342,237 @@ static NumericMatrix run_qgram_cosine_matrix(const StringVector& a,
     const std::size_t nb = static_cast<std::size_t>(b.size());
     if (na != 0 && nb > (std::numeric_limits<std::size_t>::max)() / na)
         stop("Requested matrix is too large.");
-    const std::size_t cells = na * nb;
+    const bool symmetric = static_cast<SEXP>(a) == static_cast<SEXP>(b);
+    NumericMatrix result;
+    if (run_prepared_matrix(a, b, ctx.q, false, symmetric, nthreads,
+                            CosineCell{nullptr}, result))
+        return result;
+    return run_pairwise_matrix<QCtx, sim_cosine>(a, b, ctx, nthreads);
+}
 
-    if (ctx.q <= 8 && cells >= PREPARED_MIN_CELLS) {
-        StringSnapshot a_snapshot(a), b_snapshot(b);
-        PackedQgramArena arena;
-        if (prepare_packed_qgrams(
-                a_snapshot, b_snapshot, ctx.q, cells, false, arena)) {
-            NumericMatrix result(a.size(), b.size());
-            PreparedCosineMatrixWorker worker(arena, na, REAL(result));
-            dispatch_for(
-                0, cells, worker,
-                estimated_matrix_string_work(
-                    a_snapshot, b_snapshot, cells
-                ),
-                10000, nthreads, MATRIX_GRAIN
-            );
-            return result;
+// ---------------------------------------------------------------------------
+// use_bytes = FALSE: q-grams of UTF-8 code points. ASCII pairs, whose bytes
+// are their code points, keep the byte functions above.
+// ---------------------------------------------------------------------------
+
+enum class QgramKind { jaccard, dice, tversky, cosine };
+
+template <QgramKind Kind>
+static inline double qgram_bytes_score(const StringView& a, const StringView& b,
+                                       const QCtx& ctx) {
+    const int la = static_cast<int>(a.size);
+    const int lb = static_cast<int>(b.size);
+    switch (Kind) {
+    case QgramKind::jaccard: return sim_jaccard(a.data, la, b.data, lb, ctx);
+    case QgramKind::dice: return sim_dice(a.data, la, b.data, lb, ctx);
+    case QgramKind::tversky: return sim_tversky(a.data, la, b.data, lb, ctx);
+    case QgramKind::cosine: return sim_cosine(a.data, la, b.data, lb, ctx);
+    }
+    return NA_REAL;
+}
+
+template <QgramKind Kind>
+static inline double qgram_codepoint_score(const CodepointView& a,
+                                           const CodepointView& b,
+                                           const QCtx& ctx,
+                                           CodepointQgramScratch& scratch) {
+    const int la = static_cast<int>(a.size);
+    const int lb = static_cast<int>(b.size);
+    switch (Kind) {
+    case QgramKind::jaccard:
+        return qgram_jaccard_sim_codepoints(a.data, la, b.data, lb, ctx.q, scratch);
+    case QgramKind::dice:
+        return qgram_dice_sim_codepoints(a.data, la, b.data, lb, ctx.q, scratch);
+    case QgramKind::tversky:
+        return qgram_tversky_sim_codepoints(a.data, la, b.data, lb, ctx.q,
+                                            ctx.alpha, ctx.beta, scratch);
+    case QgramKind::cosine:
+        return qgram_cosine_sim_codepoints(a.data, la, b.data, lb, ctx.q, scratch);
+    }
+    return NA_REAL;
+}
+
+// Scores pair `i` of the pairwise form, or cell (i, j) of the matrix form.
+template <QgramKind Kind>
+struct CodepointQgramScorer {
+    const StringView* a_bytes;
+    const StringView* b_bytes;
+    const CodepointView* a_points;
+    const CodepointView* b_points;
+    QCtx ctx;
+
+    double operator()(std::size_t i, std::size_t j,
+                      CodepointQgramScratch& scratch) const {
+        if (a_bytes[i].is_na() || b_bytes[j].is_na()) return NA_REAL;
+        if (a_points[i].ascii && b_points[j].ascii)
+            return qgram_bytes_score<Kind>(a_bytes[i], b_bytes[j], ctx);
+        return qgram_codepoint_score<Kind>(a_points[i], b_points[j], ctx, scratch);
+    }
+};
+
+template <QgramKind Kind>
+struct CodepointQgramPairWorker : public Worker {
+    CodepointQgramScorer<Kind> score;
+    RVector<double> out;
+
+    CodepointQgramPairWorker(const CodepointQgramScorer<Kind>& score_,
+                             NumericVector& out_)
+        : score(score_), out(out_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        CodepointQgramScratch scratch;
+        for (std::size_t i = begin; i < end; ++i) out[i] = score(i, i, scratch);
+    }
+};
+
+template <QgramKind Kind>
+struct CodepointQgramMatrixWorker : public Worker {
+    CodepointQgramScorer<Kind> score;
+    std::size_t rows;
+    double* out;
+
+    CodepointQgramMatrixWorker(const CodepointQgramScorer<Kind>& score_,
+                               std::size_t rows_, double* out_)
+        : score(score_), rows(rows_), out(out_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        if (begin >= end) return;
+        CodepointQgramScratch scratch;
+        std::size_t j = begin / rows;
+        std::size_t i = begin - j * rows;
+        for (std::size_t cell = begin; cell < end; ++cell) {
+            out[cell] = score(i, j, scratch);
+            if (++i == rows) {
+                i = 0;
+                ++j;
+            }
         }
     }
-    return run_pairwise_matrix<QCtx, sim_cosine>(a, b, ctx, nthreads);
+};
+
+template <QgramKind Kind>
+static NumericVector run_codepoint_qgram(const StringVector& a,
+                                         const StringVector& b,
+                                         const QCtx& ctx, int nthreads) {
+    if (a.size() != b.size()) stop("`a` and `b` must have the same length.");
+    const StringSnapshot a_bytes(a), b_bytes(b);
+    const CodepointSnapshot a_points(a, "a"), b_points(b, "b");
+    NumericVector result = no_init(a.size());
+    CodepointQgramPairWorker<Kind> worker(
+        CodepointQgramScorer<Kind>{a_bytes.data(), b_bytes.data(),
+                                   a_points.data(), b_points.data(), ctx},
+        result
+    );
+    dispatch_for(0, static_cast<std::size_t>(a.size()), worker,
+                 estimated_pairwise_string_work(a_bytes, b_bytes), 1000,
+                 nthreads);
+    return result;
+}
+
+template <QgramKind Kind>
+static NumericMatrix run_codepoint_qgram_matrix(const StringVector& a,
+                                                const StringVector& b,
+                                                const QCtx& ctx, int nthreads) {
+    const std::size_t na = static_cast<std::size_t>(a.size());
+    const std::size_t nb = static_cast<std::size_t>(b.size());
+    if (na != 0 && nb > (std::numeric_limits<std::size_t>::max)() / na)
+        stop("Requested matrix is too large.");
+    const StringSnapshot a_bytes(a), b_bytes(b);
+    const CodepointSnapshot a_points(a, "a"), b_points(b, "b");
+    NumericMatrix result(a.size(), b.size());
+    CodepointQgramMatrixWorker<Kind> worker(
+        CodepointQgramScorer<Kind>{a_bytes.data(), b_bytes.data(),
+                                   a_points.data(), b_points.data(), ctx},
+        na, REAL(result)
+    );
+    dispatch_for(0, na * nb, worker,
+                 estimated_matrix_string_work(a_bytes, b_bytes, na * nb),
+                 10000, nthreads, MATRIX_GRAIN);
+    return result;
 }
 
 } // namespace
 
 // [[Rcpp::export]]
 NumericVector fast_jaccard_impl(const StringVector& a, const StringVector& b,
-                                int q, int nthreads) {
+                                int q, int nthreads, bool use_bytes) {
     if (q < 1) stop("`q` must be >= 1.");
-    return run_pairwise<QCtx, sim_jaccard>(
-        a, b, QCtx{q, 1.0, 1.0}, nthreads
-    );
+    const QCtx ctx{q, 1.0, 1.0};
+    if (!use_bytes) return run_codepoint_qgram<QgramKind::jaccard>(a, b, ctx, nthreads);
+    return run_pairwise<QCtx, sim_jaccard>(a, b, ctx, nthreads);
 }
 
 // [[Rcpp::export]]
 NumericMatrix fast_jaccard_matrix_impl(const StringVector& a, const StringVector& b,
-                                       int q, int nthreads) {
+                                       int q, int nthreads, bool use_bytes) {
     if (q < 1) stop("`q` must be >= 1.");
-    return run_qgram_matrix<sim_jaccard, prepared_jaccard>(
-        a, b, QCtx{q, 1.0, 1.0}, nthreads
-    );
+    const QCtx ctx{q, 1.0, 1.0};
+    if (!use_bytes)
+        return run_codepoint_qgram_matrix<QgramKind::jaccard>(a, b, ctx, nthreads);
+    return run_qgram_matrix<sim_jaccard, prepared_jaccard>(a, b, ctx, nthreads);
 }
 
 // [[Rcpp::export]]
 NumericVector fast_dice_impl(const StringVector& a, const StringVector& b,
-                             int q, int nthreads) {
+                             int q, int nthreads, bool use_bytes) {
     if (q < 1) stop("`q` must be >= 1.");
-    return run_pairwise<QCtx, sim_dice>(
-        a, b, QCtx{q, 0.5, 0.5}, nthreads
-    );
+    const QCtx ctx{q, 0.5, 0.5};
+    if (!use_bytes) return run_codepoint_qgram<QgramKind::dice>(a, b, ctx, nthreads);
+    return run_pairwise<QCtx, sim_dice>(a, b, ctx, nthreads);
 }
 
 // [[Rcpp::export]]
 NumericMatrix fast_dice_matrix_impl(const StringVector& a, const StringVector& b,
-                                    int q, int nthreads) {
+                                    int q, int nthreads, bool use_bytes) {
     if (q < 1) stop("`q` must be >= 1.");
-    return run_qgram_matrix<sim_dice, prepared_dice>(
-        a, b, QCtx{q, 0.5, 0.5}, nthreads
-    );
+    const QCtx ctx{q, 0.5, 0.5};
+    if (!use_bytes)
+        return run_codepoint_qgram_matrix<QgramKind::dice>(a, b, ctx, nthreads);
+    return run_qgram_matrix<sim_dice, prepared_dice>(a, b, ctx, nthreads);
 }
 
 // [[Rcpp::export]]
 NumericVector fast_tversky_impl(const StringVector& a, const StringVector& b,
                                 int q, double alpha, double beta,
-                                int nthreads) {
+                                int nthreads, bool use_bytes) {
     if (q < 1) stop("`q` must be >= 1.");
-    return run_pairwise<QCtx, sim_tversky>(
-        a, b, QCtx{q, alpha, beta}, nthreads
-    );
+    const QCtx ctx{q, alpha, beta};
+    if (!use_bytes) return run_codepoint_qgram<QgramKind::tversky>(a, b, ctx, nthreads);
+    return run_pairwise<QCtx, sim_tversky>(a, b, ctx, nthreads);
 }
 
 // [[Rcpp::export]]
 NumericMatrix fast_tversky_matrix_impl(const StringVector& a, const StringVector& b,
                                        int q, double alpha, double beta,
-                                       int nthreads) {
+                                       int nthreads, bool use_bytes) {
     if (q < 1) stop("`q` must be >= 1.");
+    const QCtx ctx{q, alpha, beta};
+    if (!use_bytes)
+        return run_codepoint_qgram_matrix<QgramKind::tversky>(a, b, ctx, nthreads);
+    // Not mirrored even when alpha == beta: the denominator adds the two
+    // leftover terms in a fixed order, so swapping a and b can change the
+    // last bit, and m(x, x) should equal m(x, copy of x) exactly.
     return run_qgram_matrix<sim_tversky, prepared_tversky>(
-        a, b, QCtx{q, alpha, beta}, nthreads
+        a, b, ctx, nthreads, false
     );
 }
 
 // [[Rcpp::export]]
 NumericVector fast_cosine_impl(const StringVector& a, const StringVector& b,
-                               int q, int nthreads) {
+                               int q, int nthreads, bool use_bytes) {
     if (q < 1) stop("`q` must be >= 1.");
-    return run_pairwise<QCtx, sim_cosine>(
-        a, b, QCtx{q, 0.0, 0.0}, nthreads
-    );
+    const QCtx ctx{q, 0.0, 0.0};
+    if (!use_bytes) return run_codepoint_qgram<QgramKind::cosine>(a, b, ctx, nthreads);
+    return run_pairwise<QCtx, sim_cosine>(a, b, ctx, nthreads);
 }
 
 // [[Rcpp::export]]
 NumericMatrix fast_cosine_matrix_impl(const StringVector& a,
                                       const StringVector& b,
-                                      int q, int nthreads) {
+                                      int q, int nthreads, bool use_bytes) {
     if (q < 1) stop("`q` must be >= 1.");
-    return run_qgram_cosine_matrix(
-        a, b, QCtx{q, 0.0, 0.0}, nthreads
-    );
+    const QCtx ctx{q, 0.0, 0.0};
+    if (!use_bytes)
+        return run_codepoint_qgram_matrix<QgramKind::cosine>(a, b, ctx, nthreads);
+    return run_qgram_cosine_matrix(a, b, ctx, nthreads);
 }

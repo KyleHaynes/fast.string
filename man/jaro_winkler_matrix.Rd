@@ -20,7 +20,8 @@ RcppParallel default for this call.}
 compatibility default), or UTF-8 code points when \code{FALSE}.}
 }
 \value{
-Numeric matrix with n rows and m columns; a cell is \code{NA} where
+Numeric matrix with n rows and m columns (named by \code{names(a)} and
+\code{names(b)} when present); a cell is \code{NA} where
 either input is \code{NA}.
 }
 \description{
