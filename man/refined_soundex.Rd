@@ -4,11 +4,15 @@
 \alias{refined_soundex}
 \title{Refined Soundex phonetic code}
 \usage{
-refined_soundex(x)
+refined_soundex(x, nthreads = NULL)
 }
 \arguments{
 \item{x}{Character vector (coerced with \code{\link[=as.character]{as.character()}} when needed).
-\code{NA} values and elements with no ASCII letters return \code{NA}.}
+\code{NA} values and elements with no letters return \code{NA}. Accented Latin
+letters are folded to ASCII first, so \code{"Émile"} codes as \code{"Emile"}.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}, with names preserved.

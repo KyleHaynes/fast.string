@@ -4,7 +4,7 @@
 \alias{fnchar}
 \title{Fast character/byte counting}
 \usage{
-fnchar(x, type = "chars", allowNA = FALSE, keepNA = NA)
+fnchar(x, type = "chars", allowNA = FALSE, keepNA = NA, nthreads = NULL)
 }
 \arguments{
 \item{x}{Vector, coerced to character via \code{\link[=as.character]{as.character()}} if needed.}
@@ -20,6 +20,9 @@ The fast path never raises an encoding error, regardless of this value.}
 elements of \code{x} return \code{NA}; if \code{FALSE}, they return \code{2L} (the length
 of the string \code{"NA"}), matching base R's legacy \code{keepNA = FALSE}
 behaviour.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Integer vector the same length as \code{x}, with \code{names(x)} preserved.

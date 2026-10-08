@@ -131,13 +131,13 @@ struct SoundexWorker : public Worker {
 };
 
 // [[Rcpp::export]]
-CharacterVector fast_soundex_impl(const StringVector& x) {
+CharacterVector fast_soundex_impl(const StringVector& x, int nthreads) {
     const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<char> bytes(checked_slots(n, 4));
     std::vector<std::uint8_t> lengths(n, PHONETIC_NA_LENGTH);
     SoundexWorker worker(snapshot.data(), bytes.data(), lengths.data());
-    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000);
+    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000, nthreads);
 
     CharacterVector result(static_cast<R_xlen_t>(n));
     for (std::size_t i = 0; i < n; ++i) {
@@ -285,13 +285,13 @@ struct NysiisWorker : public Worker {
 };
 
 // [[Rcpp::export]]
-CharacterVector fast_nysiis_impl(const StringVector& x) {
+CharacterVector fast_nysiis_impl(const StringVector& x, int nthreads) {
     const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<char> bytes(checked_slots(n, 6));
     std::vector<std::uint8_t> lengths(n, PHONETIC_NA_LENGTH);
     NysiisWorker worker(snapshot.data(), bytes.data(), lengths.data());
-    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000);
+    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000, nthreads);
 
     CharacterVector result(static_cast<R_xlen_t>(n));
     for (std::size_t i = 0; i < n; ++i) {
@@ -444,7 +444,8 @@ struct DynamicPhoneticWorker : public Worker {
 };
 
 static CharacterVector run_dynamic_phonetic(const StringVector& x,
-                                            PhoneticStringFunction encode) {
+                                            PhoneticStringFunction encode,
+                                            int nthreads) {
     const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<std::string> encoded(n);
@@ -452,7 +453,7 @@ static CharacterVector run_dynamic_phonetic(const StringVector& x,
     DynamicPhoneticWorker worker(
         snapshot.data(), encode, encoded, missing
     );
-    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000);
+    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000, nthreads);
 
     CharacterVector result(static_cast<R_xlen_t>(n));
     for (std::size_t i = 0; i < n; ++i) {
@@ -469,13 +470,14 @@ static CharacterVector run_dynamic_phonetic(const StringVector& x,
 }
 
 // [[Rcpp::export]]
-CharacterVector fast_refined_soundex_impl(const StringVector& x) {
-    return run_dynamic_phonetic(x, refined_soundex_code);
+CharacterVector fast_refined_soundex_impl(const StringVector& x,
+                                          int nthreads) {
+    return run_dynamic_phonetic(x, refined_soundex_code, nthreads);
 }
 
 // [[Rcpp::export]]
-CharacterVector fast_cologne_impl(const StringVector& x) {
-    return run_dynamic_phonetic(x, cologne_code);
+CharacterVector fast_cologne_impl(const StringVector& x, int nthreads) {
+    return run_dynamic_phonetic(x, cologne_code, nthreads);
 }
 
 struct DoubleMetaphoneWorker : public Worker {
@@ -529,7 +531,7 @@ struct DoubleMetaphoneWorker : public Worker {
 };
 
 // [[Rcpp::export]]
-List fast_double_metaphone_impl(const StringVector& x) {
+List fast_double_metaphone_impl(const StringVector& x, int nthreads) {
     const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<char> primary(checked_slots(n, 4));
@@ -543,7 +545,7 @@ List fast_double_metaphone_impl(const StringVector& x) {
         primary_lengths.data(),
         secondary_lengths.data()
     );
-    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000);
+    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000, nthreads);
 
     CharacterVector primary_output(static_cast<R_xlen_t>(n));
     CharacterVector secondary_output(static_cast<R_xlen_t>(n));
@@ -604,13 +606,13 @@ struct CaverphoneWorker : public Worker {
 };
 
 // [[Rcpp::export]]
-CharacterVector fast_caverphone_impl(const StringVector& x) {
+CharacterVector fast_caverphone_impl(const StringVector& x, int nthreads) {
     const StringSnapshot snapshot(x, SnapshotText::utf8);
     const std::size_t n = snapshot.size();
     std::vector<char> bytes(checked_slots(n, 10));
     std::vector<std::uint8_t> lengths(n, PHONETIC_NA_LENGTH);
     CaverphoneWorker worker(snapshot.data(), bytes.data(), lengths.data());
-    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000);
+    dispatch_for(0, n, worker, phonetic_work(snapshot), 10000, nthreads);
 
     CharacterVector result(static_cast<R_xlen_t>(n));
     for (std::size_t i = 0; i < n; ++i) {

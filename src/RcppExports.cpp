@@ -280,68 +280,74 @@ BEGIN_RCPP
 END_RCPP
 }
 // fast_soundex_impl
-CharacterVector fast_soundex_impl(const StringVector& x);
-RcppExport SEXP _fast_string_fast_soundex_impl(SEXP xSEXP) {
+CharacterVector fast_soundex_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_soundex_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_soundex_impl(x));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_soundex_impl(x, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_nysiis_impl
-CharacterVector fast_nysiis_impl(const StringVector& x);
-RcppExport SEXP _fast_string_fast_nysiis_impl(SEXP xSEXP) {
+CharacterVector fast_nysiis_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_nysiis_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_nysiis_impl(x));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_nysiis_impl(x, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_refined_soundex_impl
-CharacterVector fast_refined_soundex_impl(const StringVector& x);
-RcppExport SEXP _fast_string_fast_refined_soundex_impl(SEXP xSEXP) {
+CharacterVector fast_refined_soundex_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_refined_soundex_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_refined_soundex_impl(x));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_refined_soundex_impl(x, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_cologne_impl
-CharacterVector fast_cologne_impl(const StringVector& x);
-RcppExport SEXP _fast_string_fast_cologne_impl(SEXP xSEXP) {
+CharacterVector fast_cologne_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_cologne_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_cologne_impl(x));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_cologne_impl(x, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_double_metaphone_impl
-List fast_double_metaphone_impl(const StringVector& x);
-RcppExport SEXP _fast_string_fast_double_metaphone_impl(SEXP xSEXP) {
+List fast_double_metaphone_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_double_metaphone_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_double_metaphone_impl(x));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_double_metaphone_impl(x, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_caverphone_impl
-CharacterVector fast_caverphone_impl(const StringVector& x);
-RcppExport SEXP _fast_string_fast_caverphone_impl(SEXP xSEXP) {
+CharacterVector fast_caverphone_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_caverphone_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_caverphone_impl(x));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_caverphone_impl(x, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -358,8 +364,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // fast_substr_impl
-CharacterVector fast_substr_impl(const StringVector& x, const IntegerVector& start, const IntegerVector& stop, bool native_utf8);
-RcppExport SEXP _fast_string_fast_substr_impl(SEXP xSEXP, SEXP startSEXP, SEXP stopSEXP, SEXP native_utf8SEXP) {
+CharacterVector fast_substr_impl(const StringVector& x, const IntegerVector& start, const IntegerVector& stop, bool native_utf8, int nthreads);
+RcppExport SEXP _fast_string_fast_substr_impl(SEXP xSEXP, SEXP startSEXP, SEXP stopSEXP, SEXP native_utf8SEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -367,13 +373,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const IntegerVector& >::type start(startSEXP);
     Rcpp::traits::input_parameter< const IntegerVector& >::type stop(stopSEXP);
     Rcpp::traits::input_parameter< bool >::type native_utf8(native_utf8SEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_substr_impl(x, start, stop, native_utf8));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_substr_impl(x, start, stop, native_utf8, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_nchar_impl
-IntegerVector fast_nchar_impl(const StringVector& x, int type, bool allow_na, bool native_utf8);
-RcppExport SEXP _fast_string_fast_nchar_impl(SEXP xSEXP, SEXP typeSEXP, SEXP allow_naSEXP, SEXP native_utf8SEXP) {
+IntegerVector fast_nchar_impl(const StringVector& x, int type, bool allow_na, bool native_utf8, int nthreads);
+RcppExport SEXP _fast_string_fast_nchar_impl(SEXP xSEXP, SEXP typeSEXP, SEXP allow_naSEXP, SEXP native_utf8SEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -381,20 +388,22 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type type(typeSEXP);
     Rcpp::traits::input_parameter< bool >::type allow_na(allow_naSEXP);
     Rcpp::traits::input_parameter< bool >::type native_utf8(native_utf8SEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_nchar_impl(x, type, allow_na, native_utf8));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_nchar_impl(x, type, allow_na, native_utf8, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
 // fast_chartr_impl
-CharacterVector fast_chartr_impl(const std::string& old_chars, const std::string& new_chars, const StringVector& x);
-RcppExport SEXP _fast_string_fast_chartr_impl(SEXP old_charsSEXP, SEXP new_charsSEXP, SEXP xSEXP) {
+CharacterVector fast_chartr_impl(const std::string& old_chars, const std::string& new_chars, const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_chartr_impl(SEXP old_charsSEXP, SEXP new_charsSEXP, SEXP xSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const std::string& >::type old_chars(old_charsSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type new_chars(new_charsSEXP);
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_chartr_impl(old_chars, new_chars, x));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_chartr_impl(old_chars, new_chars, x, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -738,16 +747,16 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_jaro_winkler_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_impl, 5},
     {"_fast_string_fast_jaro_winkler_matrix_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_matrix_impl, 5},
     {"_fast_string_fast_jaro_winkler_tokens_impl", (DL_FUNC) &_fast_string_fast_jaro_winkler_tokens_impl, 6},
-    {"_fast_string_fast_soundex_impl", (DL_FUNC) &_fast_string_fast_soundex_impl, 1},
-    {"_fast_string_fast_nysiis_impl", (DL_FUNC) &_fast_string_fast_nysiis_impl, 1},
-    {"_fast_string_fast_refined_soundex_impl", (DL_FUNC) &_fast_string_fast_refined_soundex_impl, 1},
-    {"_fast_string_fast_cologne_impl", (DL_FUNC) &_fast_string_fast_cologne_impl, 1},
-    {"_fast_string_fast_double_metaphone_impl", (DL_FUNC) &_fast_string_fast_double_metaphone_impl, 1},
-    {"_fast_string_fast_caverphone_impl", (DL_FUNC) &_fast_string_fast_caverphone_impl, 1},
+    {"_fast_string_fast_soundex_impl", (DL_FUNC) &_fast_string_fast_soundex_impl, 2},
+    {"_fast_string_fast_nysiis_impl", (DL_FUNC) &_fast_string_fast_nysiis_impl, 2},
+    {"_fast_string_fast_refined_soundex_impl", (DL_FUNC) &_fast_string_fast_refined_soundex_impl, 2},
+    {"_fast_string_fast_cologne_impl", (DL_FUNC) &_fast_string_fast_cologne_impl, 2},
+    {"_fast_string_fast_double_metaphone_impl", (DL_FUNC) &_fast_string_fast_double_metaphone_impl, 2},
+    {"_fast_string_fast_caverphone_impl", (DL_FUNC) &_fast_string_fast_caverphone_impl, 2},
     {"_fast_string_fast_trimws_impl", (DL_FUNC) &_fast_string_fast_trimws_impl, 2},
-    {"_fast_string_fast_substr_impl", (DL_FUNC) &_fast_string_fast_substr_impl, 4},
-    {"_fast_string_fast_nchar_impl", (DL_FUNC) &_fast_string_fast_nchar_impl, 4},
-    {"_fast_string_fast_chartr_impl", (DL_FUNC) &_fast_string_fast_chartr_impl, 3},
+    {"_fast_string_fast_substr_impl", (DL_FUNC) &_fast_string_fast_substr_impl, 5},
+    {"_fast_string_fast_nchar_impl", (DL_FUNC) &_fast_string_fast_nchar_impl, 5},
+    {"_fast_string_fast_chartr_impl", (DL_FUNC) &_fast_string_fast_chartr_impl, 4},
     {"_fast_string_fast_fuzz_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_ratio_impl, 4},
     {"_fast_string_fast_fuzz_partial_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_partial_ratio_impl, 4},
     {"_fast_string_fast_fuzz_token_sort_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_token_sort_ratio_impl, 4},

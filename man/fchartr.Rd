@@ -4,7 +4,7 @@
 \alias{fchartr}
 \title{Fast parallel character translation}
 \usage{
-fchartr(old, new, x)
+fchartr(old, new, x, nthreads = NULL)
 }
 \arguments{
 \item{old, new}{Single strings specifying the translation, as in
@@ -14,6 +14,9 @@ be longer than \code{old} (the extra characters are ignored) but not shorter.
 Specifications with non-ASCII characters are passed to \code{\link[base:chartr]{base::chartr()}}.}
 
 \item{x}{Character vector. \code{NA} elements return \code{NA}.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)} preserved.

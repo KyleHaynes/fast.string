@@ -4,12 +4,15 @@
 \alias{double_metaphone}
 \title{Double Metaphone phonetic code (Lawrence Philips, 2000)}
 \usage{
-double_metaphone(x)
+double_metaphone(x, nthreads = NULL)
 }
 \arguments{
 \item{x}{Character vector (coerced via \code{\link[=as.character]{as.character()}} if not already
 character). \code{NA} elements, and elements with no content after
 trimming, return \code{NA} in both columns.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 A \code{data.frame} with two character columns, \code{primary} and

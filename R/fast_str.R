@@ -68,6 +68,8 @@ ftrimws <- function(x, which = c("both", "left", "right"),
 #' @param x Character vector. `NA` elements return `NA`.
 #' @param start,stop Integer (or numeric, coerced via [as.integer()]) vectors
 #'   of length 1 or `length(x)`. `NA` in either produces `NA` for that element.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #'
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::substr()]
@@ -75,7 +77,7 @@ ftrimws <- function(x, which = c("both", "left", "right"),
 #' @examples
 #' fsubstr(c("abcdef", "xyz", NA), 2, 4)   # out-of-range stops are clamped
 #' @export
-fsubstr <- function(x, start, stop) {
+fsubstr <- function(x, start, stop, nthreads = NULL) {
     if (!is.character(x)) {
         if (all(is.na(x))) x <- as.character(x)
         else base::stop("`x` must be a character vector.")
@@ -94,7 +96,8 @@ fsubstr <- function(x, start, stop) {
         any(!is.na(x) & Encoding(x) == "unknown"))
         return(base::substr(x, start_int, stop_int))
     .copy_names(
-        fast_substr_impl(x, start_int, stop_int, encoding$utf8),
+        fast_substr_impl(x, start_int, stop_int, encoding$utf8,
+                         .as_nthreads(nthreads)),
         x
     )
 }
@@ -117,6 +120,8 @@ fsubstr <- function(x, start, stop) {
 #'   elements of `x` return `NA`; if `FALSE`, they return `2L` (the length
 #'   of the string `"NA"`), matching base R's legacy `keepNA = FALSE`
 #'   behaviour.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #'
 #' @return Integer vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::nchar()]
@@ -126,7 +131,8 @@ fsubstr <- function(x, start, stop) {
 #' fnchar(x)                    # characters
 #' fnchar(x, type = "bytes")    # the accented letter takes two bytes in UTF-8
 #' @export
-fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA) {
+fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA,
+                   nthreads = NULL) {
     if (!is.character(x)) x <- as.character(x)
     type <- match.arg(type, c("bytes", "chars", "width"))
     if (type == "width")
@@ -139,7 +145,8 @@ fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA) {
     if (type == "chars" && encoding$mbcs && !encoding$utf8 &&
         any(!is.na(x) & Encoding(x) == "unknown"))
         return(base::nchar(x, type = type, allowNA = allowNA, keepNA = keepNA))
-    .copy_names(fast_nchar_impl(x, code, allow_na, encoding$utf8), x)
+    .copy_names(fast_nchar_impl(x, code, allow_na, encoding$utf8,
+                                .as_nthreads(nthreads)), x)
 }
 
 #' Fast parallel character translation
@@ -153,6 +160,8 @@ fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA) {
 #'   be longer than `old` (the extra characters are ignored) but not shorter.
 #'   Specifications with non-ASCII characters are passed to [base::chartr()].
 #' @param x Character vector. `NA` elements return `NA`.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #'
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [base::chartr()]
@@ -161,7 +170,7 @@ fnchar <- function(x, type = "chars", allowNA = FALSE, keepNA = NA) {
 #' fchartr("abc", "xyz", c("aabbcc", NA))
 #' fchartr("a-cx", "A-CX", "abcxyz")      # ranges, as in base R
 #' @export
-fchartr <- function(old, new, x) {
+fchartr <- function(old, new, x, nthreads = NULL) {
     if (!is.character(x)) {
         if (all(is.na(x))) x <- as.character(x)
         else base::stop("`x` must be a character vector.")
@@ -179,7 +188,8 @@ fchartr <- function(old, new, x) {
     # base::chartr() builds the table by translating every ASCII character,
     # so ranges, repeated characters and argument errors are exactly base R's.
     translated <- base::chartr(old, new, .ascii_characters)
-    .copy_names(fast_chartr_impl(.ascii_characters, translated, x), x)
+    .copy_names(fast_chartr_impl(.ascii_characters, translated, x,
+                                 .as_nthreads(nthreads)), x)
 }
 
 # The 127 non-NUL ASCII characters, in byte order.

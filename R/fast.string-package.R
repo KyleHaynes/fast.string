@@ -25,11 +25,10 @@
 #' @section Conventions:
 #' * **Missing values** propagate: an `NA` input gives an `NA` result, and the
 #'   comparison functions return `NA` when either side is `NA`.
-#' * **Threads**: the matching, substitution, similarity and lookup
-#'   functions take `nthreads`. `NULL` (the default) uses the RcppParallel
-#'   setting, see [RcppParallel::setThreadOptions()]; `1` forces serial
-#'   execution. The remaining parallel functions (phonetic codes, dates,
-#'   [fnchar()], [fsubstr()], [fchartr()]) always use that setting.
+#' * **Threads**: every parallel function takes `nthreads`. `NULL` (the
+#'   default) uses the RcppParallel setting, see
+#'   [RcppParallel::setThreadOptions()]; `1` forces serial execution.
+#'   [ftrimws()] is always serial: building its result strings is.
 #' * **Bytes or code points**: [jaro_winkler()] and the [edit_distance]
 #'   functions compare encoded bytes by default (`use_bytes = TRUE`) for
 #'   compatibility and speed; pass `use_bytes = FALSE` to compare UTF-8 code

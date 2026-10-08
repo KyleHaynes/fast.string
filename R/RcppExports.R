@@ -73,44 +73,44 @@ fast_jaro_winkler_tokens_impl <- function(a, b, p, extra_penalty, contractions, 
     .Call(`_fast_string_fast_jaro_winkler_tokens_impl`, a, b, p, extra_penalty, contractions, nthreads)
 }
 
-fast_soundex_impl <- function(x) {
-    .Call(`_fast_string_fast_soundex_impl`, x)
+fast_soundex_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_soundex_impl`, x, nthreads)
 }
 
-fast_nysiis_impl <- function(x) {
-    .Call(`_fast_string_fast_nysiis_impl`, x)
+fast_nysiis_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_nysiis_impl`, x, nthreads)
 }
 
-fast_refined_soundex_impl <- function(x) {
-    .Call(`_fast_string_fast_refined_soundex_impl`, x)
+fast_refined_soundex_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_refined_soundex_impl`, x, nthreads)
 }
 
-fast_cologne_impl <- function(x) {
-    .Call(`_fast_string_fast_cologne_impl`, x)
+fast_cologne_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_cologne_impl`, x, nthreads)
 }
 
-fast_double_metaphone_impl <- function(x) {
-    .Call(`_fast_string_fast_double_metaphone_impl`, x)
+fast_double_metaphone_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_double_metaphone_impl`, x, nthreads)
 }
 
-fast_caverphone_impl <- function(x) {
-    .Call(`_fast_string_fast_caverphone_impl`, x)
+fast_caverphone_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_caverphone_impl`, x, nthreads)
 }
 
 fast_trimws_impl <- function(x, which) {
     .Call(`_fast_string_fast_trimws_impl`, x, which)
 }
 
-fast_substr_impl <- function(x, start, stop, native_utf8) {
-    .Call(`_fast_string_fast_substr_impl`, x, start, stop, native_utf8)
+fast_substr_impl <- function(x, start, stop, native_utf8, nthreads) {
+    .Call(`_fast_string_fast_substr_impl`, x, start, stop, native_utf8, nthreads)
 }
 
-fast_nchar_impl <- function(x, type, allow_na, native_utf8) {
-    .Call(`_fast_string_fast_nchar_impl`, x, type, allow_na, native_utf8)
+fast_nchar_impl <- function(x, type, allow_na, native_utf8, nthreads) {
+    .Call(`_fast_string_fast_nchar_impl`, x, type, allow_na, native_utf8, nthreads)
 }
 
-fast_chartr_impl <- function(old_chars, new_chars, x) {
-    .Call(`_fast_string_fast_chartr_impl`, old_chars, new_chars, x)
+fast_chartr_impl <- function(old_chars, new_chars, x, nthreads) {
+    .Call(`_fast_string_fast_chartr_impl`, old_chars, new_chars, x, nthreads)
 }
 
 fast_fuzz_ratio_impl <- function(a, b, full_process, nthreads) {

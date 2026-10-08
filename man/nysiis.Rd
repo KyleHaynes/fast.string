@@ -4,12 +4,16 @@
 \alias{nysiis}
 \title{NYSIIS phonetic code (New York State Identification and Intelligence System)}
 \usage{
-nysiis(x)
+nysiis(x, nthreads = NULL)
 }
 \arguments{
 \item{x}{Character vector (coerced via \code{\link[=as.character]{as.character()}} if not already
-character). \code{NA} elements, and elements with no alphabetic characters,
+character); accented Latin letters are folded to ASCII first. \code{NA}
+elements, and elements with no letters,
 return \code{NA}.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)}

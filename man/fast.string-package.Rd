@@ -131,11 +131,10 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \itemize{
 \item \strong{Missing values} propagate: an \code{NA} input gives an \code{NA} result, and the
 comparison functions return \code{NA} when either side is \code{NA}.
-\item \strong{Threads}: the matching, substitution, similarity and lookup
-functions take \code{nthreads}. \code{NULL} (the default) uses the RcppParallel
-setting, see \code{\link[RcppParallel:setThreadOptions]{RcppParallel::setThreadOptions()}}; \code{1} forces serial
-execution. The remaining parallel functions (phonetic codes, dates,
-\code{\link[=fnchar]{fnchar()}}, \code{\link[=fsubstr]{fsubstr()}}, \code{\link[=fchartr]{fchartr()}}) always use that setting.
+\item \strong{Threads}: every parallel function takes \code{nthreads}. \code{NULL} (the
+default) uses the RcppParallel setting, see
+\code{\link[RcppParallel:setThreadOptions]{RcppParallel::setThreadOptions()}}; \code{1} forces serial execution.
+\code{\link[=ftrimws]{ftrimws()}} is always serial: building its result strings is.
 \item \strong{Bytes or code points}: \code{\link[=jaro_winkler]{jaro_winkler()}} and the \link{edit_distance}
 functions compare encoded bytes by default (\code{use_bytes = TRUE}) for
 compatibility and speed; pass \code{use_bytes = FALSE} to compare UTF-8 code

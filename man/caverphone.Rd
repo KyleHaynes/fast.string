@@ -4,13 +4,16 @@
 \alias{caverphone}
 \title{Caverphone 2.0 phonetic code (Caversham Project, University of Otago)}
 \usage{
-caverphone(x)
+caverphone(x, nthreads = NULL)
 }
 \arguments{
 \item{x}{Character vector (coerced via \code{\link[=as.character]{as.character()}} if not already
 character). \code{NA} elements return \code{NA}; every other input — including
 \code{""} — returns a 10-character code (\code{""} and pure-non-letter strings
 both code as \code{"1111111111"}).}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)}

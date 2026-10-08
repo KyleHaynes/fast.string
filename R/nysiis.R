@@ -8,8 +8,11 @@
 #' for fuzzy name matching, typically alongside or instead of [soundex()].
 #'
 #' @param x Character vector (coerced via [as.character()] if not already
-#'   character). `NA` elements, and elements with no alphabetic characters,
+#'   character); accented Latin letters are folded to ASCII first. `NA`
+#'   elements, and elements with no letters,
 #'   return `NA`.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #'
 #' @return Character vector the same length as `x`, with `names(x)`
 #'   preserved, each element either `NA` or up to 6 characters.
@@ -17,7 +20,7 @@
 #' @examples
 #' nysiis(c("Robert", "Rupert", "Ashcraft", "Ashcroft", NA))
 #' @export
-nysiis <- function(x) {
+nysiis <- function(x, nthreads = NULL) {
     if (!is.character(x)) x <- as.character(x)
-    .copy_names(fast_nysiis_impl(x), x)
+    .copy_names(fast_nysiis_impl(x, .as_nthreads(nthreads)), x)
 }

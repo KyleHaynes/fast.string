@@ -20,6 +20,8 @@
 #' @param x Character vector (coerced via [as.character()] if not already
 #'   character). `NA` elements, and elements with no content after
 #'   trimming, return `NA` in both columns.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #'
 #' @return A `data.frame` with two character columns, `primary` and
 #'   `secondary`, each `length(x)` long (`secondary` is empty `""`, not
@@ -29,9 +31,9 @@
 #' @examples
 #' double_metaphone(c("Smith", "Schmidt", "Catherine", "Kathryn"))
 #' @export
-double_metaphone <- function(x) {
+double_metaphone <- function(x, nthreads = NULL) {
     if (!is.character(x)) x <- as.character(x)
-    res <- fast_double_metaphone_impl(x)
+    res <- fast_double_metaphone_impl(x, .as_nthreads(nthreads))
     data.frame(primary = res$primary, secondary = res$secondary,
                stringsAsFactors = FALSE)
 }

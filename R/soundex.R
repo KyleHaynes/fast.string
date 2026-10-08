@@ -10,7 +10,10 @@
 #'
 #' @param x Character vector (coerced via [as.character()] if not already
 #'   character, e.g. a factor of names read from a CSV). `NA` elements, and
-#'   elements with no alphabetic characters, return `NA`.
+#'   elements with no letters, return `NA`. Accented Latin letters are
+#'   folded to ASCII first, so `"Émile"` codes as `"Emile"`.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #'
 #' @return Character vector the same length as `x`, with `names(x)`
 #'   preserved, each element either `NA` or exactly 4 characters.
@@ -18,7 +21,7 @@
 #' @examples
 #' soundex(c("Robert", "Rupert", "Ashcraft", "Ashcroft", NA))
 #' @export
-soundex <- function(x) {
+soundex <- function(x, nthreads = NULL) {
     if (!is.character(x)) x <- as.character(x)
-    .copy_names(fast_soundex_impl(x), x)
+    .copy_names(fast_soundex_impl(x, .as_nthreads(nthreads)), x)
 }

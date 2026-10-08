@@ -4,13 +4,16 @@
 \alias{fsubstr}
 \title{Fast substring extraction}
 \usage{
-fsubstr(x, start, stop)
+fsubstr(x, start, stop, nthreads = NULL)
 }
 \arguments{
 \item{x}{Character vector. \code{NA} elements return \code{NA}.}
 
 \item{start, stop}{Integer (or numeric, coerced via \code{\link[=as.integer]{as.integer()}}) vectors
 of length 1 or \code{length(x)}. \code{NA} in either produces \code{NA} for that element.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)} preserved.

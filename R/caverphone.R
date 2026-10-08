@@ -20,6 +20,8 @@
 #'   character). `NA` elements return `NA`; every other input — including
 #'   `""` — returns a 10-character code (`""` and pure-non-letter strings
 #'   both code as `"1111111111"`).
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #'
 #' @return Character vector the same length as `x`, with `names(x)`
 #'   preserved, each element either `NA` or exactly 10 characters.
@@ -27,7 +29,7 @@
 #' @examples
 #' caverphone(c("Peter", "Tedder", "Stevenson"))
 #' @export
-caverphone <- function(x) {
+caverphone <- function(x, nthreads = NULL) {
     if (!is.character(x)) x <- as.character(x)
-    .copy_names(fast_caverphone_impl(x), x)
+    .copy_names(fast_caverphone_impl(x, .as_nthreads(nthreads)), x)
 }

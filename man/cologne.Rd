@@ -4,20 +4,23 @@
 \alias{cologne}
 \title{Cologne phonetic code}
 \usage{
-cologne(x)
+cologne(x, nthreads = NULL)
 }
 \arguments{
 \item{x}{Character vector (coerced with \code{\link[=as.character]{as.character()}} when needed).
 \code{NA} values and elements with no supported letters return \code{NA}.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}, with names preserved.
 }
 \description{
 Encodes names with the Cologne phonetic algorithm, which is designed for
-German pronunciation. Input is uppercased bytewise, German umlauts are
-mapped to their base vowels, sharp s is mapped to \code{SS}, and other
-non-letters are ignored before encoding.
+German pronunciation. Accented Latin letters are folded to ASCII first
+(umlauts to their base vowels, sharp s to \code{SS}), input is uppercased,
+and other non-letters are ignored before encoding.
 }
 \examples{
 cologne(c("Müller-Lüdenscheidt", "Meier", "Meyer"))

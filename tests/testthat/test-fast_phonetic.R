@@ -101,3 +101,15 @@ test_that("phonetic codes fold accented Latin letters", {
     latin1 <- iconv(accented[c(1, 2, 5)], "UTF-8", "latin1")
     expect_identical(fast.string::soundex(latin1), fast.string::soundex(plain[c(1, 2, 5)]))
 })
+
+test_that("phonetic codes take an nthreads cap", {
+    x <- rep(c("Robert", "Rupert", NA), 50)
+    for (encode in list(fast.string::soundex, fast.string::refined_soundex,
+                        fast.string::nysiis, fast.string::cologne,
+                        fast.string::caverphone)) {
+        expect_identical(encode(x, nthreads = 1L), encode(x))
+    }
+    expect_identical(fast.string::double_metaphone(x, nthreads = 2L),
+                     fast.string::double_metaphone(x))
+    expect_error(fast.string::soundex("a", nthreads = -1), "positive integer")
+})

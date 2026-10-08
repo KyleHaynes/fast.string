@@ -320,7 +320,8 @@ static CharacterVector substr_serial(const StringVector& x,
 CharacterVector fast_substr_impl(const StringVector& x,
                                  const IntegerVector& start,
                                  const IntegerVector& stop,
-                                 bool native_utf8) {
+                                 bool native_utf8,
+                                 int nthreads) {
     const int* start_begin = start.begin();
     const int max_start = start.size() == 0
         ? NA_INTEGER
@@ -353,7 +354,7 @@ CharacterVector fast_substr_impl(const StringVector& x,
         use_utf8.data(),
         slices.data()
     );
-    dispatch_for(0, n, worker, string_scan_work(snapshot), 10000);
+    dispatch_for(0, n, worker, string_scan_work(snapshot), 10000, nthreads);
 
     CharacterVector result(static_cast<R_xlen_t>(n));
     for (std::size_t i = 0; i < n; ++i) {
@@ -418,7 +419,8 @@ struct NcharWorker : public Worker {
 IntegerVector fast_nchar_impl(const StringVector& x,
                               int type,
                               bool allow_na,
-                              bool native_utf8) {
+                              bool native_utf8,
+                              int nthreads) {
     const CharacterVector source = materialized_strings(x);
     const SEXP* strings = static_cast<const SEXP*>(DATAPTR_RO(source));
     const R_xlen_t n = source.size();
@@ -450,7 +452,7 @@ IntegerVector fast_nchar_impl(const StringVector& x,
     if (!pending.empty()) {
         NcharWorker worker(pending.data(), out);
         const std::size_t work = pending_bytes / 32u + pending.size();
-        dispatch_for(0, pending.size(), worker, work, 10000);
+        dispatch_for(0, pending.size(), worker, work, 10000, nthreads);
     }
     return result;
 }
@@ -503,7 +505,8 @@ struct ChartrWorker : public Worker {
 // [[Rcpp::export]]
 CharacterVector fast_chartr_impl(const std::string& old_chars,
                                  const std::string& new_chars,
-                                 const StringVector& x) {
+                                 const StringVector& x,
+                                 int nthreads) {
     unsigned char table[256];
     for (int i = 0; i < 256; ++i)
         table[i] = static_cast<unsigned char>(i);
@@ -533,7 +536,7 @@ CharacterVector fast_chartr_impl(const std::string& old_chars,
         bytes.data(),
         changed.data()
     );
-    dispatch_for(0, n, worker, string_scan_work(snapshot), 10000);
+    dispatch_for(0, n, worker, string_scan_work(snapshot), 10000, nthreads);
 
     CharacterVector result(static_cast<R_xlen_t>(n));
     for (std::size_t i = 0; i < n; ++i) {

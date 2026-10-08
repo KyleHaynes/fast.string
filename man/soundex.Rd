@@ -4,12 +4,16 @@
 \alias{soundex}
 \title{Soundex phonetic code (American Soundex / US Census Bureau rules)}
 \usage{
-soundex(x)
+soundex(x, nthreads = NULL)
 }
 \arguments{
 \item{x}{Character vector (coerced via \code{\link[=as.character]{as.character()}} if not already
 character, e.g. a factor of names read from a CSV). \code{NA} elements, and
-elements with no alphabetic characters, return \code{NA}.}
+elements with no letters, return \code{NA}. Accented Latin letters are
+folded to ASCII first, so \code{"Émile"} codes as \code{"Emile"}.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)}
