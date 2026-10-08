@@ -124,12 +124,12 @@ format_datetime(stamps, "compact")
 format_datetime(stamps, "iso_offset", offset = "+10:00")
 ```
 
-Unlike `fas.Date()`, which validates field ranges only, `fas.POSIXct()`
-validates the whole calendar — month lengths and leap years included:
+Both parsers validate the whole calendar -- month lengths and leap years
+included -- and return `NA` for an impossible date:
 
 ```{r}
 #| label: date-strictness
-fas.Date("29/02/2023", "dmy")       # rolls over -- 2023 is not a leap year
+fas.Date("29/02/2023", "dmy")       # NA -- 2023 is not a leap year
 fas.POSIXct("2023-02-29 08:00:00")  # NA
 ```
 

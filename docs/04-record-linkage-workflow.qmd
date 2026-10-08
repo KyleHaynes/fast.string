@@ -105,20 +105,18 @@ incoming$received_ts <- fas.POSIXct(incoming$received)
 incoming[, c("id", "dob", "dob_date", "received", "received_ts")]
 ```
 
-The two functions differ in strictness, and it matters when you're deciding
-which one is allowed to silently accept bad input. `fas.Date()` validates
-field ranges only (month 1-12, day 1-31), so an impossible calendar date
-rolls over; `fas.POSIXct()` validates the full calendar, including month
-lengths and leap years, and returns `NA`:
+Both functions validate the full calendar, including month lengths and leap
+years, and return `NA` for an impossible value rather than silently
+accepting it:
 
 ```{r}
 #| label: parse-strictness
-fas.Date("29/02/2023", "dmy")          # rolls over -- 2023 is not a leap year
+fas.Date("29/02/2023", "dmy")          # NA -- 2023 is not a leap year
 fas.POSIXct("2023-02-29 08:00:00")     # NA
 ```
 
-So `fas.POSIXct()` doubles as a validity check on the timestamp column, and
-an `NA` there is a legitimate reason to quarantine a row.
+So the parsers double as a validity check on the date and timestamp
+columns, and an `NA` there is a legitimate reason to quarantine a row.
 
 ## Step 3: normalise and quarantine
 

@@ -554,11 +554,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>[1] "2024-06-18T19:15:00+10:00" "2024-06-19T09:59:59+10:00" NA                         </code></pre>
 </div>
 </div>
-<p>Unlike <code><a href="https://rdrr.io/pkg/fast.string/man/fas.Date.html">fas.Date()</a></code>, which validates field ranges only, <code>fas.POSIXct()</code> validates the whole calendar — month lengths and leap years included:</p>
+<p>Both parsers validate the whole calendar – month lengths and leap years included – and return <code>NA</code> for an impossible date:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fas.Date.html">fas.Date</a></span><span class="op">(</span><span class="st">"29/02/2023"</span>, <span class="st">"dmy"</span><span class="op">)</span>       <span class="co"># rolls over -- 2023 is not a leap year</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fas.Date.html">fas.Date</a></span><span class="op">(</span><span class="st">"29/02/2023"</span>, <span class="st">"dmy"</span><span class="op">)</span>       <span class="co"># NA -- 2023 is not a leap year</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] "2023-03-01"</code></pre>
+<pre><code>[1] NA</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.POSIXct</span><span class="op">(</span><span class="st">"2023-02-29 08:00:00"</span><span class="op">)</span>  <span class="co"># NA</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -608,7 +608,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>     name soundex refined cologne
-1  Müller    M460   M8709     657
+1  Müller    M460  M80709     657
 2 Mueller    M460  M80709     657
 3  Miller    M460  M80709     657
 4   Meier    M600    M809      67

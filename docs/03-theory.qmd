@@ -34,54 +34,56 @@ copy of every input. The pattern is never interpreted as regex syntax on
 this path, so there is no regex backtracking risk.
 
 The catch with PCRE2 is that it remains a backtracking engine for genuine
-regex patterns. What `fast.string` adds is a **syntax safety net**, not a
-backtracking guarantee: every regex-accepting function scans the pattern
-for PCRE-only syntax before taking the fast regex path —
+regex patterns, and that its rules are not quite base R's. `grepl()` and
+friends default to `perl = FALSE`, R's TRE engine, and `fast.string` keeps
+that contract: with `perl = FALSE` it rewrites the pattern and sets PCRE2's
+options so that it behaves as TRE does --
+
+* `.` also matches a newline (PCRE2's `DOTALL`), and `$` matches only at
+  the very end rather than before a final newline (`DOLLAR_ENDONLY`);
+* a backslash inside a bracket expression is a literal, so `[\d]` is a
+  backslash or a `d`, not a digit;
+* `\<` and `\>` are word boundaries (`\b(?=\w)` and `\b(?<=\w)`);
+* in UTF-8 text, `\w`, `\b` and POSIX classes such as `[[:alpha:]]` follow
+  Unicode (PCRE2's `UCP`), as TRE's wide-character classes do.
 
 ```{r}
-#| label: pcre-detect
-#| eval: false
-.has_pcre_only_syntax <- function(pattern) {
-    base::grepl(
-        paste0(
-            "\\(\\?[=!]",       # (?= lookahead   (?! negative lookahead
-            "|\\(\\?<[=!]",     # (?<= lookbehind  (?<! negative lookbehind
-            "|\\(\\?>",         # (?> atomic group
-            "|[*+?]\\+",        # *+  ++  ?+  possessive quantifiers
-            "|\\(\\?P[=<]",     # (?P=  (?P<  named backref / group
-            "|\\\\k[<']",       # \k<name>  \k'name'  named backreference
-            "|\\(\\?R\\)",      # (?R) full-pattern recursion
-            "|\\(\\?[0-9]",     # (?1) (?2) … numbered group recursion
-            "|\\(\\?&"          # (?&name) named group recursion
-        ),
-        pattern, perl = TRUE
-    )
-}
+#| label: tre-rules
+x <- c("a\nb", "the cat", "café")
+fgrepl("a.b", x)                       # . matches the newline, as in base R
+fgrepl("\\<the\\>", x)                 # word boundaries
+fgsub("[[:alpha:]]+", "W", x[3])       # the accented letter is a letter
 ```
 
-— and if it finds any, and the caller didn't explicitly pass
-`perl = TRUE`, the call transparently delegates to `base::grepl()`/
-`base::gsub()` with `perl = TRUE` instead of running it through
-`fast.string`'s own PCRE2 path, with a `cli::cli_inform()` notice
-explaining why:
+One difference remains by design: where alternatives can match at the
+same position, TRE takes the *longest* match and PCRE2 the *first*, so
+`fsub("a|ab", "X", "abc")` gives `"Xbc"` where `sub()` gives `"Xc"`.
+
+Patterns that only PCRE understands -- lookarounds, atomic groups,
+possessive quantifiers, named groups, recursion -- would be an error for
+TRE, so a quick scan (`.has_pcre_only_syntax()`) picks them out and runs
+them with `perl = TRUE` semantics instead, still on the fast path:
 
 ```{r}
-#| label: pcre-fallback
-fgrepl("(?<=foo)bar", c("foobar", "bazbar"), perl = FALSE)
+#| label: pcre-only
+fgrepl("(?<=foo)bar", c("foobar", "bazbar"))
 ```
 
-This exists because `fast.string`'s PCRE2 binding and base R's PCRE
-binding are two different code paths with two different sets of supported
-constructs at the edges — the safety net means a pattern either runs
-correctly on the fast path, or falls back to a path R has already battle-
-tested for that exact syntax. It never silently mismatches.
+Text is matched by **character**: when the pattern or any input is
+non-ASCII, PCRE2 runs in UTF mode, so `.` consumes a whole `é` and an
+empty match steps over a whole character. Strings marked `latin1` are
+translated to UTF-8 first, and changed results come back as UTF-8, as base
+R returns them. `useBytes = TRUE` switches all of this off and matches
+byte by byte.
 
-`fcount()` inherits the same net, plus one of its own. Counting means
-looping the match, so it also has to define what happens at the boundaries:
-matches are counted **non-overlapping** (`fcount("aa", "aaaa")` is `2`), and
-an empty pattern — whose base R semantics are counted in characters, while
-the fixed engine works in bytes — is delegated to `base::gregexpr()`
-outright rather than answered in bytes for UTF-8 input.
+A pattern that exhausts PCRE2's backtracking limit on one element does not
+fail the whole call: as in base R, that element counts as not matching and
+a warning names it.
+
+`fcount()` follows the same rules. Counting means looping the match, so it
+also defines the boundaries: matches are counted **non-overlapping**
+(`fcount("aa", "aaaa")` is `2`), and an empty pattern -- whose base R
+semantics are counted in characters -- is delegated to `base::gregexpr()`.
 
 ## Parallelism: RcppParallel, not `parallel`/`future`
 
@@ -580,15 +582,11 @@ support arbitrary `%`-format strings — flexibility that costs real time
 when you're formatting the same fixed shape (say, ISO `YYYY-MM-DD`) for
 five million rows. `fast.string`'s date functions instead support exactly
 four fixed formats (`iso`, `compact`, `dmy`, `ymd_slash`) implemented as
-direct digit-to-character writes with zero-padding — no locale lookup, no
-calendar-math beyond what's needed to validate month (1-12) and day
-(1-31) ranges. There's deliberately *no* days-in-month or leap-year check,
-so `fas.Date("2024-02-30", "iso")` parses without error — trading
-strictness for speed, on the assumption that upstream data has already
-been validated or that downstream code will catch the implausible date
-some other way. If you need full calendar validation, `base::as.Date()` is
-still the right tool; `fas.Date()` is for when you already trust the input
-shape and just want it parsed fast.
+direct digit-to-character writes with zero-padding — no locale lookup, and
+no calendar math beyond validating each date: month lengths and leap years
+are checked (a table lookup per value, which costs nothing measurable), so
+an impossible date such as `fas.Date("2023-02-29")` is `NA`, as it is for
+`base::as.Date()`, rather than rolling over into March.
 
 ### Timestamps: `fas.POSIXct()` and `format_datetime()`
 
@@ -601,14 +599,11 @@ arithmetically, and supports exactly four shapes (`iso`, `rfc3339`,
 
 Two design choices are worth knowing before relying on them.
 
-**These functions validate more than the date functions, not less.** Where
-`fas.Date()` checks only that month and day fall in range, `fas.POSIXct()`
-validates the full calendar — days-in-month and leap years included — and
-returns `NA` for anything impossible. The asymmetry is deliberate: a
-timestamp column is usually a load/event stamp that a pipeline reasons
-about (ordering, watermarks, retention windows), so a silently rolled-over
-value is a worse failure there than in a date-of-birth field that a human
-will eyeball.
+**They validate the full calendar.** Like `fas.Date()`, `fas.POSIXct()`
+checks days-in-month and leap years and returns `NA` for anything
+impossible. The seconds may carry a fraction (`09:15:00.250`), and the
+`rfc3339`/`iso_offset` shapes accept either `Z` or a numeric offset, as
+RFC 3339 itself does.
 
 ```{r}
 #| label: datetime-strictness

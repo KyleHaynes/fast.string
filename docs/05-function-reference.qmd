@@ -17,16 +17,16 @@ is the faster tour.
 
 Equivalent to `base::grepl()`, using PCRE2 and Intel TBB. Large inputs can
 use multiple cores; the crossover depends on subject length and pattern
-cost. See @sec-theory for the automatic PCRE-only-syntax fallback to
-`base::grepl(perl = TRUE)`.
+cost. See @sec-theory for how `perl = FALSE` follows base R's default
+regex rules and how non-ASCII text is matched.
 With `fixed = TRUE`, the byte-oriented pattern is prepared once: one-byte
 needles use `memchr`, two- and three-byte needles use `memchr` plus
 `memcmp`, and longer needles use Boyer–Moore–Horspool. `ignore.case = TRUE`
 uses a 256-entry byte-folding table without lowercasing each input string.
 
 ```r
-fgrepl(pattern, x, ignore.case = FALSE, perl = FALSE,
-       fixed = FALSE, useBytes = FALSE, nthreads = NULL)
+fgrepl(pattern, x, ignore.case = FALSE, perl = FALSE, fixed = FALSE,
+       useBytes = FALSE, nthreads = NULL)
 ```
 
 | Argument | Description |
@@ -34,9 +34,9 @@ fgrepl(pattern, x, ignore.case = FALSE, perl = FALSE,
 | `pattern` | Character scalar. Pattern to search for. |
 | `x` | Character vector. `NA` elements return `NA`. |
 | `ignore.case` | Logical. Case-insensitive matching. |
-| `perl` | Logical. If `TRUE`, skip the PCRE-only syntax check and run the parallel PCRE2 engine directly. |
-| `fixed` | Logical. Treat `pattern` as bytes and use the prepared literal-search path. |
-| `useBytes` | Logical. Ignored; kept for signature compatibility with `base::grepl()`. |
+| `perl` | Logical. Use PCRE semantics instead of base R's default (TRE) rules. |
+| `fixed` | Logical. Treat `pattern` as a literal string and use the prepared literal-search path. |
+| `useBytes` | Logical. Match byte by byte rather than by UTF-8 character, as in base R. |
 | `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** logical vector the same length as `x`.
@@ -79,8 +79,8 @@ matches of one pattern in each element, using the same PCRE2 and
 prepared-fixed-string engines and the same parallel dispatch as `fgrepl()`.
 
 ```r
-fcount(pattern, x, ignore.case = FALSE, perl = FALSE,
-       fixed = FALSE, useBytes = FALSE, nthreads = NULL)
+fcount(pattern, x, ignore.case = FALSE, perl = FALSE, fixed = FALSE,
+       useBytes = FALSE, nthreads = NULL)
 ```
 
 | Argument | Description |
@@ -90,11 +90,9 @@ fcount(pattern, x, ignore.case = FALSE, perl = FALSE,
 **Returns:** integer vector the same length as `x`, with `names(x)`
 preserved. `NA` elements return `NA`; elements with no match return `0L`.
 
-Two cases delegate to `base::gregexpr()` for exactness rather than taking
-the fast path: an empty `pattern` (which has character-position semantics
-in base R, whereas the fixed engine works on bytes), and a pattern using
-PCRE-only syntax without `perl = TRUE` (which emits a message first, the
-same fallback `fgrepl()` uses — see @sec-theory).
+An empty `pattern`, which has character-position semantics in base R, is
+delegated to `base::gregexpr()`. After an empty match the search moves on
+by one character, where `gregexpr(perl = TRUE)` moves on by one byte.
 
 ```{r}
 fcount("[0-9]", c("a1b2c3", "none", NA))
@@ -156,7 +154,7 @@ Non-sequential regex replacement is rejected explicitly.
 
 ```r
 gsub_all(patterns, replacements, x, fixed = FALSE, ignore.case = FALSE,
-          sequential = TRUE, nthreads = NULL)
+         sequential = TRUE, nthreads = NULL, perl = FALSE, useBytes = FALSE)
 ```
 
 | Argument | Description |
@@ -168,6 +166,8 @@ gsub_all(patterns, replacements, x, fixed = FALSE, ignore.case = FALSE,
 | `ignore.case` | Logical. Case-insensitive matching. |
 | `sequential` | Logical (default `TRUE`). `TRUE` = chained passes; `FALSE` = fixed-pattern single combined scan. |
 | `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
+| `perl` | Logical. As in `fgsub()`. |
+| `useBytes` | Logical. As in `fgsub()`. |
 
 **Returns:** character vector the same length as `x`.
 
@@ -203,13 +203,14 @@ ftrimws("  left only", which = "left")
 ### `fsubstr()`
 
 ```r
-fsubstr(x, start, stop)
+fsubstr(x, start, stop, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | Character vector. `NA` elements return `NA`. |
 | `start`, `stop` | Integer (or numeric) vectors of length 1 or `length(x)`, 1-indexed, clamped to each string's bounds, recycled to `length(x)`. `NA` in either produces `NA` for that element. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`.
 
@@ -221,7 +222,7 @@ fsubstr(rep("ABCDEFGH", 3), c(1, 4, 7), c(3, 6, 8))  # vectorised start/stop
 ### `fnchar()`
 
 ```r
-fnchar(x, type = "chars", allowNA = FALSE, keepNA = NA)
+fnchar(x, type = "chars", allowNA = FALSE, keepNA = NA, nthreads = NULL)
 ```
 
 | Argument | Description |
@@ -230,6 +231,7 @@ fnchar(x, type = "chars", allowNA = FALSE, keepNA = NA)
 | `type` | One of `"bytes"`, `"chars"`, or `"width"`. `"width"` delegates to `base::nchar()` (display width isn't parallelised). |
 | `allowNA` | Logical. Ignored; the fast path never raises an encoding error regardless. |
 | `keepNA` | Logical or `NA` (default). `NA`/`TRUE`: `NA` elements of `x` return `NA`. `FALSE`: they return `2L` (length of the string `"NA"`), matching base R's legacy behaviour. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** integer vector the same length as `x`, with `names(x)`
 preserved.
@@ -242,13 +244,14 @@ fnchar(c("café", "abc"), type = "bytes")  # "é" is 2 bytes in UTF-8
 ### `fchartr()`
 
 ```r
-fchartr(old, new, x)
+fchartr(old, new, x, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `old`, `new` | Single strings with the same number of characters. Each character of `old` maps to the corresponding character of `new`. |
 | `x` | Character vector. `NA` elements return `NA`. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`. Falls back to
 `base::chartr()` automatically when `old`/`new` contain multi-byte
@@ -265,13 +268,15 @@ fchartr("aeiou", "AEIOU", "fast string")
 ### `format_date()`
 
 ```r
-format_date(x, format = c("iso", "compact", "dmy", "ymd_slash"))
+format_date(x, format = c("iso", "compact", "dmy", "ymd_slash"),
+            nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | A `Date` object or numeric vector of days since 1970-01-01. |
 | `format` | `"iso"` (`YYYY-MM-DD`), `"compact"` (`YYYYMMDD`), `"dmy"` (`DD/MM/YYYY`), or `"ymd_slash"` (`YYYY/MM/DD`). |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`.
 
@@ -285,13 +290,16 @@ Pure string-building (zero-padding plus punctuation, no calendar math, no
 `Date` object) — the inverse of `date_parts()`.
 
 ```r
-format_date_parts(year, month, day, format = c("iso", "compact", "dmy", "ymd_slash"))
+format_date_parts(year, month, day,
+                  format = c("iso", "compact", "dmy", "ymd_slash"),
+                  nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `year`, `month`, `day` | Numeric vectors, recycled to a common length. `NA`, non-integer-coercible, or out-of-width values (year outside 0-9999, month/day outside 0-99) produce `NA` for that element. No calendar validation — `month = 13` formats as given if it fits the field width. |
 | `format` | Same four options as `format_date()`. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector recycled to the common length of `year`,
 `month`, `day`.
@@ -303,12 +311,13 @@ format_date_parts(2024, 6, 18, "iso")
 ### `date_parts()`
 
 ```r
-date_parts(x)
+date_parts(x, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | A `Date` object or numeric vector of days since 1970-01-01. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** a `data.frame` with integer columns `year`, `month`, `day`.
 
@@ -318,22 +327,28 @@ date_parts(as.Date(c("2024-06-18", "1999-12-31")))
 
 ### `fas.Date()`
 
-Not a drop-in for `base::as.Date()` — see @sec-theory for the speed/
-strictness trade-off (no days-in-month or leap-year validation).
+Reads one fixed format (no locale handling or format guessing) and checks
+the full calendar, so impossible dates are `NA` as with `base::as.Date()`.
+Numeric `x` is read as counts from a standard epoch (Excel, SAS/Stata,
+SPSS, MATLAB, Julian days, ...); see `?fas.Date` for the table.
 
 ```r
-fas.Date(x, format = c("iso", "compact", "dmy", "ymd_slash"))
+fas.Date(x, format = c("iso", "compact", "dmy", "ymd_slash"),
+         origin = "unix", nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
-| `x` | Character vector. `NA` elements, and elements that don't match `format` exactly (wrong length/separators/non-digits) or have an out-of-range month/day, become `NA`. |
+| `x` | Character vector, or numeric counts from `origin`. Character elements that don't match `format` exactly (wrong length/separators/non-digits) or are not a real calendar date become `NA`. A `Date` is returned as is; a date-time is converted with `base::as.Date()`. |
 | `format` | Same four options as `format_date()`; `x` must be in exactly this one format. |
+| `origin` | For numeric `x`: a named epoch (`"unix"`, `"excel"`, `"sas"`, ...) or a day 0 as a `Date` or `"YYYY-MM-DD"` string. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** a `Date` vector the same length as `x`.
 
 ```{r}
-fas.Date(c("18/06/2024", "31/12/1999", "not-a-date"), "dmy")
+fas.Date(c("18/06/2024", "29/02/2023", "not-a-date"), "dmy")
+fas.Date(c(1, 60, 45000), origin = "excel")
 ```
 
 ### `fas.POSIXct()`
@@ -344,13 +359,15 @@ Unlike `fas.Date()`, calendar dates *are* fully validated, including month
 lengths and leap years.
 
 ```r
-fas.POSIXct(x, format = c("iso", "rfc3339", "compact", "iso_offset"))
+fas.POSIXct(x, format = c("iso", "rfc3339", "compact", "iso_offset"),
+            nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | Character vector. `NA` elements, malformed values, and out-of-range or impossible calendar dates become `NA`. |
 | `format` | `"iso"` (`YYYY-MM-DD HH:MM:SS`), `"rfc3339"` (`YYYY-MM-DDTHH:MM:SSZ`), `"compact"` (`YYYYMMDDHHMMSS`), or `"iso_offset"` (`YYYY-MM-DDTHH:MM:SS+HH:MM`). |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** a `POSIXct` vector in UTC, the same length as `x`, with
 `names(x)` preserved.
@@ -370,7 +387,7 @@ timezone-database overhead.
 
 ```r
 format_datetime(x, format = c("iso", "rfc3339", "compact", "iso_offset"),
-                offset = "Z")
+                offset = "Z", nthreads = NULL)
 ```
 
 | Argument | Description |
@@ -378,6 +395,7 @@ format_datetime(x, format = c("iso", "rfc3339", "compact", "iso_offset"),
 | `x` | A `POSIXct` object or numeric vector of seconds since 1970-01-01 00:00:00 UTC. |
 | `format` | The same four formats accepted by `fas.POSIXct()`. |
 | `offset` | Fixed offset written by `format = "iso_offset"`: `"Z"`, or a signed `"+HH:MM"`/`"-HH:MM"` string. Must be `"Z"` for the other three formats, which are emitted in UTC. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`.
 
@@ -400,12 +418,13 @@ blocking keys ahead of fuzzy name matching (@sec-theory, @sec-workflow).
 ### `soundex()`
 
 ```r
-soundex(x)
+soundex(x, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | Character vector (coerced via `as.character()` if not already character — e.g. a factor read from CSV). `NA` elements, and elements with no alphabetic characters, return `NA`. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`, with `names(x)`
 preserved; each element either `NA` or exactly 4 characters.
@@ -417,12 +436,13 @@ soundex(c("Robert", "Rupert", "Ashcraft"))
 ### `nysiis()`
 
 ```r
-nysiis(x)
+nysiis(x, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | Character vector (coerced via `as.character()` if needed). `NA` elements, and elements with no alphabetic characters, return `NA`. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`, with `names(x)`
 preserved; each element either `NA` or up to 6 characters.
@@ -440,12 +460,13 @@ phonetic class, with no truncation — a longer, more discriminating key that
 produces smaller blocks.
 
 ```r
-refined_soundex(x)
+refined_soundex(x, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | Character vector (coerced via `as.character()` if needed). `NA` elements, and elements with no ASCII letters, return `NA`. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`, with `names(x)`
 preserved. Code length varies with the input and is **not** truncated —
@@ -473,12 +494,13 @@ encoding — so German spelling variants that ASCII-only schemes split are
 grouped together.
 
 ```r
-cologne(x)
+cologne(x, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | Character vector (coerced via `as.character()` if needed). `NA` elements, and elements with no supported letters, return `NA`. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`, with `names(x)`
 preserved; a digit string, or `NA`.
@@ -505,12 +527,13 @@ text uppercased) — the algorithm itself keys off literal fragments like
 `"VAN "`/`"SCH"`, including the space.
 
 ```r
-double_metaphone(x)
+double_metaphone(x, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | Character vector (coerced via `as.character()` if needed). `NA` elements, and elements with no content after trimming, return `NA` in both columns. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** a `data.frame` with character columns `primary` and
 `secondary`, each `length(x)` long.
@@ -530,12 +553,13 @@ original 2004 specification (preserved rather than "corrected" — the
 point of a phonetic key is to match the standard everyone else uses).
 
 ```r
-caverphone(x)
+caverphone(x, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `x` | Character vector (coerced via `as.character()` if needed). `NA` elements return `NA`; every other input — including `""` — returns a 10-character code. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
 **Returns:** character vector the same length as `x`, with `names(x)`
 preserved; each element either `NA` or exactly 10 characters.
@@ -584,6 +608,7 @@ jaro_winkler_matrix(a, b, p = 0.1, nthreads = NULL, use_bytes = TRUE)
 | `a` | Character vector of length n (rows). |
 | `b` | Character vector of length m (columns). |
 | `p`, `nthreads` | Same as `jaro_winkler()`. |
+| `use_bytes` | Logical. Compare encoded bytes (`TRUE`) or UTF-8 code points (`FALSE`). |
 
 **Returns:** numeric matrix of dimensions n × m.
 
@@ -598,7 +623,8 @@ mechanics in @sec-theory.
 
 ```r
 jaro_winkler_tokens(a, b, p = 0.1, ignore_case = FALSE, strip = "['’-]",
-                     extra_penalty = NULL, nthreads = NULL)
+                    extra_penalty = NULL, contractions = FALSE,
+                    nthreads = NULL)
 ```
 
 | Argument | Description |
@@ -637,12 +663,14 @@ table without allocating a full all-pairs matrix and compare UTF-8 code points
 by default.
 
 ```r
-fuzzy_match(x, table, method = "jaro_winkler", min_score = 0,
-            max_distance = NULL, match_na = FALSE,
+fuzzy_match(x, table,
+            method = c("jaro_winkler", "levenshtein", "osa", "damerau_levenshtein"),
+            p = 0.1, min_score = 0, max_distance = NULL, match_na = FALSE,
             nomatch = NA_integer_, nthreads = NULL, use_bytes = FALSE)
-fuzzy_top_n(x, table, method = "jaro_winkler", top_n = 5L,
-            min_score = 0, max_distance = NULL, match_na = FALSE,
-            nthreads = NULL, use_bytes = FALSE)
+fuzzy_top_n(x, table,
+            method = c("jaro_winkler", "levenshtein", "osa", "damerau_levenshtein"),
+            top_n = 5L, p = 0.1, min_score = 0, max_distance = NULL,
+            match_na = FALSE, nthreads = NULL, use_bytes = FALSE)
 ```
 
 Supported methods are `"jaro_winkler"`, `"levenshtein"`, `"osa"`, and
@@ -767,7 +795,7 @@ profiles, so repetition carries weight.
 ### `jaccard_index()`
 
 ```r
-jaccard_index(a, b, q = 2, nthreads = NULL)
+jaccard_index(a, b, q = 2, nthreads = NULL, use_bytes = TRUE)
 ```
 
 | Argument | Description |
@@ -775,6 +803,7 @@ jaccard_index(a, b, q = 2, nthreads = NULL)
 | `a`, `b` | Equal-length character vectors. |
 | `q` | Q-gram length (default `2`, i.e. bigrams). Must be a single integer >= 1. |
 | `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
+| `use_bytes` | Logical. Compare encoded bytes (`TRUE`) or UTF-8 code points (`FALSE`). |
 
 **Returns:** numeric vector of similarities in `[0, 1]`, `length(a)`
 long. Two strings shorter than `q` (so neither has any q-grams) compare
@@ -790,7 +819,7 @@ All-pairs Jaccard similarity. Same argument/return shape as
 `jaro_winkler_matrix()`.
 
 ```r
-jaccard_matrix(a, b, q = 2, nthreads = NULL)
+jaccard_matrix(a, b, q = 2, nthreads = NULL, use_bytes = TRUE)
 ```
 
 ### `dice_coefficient()` / `dice_matrix()`
@@ -810,13 +839,15 @@ beta*|B only|)`. `alpha = beta = 1` reduces to Jaccard; `alpha = beta =
 0.5` (the default) reduces to Dice.
 
 ```r
-tversky_index(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL)
+tversky_index(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL,
+              use_bytes = TRUE)
 ```
 
 | Argument | Description |
 |---|---|
 | `a`, `b`, `q`, `nthreads` | Same as `jaccard_index()`. |
 | `alpha`, `beta` | Tversky asymmetry weights (default `0.5` each). Non-negative scalars. |
+| `use_bytes` | Logical. Compare encoded bytes (`TRUE`) or UTF-8 code points (`FALSE`). |
 
 ```{r}
 tversky_index("night", "nacht", alpha = 1, beta = 1)   # == jaccard_index()
@@ -831,13 +862,14 @@ Repeated q-grams keep their multiplicity, which is the whole difference
 from the three set metrics above.
 
 ```r
-cosine_similarity(a, b, q = 2, nthreads = NULL)
-cosine_matrix(a, b, q = 2, nthreads = NULL)
+cosine_similarity(a, b, q = 2, nthreads = NULL, use_bytes = TRUE)
+cosine_matrix(a, b, q = 2, nthreads = NULL, use_bytes = TRUE)
 ```
 
 | Argument | Description |
 |---|---|
 | `a`, `b`, `q`, `nthreads` | Same as `jaccard_index()`/`jaccard_matrix()`. |
+| `use_bytes` | Logical. Compare encoded bytes (`TRUE`) or UTF-8 code points (`FALSE`). |
 
 **Returns:** numeric vector of similarities in `[0, 1]`, `length(a)` long
 (or a `length(a)` × `length(b)` matrix). Missing comparisons return `NA`.

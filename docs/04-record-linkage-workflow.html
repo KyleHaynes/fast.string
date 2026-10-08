@@ -551,18 +551,18 @@ window.Quarto = {
 7  7 15/03/1985 1985-03-15 2024-06-18 14:20:00 2024-06-18 14:20:00</code></pre>
 </div>
 </div>
-<p>The two functions differ in strictness, and it matters when you’re deciding which one is allowed to silently accept bad input. <code>fas.Date()</code> validates field ranges only (month 1-12, day 1-31), so an impossible calendar date rolls over; <code>fas.POSIXct()</code> validates the full calendar, including month lengths and leap years, and returns <code>NA</code>:</p>
+<p>Both functions validate the full calendar, including month lengths and leap years, and return <code>NA</code> for an impossible value rather than silently accepting it:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.Date</span><span class="op">(</span><span class="st">"29/02/2023"</span>, <span class="st">"dmy"</span><span class="op">)</span>          <span class="co"># rolls over -- 2023 is not a leap year</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.Date</span><span class="op">(</span><span class="st">"29/02/2023"</span>, <span class="st">"dmy"</span><span class="op">)</span>          <span class="co"># NA -- 2023 is not a leap year</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] "2023-03-01"</code></pre>
+<pre><code>[1] NA</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fas.POSIXct</span><span class="op">(</span><span class="st">"2023-02-29 08:00:00"</span><span class="op">)</span>     <span class="co"># NA</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] NA</code></pre>
 </div>
 </div>
-<p>So <code>fas.POSIXct()</code> doubles as a validity check on the timestamp column, and an <code>NA</code> there is a legitimate reason to quarantine a row.</p>
+<p>So the parsers double as a validity check on the date and timestamp columns, and an <code>NA</code> there is a legitimate reason to quarantine a row.</p>
 </section><section id="step-3-normalise-and-quarantine" class="level2" data-number="4.4"><h2 data-number="4.4" class="anchored" data-anchor-id="step-3-normalise-and-quarantine">
 <span class="header-section-number">4.4</span> Step 3: normalise and quarantine</h2>
 <p>Strip punctuation and whitespace inconsistencies <em>before</em> comparing, so the comparison step measures genuine name similarity rather than formatting noise — then set aside the rows the profile step flagged.</p>
@@ -637,7 +637,7 @@ window.Quarto = {
 <span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>     name soundex refined cologne
-1  Müller    M460   M8709     657
+1  Müller    M460  M80709     657
 2 Mueller    M460  M80709     657
 3  Miller    M460  M80709     657
 4   Meier    M600    M809      67
@@ -722,10 +722,11 @@ window.Quarto = {
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">hits</span><span class="op">[</span><span class="va">hits</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="fl">5</span> <span class="op">&amp;</span> <span class="va">hits</span><span class="op">$</span><span class="va">ref_id</span> <span class="op">==</span> <span class="fl">106</span>,</span>
 <span>            <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"scheme"</span>, <span class="st">"token"</span>, <span class="st">"ref_token"</span>, <span class="st">"key"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>            scheme  token ref_token       key
-5          cologne   Hans      Hans  068:1971
-9          cologne Müller   Mueller  657:1971
-13 refined_soundex   Hans      Hans H083:1971</code></pre>
+<pre><code>            scheme  token ref_token         key
+5          cologne   Hans      Hans    068:1971
+9          cologne Müller   Mueller    657:1971
+13 refined_soundex   Hans      Hans   H083:1971
+18 refined_soundex Müller   Mueller M80709:1971</code></pre>
 </div>
 </div>
 <p>Note what this says, and what it doesn’t. The <code>"Hans Müller"</code> pair is reachable under <em>both</em> schemes, because the given name is identical and <code>refined_soundex()</code> blocks it happily. Cologne’s contribution is the second row: it is the only one of the two that also links the <em>surnames</em> (<code>"Müller"</code>/<code>"Mueller"</code> → <code>657</code>). On this batch that’s redundant — but given names disagree across systems constantly (<code>"Hans"</code>/<code>"Johann"</code>/<code>"H"</code>), and when they do, that surname key is the only thing keeping the pair alive.</p>
@@ -827,7 +828,7 @@ window.Quarto = {
 <span>                   <span class="kw">function</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="va">m</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;</span> <span class="fl">0L</span><span class="op">)</span> <span class="fl">0L</span> <span class="kw">else</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   1.74    0.11    1.83 </code></pre>
+   1.66    0.14    1.83 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fcount</span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">nm</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -837,12 +838,12 @@ window.Quarto = {
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html">as.POSIXct</a></span><span class="op">(</span><span class="va">ts</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   2.74    0.20    2.94 </code></pre>
+   2.93    0.02    2.95 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb53"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fas.POSIXct</span><span class="op">(</span><span class="va">ts</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.01    0.00    0.02 </code></pre>
+   0.02    0.00    0.02 </code></pre>
 </div>
 </div>
 <p>Both are single runs on one machine and will vary with cores and input shape — <a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> is the chapter with the reproducible harness, and it scales the comparison step of this exact pipeline shape up to 3 million rows.</p>

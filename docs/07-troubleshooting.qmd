@@ -136,24 +136,28 @@ still runs strictly serially on either backend. Set the build variable
 
 ## Regex behaviour
 
-### My pattern works in `grepl(perl = TRUE)` but `fgrepl()` gave a `cli::cli_inform()` message and fell back
+### `fsub()`/`fgsub()` with `perl = FALSE` replaced a different match than base R
 
-That's the intended behaviour, not a bug: the pattern uses PCRE-only
-syntax (lookaround, atomic groups, possessive quantifiers, named
-backreferences — the exact list is in @sec-theory), and `fast.string`
-delegates to `base::grepl(perl = TRUE)` automatically rather than risk a
-subtly different result from its own PCRE2 binding on syntax it hasn't
-specifically validated. The result is correct either way; you're just not
-getting the parallel speedup for that specific call. Pass `perl = TRUE`
-explicitly to skip the syntax check (only do this if you've confirmed the
-pattern behaves identically under `fast.string`'s PCRE2 path for your
-actual data).
+Where alternatives can match at the same position, base R's default (TRE)
+engine takes the *longest* match and PCRE2 takes the *first* alternative
+that matches: `sub("a|ab", "X", "abc")` gives `"Xc"`, `fsub()` gives
+`"Xbc"`. Whether something matches (`fgrepl()`) is unaffected. List the
+longer alternative first (`"ab|a"`) to get the same result from both.
+Everything else about `perl = FALSE` follows base R's rules -- see
+@sec-theory.
 
-`fgrep()`, `fsub()`, `fgsub()`, and `fcount()` all share this fallback.
-`fcount()` has one additional delegation of its own: an empty `pattern`
-always goes to `base::gregexpr()`, because base R counts empty-pattern
-matches in characters while the fixed engine works in bytes, and the two
-answers differ for UTF-8 input.
+Patterns that only PCRE understands (lookarounds, atomic groups,
+possessive quantifiers, named groups) run with `perl = TRUE` semantics even
+when `perl = FALSE`, still on the fast path. `fcount()` delegates only an
+empty `pattern` to `base::gregexpr()`, because base R counts those matches
+in characters.
+
+### A warning says "PCRE2 error 'match limit exceeded' for element ..."
+
+The pattern backtracked too much on that element (see the next question).
+As in base R, that element counts as not matching -- `FALSE` for
+`fgrepl()`, unchanged for `fsub()`/`fgsub()`, `0` for `fcount()` -- and the
+rest of the vector is processed normally.
 
 ### Catastrophic backtracking — am I safe?
 
