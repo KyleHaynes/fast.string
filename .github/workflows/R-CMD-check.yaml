@@ -54,3 +54,15 @@ jobs:
           upload-snapshots: true
           build_args: 'c("--no-manual")'
           args: 'c("--no-manual", "--as-cran")'
+
+      # Surface the install log, check log and failing test output as
+      # annotations, which the run summary shows without opening the logs.
+      - name: Report check problems
+        if: failure()
+        shell: bash
+        run: |
+          find check \( -name 00install.out -o -name 00check.log -o -name 'testthat.Rout.fail' \) -print |
+          while read -r f; do
+            body=$(tail -c 30000 "$f" | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=$(basename "$f")::$body"
+          done
