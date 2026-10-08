@@ -224,8 +224,14 @@ double token_alignment_score_contractions(TokenScratch& sc, double p,
 
     sc.order.resize((std::size_t)na * (std::size_t)nb);
     for (std::size_t idx = 0; idx < sc.order.size(); ++idx) sc.order[idx] = (int)idx;
-    std::sort(sc.order.begin(), sc.order.end(),
-              [&](int x, int y) { return sc.sim[(std::size_t)x] > sc.sim[(std::size_t)y]; });
+    // Equal scores are taken in candidate order. std::sort leaves their
+    // order unspecified, and libc++ and libstdc++ differ, which made the
+    // greedy pairing -- and so the score -- depend on the platform.
+    std::sort(sc.order.begin(), sc.order.end(), [&](int x, int y) {
+        const double sx = sc.sim[(std::size_t)x];
+        const double sy = sc.sim[(std::size_t)y];
+        return sx > sy || (sx == sy && x < y);
+    });
 
     uint32_t consumed_a = 0, consumed_b = 0;
     double total = 0.0;

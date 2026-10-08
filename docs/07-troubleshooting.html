@@ -452,10 +452,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>
 <strong>Windows</strong>: install <a href="https://cran.r-project.org/bin/windows/Rtools/">Rtools</a> matching your R version, and make sure it’s on <code>PATH</code> (the Rtools installer offers to do this). Verify with <code>pkgbuild::has_build_tools(debug = TRUE)</code>.</li>
 <li>
-<strong>macOS</strong>: install Xcode command-line tools (<code>xcode-select --install</code>).</li>
+<strong>macOS</strong>: install Xcode command-line tools (<code>xcode-select --install</code>) and PCRE2 (<code>brew install pcre2</code>).</li>
 <li>
-<strong>Linux</strong>: a C++14-capable compiler (gcc/clang) plus the PCRE2 development headers — <code>libpcre2-dev</code> on Debian/Ubuntu, <code>pcre2-devel</code> on Fedora/RHEL.</li>
+<strong>Linux</strong>: a C++ compiler (gcc/clang) plus the PCRE2 development headers — <code>libpcre2-dev</code> on Debian/Ubuntu, <code>pcre2-devel</code> on Fedora/RHEL.</li>
 </ul>
+<p>fast.string needs R 4.1.0 or later.</p>
 <p>If <code>pkgbuild::has_build_tools(debug = TRUE)</code> returns <code>FALSE</code>, the underlying compiler invocation it prints is the fastest way to see exactly what’s missing.</p>
 </section><section id="reinstalling-after-pulling-new-source-changes" class="level3"><h3 class="anchored" data-anchor-id="reinstalling-after-pulling-new-source-changes">Reinstalling after pulling new source changes</h3>
 <p>If you’re developing against a local checkout rather than installing a release, <code><a href="https://devtools.r-lib.org/reference/load_all.html">devtools::load_all()</a></code> recompiles changed <code>src/*.cpp</code> files automatically; a plain <code><a href="https://rdrr.io/r/base/library.html">library(fast.string)</a></code> won’t pick up source changes without reinstalling first.</p>

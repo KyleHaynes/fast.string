@@ -4,7 +4,7 @@ Title: Fast Parallel String Functions via PCRE2 and RcppParallel
 Version: 0.3.0
 Authors@R: person("Kyle", "Haynes", email = "kyle@kylehaynes.com.au", role = c("aut", "cre"))
 Depends:
-    R (>= 3.5.0)
+    R (>= 4.1.0)
 Description: Fast equivalents of grepl(), grep(), sub(), and gsub() that
     use PCRE2 for regular expressions and prepared literal search for fixed
     strings, parallelised across CPU cores via Intel TBB through
@@ -34,7 +34,7 @@ Suggests:
 LinkingTo:
     Rcpp,
     RcppParallel (>= 5.1.1)
-SystemRequirements: C++14, GNU make, PCRE2 (libpcre2-dev on Debian/Ubuntu,
+SystemRequirements: GNU make, PCRE2 (libpcre2-dev on Debian/Ubuntu,
     pcre2-devel on Fedora, pcre2 on Homebrew)
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.0

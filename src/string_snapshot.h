@@ -242,7 +242,9 @@ private:
     std::uint64_t total_bytes_;
     bool any_non_ascii_ = false;
     bool any_bytes_ = false;
-    int native_utf8_ = -1;
+#if R_VERSION < R_Version(4, 5, 0)
+    int native_utf8_ = -1;  // cached l10n_info()[["UTF-8"]]
+#endif
 };
 
 inline std::size_t snapshot_bytes_as_size(const StringSnapshot& snapshot) {

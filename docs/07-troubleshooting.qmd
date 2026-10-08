@@ -17,10 +17,13 @@ literal search, RcppParallel). You need a working toolchain:
   matching your R version, and make sure it's on `PATH` (the Rtools
   installer offers to do this). Verify with
   `pkgbuild::has_build_tools(debug = TRUE)`.
-- **macOS**: install Xcode command-line tools (`xcode-select --install`).
-- **Linux**: a C++14-capable compiler (gcc/clang) plus the PCRE2
-  development headers — `libpcre2-dev` on Debian/Ubuntu,
-  `pcre2-devel` on Fedora/RHEL.
+- **macOS**: install Xcode command-line tools (`xcode-select --install`)
+  and PCRE2 (`brew install pcre2`).
+- **Linux**: a C++ compiler (gcc/clang) plus the PCRE2 development
+  headers — `libpcre2-dev` on Debian/Ubuntu, `pcre2-devel` on
+  Fedora/RHEL.
+
+fast.string needs R 4.1.0 or later.
 
 If `pkgbuild::has_build_tools(debug = TRUE)` returns `FALSE`, the
 underlying compiler invocation it prints is the fastest way to see exactly

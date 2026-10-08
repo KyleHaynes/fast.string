@@ -1,4 +1,3 @@
-CXX_STD = CXX14
 # PCRE2's flags come from pcre2-config where it is installed (Homebrew, most
 # Linux distributions); otherwise the default search paths are assumed.
 PCRE2_CFLAGS = $(shell pcre2-config --cflags 2>/dev/null)
