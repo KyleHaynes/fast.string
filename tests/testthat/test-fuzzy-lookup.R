@@ -98,3 +98,41 @@ test_that("lookup validates method-specific and scalar arguments", {
     expect_error(fast.string::fuzzy_match(1, "b"), "character vectors")
     expect_error(fast.string::fuzzy_match("a", "b", min_score = 2), "between")
 })
+
+test_that("repeated queries and exact table hits give the scanned answer", {
+    table <- c("SMITH", "SMYTH", "JONES", NA, "SMITH", "")
+    x <- c("SMITH", "SMITH", "SMIHT", NA, "SMIHT", "", "JONAS")
+    for (method in c("jaro_winkler", "levenshtein", "osa", "damerau_levenshtein")) {
+        one_by_one <- vapply(seq_along(x), function(i) fast.string::fuzzy_match(
+            x[i], table, method = method, match_na = TRUE), integer(1))
+        expect_identical(unname(fast.string::fuzzy_match(
+            x, table, method = method, match_na = TRUE)), one_by_one)
+        expect_identical(
+            fast.string::fuzzy_top_n(x, table, method = method, top_n = 2),
+            do.call(rbind, lapply(seq_along(x), function(i) {
+                r <- fast.string::fuzzy_top_n(x[i], table, method = method, top_n = 2)
+                r$query_index <- rep(i, nrow(r))
+                r
+            }))
+        )
+    }
+    # The first of two identical table entries wins, as in a full scan.
+    expect_identical(fast.string::fuzzy_match("SMITH", table), 1L)
+})
+
+test_that("the Jaro-Winkler length bound never drops a qualifying match", {
+    set.seed(11)
+    rs <- function(n) vapply(seq_len(n), function(i)
+        paste(sample(LETTERS[1:5], sample(1:12, 1), TRUE), collapse = ""), "")
+    table <- rs(400)
+    x <- rs(60)
+    full <- fast.string::jaro_winkler_matrix(x, table)
+    for (cutoff in c(0, 0.7, 0.85)) {
+        got <- fast.string::fuzzy_match(x, table, min_score = cutoff)
+        want <- apply(full, 1, function(s) {
+            best <- which(s == max(s))[1]
+            if (s[best] >= cutoff) best else NA_integer_
+        })
+        expect_identical(unname(got), as.integer(want))
+    }
+})
