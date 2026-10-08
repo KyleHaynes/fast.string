@@ -1,7 +1,11 @@
 CXX_STD = CXX14
-PKG_CPPFLAGS = -I. -DNDEBUG
+# PCRE2's flags come from pcre2-config where it is installed (Homebrew, most
+# Linux distributions); otherwise the default search paths are assumed.
+PCRE2_CFLAGS = $(shell pcre2-config --cflags 2>/dev/null)
+PCRE2_LIBS = $(shell pcre2-config --libs8 2>/dev/null || echo -lpcre2-8)
+PKG_CPPFLAGS = -I. -DNDEBUG $(PCRE2_CFLAGS)
 ifeq ($(FAST_STRING_TINYTHREAD),1)
 PKG_CXXFLAGS += -DRCPP_PARALLEL_USE_TBB=0 -DFAST_STRING_ALLOW_TINYTHREAD=1
 endif
-PKG_LIBS += -lpcre2-8
+PKG_LIBS += $(PCRE2_LIBS)
 PKG_LIBS += $(shell "${R_HOME}/bin/Rscript" --vanilla -e "RcppParallel::RcppParallelLibs()")

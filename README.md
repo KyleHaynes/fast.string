@@ -1,5 +1,6 @@
 # fast.string
 
+[![R-CMD-check](https://github.com/KyleHaynes/fast.string/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/KyleHaynes/fast.string/actions/workflows/R-CMD-check.yaml)
 [![Status](https://img.shields.io/badge/status-development-orange)](https://github.com/KyleHaynes/fast.string)
 
 
