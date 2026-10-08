@@ -148,12 +148,13 @@ struct DateFormatWorker : public Worker {
 };
 
 // [[Rcpp::export]]
-CharacterVector fast_format_date_impl(const NumericVector& x, int format_code) {
+CharacterVector fast_format_date_impl(const NumericVector& x, int format_code,
+                                      int nthreads) {
     const std::size_t n = static_cast<std::size_t>(x.size());
     std::vector<char> bytes(checked_output_bytes(n, DATE_SLOT_WIDTH));
     std::vector<std::uint8_t> lengths(n, DATE_NA_LENGTH);
     DateFormatWorker worker(x.begin(), format_code, bytes.data(), lengths.data());
-    dispatch_for(0, n, worker, n, 10000);
+    dispatch_for(0, n, worker, n, 10000, nthreads);
 
     CharacterVector result(static_cast<R_xlen_t>(n));
     for (std::size_t i = 0; i < n; ++i) {
@@ -216,7 +217,8 @@ struct PartsFormatWorker : public Worker {
 CharacterVector fast_format_date_parts_impl(const IntegerVector& year,
                                              const IntegerVector& month,
                                              const IntegerVector& day,
-                                             int format_code) {
+                                             int format_code,
+                                             int nthreads) {
     const std::size_t n = static_cast<std::size_t>(year.size());
     std::vector<char> bytes(checked_output_bytes(n, DATE_SLOT_WIDTH));
     std::vector<std::uint8_t> lengths(n, DATE_NA_LENGTH);
@@ -228,7 +230,7 @@ CharacterVector fast_format_date_parts_impl(const IntegerVector& year,
         bytes.data(),
         lengths.data()
     );
-    dispatch_for(0, n, worker, n, 10000);
+    dispatch_for(0, n, worker, n, 10000, nthreads);
 
     CharacterVector result(static_cast<R_xlen_t>(n));
     for (std::size_t i = 0; i < n; ++i) {
@@ -280,6 +282,8 @@ static inline bool parse4(const char* input, std::size_t offset, int& output) {
     return true;
 }
 
+static inline int days_in_month(int year, int month);
+
 static bool parse_date(const char* input,
                        std::size_t length,
                        int format_code,
@@ -310,7 +314,9 @@ static bool parse_date(const char* input,
                 parse2(input, 8, day);
             break;
     }
-    if (!valid || month < 1 || month > 12 || day < 1 || day > 31)
+    // Impossible dates (2023-02-29, 2024-04-31) are NA, as in base R.
+    if (!valid || month < 1 || month > 12 || day < 1 ||
+        day > days_in_month(year, month))
         return false;
     output = static_cast<double>(ymd_to_jdn(year, month, day) - 2440588L);
     return true;
@@ -349,12 +355,13 @@ static inline std::size_t date_parse_work(const StringSnapshot& snapshot) {
 }
 
 // [[Rcpp::export]]
-NumericVector fast_parse_date_impl(const StringVector& x, int format_code) {
+NumericVector fast_parse_date_impl(const StringVector& x, int format_code,
+                                   int nthreads) {
     const StringSnapshot snapshot(x);
     const std::size_t n = snapshot.size();
     NumericVector result(static_cast<R_xlen_t>(n));
     DateParseWorker worker(snapshot.data(), format_code, result);
-    dispatch_for(0, n, worker, date_parse_work(snapshot), 10000);
+    dispatch_for(0, n, worker, date_parse_work(snapshot), 10000, nthreads);
     return result;
 }
 
@@ -589,7 +596,7 @@ struct EpochDateWorker : public Worker {
 // Integer input on a zero-offset day epoch keeps integer storage, exactly as
 // base::as.Date(x) relabels it; everything else returns double days.
 // [[Rcpp::export(rng = false)]]
-SEXP fast_epoch_date_impl(SEXP x, const NumericVector& spec) {
+SEXP fast_epoch_date_impl(SEXP x, const NumericVector& spec, int nthreads) {
     const int type = TYPEOF(x);
     if (type != INTSXP && type != REALSXP)
         stop("`x` must be an integer or double vector.");
@@ -617,7 +624,7 @@ SEXP fast_epoch_date_impl(SEXP x, const NumericVector& spec) {
     dispatch_for(0, n, worker, n,
                  relabel ? EPOCH_COPY_PARALLEL_THRESHOLD
                          : EPOCH_PARALLEL_THRESHOLD,
-                 -1, EPOCH_GRAIN);
+                 nthreads, EPOCH_GRAIN);
 
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
     if (names != R_NilValue) Rf_setAttrib(result, R_NamesSymbol, names);
@@ -652,6 +659,60 @@ static inline bool valid_datetime_parts(int year, int month, int day,
         second >= 0 && second <= 59;
 }
 
+// "YYYY-MM-DD?HH:MM:SS" with `separators` allowed at position 10.
+static inline bool parse_date_time_prefix(const char* input,
+                                          std::size_t length,
+                                          const char* separators,
+                                          int& year, int& month, int& day,
+                                          int& hour, int& minute,
+                                          int& second) {
+    return length >= 19 && input[4] == '-' && input[7] == '-' &&
+        std::strchr(separators, input[10]) != nullptr && input[10] != '\0' &&
+        input[13] == ':' && input[16] == ':' &&
+        parse4(input, 0, year) && parse2(input, 5, month) &&
+        parse2(input, 8, day) && parse2(input, 11, hour) &&
+        parse2(input, 14, minute) && parse2(input, 17, second);
+}
+
+// Optional ".fff..." fraction of a second starting at `position`; at least
+// one digit when present. Digits beyond nanoseconds are read but ignored.
+static inline bool parse_fraction(const char* input, std::size_t length,
+                                  std::size_t& position, double& fraction) {
+    fraction = 0.0;
+    if (position >= length || input[position] != '.') return true;
+    ++position;
+    const std::size_t first = position;
+    double scale = 0.1;
+    while (position < length && is_digit_ascii(input[position])) {
+        if (position - first < 9) {
+            fraction += (input[position] - '0') * scale;
+            scale /= 10.0;
+        }
+        ++position;
+    }
+    return position > first;
+}
+
+// The rest of the string must be "Z"/"z" or "+HH:MM"/"-HH:MM".
+static inline bool parse_zone(const char* input, std::size_t length,
+                              std::size_t position, int& offset_minutes) {
+    offset_minutes = 0;
+    if (length - position == 1)
+        return input[position] == 'Z' || input[position] == 'z';
+    int offset_hour = 0;
+    int offset_minute = 0;
+    if (length - position != 6 ||
+        (input[position] != '+' && input[position] != '-') ||
+        input[position + 3] != ':' ||
+        !parse2(input, position + 1, offset_hour) ||
+        !parse2(input, position + 4, offset_minute) ||
+        offset_hour > 23 || offset_minute > 59)
+        return false;
+    offset_minutes = offset_hour * 60 + offset_minute;
+    if (input[position] == '-') offset_minutes = -offset_minutes;
+    return true;
+}
+
 static bool parse_datetime(const char* input,
                            std::size_t length,
                            int format_code,
@@ -659,23 +720,25 @@ static bool parse_datetime(const char* input,
     int year = 0, month = 0, day = 0;
     int hour = 0, minute = 0, second = 0;
     int offset_minutes = 0;
+    double fraction = 0.0;
     bool valid = false;
+    std::size_t position = 19;
 
     switch (format_code) {
         case 0:
-            valid = length == 19 && input[4] == '-' && input[7] == '-' &&
-                input[10] == ' ' && input[13] == ':' && input[16] == ':' &&
-                parse4(input, 0, year) && parse2(input, 5, month) &&
-                parse2(input, 8, day) && parse2(input, 11, hour) &&
-                parse2(input, 14, minute) && parse2(input, 17, second);
+            valid = parse_date_time_prefix(input, length, " ", year, month,
+                                           day, hour, minute, second) &&
+                parse_fraction(input, length, position, fraction) &&
+                position == length;
             break;
         case 1:
-            valid = length == 20 && input[4] == '-' && input[7] == '-' &&
-                input[10] == 'T' && input[13] == ':' && input[16] == ':' &&
-                input[19] == 'Z' &&
-                parse4(input, 0, year) && parse2(input, 5, month) &&
-                parse2(input, 8, day) && parse2(input, 11, hour) &&
-                parse2(input, 14, minute) && parse2(input, 17, second);
+        case 3:
+            // RFC 3339 allows a lower-case "t"/"z" and, by agreement, a
+            // space; both formats take "Z" or a numeric offset.
+            valid = parse_date_time_prefix(input, length, "Tt ", year, month,
+                                           day, hour, minute, second) &&
+                parse_fraction(input, length, position, fraction) &&
+                parse_zone(input, length, position, offset_minutes);
             break;
         case 2:
             valid = length == 14 &&
@@ -683,23 +746,6 @@ static bool parse_datetime(const char* input,
                 parse2(input, 6, day) && parse2(input, 8, hour) &&
                 parse2(input, 10, minute) && parse2(input, 12, second);
             break;
-        case 3: {
-            int offset_hour = 0;
-            int offset_minute = 0;
-            valid = length == 25 && input[4] == '-' && input[7] == '-' &&
-                input[10] == 'T' && input[13] == ':' && input[16] == ':' &&
-                (input[19] == '+' || input[19] == '-') && input[22] == ':' &&
-                parse4(input, 0, year) && parse2(input, 5, month) &&
-                parse2(input, 8, day) && parse2(input, 11, hour) &&
-                parse2(input, 14, minute) && parse2(input, 17, second) &&
-                parse2(input, 20, offset_hour) &&
-                parse2(input, 23, offset_minute) &&
-                offset_hour <= 23 && offset_minute <= 59;
-            offset_minutes = offset_hour * 60 + offset_minute;
-            if (length == 25 && input[19] == '-')
-                offset_minutes = -offset_minutes;
-            break;
-        }
     }
 
     if (!valid || !valid_datetime_parts(
@@ -709,7 +755,7 @@ static bool parse_datetime(const char* input,
         ymd_to_jdn(year, month, day) - 2440588L
     );
     output = days * 86400.0 + hour * 3600.0 + minute * 60.0 + second
-        - offset_minutes * 60.0;
+        + fraction - offset_minutes * 60.0;
     return true;
 }
 
@@ -736,12 +782,13 @@ struct DateTimeParseWorker : public Worker {
 
 // [[Rcpp::export]]
 NumericVector fast_parse_datetime_impl(const StringVector& x,
-                                       int format_code) {
+                                       int format_code,
+                                       int nthreads) {
     const StringSnapshot snapshot(x);
     const std::size_t n = snapshot.size();
     NumericVector result(static_cast<R_xlen_t>(n));
     DateTimeParseWorker worker(snapshot.data(), format_code, result);
-    dispatch_for(0, n, worker, date_parse_work(snapshot), 10000);
+    dispatch_for(0, n, worker, date_parse_work(snapshot), 10000, nthreads);
     return result;
 }
 
@@ -854,14 +901,15 @@ struct DateTimeFormatWorker : public Worker {
 // [[Rcpp::export]]
 CharacterVector fast_format_datetime_impl(const NumericVector& x,
                                           int format_code,
-                                          int offset_minutes) {
+                                          int offset_minutes,
+                                          int nthreads) {
     const std::size_t n = static_cast<std::size_t>(x.size());
     std::vector<char> bytes(checked_output_bytes(n, DATETIME_SLOT_WIDTH));
     std::vector<std::uint8_t> lengths(n, DATE_NA_LENGTH);
     DateTimeFormatWorker worker(
         x.begin(), format_code, offset_minutes, bytes.data(), lengths.data()
     );
-    dispatch_for(0, n, worker, n, 10000);
+    dispatch_for(0, n, worker, n, 10000, nthreads);
 
     CharacterVector result(static_cast<R_xlen_t>(n));
     for (std::size_t i = 0; i < n; ++i) {
@@ -911,13 +959,13 @@ struct DatePartsWorker : public Worker {
 };
 
 // [[Rcpp::export]]
-List fast_date_parts_impl(const NumericVector& x) {
+List fast_date_parts_impl(const NumericVector& x, int nthreads) {
     const std::size_t n = static_cast<std::size_t>(x.size());
     IntegerVector years(static_cast<R_xlen_t>(n));
     IntegerVector months(static_cast<R_xlen_t>(n));
     IntegerVector days(static_cast<R_xlen_t>(n));
     DatePartsWorker worker(x.begin(), years, months, days);
-    dispatch_for(0, n, worker, n, 10000);
+    dispatch_for(0, n, worker, n, 10000, nthreads);
 
     List output = List::create(
         Named("year") = years,

@@ -144,11 +144,22 @@ test_that("fas.Date propagates NA and rejects malformed input without erroring",
     expect_true(is.na(res[6]))  # wrong length (9 chars)
 })
 
-test_that("fas.Date does not validate days-in-month (documented trade-off)", {
-    # "2024-02-30" has no calendar validation, unlike base::as.Date(), by
-    # design -- base actually errors outright on this input.
-    expect_false(is.na(fast.string::fas.Date("2024-02-30", "iso")))
-    expect_error(as.Date("2024-02-30"), "unambiguous format")
+test_that("fas.Date returns NA for impossible calendar dates", {
+    x <- c("2024-02-29", "2023-02-29", "2024-04-31", "2024-12-31",
+           "1900-02-29", "2000-02-29", "2024-02-30")
+    expect_identical(fast.string::fas.Date(x),
+                     as.Date(x, format = "%Y-%m-%d"))
+    expect_true(is.na(fast.string::fas.Date("29/02/2023", "dmy")))
+    expect_true(is.na(fast.string::fas.Date("20230229", "compact")))
+})
+
+test_that("fas.Date passes Dates through and converts date-times like base", {
+    d <- as.Date(c(a = "2024-01-02"))
+    expect_identical(fast.string::fas.Date(d), d)
+    t <- as.POSIXct("2024-01-02 23:30", tz = "UTC")
+    expect_identical(fast.string::fas.Date(t), as.Date(t))
+    expect_identical(fast.string::format_date(t), "2024-01-02")
+    expect_identical(fast.string::date_parts(t)$day, 2L)
 })
 
 test_that("fas.Date parses all 4 formats correctly", {
@@ -276,4 +287,17 @@ test_that("fas.Date rejects bad origins and arguments meant for the other input 
     expect_error(fast.string::fas.Date("45000", origin = "excel"), "`origin` applies to numeric")
     # An all-NA column of unknown type still gives NA dates either way.
     expect_identical(fast.string::fas.Date(NA, origin = "excel"), as.Date(NA))
+})
+
+test_that("date functions take an nthreads cap", {
+    d <- as.Date("2024-06-18") + 0:9
+    for (threads in list(NULL, 1L, 2L)) {
+        expect_identical(fast.string::format_date(d, nthreads = threads),
+                         format(d))
+        expect_identical(
+            fast.string::fas.Date(format(d), nthreads = threads), d
+        )
+    }
+    expect_error(fast.string::fas.Date("2024-01-01", nthreads = 0),
+                 "positive integer")
 })

@@ -4,10 +4,14 @@
 \alias{date_parts}
 \title{Decompose a Date vector into year, month, day integer columns.}
 \usage{
-date_parts(x)
+date_parts(x, nthreads = NULL)
 }
 \arguments{
-\item{x}{A \code{Date} object or numeric vector of days since 1970-01-01.}
+\item{x}{A \code{Date} object, a \code{POSIXct}/\code{POSIXlt} date-time (converted with
+\code{\link[base:as.Date]{base::as.Date()}}), or a numeric vector of days since 1970-01-01.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 A data.frame with integer columns \code{year}, \code{month}, \code{day}.

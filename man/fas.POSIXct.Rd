@@ -4,14 +4,24 @@
 \alias{fas.POSIXct}
 \title{Fast fixed-format timestamp parsing}
 \usage{
-fas.POSIXct(x, format = c("iso", "rfc3339", "compact", "iso_offset"))
+fas.POSIXct(
+  x,
+  format = c("iso", "rfc3339", "compact", "iso_offset"),
+  nthreads = NULL
+)
 }
 \arguments{
 \item{x}{Character vector. Malformed or out-of-range values become \code{NA}.}
 
 \item{format}{One of \code{"iso"} (\verb{YYYY-MM-DD HH:MM:SS}), \code{"rfc3339"}
 (\code{YYYY-MM-DDTHH:MM:SSZ}), \code{"compact"} (\code{YYYYMMDDHHMMSS}), or
-\code{"iso_offset"} (\code{YYYY-MM-DDTHH:MM:SS+HH:MM}).}
+\code{"iso_offset"} (\code{YYYY-MM-DDTHH:MM:SS+HH:MM}). Except in \code{"compact"},
+the seconds may carry a fraction (\code{09:15:00.250}). \code{"rfc3339"} and
+\code{"iso_offset"} both accept \code{Z} or a numeric offset, as RFC 3339 does,
+and also a lower-case \code{t}/\code{z} or a space before the time.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 A \code{POSIXct} vector in UTC with the same length and names as \code{x}.
@@ -26,6 +36,8 @@ including month lengths and leap years.
 # 2023 is not a leap year, so the second value is NA.
 fas.POSIXct(c("2024-06-18 09:15:00", "2023-02-29 00:00:00"))
 fas.POSIXct("20240618091500", format = "compact")
+fas.POSIXct(c("2024-06-18T09:15:00.25Z", "2024-06-18T19:15:00+10:00"),
+            format = "rfc3339")
 }
 \seealso{
 \code{\link[=format_datetime]{format_datetime()}}, \code{\link[=fas.Date]{fas.Date()}}

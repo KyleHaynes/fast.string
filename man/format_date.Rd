@@ -4,13 +4,21 @@
 \alias{format_date}
 \title{Format a Date vector as strings without locale or timezone overhead.}
 \usage{
-format_date(x, format = c("iso", "compact", "dmy", "ymd_slash"))
+format_date(
+  x,
+  format = c("iso", "compact", "dmy", "ymd_slash"),
+  nthreads = NULL
+)
 }
 \arguments{
-\item{x}{A \code{Date} object or numeric vector of days since 1970-01-01.}
+\item{x}{A \code{Date} object, a \code{POSIXct}/\code{POSIXlt} date-time (converted with
+\code{\link[base:as.Date]{base::as.Date()}}), or a numeric vector of days since 1970-01-01.}
 
 \item{format}{One of \code{"iso"} (YYYY-MM-DD), \code{"compact"} (YYYYMMDD),
 \code{"dmy"} (DD/MM/YYYY), or \code{"ymd_slash"} (YYYY/MM/DD).}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)} preserved.

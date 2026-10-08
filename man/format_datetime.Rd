@@ -7,7 +7,8 @@
 format_datetime(
   x,
   format = c("iso", "rfc3339", "compact", "iso_offset"),
-  offset = "Z"
+  offset = "Z",
+  nthreads = NULL
 )
 }
 \arguments{
@@ -19,6 +20,9 @@ format_datetime(
 \item{offset}{Fixed offset written by \code{format = "iso_offset"}, as \code{"Z"}
 or a signed \code{"+HH:MM"}/\code{"-HH:MM"} string. It must be \code{"Z"} for other
 formats.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector the same length as \code{x}.

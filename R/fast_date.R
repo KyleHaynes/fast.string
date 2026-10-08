@@ -5,9 +5,12 @@
 #' `Date` but does not honour the locale or accept arbitrary formats.
 #' Fractional days are floored; `NA`, `NaN` and infinite values give `NA`.
 #'
-#' @param x A `Date` object or numeric vector of days since 1970-01-01.
+#' @param x A `Date` object, a `POSIXct`/`POSIXlt` date-time (converted with
+#'   [base::as.Date()]), or a numeric vector of days since 1970-01-01.
 #' @param format One of `"iso"` (YYYY-MM-DD), `"compact"` (YYYYMMDD),
 #'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
 #' @seealso [fas.Date()] for the reverse direction.
 #' @family date and timestamp functions
@@ -17,13 +20,13 @@
 #' format_date(d, "dmy")
 #' format_date(d, "compact")
 #' @export
-format_date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
+format_date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
+                        nthreads = NULL) {
     format <- match.arg(format)
-    if (inherits(x, "Date")) x <- unclass(x)
-    if (!is.numeric(x))
-        stop("`x` must be a Date or numeric vector of days since 1970-01-01.")
+    x <- .as_day_count(x)
     code <- switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L)
-    .copy_names(fast_format_date_impl(as.double(x), code), x)
+    .copy_names(fast_format_date_impl(as.double(x), code,
+                                      .as_nthreads(nthreads)), x)
 }
 
 #' Concatenate separate year/month/day fields into a formatted date string.
@@ -41,6 +44,8 @@ format_date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
 #'   formatted as given, as long as they fit the field width.
 #' @param format One of `"iso"` (YYYY-MM-DD), `"compact"` (YYYYMMDD),
 #'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector recycled to the common length of `year`,
 #'   `month`, and `day`.
 #' @seealso [date_parts()] for the reverse direction.
@@ -50,7 +55,8 @@ format_date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash")) {
 #' format_date_parts(2024, 6, 18, format = "dmy")
 #' @export
 format_date_parts <-function(year, month, day,
-                              format = c("iso", "compact", "dmy", "ymd_slash")) {
+                              format = c("iso", "compact", "dmy", "ymd_slash"),
+                              nthreads = NULL) {
     if (!is.numeric(year) || !is.numeric(month) || !is.numeric(day))
         stop("`year`, `month`, and `day` must be numeric vectors.")
     format <- match.arg(format)
@@ -61,7 +67,8 @@ format_date_parts <-function(year, month, day,
         day   <- rep_len(day,   n)
     }
     code <- switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L)
-    fast_format_date_parts_impl(as.integer(year), as.integer(month), as.integer(day), code)
+    fast_format_date_parts_impl(as.integer(year), as.integer(month),
+                                as.integer(day), code, .as_nthreads(nthreads))
 }
 
 #' Decompose a Date vector into year, month, day integer columns.
@@ -70,18 +77,26 @@ format_date_parts <-function(year, month, day,
 #' blocking keys (for example "same birth year and month") in record linkage.
 #' Missing dates give `NA` in all three columns.
 #'
-#' @param x A `Date` object or numeric vector of days since 1970-01-01.
+#' @inheritParams format_date
 #' @return A data.frame with integer columns `year`, `month`, `day`.
 #' @seealso [format_date_parts()] for the reverse direction.
 #' @family date and timestamp functions
 #' @examples
 #' date_parts(as.Date(c("2024-06-18", "1999-12-31", NA)))
 #' @export
-date_parts <-function(x) {
+date_parts <-function(x, nthreads = NULL) {
+    x <- .as_day_count(x)
+    fast_date_parts_impl(as.double(x), .as_nthreads(nthreads))
+}
+
+# Days since 1970-01-01 from a Date, a date-time (via base::as.Date(), so its
+# time-zone rules apply) or a plain number.
+.as_day_count <- function(x) {
+    if (inherits(x, c("POSIXct", "POSIXlt"))) x <- base::as.Date(x)
     if (inherits(x, "Date")) x <- unclass(x)
     if (!is.numeric(x))
-        stop("`x` must be a Date or numeric vector of days since 1970-01-01.")
-    fast_date_parts_impl(as.double(x))
+        stop("`x` must be a Date or numeric vector of days since 1970-01-01, or a date-time.")
+    x
 }
 
 #' Fast fixed-format date parsing and epoch day-count conversion
@@ -90,11 +105,9 @@ date_parts <-function(x) {
 #' by skipping locale handling, [strptime()], and multi-format
 #' auto-detection entirely. In exchange, `x` must be in exactly one fixed
 #' `format` (the same four [format_date()] produces, so the two are natural
-#' round-trip partners), and validation is minimal: correct length,
-#' digit/separator positions, month in 1-12, day in 1-31. There is no
-#' days-in-month or leap-year check, so e.g. `"2024-02-30"` parses without
-#' error (unlike [base::as.Date()]) — this trades strictness for speed, by
-#' design.
+#' round-trip partners). Every value is checked: the length, the digit and
+#' separator positions, and the calendar (month lengths and leap years), so
+#' an impossible date such as `"2023-02-29"` becomes `NA`.
 #'
 #' For a numeric vector, converts counts from a standard epoch (spreadsheet
 #' serials, SAS/Stata/SPSS dates, MATLAB datenums, Julian days, ...) to
@@ -131,20 +144,23 @@ date_parts <-function(x) {
 #'
 #' @param x Character vector of dates, or numeric vector of counts from
 #'   `origin`. Character `NA` elements, and elements that don't match
-#'   `format` exactly (wrong length/separators/non-digits) or have an
-#'   out-of-range month/day, become `NA`. Numeric `NA`, `NaN` and infinite
-#'   values become `NA`.
+#'   `format` exactly (wrong length/separators/non-digits) or are not a
+#'   real calendar date, become `NA`. Numeric `NA`, `NaN` and infinite
+#'   values become `NA`. A `Date` is returned as is, and a `POSIXct` or
+#'   `POSIXlt` date-time is converted with [base::as.Date()].
 #' @param format For character `x`: one of `"iso"` (YYYY-MM-DD),
 #'   `"compact"` (YYYYMMDD), `"dmy"` (DD/MM/YYYY), or `"ymd_slash"`
 #'   (YYYY/MM/DD).
 #' @param origin For numeric `x`: a named epoch from the table under
 #'   **Epochs** (case-insensitive), or any other day 0 as a `Date` or a
 #'   `"YYYY-MM-DD"` string.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return A `Date` vector with the same length and names as `x`.
 #' @seealso [format_date()] for the reverse direction.
 #' @family date and timestamp functions
 #' @examples
-#' fas.Date(c("2024-06-18", "not a date", NA))   # bad input becomes NA
+#' fas.Date(c("2024-06-18", "not a date", "2023-02-29", NA))   # bad input is NA
 #' fas.Date("18/06/2024", format = "dmy")
 #'
 #' # Day counts from standard epochs
@@ -154,7 +170,10 @@ date_parts <-function(x) {
 #' fas.Date(100, origin = "2000-01-01")
 #' @export
 fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
-                    origin = "unix") {
+                    origin = "unix", nthreads = NULL) {
+    if (inherits(x, "Date")) return(x)
+    if (inherits(x, c("POSIXct", "POSIXlt"))) return(base::as.Date(x))
+    threads <- .as_nthreads(nthreads)
     if (is.numeric(x)) {
         if (!missing(format))
             stop("`format` applies to character `x`; numeric `x` is read from an `origin`.")
@@ -162,7 +181,7 @@ fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
         spec <- if (is.character(origin) && length(origin) == 1L)
             .date_epochs[[origin]]
         if (is.null(spec)) spec <- .epoch_spec(origin)
-        return(fast_epoch_date_impl(x, spec))
+        return(fast_epoch_date_impl(x, spec, threads))
     }
     if (!is.character(x)) {
         if (all(is.na(x))) x <- as.character(x)
@@ -172,7 +191,7 @@ fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
     }
     format <- match.arg(format)
     code <- switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L)
-    result <- .copy_names(fast_parse_date_impl(x, code), x)
+    result <- .copy_names(fast_parse_date_impl(x, code, threads), x)
     class(result) <- "Date"
     result
 }
@@ -203,9 +222,7 @@ fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
     } else if (is.character(origin) && length(origin) == 1L && !is.na(origin)) {
         spec <- .date_epochs[[tolower(origin)]]
         if (!is.null(spec)) return(spec)
-        days <- fast_parse_date_impl(origin, 0L)
-        # The parser skips days-in-month checks, so demand an exact round trip.
-        if (!identical(fast_format_date_impl(days, 0L), origin)) days <- NA_real_
+        days <- fast_parse_date_impl(origin, 0L, 1L)
     }
     if (!is.finite(days))
         stop("`origin` must be one of ",
@@ -224,7 +241,12 @@ fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
 #' @param x Character vector. Malformed or out-of-range values become `NA`.
 #' @param format One of `"iso"` (`YYYY-MM-DD HH:MM:SS`), `"rfc3339"`
 #'   (`YYYY-MM-DDTHH:MM:SSZ`), `"compact"` (`YYYYMMDDHHMMSS`), or
-#'   `"iso_offset"` (`YYYY-MM-DDTHH:MM:SS+HH:MM`).
+#'   `"iso_offset"` (`YYYY-MM-DDTHH:MM:SS+HH:MM`). Except in `"compact"`,
+#'   the seconds may carry a fraction (`09:15:00.250`). `"rfc3339"` and
+#'   `"iso_offset"` both accept `Z` or a numeric offset, as RFC 3339 does,
+#'   and also a lower-case `t`/`z` or a space before the time.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return A `POSIXct` vector in UTC with the same length and names as `x`.
 #' @seealso [format_datetime()], [fas.Date()]
 #' @family date and timestamp functions
@@ -232,10 +254,13 @@ fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
 #' # 2023 is not a leap year, so the second value is NA.
 #' fas.POSIXct(c("2024-06-18 09:15:00", "2023-02-29 00:00:00"))
 #' fas.POSIXct("20240618091500", format = "compact")
+#' fas.POSIXct(c("2024-06-18T09:15:00.25Z", "2024-06-18T19:15:00+10:00"),
+#'             format = "rfc3339")
 #' @export
 fas.POSIXct <-function(
     x,
-    format = c("iso", "rfc3339", "compact", "iso_offset")
+    format = c("iso", "rfc3339", "compact", "iso_offset"),
+    nthreads = NULL
 ) {
     if (!is.character(x)) {
         if (all(is.na(x))) x <- as.character(x)
@@ -245,7 +270,9 @@ fas.POSIXct <-function(
     code <- switch(
         format, iso = 0L, rfc3339 = 1L, compact = 2L, iso_offset = 3L
     )
-    result <- .copy_names(fast_parse_datetime_impl(x, code), x)
+    result <- .copy_names(
+        fast_parse_datetime_impl(x, code, .as_nthreads(nthreads)), x
+    )
     structure(result, class = c("POSIXct", "POSIXt"), tzone = "UTC")
 }
 
@@ -261,6 +288,8 @@ fas.POSIXct <-function(
 #' @param offset Fixed offset written by `format = "iso_offset"`, as `"Z"`
 #'   or a signed `"+HH:MM"`/`"-HH:MM"` string. It must be `"Z"` for other
 #'   formats.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector the same length as `x`.
 #' @seealso [fas.POSIXct()], [format_date()]
 #' @family date and timestamp functions
@@ -273,7 +302,8 @@ fas.POSIXct <-function(
 format_datetime <-function(
     x,
     format = c("iso", "rfc3339", "compact", "iso_offset"),
-    offset = "Z"
+    offset = "Z",
+    nthreads = NULL
 ) {
     if (inherits(x, "POSIXct")) x <- unclass(x)
     if (!is.numeric(x))
@@ -286,7 +316,7 @@ format_datetime <-function(
         format, iso = 0L, rfc3339 = 1L, compact = 2L, iso_offset = 3L
     )
     .copy_names(fast_format_datetime_impl(
-        as.double(x), code, offset_minutes
+        as.double(x), code, offset_minutes, .as_nthreads(nthreads)
     ), x)
 }
 

@@ -33,32 +33,32 @@ fast_fixed_sub_impl <- function(pattern, replacement, x, ignore_case, global, us
     .Call(`_fast_string_fast_fixed_sub_impl`, pattern, replacement, x, ignore_case, global, use_bytes, nthreads)
 }
 
-fast_format_date_impl <- function(x, format_code) {
-    .Call(`_fast_string_fast_format_date_impl`, x, format_code)
+fast_format_date_impl <- function(x, format_code, nthreads) {
+    .Call(`_fast_string_fast_format_date_impl`, x, format_code, nthreads)
 }
 
-fast_format_date_parts_impl <- function(year, month, day, format_code) {
-    .Call(`_fast_string_fast_format_date_parts_impl`, year, month, day, format_code)
+fast_format_date_parts_impl <- function(year, month, day, format_code, nthreads) {
+    .Call(`_fast_string_fast_format_date_parts_impl`, year, month, day, format_code, nthreads)
 }
 
-fast_parse_date_impl <- function(x, format_code) {
-    .Call(`_fast_string_fast_parse_date_impl`, x, format_code)
+fast_parse_date_impl <- function(x, format_code, nthreads) {
+    .Call(`_fast_string_fast_parse_date_impl`, x, format_code, nthreads)
 }
 
-fast_epoch_date_impl <- function(x, spec) {
-    .Call(`_fast_string_fast_epoch_date_impl`, x, spec)
+fast_epoch_date_impl <- function(x, spec, nthreads) {
+    .Call(`_fast_string_fast_epoch_date_impl`, x, spec, nthreads)
 }
 
-fast_parse_datetime_impl <- function(x, format_code) {
-    .Call(`_fast_string_fast_parse_datetime_impl`, x, format_code)
+fast_parse_datetime_impl <- function(x, format_code, nthreads) {
+    .Call(`_fast_string_fast_parse_datetime_impl`, x, format_code, nthreads)
 }
 
-fast_format_datetime_impl <- function(x, format_code, offset_minutes) {
-    .Call(`_fast_string_fast_format_datetime_impl`, x, format_code, offset_minutes)
+fast_format_datetime_impl <- function(x, format_code, offset_minutes, nthreads) {
+    .Call(`_fast_string_fast_format_datetime_impl`, x, format_code, offset_minutes, nthreads)
 }
 
-fast_date_parts_impl <- function(x) {
-    .Call(`_fast_string_fast_date_parts_impl`, x)
+fast_date_parts_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_date_parts_impl`, x, nthreads)
 }
 
 fast_jaro_winkler_impl <- function(a, b, p, nthreads, use_bytes) {

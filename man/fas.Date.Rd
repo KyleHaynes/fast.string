@@ -4,14 +4,20 @@
 \alias{fas.Date}
 \title{Fast fixed-format date parsing and epoch day-count conversion}
 \usage{
-fas.Date(x, format = c("iso", "compact", "dmy", "ymd_slash"), origin = "unix")
+fas.Date(
+  x,
+  format = c("iso", "compact", "dmy", "ymd_slash"),
+  origin = "unix",
+  nthreads = NULL
+)
 }
 \arguments{
 \item{x}{Character vector of dates, or numeric vector of counts from
 \code{origin}. Character \code{NA} elements, and elements that don't match
-\code{format} exactly (wrong length/separators/non-digits) or have an
-out-of-range month/day, become \code{NA}. Numeric \code{NA}, \code{NaN} and infinite
-values become \code{NA}.}
+\code{format} exactly (wrong length/separators/non-digits) or are not a
+real calendar date, become \code{NA}. Numeric \code{NA}, \code{NaN} and infinite
+values become \code{NA}. A \code{Date} is returned as is, and a \code{POSIXct} or
+\code{POSIXlt} date-time is converted with \code{\link[base:as.Date]{base::as.Date()}}.}
 
 \item{format}{For character \code{x}: one of \code{"iso"} (YYYY-MM-DD),
 \code{"compact"} (YYYYMMDD), \code{"dmy"} (DD/MM/YYYY), or \code{"ymd_slash"}
@@ -20,6 +26,9 @@ values become \code{NA}.}
 \item{origin}{For numeric \code{x}: a named epoch from the table under
 \strong{Epochs} (case-insensitive), or any other day 0 as a \code{Date} or a
 \code{"YYYY-MM-DD"} string.}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 A \code{Date} vector with the same length and names as \code{x}.
@@ -29,11 +38,9 @@ For a character vector, parses dates much faster than \code{\link[base:as.Date]{
 by skipping locale handling, \code{\link[=strptime]{strptime()}}, and multi-format
 auto-detection entirely. In exchange, \code{x} must be in exactly one fixed
 \code{format} (the same four \code{\link[=format_date]{format_date()}} produces, so the two are natural
-round-trip partners), and validation is minimal: correct length,
-digit/separator positions, month in 1-12, day in 1-31. There is no
-days-in-month or leap-year check, so e.g. \code{"2024-02-30"} parses without
-error (unlike \code{\link[base:as.Date]{base::as.Date()}}) — this trades strictness for speed, by
-design.
+round-trip partners). Every value is checked: the length, the digit and
+separator positions, and the calendar (month lengths and leap years), so
+an impossible date such as \code{"2023-02-29"} becomes \code{NA}.
 }
 \details{
 For a numeric vector, converts counts from a standard epoch (spreadsheet
@@ -73,7 +80,7 @@ zero-offset epoch such as \code{"unix"} keeps integer storage, as
 }
 
 \examples{
-fas.Date(c("2024-06-18", "not a date", NA))   # bad input becomes NA
+fas.Date(c("2024-06-18", "not a date", "2023-02-29", NA))   # bad input is NA
 fas.Date("18/06/2024", format = "dmy")
 
 # Day counts from standard epochs

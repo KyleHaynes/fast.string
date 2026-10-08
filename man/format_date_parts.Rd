@@ -8,7 +8,8 @@ format_date_parts(
   year,
   month,
   day,
-  format = c("iso", "compact", "dmy", "ymd_slash")
+  format = c("iso", "compact", "dmy", "ymd_slash"),
+  nthreads = NULL
 )
 }
 \arguments{
@@ -20,6 +21,9 @@ formatted as given, as long as they fit the field width.}
 
 \item{format}{One of \code{"iso"} (YYYY-MM-DD), \code{"compact"} (YYYYMMDD),
 \code{"dmy"} (DD/MM/YYYY), or \code{"ymd_slash"} (YYYY/MM/DD).}
+
+\item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
+RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
 Character vector recycled to the common length of \code{year},

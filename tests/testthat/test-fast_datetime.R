@@ -90,3 +90,19 @@ test_that("datetime functions validate API inputs", {
         "hour"
     )
 })
+
+test_that("fas.POSIXct reads fractional seconds and RFC 3339 offsets", {
+    secs <- function(x) as.numeric(x)
+    base <- secs(as.POSIXct("2024-06-18 09:15:00", tz = "UTC"))
+    expect_equal(secs(fast.string::fas.POSIXct("2024-06-18 09:15:00.25")),
+                 base + 0.25)
+    x <- c("2024-06-18T09:15:00Z", "2024-06-18T19:15:00+10:00",
+           "2024-06-18t09:15:00.5z", "2024-06-18 09:15:00Z",
+           "2024-06-18T09:15:00.Z", "2024-06-18T09:15:00+10")
+    expect_equal(secs(fast.string::fas.POSIXct(x, "rfc3339")),
+                 c(base, base, base + 0.5, base, NA, NA))
+    expect_equal(secs(fast.string::fas.POSIXct(x, "iso_offset")),
+                 secs(fast.string::fas.POSIXct(x, "rfc3339")))
+    # compact has no fraction.
+    expect_true(is.na(fast.string::fas.POSIXct("20240618091500.5", "compact")))
+})
