@@ -68,6 +68,11 @@ fgrepl <-function(pattern, x, ignore.case = FALSE, perl = FALSE,
 #' This is the counting counterpart to [fgrepl()], using the same PCRE2 and
 #' prepared fixed-string engines and the same parallel dispatch policy.
 #'
+#' After an empty match the search moves on by one character. Base R's
+#' `gregexpr(perl = TRUE)` moves on by one byte, so for patterns that can
+#' match the empty string in non-ASCII text it reports extra empty matches
+#' inside multi-byte characters, which `fcount()` does not count.
+#'
 #' @inheritParams fgrepl
 #' @return Integer vector the same length as `x`. Missing inputs return `NA`.
 #' @seealso [base::gregexpr()]

@@ -371,14 +371,17 @@ test_that("perl = FALSE follows base R's default regular expressions", {
                      base::grepl("a.b", x, perl = TRUE))
     expect_identical(fast.string::fgrepl("a$", x, perl = TRUE),
                      base::grepl("a$", x, perl = TRUE))
-    # Wide-character POSIX classes.
+    # Wide-character POSIX classes, as TRE gives them with glibc and on
+    # Windows (base R's answer comes from the platform's wide-character
+    # tables, so it is not compared here): symbols count as punctuation, and
+    # under ignore.case [[:upper:]] matches any cased letter.
     euro <- intToUtf8(0x20ac)
     expect_identical(fast.string::fgrepl("[[:punct:]]", c(euro, "a")),
-                     base::grepl("[[:punct:]]", c(euro, "a")))
+                     c(TRUE, FALSE))
     expect_identical(
-        fast.string::fgrepl("[[:upper:]]", c("abc", intToUtf8(0xe9)),
+        fast.string::fgrepl("[[:upper:]]", c("abc", intToUtf8(0xe9), "1"),
                             ignore.case = TRUE),
-        base::grepl("[[:upper:]]", c("abc", intToUtf8(0xe9)), ignore.case = TRUE)
+        c(TRUE, TRUE, FALSE)
     )
 })
 

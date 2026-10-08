@@ -42,6 +42,12 @@ Counts non-overlapping matches of one pattern in each element of \code{x}.
 This is the counting counterpart to \code{\link[=fgrepl]{fgrepl()}}, using the same PCRE2 and
 prepared fixed-string engines and the same parallel dispatch policy.
 }
+\details{
+After an empty match the search moves on by one character. Base R's
+\code{gregexpr(perl = TRUE)} moves on by one byte, so for patterns that can
+match the empty string in non-ASCII text it reports extra empty matches
+inside multi-byte characters, which \code{fcount()} does not count.
+}
 \examples{
 x <- c("apple pie", "banana split", NA, "cherry tart")
 
