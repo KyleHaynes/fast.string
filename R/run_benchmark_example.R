@@ -413,6 +413,221 @@
     rows
 }
 
+# RapidFuzz's own published throughput, in word pairs per second, read from
+# the charts in its README (docs/img/scorer.svg and docs/img/cdist.svg, made
+# by bench/benchmark_scorer.py and bench/benchmark_cdist.py). Both ran on
+# one thread on the RapidFuzz author's machine: 100 query words, each scored
+# against 10,000 random alphanumeric words (10 characters long for the
+# scorer chart, 8 for the cdist chart). `rapidfuzz` calls the scorer once per
+# pair from Python, `rapidfuzz_cdist` scores through process.cdist(), and
+# `fuzzywuzzy` is fuzzywuzzy's per-pair loop. `full_process` follows the
+# PROCESSOR table in benchmark_cdist.py.
+.bench_rapidfuzz_quoted <- data.frame(
+    scorer = c("ratio", "partial_ratio", "token_sort_ratio", "token_set_ratio",
+               "partial_token_sort_ratio", "partial_token_set_ratio",
+               "qratio", "wratio"),
+    python = c("ratio", "partial_ratio", "token_sort_ratio", "token_set_ratio",
+               "partial_token_sort_ratio", "partial_token_set_ratio",
+               "QRatio", "WRatio"),
+    full_process = c(FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+    rapidfuzz = c(6206379, 3091339, 3155091, 1590972, 1767978, 1213823,
+                  5231998, 1264866),
+    rapidfuzz_cdist = c(135463598, 12936872, 120274547, 3253260, 4610742,
+                        2090213, 126989691, 2516289),
+    fuzzywuzzy = c(480115, 212794, 151101, 108940, 105151, 81875, 184591,
+                   59436),
+    stringsAsFactors = FALSE
+)
+
+# Scores from Python rapidfuzz 3.14.6 for a few pairs, processed as in the
+# table above, so the benchmark can confirm it times the same computation.
+.bench_rapidfuzz_reference <- list(
+    a = c("aB3dE9fGh2", "Zq81mNop0R", "fuzzy wuzzy was a bear",
+          "new york mets", "a certain string", "MARTHA"),
+    b = c("aB3dX9fGh2", "r0PONm18qz", "wuzzy fuzzy was a bear",
+          "the New York Mets baseball club", "cetain", "MARHTA"),
+    scores = list(
+        ratio = c(90, 10, 90.9090909090909, 45.4545454545455,
+                  54.5454545454545, 83.3333333333333),
+        partial_ratio = c(90, 16.6666666666667, 93.0232558139535,
+                          76.9230769230769, 83.3333333333333, 83.3333333333333),
+        token_sort_ratio = c(90, 10, 100, 59.0909090909091, 54.5454545454545,
+                             83.3333333333333),
+        token_set_ratio = c(90, 10, 100, 100, 54.5454545454545,
+                            83.3333333333333),
+        partial_token_sort_ratio = c(90, 18.1818181818182, 100,
+                                     69.2307692307692, 83.3333333333333,
+                                     83.3333333333333),
+        partial_token_set_ratio = c(90, 18.1818181818182, 100, 100,
+                                    83.3333333333333, 83.3333333333333),
+        qratio = c(90, 10, 90.9090909090909, 59.0909090909091,
+                   54.5454545454545, 83.3333333333333),
+        wratio = c(90, 10, 95, 90, 75, 83.3333333333333)
+    )
+)
+
+# Random words of `width` letters and digits, as RapidFuzz's benchmark
+# scripts make them.
+.bench_rapidfuzz_words <- function(n, width) {
+    chars <- c(letters, LETTERS, 0:9)
+    do.call(paste0, lapply(seq_len(width), function(i) {
+        sample(chars, n, replace = TRUE)
+    }))
+}
+
+# Pairs per second, shortened: 6.21M, 480k.
+.bench_rate_label <- function(rate) {
+    ifelse(rate >= 1e6, sprintf("%.3gM", rate / 1e6),
+           ifelse(rate >= 1e3, sprintf("%.3gk", rate / 1e3),
+                  sprintf("%.3g", rate)))
+}
+
+# The fuzz_*() ports run on RapidFuzz's own benchmark workload and set
+# against the throughput RapidFuzz publishes. Those figures come from
+# another machine, so there is no live baseline: a row's baseline time is
+# what the quoted rate implies for this run's number of pairs. The quoted
+# runs were single-threaded, so the summary rows use fast.string on one
+# thread; the throughput table also shows every thread.
+.bench_rapidfuzz <- function(n, reps) {
+    cli::cli_h2("RapidFuzz scorers vs RapidFuzz's published figures")
+    n_words <- min(as.integer(n), 10000L)
+    n_queries <- max(1L, n_words %/% 100L)
+    pick <- seq(1L, by = n_words %/% n_queries, length.out = n_queries)
+    words10 <- .bench_rapidfuzz_words(n_words, 10L)
+    words8 <- .bench_rapidfuzz_words(n_words, 8L)
+    queries8 <- words8[pick]
+    a <- rep(words10[pick], each = n_words)
+    b <- rep(words10, times = n_queries)
+    pairs <- length(a)
+    threads <- RcppParallel::defaultNumThreads()
+
+    words_label <- format(n_words, big.mark = ",")
+    pairs_label <- format(pairs, big.mark = ",")
+    scaled <- if (n_words < 10000L) {
+        " (scaled down from 10,000 words because n is smaller)"
+    } else ""
+    cli::cli_text(paste(
+        "Workload from RapidFuzz's README benchmark: {n_queries} random",
+        "alphanumeric words, each scored against {words_label}",
+        "(10 characters, or 8 for cdist as in its script), {pairs_label} pairs",
+        "per call{scaled}.",
+        "The quoted RapidFuzz and fuzzywuzzy figures were measured on one thread",
+        "on another machine, so read the ratios as indicative. RapidFuzz's",
+        "per-pair figures also include Python's cost of one call per pair, which",
+        "a vectorised R call does not pay; its cdist figures are the like-for-like",
+        "batch comparison. Scores are checked against values from RapidFuzz 3.14.6."
+    ))
+
+    quoted <- .bench_rapidfuzz_quoted
+    reference <- .bench_rapidfuzz_reference
+    rows <- list()
+    rates <- list()
+    for (i in seq_len(nrow(quoted))) {
+        scorer <- quoted$scorer[i]
+        full_process <- quoted$full_process[i]
+        label <- sprintf("fuzz_%s()", scorer)
+        cli::cli_alert("Running {label} ...")
+
+        matches <- .bench_values_match(
+            fuzz_cpdist(reference$a, reference$b, scorer = scorer,
+                        full_process = full_process),
+            reference$scores[[scorer]]
+        )
+        time_of <- function(call_fn) .bench_run(call_fn, reps)$elapsed
+        pair_1 <- time_of(function() fuzz_cpdist(
+            a, b, scorer = scorer, full_process = full_process, nthreads = 1L))
+        pair_all <- time_of(function() fuzz_cpdist(
+            a, b, scorer = scorer, full_process = full_process))
+        cdist_1 <- time_of(function() fuzz_cdist(
+            queries8, words8, scorer = scorer, full_process = full_process,
+            nthreads = 1L))
+        cdist_all <- time_of(function() fuzz_cdist(
+            queries8, words8, scorer = scorer, full_process = full_process))
+        if (!matches) {
+            cli::cli_alert_danger(
+                "{label}: scores differ from RapidFuzz's reference values."
+            )
+        }
+
+        rates[[i]] <- data.frame(
+            scorer = scorer,
+            pairwise_1 = pairs / pair_1, pairwise_all = pairs / pair_all,
+            cdist_1 = pairs / cdist_1, cdist_all = pairs / cdist_all,
+            rapidfuzz = quoted$rapidfuzz[i],
+            rapidfuzz_cdist = quoted$rapidfuzz_cdist[i],
+            fuzzywuzzy = quoted$fuzzywuzzy[i],
+            stringsAsFactors = FALSE
+        )
+
+        python <- quoted$python[i]
+        row <- function(operation, baseline, rate, fast_s, expect_match) {
+            base_s <- pairs / rate
+            speed <- .bench_speedup(base_s, fast_s)
+            ok <- matches && expect_match
+            data.frame(
+                operation = operation, baseline = baseline,
+                base_s = base_s, fast_s = fast_s,
+                speedup = speed$speedup, speedup_label = speed$label,
+                match = ok, expect_match = expect_match,
+                match_symbol = if (ok) "match"
+                               else if (expect_match) "DIFFERS!"
+                               else "differs (expected)",
+                stringsAsFactors = FALSE
+            )
+        }
+        one_thread <- sprintf("%s, 1 thread", label)
+        rows[[scorer]] <- rbind(
+            row(one_thread, sprintf("RapidFuzz fuzz.%s (quoted)", python),
+                quoted$rapidfuzz[i], pair_1, TRUE),
+            # fuzzywuzzy scores with difflib and rounds, so its values differ.
+            row(one_thread, sprintf("fuzzywuzzy fuzz.%s (quoted)", python),
+                quoted$fuzzywuzzy[i], pair_1, FALSE),
+            row(sprintf("fuzz_cdist(%s), 1 thread", scorer),
+                sprintf("RapidFuzz cdist(%s) (quoted)", python),
+                quoted$rapidfuzz_cdist[i], cdist_1, TRUE)
+        )
+    }
+    .bench_print_rates(do.call(rbind, rates), threads)
+    rows
+}
+
+# Throughput of every run in the RapidFuzz family, next to the quoted figures.
+.bench_print_rates <- function(rates, threads) {
+    cols <- list(
+        Scorer = rates$scorer,
+        `1 thread` = .bench_rate_label(rates$pairwise_1),
+        all = .bench_rate_label(rates$pairwise_all),
+        `cdist 1` = .bench_rate_label(rates$cdist_1),
+        `cdist all` = .bench_rate_label(rates$cdist_all),
+        RapidFuzz = .bench_rate_label(rates$rapidfuzz),
+        `RF cdist` = .bench_rate_label(rates$rapidfuzz_cdist),
+        fuzzywuzzy = .bench_rate_label(rates$fuzzywuzzy)
+    )
+    names(cols)[3] <- sprintf("%d threads", threads)
+    names(cols)[5] <- sprintf("cdist %d", threads)
+    pad_right <- function(txt, w) paste0(txt, strrep(" ", pmax(0L, w - nchar(txt, type = "width"))))
+    widths <- vapply(names(cols), function(nm) {
+        max(nchar(cols[[nm]], type = "width"), nchar(nm, type = "width"))
+    }, integer(1))
+    header <- cli::style_bold(paste(mapply(pad_right, names(cols), widths), collapse = "  "))
+    body <- do.call(paste, c(
+        lapply(names(cols), function(nm) pad_right(cols[[nm]], widths[[nm]])),
+        sep = "  "
+    ))
+    cli::cli_text("Word pairs per second (higher is better):")
+    cli::cli_verbatim(c(
+        header,
+        cli::col_grey(strrep("-", sum(widths) + 2L * (length(widths) - 1L))),
+        body
+    ))
+    cli::cli_text(paste(
+        "The first four columns are fast.string on this machine: a vectorised",
+        "call over every pair (as fuzz_cpdist()), then fuzz_cdist(), each on one",
+        "thread and on all {threads}. RapidFuzz, RF cdist and fuzzywuzzy are the",
+        "quoted single-threaded figures."
+    ))
+}
+
 .bench_print_table <- function(tbl) {
     cli::cli_h2("Summary")
     if (is.null(tbl) || !nrow(tbl)) {
@@ -510,12 +725,13 @@
         "3: Dates & timestamps ({.fn as.Date}, {.fn as.POSIXct})",
         "4: String similarity & edit distance ({.pkg stringdist} / {.pkg RecordLinkage} if installed)",
         "5: Phonetic codes ({.pkg RecordLinkage} / {.pkg phonics} if installed)",
-        "6: All of the above"
+        "6: RapidFuzz scorers vs RapidFuzz's published benchmark figures",
+        "7: All of the above"
     ))
-    ans <- trimws(readline("1-6 (blank = all) > "))
+    ans <- trimws(readline("1-7 (blank = all) > "))
     switch(ans,
         "1" = "matching", "2" = "strings", "3" = "dates",
-        "4" = "similarity", "5" = "phonetic", "6" = "all",
+        "4" = "similarity", "5" = "phonetic", "6" = "rapidfuzz", "7" = "all",
         default
     )
 }
@@ -566,6 +782,22 @@
 #' else that disagrees is flagged clearly — that's a real finding, worth
 #' investigating rather than ignoring.
 #'
+#' The `"rapidfuzz"` family has no live baseline. It runs the [fuzz] ports
+#' on the workload of the benchmark in RapidFuzz's README: 100 random
+#' alphanumeric words, each scored against 10,000 others, for 1,000,000
+#' pairs. It sets the results against the throughput RapidFuzz publishes
+#' for itself and for fuzzywuzzy. The words number `min(n, 10000)`, so `n`
+#' below 10,000 scales the workload down. Those figures were measured on one
+#' thread on another machine; a row's baseline time is what the quoted rate
+#' implies for this run's number of pairs, and fast.string is timed on one
+#' thread to match. A table of pairs per second also shows fast.string on
+#' every thread, both as one vectorised call over all pairs and through
+#' [fuzz_cdist()]. RapidFuzz's per-pair figures include Python's cost of one
+#' function call per pair; its cdist figures are the like-for-like batch
+#' comparison. Before timing, each scorer's output is checked against scores
+#' from RapidFuzz 3.14.6. The fuzzywuzzy rows are marked "differs
+#' (expected)", since fuzzywuzzy scores with difflib and rounds.
+#'
 #' In an interactive session it asks for the input size, function family,
 #' and repetition count; any argument supplied explicitly (or every
 #' argument, when called non-interactively) skips its prompt.
@@ -582,8 +814,8 @@
 #' @param n Number of test strings to generate. `NULL` (the default) prompts
 #'   for a value in interactive sessions, or uses `100000` otherwise.
 #' @param family One of `"matching"`, `"strings"`, `"dates"`, `"similarity"`,
-#'   `"phonetic"`, or `"all"`. `NULL` prompts in interactive sessions, or
-#'   uses `"all"` otherwise.
+#'   `"phonetic"`, `"rapidfuzz"`, or `"all"`. `NULL` prompts in interactive
+#'   sessions, or uses `"all"` otherwise.
 #' @param reps Number of timed repetitions per comparison; the fastest run
 #'   is reported. `NULL` prompts in interactive sessions, or uses `1`
 #'   otherwise.
@@ -605,7 +837,8 @@ run_benchmark_example <- function(n = NULL, family = NULL, reps = NULL, seed = 1
     n      <- .bench_resolve(n, .bench_ask_n, 100000L, is_interactive)
     family <- .bench_resolve(family, .bench_ask_family, "all", is_interactive)
     reps   <- .bench_resolve(reps, .bench_ask_reps, 1L, is_interactive)
-    family <- match.arg(family, c("matching", "strings", "dates", "similarity", "phonetic", "all"))
+    family <- match.arg(family, c("matching", "strings", "dates", "similarity",
+                                  "phonetic", "rapidfuzz", "all"))
 
     set.seed(seed)
     cli::cli_h1("fast.string benchmark: fast.string vs base R and other packages")
@@ -635,6 +868,7 @@ run_benchmark_example <- function(n = NULL, family = NULL, reps = NULL, seed = 1
     if (family %in% c("dates",      "all")) rows <- c(rows, .bench_dates(n, reps))
     if (family %in% c("similarity", "all")) rows <- c(rows, .bench_similarity(n, reps))
     if (family %in% c("phonetic",   "all")) rows <- c(rows, .bench_phonetic(n, reps))
+    if (family %in% c("rapidfuzz",  "all")) rows <- c(rows, .bench_rapidfuzz(n, reps))
     rows <- rows[!vapply(rows, is.null, logical(1))]
 
     tbl <- if (length(rows)) do.call(rbind, rows) else NULL

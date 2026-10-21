@@ -32,7 +32,9 @@
 #' * **Bytes or code points**: [jaro_winkler()] and the [edit_distance]
 #'   functions compare encoded bytes by default (`use_bytes = TRUE`) for
 #'   compatibility and speed; pass `use_bytes = FALSE` to compare UTF-8 code
-#'   points. [fuzzy_match()] and [fuzzy_top_n()] default to code points.
+#'   points. [fuzzy_match()] and [fuzzy_top_n()] default to code points,
+#'   and the RapidFuzz ports ([fuzz], [fuzz_process]) always use them, as
+#'   RapidFuzz compares Python `str` characters.
 #' * **Regular expressions**: [fgrepl()], [fcount()], [fsub()], [fgsub()]
 #'   and [gsub_all()] run every pattern on PCRE2. With `perl = FALSE` they
 #'   follow base R's default (TRE) regular expressions, except that the

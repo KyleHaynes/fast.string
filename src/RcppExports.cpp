@@ -407,59 +407,79 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// fast_fuzz_ratio_impl
-NumericVector fast_fuzz_ratio_impl(const StringVector& a, const StringVector& b, bool full_process, int nthreads);
-RcppExport SEXP _fast_string_fast_fuzz_ratio_impl(SEXP aSEXP, SEXP bSEXP, SEXP full_processSEXP, SEXP nthreadsSEXP) {
+// fast_fuzz_score_impl
+NumericVector fast_fuzz_score_impl(const StringVector& a, const StringVector& b, int scorer, bool full_process, double score_cutoff, int nthreads);
+RcppExport SEXP _fast_string_fast_fuzz_score_impl(SEXP aSEXP, SEXP bSEXP, SEXP scorerSEXP, SEXP full_processSEXP, SEXP score_cutoffSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
     Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type scorer(scorerSEXP);
     Rcpp::traits::input_parameter< bool >::type full_process(full_processSEXP);
+    Rcpp::traits::input_parameter< double >::type score_cutoff(score_cutoffSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_fuzz_ratio_impl(a, b, full_process, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_fuzz_score_impl(a, b, scorer, full_process, score_cutoff, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
-// fast_fuzz_partial_ratio_impl
-NumericVector fast_fuzz_partial_ratio_impl(const StringVector& a, const StringVector& b, bool full_process, int nthreads);
-RcppExport SEXP _fast_string_fast_fuzz_partial_ratio_impl(SEXP aSEXP, SEXP bSEXP, SEXP full_processSEXP, SEXP nthreadsSEXP) {
+// fast_fuzz_alignment_impl
+List fast_fuzz_alignment_impl(const StringVector& a, const StringVector& b, bool full_process, double score_cutoff, int nthreads);
+RcppExport SEXP _fast_string_fast_fuzz_alignment_impl(SEXP aSEXP, SEXP bSEXP, SEXP full_processSEXP, SEXP score_cutoffSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
     Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
     Rcpp::traits::input_parameter< bool >::type full_process(full_processSEXP);
+    Rcpp::traits::input_parameter< double >::type score_cutoff(score_cutoffSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_fuzz_partial_ratio_impl(a, b, full_process, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_fuzz_alignment_impl(a, b, full_process, score_cutoff, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
-// fast_fuzz_token_sort_ratio_impl
-NumericVector fast_fuzz_token_sort_ratio_impl(const StringVector& a, const StringVector& b, bool full_process, int nthreads);
-RcppExport SEXP _fast_string_fast_fuzz_token_sort_ratio_impl(SEXP aSEXP, SEXP bSEXP, SEXP full_processSEXP, SEXP nthreadsSEXP) {
+// fast_fuzz_default_process_impl
+CharacterVector fast_fuzz_default_process_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_fuzz_default_process_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
-    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< bool >::type full_process(full_processSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_fuzz_token_sort_ratio_impl(a, b, full_process, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_fuzz_default_process_impl(x, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
-// fast_fuzz_token_set_ratio_impl
-NumericVector fast_fuzz_token_set_ratio_impl(const StringVector& a, const StringVector& b, bool full_process, int nthreads);
-RcppExport SEXP _fast_string_fast_fuzz_token_set_ratio_impl(SEXP aSEXP, SEXP bSEXP, SEXP full_processSEXP, SEXP nthreadsSEXP) {
+// fast_fuzz_cdist_impl
+NumericMatrix fast_fuzz_cdist_impl(const StringVector& x, const StringVector& y, int scorer, bool full_process, double score_cutoff, int nthreads);
+RcppExport SEXP _fast_string_fast_fuzz_cdist_impl(SEXP xSEXP, SEXP ySEXP, SEXP scorerSEXP, SEXP full_processSEXP, SEXP score_cutoffSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
-    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< int >::type scorer(scorerSEXP);
+    Rcpp::traits::input_parameter< bool >::type full_process(full_processSEXP);
+    Rcpp::traits::input_parameter< double >::type score_cutoff(score_cutoffSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fuzz_cdist_impl(x, y, scorer, full_process, score_cutoff, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_fuzz_extract_impl
+List fast_fuzz_extract_impl(const StringVector& x, const StringVector& choices, int scorer, int limit, double score_cutoff, bool full_process, int nthreads);
+RcppExport SEXP _fast_string_fast_fuzz_extract_impl(SEXP xSEXP, SEXP choicesSEXP, SEXP scorerSEXP, SEXP limitSEXP, SEXP score_cutoffSEXP, SEXP full_processSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type choices(choicesSEXP);
+    Rcpp::traits::input_parameter< int >::type scorer(scorerSEXP);
+    Rcpp::traits::input_parameter< int >::type limit(limitSEXP);
+    Rcpp::traits::input_parameter< double >::type score_cutoff(score_cutoffSEXP);
     Rcpp::traits::input_parameter< bool >::type full_process(full_processSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_fuzz_token_set_ratio_impl(a, b, full_process, nthreads));
+    rcpp_result_gen = Rcpp::wrap(fast_fuzz_extract_impl(x, choices, scorer, limit, score_cutoff, full_process, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -765,10 +785,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_substr_impl", (DL_FUNC) &_fast_string_fast_substr_impl, 5},
     {"_fast_string_fast_nchar_impl", (DL_FUNC) &_fast_string_fast_nchar_impl, 5},
     {"_fast_string_fast_chartr_impl", (DL_FUNC) &_fast_string_fast_chartr_impl, 4},
-    {"_fast_string_fast_fuzz_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_ratio_impl, 4},
-    {"_fast_string_fast_fuzz_partial_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_partial_ratio_impl, 4},
-    {"_fast_string_fast_fuzz_token_sort_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_token_sort_ratio_impl, 4},
-    {"_fast_string_fast_fuzz_token_set_ratio_impl", (DL_FUNC) &_fast_string_fast_fuzz_token_set_ratio_impl, 4},
+    {"_fast_string_fast_fuzz_score_impl", (DL_FUNC) &_fast_string_fast_fuzz_score_impl, 6},
+    {"_fast_string_fast_fuzz_alignment_impl", (DL_FUNC) &_fast_string_fast_fuzz_alignment_impl, 5},
+    {"_fast_string_fast_fuzz_default_process_impl", (DL_FUNC) &_fast_string_fast_fuzz_default_process_impl, 2},
+    {"_fast_string_fast_fuzz_cdist_impl", (DL_FUNC) &_fast_string_fast_fuzz_cdist_impl, 6},
+    {"_fast_string_fast_fuzz_extract_impl", (DL_FUNC) &_fast_string_fast_fuzz_extract_impl, 7},
     {"_fast_string_fast_fuzzy_top_n_impl", (DL_FUNC) &_fast_string_fast_fuzzy_top_n_impl, 10},
     {"_fast_string_fast_levenshtein_impl", (DL_FUNC) &_fast_string_fast_levenshtein_impl, 4},
     {"_fast_string_fast_levenshtein_matrix_impl", (DL_FUNC) &_fast_string_fast_levenshtein_matrix_impl, 4},

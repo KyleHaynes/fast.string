@@ -886,44 +886,91 @@ jaccard_index("aaaa", "aaab", q = 2)
 cosine_matrix(c("JOHN SMITH", "MARY JONES"), c("JON SMYTH", "MARY JONES"))
 ```
 
-## fuzzywuzzy-style ratios
+## RapidFuzz scorers
 
-Vectorised ports of Python's
-[fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy) package, implementing
-the same Ratcliff/Obershelp matching-blocks algorithm fuzzywuzzy itself
-falls back to (the one behind Python's `difflib.SequenceMatcher`). All
-four return `0-100` like the Python originals; see @sec-theory for the
-algorithm.
+Vectorised ports of the scorers in Python's
+[RapidFuzz](https://github.com/rapidfuzz/RapidFuzz) `fuzz` module, the
+maintained successor to fuzzywuzzy. Scores agree with `rapidfuzz.fuzz` to
+floating-point precision; see @sec-theory for the algorithms.
 
 ```r
-fuzz_ratio(a, b, full_process = TRUE, nthreads = NULL)
-fuzz_partial_ratio(a, b, full_process = TRUE, nthreads = NULL)
-fuzz_token_sort_ratio(a, b, full_process = TRUE, nthreads = NULL)
-fuzz_token_set_ratio(a, b, full_process = TRUE, nthreads = NULL)
+fuzz_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_partial_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_token_sort_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_token_set_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_token_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_partial_token_sort_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_partial_token_set_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_partial_token_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_wratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_qratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_partial_ratio_alignment(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+fuzz_default_process(x, nthreads = NULL)
 ```
 
 | Argument | Description |
 |---|---|
 | `a`, `b` | Equal-length character vectors. |
-| `full_process` | Logical (default `TRUE`, matching fuzzywuzzy's default). Lowercases and replaces runs of non-alphanumeric characters with a single space before comparing. |
+| `full_process` | Logical (default `TRUE`). Runs both strings through `fuzz_default_process()` first: lowercase, every character that is not a letter or digit turned into a space, ends trimmed. This is RapidFuzz's `processor = utils.default_process`; `FALSE` compares the strings as given, RapidFuzz's own default. |
+| `score_cutoff` | Number in `[0, 100]` (default 0). Scores below it are returned as 0, and the scorers use it to stop early. |
 | `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 
-**Returns:** numeric vector of scores in `[0, 100]`, `length(a)` long.
+**Returns:** numeric vector of unrounded scores in `[0, 100]`,
+`length(a)` long; `NA` where either input is `NA`.
+`fuzz_partial_ratio_alignment()` returns a data frame of the score and
+the 1-based positions of the aligned slices (`src_start`, `src_end` in
+`a`; `dest_start`, `dest_end` in `b`), and `fuzz_default_process()` the
+processed strings.
 
-- **`fuzz_ratio()`** — overall similarity: `2*M / (len(a)+len(b))`, `M`
-  being the total length of the longest-common matching blocks (found
-  recursively — *not* edit distance).
-- **`fuzz_partial_ratio()`** — best alignment of the shorter string against
-  any equal-length window of the longer one.
-- **`fuzz_token_sort_ratio()`** — splits into whitespace tokens, sorts
-  them, rejoins, then runs `fuzz_ratio()` — word order stops mattering.
-- **`fuzz_token_set_ratio()`** — splits into token *sets* and compares the
-  shared-token core against each side's leftovers, taking the best of
-  three pairwise ratios — robust to one side having extra words.
+- **`fuzz_ratio()`**: normalised Indel similarity,
+  `200 * LCS / (len(a) + len(b))`.
+- **`fuzz_partial_ratio()`**: the best `fuzz_ratio()` of the shorter
+  string against any window of the longer one (found exactly).
+- **`fuzz_token_sort_ratio()`**: `fuzz_ratio()` of the sorted words.
+- **`fuzz_token_set_ratio()`**: compares shared words with each side's
+  extra words; 100 when one side's words are a subset of the other's.
+- **`fuzz_token_ratio()`**: the better of token sort and token set.
+- **`fuzz_partial_token_sort_ratio()`**, **`fuzz_partial_token_set_ratio()`**,
+  **`fuzz_partial_token_ratio()`**: the same with the partial ratio.
+- **`fuzz_wratio()`**: RapidFuzz's `WRatio`, a length-aware weighted best
+  of the above.
+- **`fuzz_qratio()`**: `fuzz_ratio()`, but 0 when either string is empty.
+
+The `process` module is ported as well. Each string is processed once, not
+once per pair, and the extract functions prune candidates that cannot make
+a query's list:
+
+```r
+fuzz_extract(x, choices, scorer = "wratio", limit = 5L, full_process = TRUE,
+             score_cutoff = 0, nthreads = NULL)
+fuzz_extract_one(x, choices, scorer = "wratio", full_process = TRUE,
+                 score_cutoff = 0, nthreads = NULL)
+fuzz_cdist(x, choices = x, scorer = "ratio", full_process = TRUE,
+           score_cutoff = 0, nthreads = NULL)
+fuzz_cpdist(a, b, scorer = "ratio", full_process = TRUE, score_cutoff = 0,
+            nthreads = NULL)
+```
+
+`scorer` is a scorer's name (`"ratio"`, `"token_set_ratio"`, `"wratio"`,
+...; RapidFuzz spellings like `"WRatio"` work too) or the function itself.
+`fuzz_extract()` returns a long data frame (`query_index`,
+`choice_index`, `choice`, `score`, `rank`) of each query's `limit` best
+choices (`limit = NULL` for all), with ties in table order.
+`fuzz_extract_one()` returns one row per query, `NA` when nothing reaches
+`score_cutoff`. `fuzz_cdist()` returns the full score matrix and
+`fuzz_cpdist()` element-wise scores.
 
 ```{r}
 fuzz_ratio("this is a test", "this is a test!")
 fuzz_partial_ratio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear")
 fuzz_token_sort_ratio("fuzzy was a bear", "bear was a fuzzy")
 fuzz_token_set_ratio("fuzzy was a bear", "fuzzy fuzzy bear was a bear")
+fuzz_wratio("New York Mets", "The New York Mets baseball club")
+fuzz_partial_ratio_alignment("a certain string", "cetain", full_process = FALSE)
+
+teams <- c("Atlanta Falcons", "New York Jets", "New York Giants",
+           "Dallas Cowboys")
+fuzz_extract("new york jets", teams, limit = 2)
+fuzz_extract_one(c("cowboys", "falcon"), teams)
+round(fuzz_cdist(c("new york", "dallas"), teams, scorer = "token_set_ratio"), 1)
 ```

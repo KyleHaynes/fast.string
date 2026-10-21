@@ -113,20 +113,24 @@ fast_chartr_impl <- function(old_chars, new_chars, x, nthreads) {
     .Call(`_fast_string_fast_chartr_impl`, old_chars, new_chars, x, nthreads)
 }
 
-fast_fuzz_ratio_impl <- function(a, b, full_process, nthreads) {
-    .Call(`_fast_string_fast_fuzz_ratio_impl`, a, b, full_process, nthreads)
+fast_fuzz_score_impl <- function(a, b, scorer, full_process, score_cutoff, nthreads) {
+    .Call(`_fast_string_fast_fuzz_score_impl`, a, b, scorer, full_process, score_cutoff, nthreads)
 }
 
-fast_fuzz_partial_ratio_impl <- function(a, b, full_process, nthreads) {
-    .Call(`_fast_string_fast_fuzz_partial_ratio_impl`, a, b, full_process, nthreads)
+fast_fuzz_alignment_impl <- function(a, b, full_process, score_cutoff, nthreads) {
+    .Call(`_fast_string_fast_fuzz_alignment_impl`, a, b, full_process, score_cutoff, nthreads)
 }
 
-fast_fuzz_token_sort_ratio_impl <- function(a, b, full_process, nthreads) {
-    .Call(`_fast_string_fast_fuzz_token_sort_ratio_impl`, a, b, full_process, nthreads)
+fast_fuzz_default_process_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_fuzz_default_process_impl`, x, nthreads)
 }
 
-fast_fuzz_token_set_ratio_impl <- function(a, b, full_process, nthreads) {
-    .Call(`_fast_string_fast_fuzz_token_set_ratio_impl`, a, b, full_process, nthreads)
+fast_fuzz_cdist_impl <- function(x, y, scorer, full_process, score_cutoff, nthreads) {
+    .Call(`_fast_string_fast_fuzz_cdist_impl`, x, y, scorer, full_process, score_cutoff, nthreads)
+}
+
+fast_fuzz_extract_impl <- function(x, choices, scorer, limit, score_cutoff, full_process, nthreads) {
+    .Call(`_fast_string_fast_fuzz_extract_impl`, x, choices, scorer, limit, score_cutoff, full_process, nthreads)
 }
 
 fast_fuzzy_top_n_impl <- function(x, table, method, top_n, p, min_score, max_distance, match_na, nthreads, use_bytes) {

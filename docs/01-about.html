@@ -561,19 +561,19 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;"><strong>yes, parallelised</strong></td>
 </tr>
 <tr class="odd">
-<td>fuzzywuzzy-style ratios</td>
+<td>RapidFuzz/fuzzywuzzy scorers (<code>ratio</code>, <code>partial_ratio</code>, token ratios, <code>WRatio</code>) and <code>extract()</code></td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
 <td style="text-align: center;">no</td>
-<td style="text-align: center;"><strong>yes</strong> (port of Python’s <code>fuzzywuzzy</code>)</td>
+<td style="text-align: center;"><strong>yes</strong> (port of Python’s <code>RapidFuzz</code>)</td>
 </tr>
 </tbody>
 </table>
 <p>A few things worth calling out explicitly:</p>
 <ul>
 <li><strong>stringi/stringr</strong> are excellent, mature, and already parallel-friendly at the C level for many operations via ICU — but ICU’s regex engine and <code>fast.string</code>’s PCRE2 path land in similar performance territory for <em>regex</em>. Where <code>fast.string</code> pulls ahead is parallelism (stringi’s core loops are single-threaded; this package’s are TBB-parallel) and the data-linkage-specific functions stringi doesn’t have at all.</li>
-<li><strong>stringdist</strong> is the closest relative for the fuzzy-matching half of this package. <code>fast.string</code> now covers most of the same distance-metric ground (Levenshtein, OSA, unrestricted Damerau-Levenshtein, Hamming, Jaro-Winkler, Jaccard, cosine), plus a few <code>stringdist</code> doesn’t have at all (Dice, Tversky, token-reorder-aware comparison, fuzzywuzzy-style ratios). The benchmark chapter measures the overlapping kernels on the current checkout. What <code>stringdist</code> still has that this package doesn’t is LCS and raw q-gram-count distance — and it has nothing on the regex/substitution side, which is the other half of <code>fast.string</code>.</li>
+<li><strong>stringdist</strong> is the closest relative for the fuzzy-matching half of this package. <code>fast.string</code> now covers most of the same distance-metric ground (Levenshtein, OSA, unrestricted Damerau-Levenshtein, Hamming, Jaro-Winkler, Jaccard, cosine), plus a few <code>stringdist</code> doesn’t have at all (Dice, Tversky, token-reorder-aware comparison, the RapidFuzz scorers). The benchmark chapter measures the overlapping kernels on the current checkout. What <code>stringdist</code> still has that this package doesn’t is the raw LCS and q-gram-count distances (<code>fuzz_ratio()</code> is a normalised LCS similarity) — and it has nothing on the regex/substitution side, which is the other half of <code>fast.string</code>.</li>
 <li><strong>RecordLinkage</strong> is a full record-linkage <em>framework</em> (blocking, EM-based classification, training), not a string-function library. Its <code>soundex()</code>/<code>jarowinkler()</code> are useful comparison points (used directly in <a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a>) but solve a much narrower problem than the package itself.</li>
 </ul>
 <p><a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> puts numbers behind every row in that table at 3-million-row scale.</p>

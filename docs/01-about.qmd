@@ -24,7 +24,7 @@ gap none of them cover on another:
 | Best/top-N fuzzy table lookup without a score matrix | `agrep()` (limited) | no | `amatch()` (best only) | no | **yes** (`fuzzy_match()`, `fuzzy_top_n()`) |
 | Jaccard / cosine q-gram similarity | no | no | `stringdist(method="jaccard"/"cosine")` | no | **yes, parallelised** |
 | Dice / Tversky q-gram similarity | no | no | no | no | **yes, parallelised** |
-| fuzzywuzzy-style ratios | no | no | no | no | **yes** (port of Python's `fuzzywuzzy`) |
+| RapidFuzz/fuzzywuzzy scorers (`ratio`, `partial_ratio`, token ratios, `WRatio`) and `extract()` | no | no | no | no | **yes** (port of Python's `RapidFuzz`) |
 
 A few things worth calling out explicitly:
 
@@ -38,10 +38,11 @@ A few things worth calling out explicitly:
   this package. `fast.string` now covers most of the same distance-metric
   ground (Levenshtein, OSA, unrestricted Damerau-Levenshtein, Hamming, Jaro-Winkler,
   Jaccard, cosine), plus a few `stringdist` doesn't have at all (Dice,
-  Tversky, token-reorder-aware comparison, fuzzywuzzy-style ratios). The
+  Tversky, token-reorder-aware comparison, the RapidFuzz scorers). The
   benchmark chapter measures the overlapping kernels on the current
-  checkout. What `stringdist` still has that this package doesn't is LCS
-  and raw q-gram-count distance — and it has nothing on the
+  checkout. What `stringdist` still has that this package doesn't is the
+  raw LCS and q-gram-count distances (`fuzz_ratio()` is a normalised LCS
+  similarity) — and it has nothing on the
   regex/substitution side, which is the other half of `fast.string`.
 - **RecordLinkage** is a full record-linkage *framework* (blocking,
   EM-based classification, training), not a string-function library. Its

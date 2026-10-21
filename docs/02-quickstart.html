@@ -404,7 +404,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#edit-distance" id="toc-edit-distance" class="nav-link" data-scroll-target="#edit-distance"><span class="header-section-number">2.7</span> Edit distance</a></li>
   <li><a href="#fuzzy-lookup-without-a-full-matrix" id="toc-fuzzy-lookup-without-a-full-matrix" class="nav-link" data-scroll-target="#fuzzy-lookup-without-a-full-matrix"><span class="header-section-number">2.8</span> Fuzzy lookup without a full matrix</a></li>
   <li><a href="#q-gram-similarity" id="toc-q-gram-similarity" class="nav-link" data-scroll-target="#q-gram-similarity"><span class="header-section-number">2.9</span> Q-gram similarity</a></li>
-  <li><a href="#fuzzywuzzy-style-ratios" id="toc-fuzzywuzzy-style-ratios" class="nav-link" data-scroll-target="#fuzzywuzzy-style-ratios"><span class="header-section-number">2.10</span> fuzzywuzzy-style ratios</a></li>
+  <li><a href="#rapidfuzz-scorers" id="toc-rapidfuzz-scorers" class="nav-link" data-scroll-target="#rapidfuzz-scorers"><span class="header-section-number">2.10</span> RapidFuzz scorers</a></li>
   <li><a href="#putting-it-together" id="toc-putting-it-together" class="nav-link" data-scroll-target="#putting-it-together"><span class="header-section-number">2.11</span> Putting it together</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/02-quickstart.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -737,9 +737,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p><code>"aaaa"</code>/<code>"aaab"</code> share only the bigram <code>"aa"</code> out of two distinct bigrams — Jaccard <code>0.5</code> — but that bigram occurs three times on one side and twice on the other, which cosine sees and Jaccard cannot. Repetition like this is common in the numeric and code-like fields (<code>"0000"</code>, <code>"AAA-111"</code>) that sit next to names in a linkage file.</p>
-</section><section id="fuzzywuzzy-style-ratios" class="level2" data-number="2.10"><h2 data-number="2.10" class="anchored" data-anchor-id="fuzzywuzzy-style-ratios">
-<span class="header-section-number">2.10</span> fuzzywuzzy-style ratios</h2>
-<p><code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_ratio()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_partial_ratio()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_sort_ratio()</a></code>, and <code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_set_ratio()</a></code> are vectorised ports of Python’s <a href="https://github.com/seatgeek/fuzzywuzzy">fuzzywuzzy</a> package — useful if you’re porting a matching pipeline from Python, or just want its specific flavour of fuzzy scoring (Ratcliff/Obershelp matching blocks, <em>not</em> edit distance). All four return <code>0-100</code> like the originals.</p>
+</section><section id="rapidfuzz-scorers" class="level2" data-number="2.10"><h2 data-number="2.10" class="anchored" data-anchor-id="rapidfuzz-scorers">
+<span class="header-section-number">2.10</span> RapidFuzz scorers</h2>
+<p><code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_ratio()</a></code>, <code><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_partial_ratio()</a></code>, the token ratios, <code>fuzz_wratio()</code> and the rest are vectorised ports of the scorers in Python’s <a href="https://github.com/rapidfuzz/RapidFuzz">RapidFuzz</a>, the maintained successor to fuzzywuzzy. Their scores agree with <code>rapidfuzz.fuzz</code> to floating-point precision, which makes them the natural choice when porting a matching pipeline from Python. All return <code>0-100</code>. With <code>full_process = TRUE</code> (the default) both strings are lowercased and stripped of punctuation first, as RapidFuzz’s <code>processor = default_process</code> does.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb89"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_ratio</a></span><span class="op">(</span><span class="st">"this is a test"</span>, <span class="st">"this is a test!"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -747,7 +747,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb91"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_partial_ratio</a></span><span class="op">(</span><span class="st">"fuzzy wuzzy was a bear"</span>, <span class="st">"wuzzy fuzzy was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 91</code></pre>
+<pre><code>[1] 93.02326</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb93"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_sort_ratio</a></span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"bear was a fuzzy"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -756,6 +756,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb95"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/fast.string/man/fuzz.html">fuzz_token_set_ratio</a></span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"fuzzy fuzzy bear was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 100</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb97"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_wratio</span><span class="op">(</span><span class="st">"New York Mets"</span>, <span class="st">"The New York Mets baseball club"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 90</code></pre>
+</div>
+</div>
+<p><code>fuzz_extract()</code> and <code>fuzz_extract_one()</code> port RapidFuzz’s <code>process.extract()</code> and <code>extractOne()</code>. They find each query’s best matches in a table, scoring in parallel and pruning candidates that cannot make the list.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb99"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">teams</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Atlanta Falcons"</span>, <span class="st">"New York Jets"</span>, <span class="st">"New York Giants"</span>,</span>
+<span>           <span class="st">"Dallas Cowboys"</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_extract</span><span class="op">(</span><span class="st">"new york jets"</span>, <span class="va">teams</span>, limit <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  query_index choice_index          choice     score rank
+1           1            2   New York Jets 100.00000    1
+2           1            3 New York Giants  78.57143    2</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb101"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_extract_one</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"cowboys"</span>, <span class="st">"falcon"</span><span class="op">)</span>, <span class="va">teams</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           choice score choice_index
+1  Dallas Cowboys    90            4
+2 Atlanta Falcons    90            1</code></pre>
 </div>
 </div>
 </section><section id="putting-it-together" class="level2" data-number="2.11"><h2 data-number="2.11" class="anchored" data-anchor-id="putting-it-together">

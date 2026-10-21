@@ -467,7 +467,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#cosine_similarity-cosine_matrix" id="toc-cosine_similarity-cosine_matrix" class="nav-link" data-scroll-target="#cosine_similarity-cosine_matrix"><code>cosine_similarity()</code> / <code>cosine_matrix()</code></a></li>
   </ul>
 </li>
-  <li><a href="#fuzzywuzzy-style-ratios" id="toc-fuzzywuzzy-style-ratios" class="nav-link" data-scroll-target="#fuzzywuzzy-style-ratios"><span class="header-section-number">5.9</span> fuzzywuzzy-style ratios</a></li>
+  <li><a href="#rapidfuzz-scorers" id="toc-rapidfuzz-scorers" class="nav-link" data-scroll-target="#rapidfuzz-scorers"><span class="header-section-number">5.9</span> RapidFuzz scorers</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/05-function-reference.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
@@ -1797,13 +1797,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 [2,] 0.2357023 1.0000000</code></pre>
 </div>
 </div>
-</section></section><section id="fuzzywuzzy-style-ratios" class="level2" data-number="5.9"><h2 data-number="5.9" class="anchored" data-anchor-id="fuzzywuzzy-style-ratios">
-<span class="header-section-number">5.9</span> fuzzywuzzy-style ratios</h2>
-<p>Vectorised ports of Python’s <a href="https://github.com/seatgeek/fuzzywuzzy">fuzzywuzzy</a> package, implementing the same Ratcliff/Obershelp matching-blocks algorithm fuzzywuzzy itself falls back to (the one behind Python’s <code>difflib.SequenceMatcher</code>). All four return <code>0-100</code> like the Python originals; see <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the algorithm.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb169"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
-<span><span class="fu">fuzz_partial_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
-<span><span class="fu">fuzz_token_sort_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
-<span><span class="fu">fuzz_token_set_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section></section><section id="rapidfuzz-scorers" class="level2" data-number="5.9"><h2 data-number="5.9" class="anchored" data-anchor-id="rapidfuzz-scorers">
+<span class="header-section-number">5.9</span> RapidFuzz scorers</h2>
+<p>Vectorised ports of the scorers in Python’s <a href="https://github.com/rapidfuzz/RapidFuzz">RapidFuzz</a> <code>fuzz</code> module, the maintained successor to fuzzywuzzy. Scores agree with <code>rapidfuzz.fuzz</code> to floating-point precision; see <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> for the algorithms.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb169"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_partial_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_token_sort_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_token_set_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_token_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_partial_token_sort_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_partial_token_set_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_partial_token_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_wratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_qratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_partial_ratio_alignment</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_default_process</span><span class="op">(</span><span class="va">x</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 50%">
@@ -1822,41 +1830,92 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><code>full_process</code></td>
-<td>Logical (default <code>TRUE</code>, matching fuzzywuzzy’s default). Lowercases and replaces runs of non-alphanumeric characters with a single space before comparing.</td>
+<td>Logical (default <code>TRUE</code>). Runs both strings through <code>fuzz_default_process()</code> first: lowercase, every character that is not a letter or digit turned into a space, ends trimmed. This is RapidFuzz’s <code>processor = utils.default_process</code>; <code>FALSE</code> compares the strings as given, RapidFuzz’s own default.</td>
 </tr>
 <tr class="odd">
+<td><code>score_cutoff</code></td>
+<td>Number in <code>[0, 100]</code> (default 0). Scores below it are returned as 0, and the scorers use it to stop early.</td>
+</tr>
+<tr class="even">
 <td><code>nthreads</code></td>
 <td>Positive integer per-call thread cap, or <code>NULL</code> for the RcppParallel default; <code>1</code> forces serial execution.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Returns:</strong> numeric vector of scores in <code>[0, 100]</code>, <code>length(a)</code> long.</p>
+<p><strong>Returns:</strong> numeric vector of unrounded scores in <code>[0, 100]</code>, <code>length(a)</code> long; <code>NA</code> where either input is <code>NA</code>. <code>fuzz_partial_ratio_alignment()</code> returns a data frame of the score and the 1-based positions of the aligned slices (<code>src_start</code>, <code>src_end</code> in <code>a</code>; <code>dest_start</code>, <code>dest_end</code> in <code>b</code>), and <code>fuzz_default_process()</code> the processed strings.</p>
 <ul>
 <li>
-<strong><code>fuzz_ratio()</code></strong> — overall similarity: <code>2*M / (len(a)+len(b))</code>, <code>M</code> being the total length of the longest-common matching blocks (found recursively — <em>not</em> edit distance).</li>
+<strong><code>fuzz_ratio()</code></strong>: normalised Indel similarity, <code>200 * LCS / (len(a) + len(b))</code>.</li>
 <li>
-<strong><code>fuzz_partial_ratio()</code></strong> — best alignment of the shorter string against any equal-length window of the longer one.</li>
+<strong><code>fuzz_partial_ratio()</code></strong>: the best <code>fuzz_ratio()</code> of the shorter string against any window of the longer one (found exactly).</li>
 <li>
-<strong><code>fuzz_token_sort_ratio()</code></strong> — splits into whitespace tokens, sorts them, rejoins, then runs <code>fuzz_ratio()</code> — word order stops mattering.</li>
+<strong><code>fuzz_token_sort_ratio()</code></strong>: <code>fuzz_ratio()</code> of the sorted words.</li>
 <li>
-<strong><code>fuzz_token_set_ratio()</code></strong> — splits into token <em>sets</em> and compares the shared-token core against each side’s leftovers, taking the best of three pairwise ratios — robust to one side having extra words.</li>
+<strong><code>fuzz_token_set_ratio()</code></strong>: compares shared words with each side’s extra words; 100 when one side’s words are a subset of the other’s.</li>
+<li>
+<strong><code>fuzz_token_ratio()</code></strong>: the better of token sort and token set.</li>
+<li>
+<strong><code>fuzz_partial_token_sort_ratio()</code></strong>, <strong><code>fuzz_partial_token_set_ratio()</code></strong>, <strong><code>fuzz_partial_token_ratio()</code></strong>: the same with the partial ratio.</li>
+<li>
+<strong><code>fuzz_wratio()</code></strong>: RapidFuzz’s <code>WRatio</code>, a length-aware weighted best of the above.</li>
+<li>
+<strong><code>fuzz_qratio()</code></strong>: <code>fuzz_ratio()</code>, but 0 when either string is empty.</li>
 </ul>
+<p>The <code>process</code> module is ported as well. Each string is processed once, not once per pair, and the extract functions prune candidates that cannot make a query’s list:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb170"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_extract</span><span class="op">(</span><span class="va">x</span>, <span class="va">choices</span>, scorer <span class="op">=</span> <span class="st">"wratio"</span>, limit <span class="op">=</span> <span class="fl">5L</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>             score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_extract_one</span><span class="op">(</span><span class="va">x</span>, <span class="va">choices</span>, scorer <span class="op">=</span> <span class="st">"wratio"</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>                 score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_cdist</span><span class="op">(</span><span class="va">x</span>, choices <span class="op">=</span> <span class="va">x</span>, scorer <span class="op">=</span> <span class="st">"ratio"</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>           score_cutoff <span class="op">=</span> <span class="fl">0</span>, nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_cpdist</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, scorer <span class="op">=</span> <span class="st">"ratio"</span>, full_process <span class="op">=</span> <span class="cn">TRUE</span>, score_cutoff <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>            nthreads <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>scorer</code> is a scorer’s name (<code>"ratio"</code>, <code>"token_set_ratio"</code>, <code>"wratio"</code>, …; RapidFuzz spellings like <code>"WRatio"</code> work too) or the function itself. <code>fuzz_extract()</code> returns a long data frame (<code>query_index</code>, <code>choice_index</code>, <code>choice</code>, <code>score</code>, <code>rank</code>) of each query’s <code>limit</code> best choices (<code>limit = NULL</code> for all), with ties in table order. <code>fuzz_extract_one()</code> returns one row per query, <code>NA</code> when nothing reaches <code>score_cutoff</code>. <code>fuzz_cdist()</code> returns the full score matrix and <code>fuzz_cpdist()</code> element-wise scores.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb170"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_ratio</span><span class="op">(</span><span class="st">"this is a test"</span>, <span class="st">"this is a test!"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb171"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_ratio</span><span class="op">(</span><span class="st">"this is a test"</span>, <span class="st">"this is a test!"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 100</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb172"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_partial_ratio</span><span class="op">(</span><span class="st">"fuzzy wuzzy was a bear"</span>, <span class="st">"wuzzy fuzzy was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb173"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_partial_ratio</span><span class="op">(</span><span class="st">"fuzzy wuzzy was a bear"</span>, <span class="st">"wuzzy fuzzy was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 91</code></pre>
+<pre><code>[1] 93.02326</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb174"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_token_sort_ratio</span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"bear was a fuzzy"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb175"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_token_sort_ratio</span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"bear was a fuzzy"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 100</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb176"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_token_set_ratio</span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"fuzzy fuzzy bear was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb177"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_token_set_ratio</span><span class="op">(</span><span class="st">"fuzzy was a bear"</span>, <span class="st">"fuzzy fuzzy bear was a bear"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 100</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb179"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_wratio</span><span class="op">(</span><span class="st">"New York Mets"</span>, <span class="st">"The New York Mets baseball club"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 90</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb181"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_partial_ratio_alignment</span><span class="op">(</span><span class="st">"a certain string"</span>, <span class="st">"cetain"</span>, full_process <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     score src_start src_end dest_start dest_end
+1 83.33333         3       8          1        6</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb183"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">teams</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Atlanta Falcons"</span>, <span class="st">"New York Jets"</span>, <span class="st">"New York Giants"</span>,</span>
+<span>           <span class="st">"Dallas Cowboys"</span><span class="op">)</span></span>
+<span><span class="fu">fuzz_extract</span><span class="op">(</span><span class="st">"new york jets"</span>, <span class="va">teams</span>, limit <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  query_index choice_index          choice     score rank
+1           1            2   New York Jets 100.00000    1
+2           1            3 New York Giants  78.57143    2</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb185"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">fuzz_extract_one</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"cowboys"</span>, <span class="st">"falcon"</span><span class="op">)</span>, <span class="va">teams</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           choice score choice_index
+1  Dallas Cowboys    90            4
+2 Atlanta Falcons    90            1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb187"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">fuzz_cdist</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"new york"</span>, <span class="st">"dallas"</span><span class="op">)</span>, <span class="va">teams</span>, scorer <span class="op">=</span> <span class="st">"token_set_ratio"</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     [,1]  [,2] [,3]  [,4]
+[1,] 26.1 100.0  100  18.2
+[2,] 38.1  10.5   19 100.0</code></pre>
 </div>
 </div>
 

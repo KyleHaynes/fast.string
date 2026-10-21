@@ -2,14 +2,22 @@ Package: fast.string
 Type: Package
 Title: Fast Parallel String Functions via PCRE2 and RcppParallel
 Version: 0.3.0
-Authors@R: person("Kyle", "Haynes", email = "kyle@kylehaynes.com.au", role = c("aut", "cre"))
+Authors@R: c(
+    person("Kyle", "Haynes", email = "kyle@kylehaynes.com.au", role = c("aut", "cre")),
+    person("Max", "Bachmann", role = c("ctb", "cph"),
+           comment = "Author of RapidFuzz, whose scorers src/rapidfuzz_core.h ports"),
+    person("Adam", "Cohen", role = "cph",
+           comment = "Author of fuzzywuzzy, on which RapidFuzz's fuzz module builds")
+    )
 Depends:
     R (>= 4.1.0)
 Description: Fast equivalents of grepl(), grep(), sub(), and gsub() that
     use PCRE2 for regular expressions and prepared literal search for fixed
     strings, parallelised across CPU cores via Intel TBB through
     RcppParallel. Also provides byte- and Unicode-aware string similarities,
-    edit distances, q-gram set and cosine similarity, phonetic blocking keys
+    edit distances, q-gram set and cosine similarity, ports of the
+    'RapidFuzz' fuzzy-matching scorers and search functions
+    <https://github.com/rapidfuzz/RapidFuzz>, phonetic blocking keys
     (Soundex, Refined Soundex, NYSIIS, Cologne, Double Metaphone,
     Caverphone), fixed-format date and timestamp parsing, and
     memory-efficient top-N fuzzy lookup without allocating a full comparison

@@ -112,6 +112,12 @@ test_that(".bench_ask_family() maps menu numbers and falls back to 'all'", {
         testthat::local_mocked_bindings(readline = function(prompt = "") "5", .package = "base")
         expect_identical(fast.string:::.bench_ask_family("all"), "phonetic")
 
+        testthat::local_mocked_bindings(readline = function(prompt = "") "6", .package = "base")
+        expect_identical(fast.string:::.bench_ask_family("all"), "rapidfuzz")
+
+        testthat::local_mocked_bindings(readline = function(prompt = "") "7", .package = "base")
+        expect_identical(fast.string:::.bench_ask_family("all"), "all")
+
         testthat::local_mocked_bindings(readline = function(prompt = "") "", .package = "base")
         expect_identical(fast.string:::.bench_ask_family("all"), "all")
 
@@ -323,6 +329,52 @@ test_that("run_benchmark_example() skips similarity/phonetic gracefully with no 
     phonetic   <- suppressMessages(run_benchmark_example(n = 500, family = "phonetic", reps = 1, seed = 1))
     expect_null(similarity)
     expect_null(phonetic)
+})
+
+test_that("the rapidfuzz family sets the fuzz ports against RapidFuzz's quoted figures", {
+    tbl <- suppressMessages(
+        run_benchmark_example(n = 1000, family = "rapidfuzz", reps = 1, seed = 1)
+    )
+    quoted <- fast.string:::.bench_rapidfuzz_quoted
+    expect_identical(nrow(tbl), 3L * nrow(quoted))
+
+    # Every RapidFuzz row passed the score check; fuzzywuzzy rows differ by
+    # design.
+    rapid <- grepl("^RapidFuzz", tbl$baseline)
+    expect_true(all(tbl$match[rapid]))
+    expect_true(all(tbl$match_symbol[!rapid] == "differs (expected)"))
+    expect_false(any(tbl$expect_match[!rapid]))
+
+    # n = 1000 gives 1,000 words and 10 queries: 10,000 pairs, so a row's
+    # baseline time is 10,000 divided by the quoted rate.
+    ratio_rows <- tbl[tbl$operation == "fuzz_ratio(), 1 thread", ]
+    expect_equal(ratio_rows$base_s, 1e4 / c(quoted$rapidfuzz[1], quoted$fuzzywuzzy[1]))
+    cdist_row <- tbl[tbl$operation == "fuzz_cdist(wratio), 1 thread", ]
+    expect_equal(cdist_row$base_s, 1e4 / quoted$rapidfuzz_cdist[quoted$scorer == "wratio"])
+    expect_true(all(tbl$fast_s > 0))
+})
+
+test_that("the RapidFuzz reference scores cover every benchmarked scorer", {
+    reference <- fast.string:::.bench_rapidfuzz_reference
+    quoted <- fast.string:::.bench_rapidfuzz_quoted
+    expect_setequal(names(reference$scores), quoted$scorer)
+    for (i in seq_len(nrow(quoted))) {
+        expect_equal(
+            fast.string::fuzz_cpdist(reference$a, reference$b,
+                                     scorer = quoted$scorer[i],
+                                     full_process = quoted$full_process[i]),
+            reference$scores[[quoted$scorer[i]]],
+            tolerance = 1e-12, label = quoted$scorer[i]
+        )
+    }
+})
+
+test_that("benchmark words and rate labels look like RapidFuzz's", {
+    words <- fast.string:::.bench_rapidfuzz_words(500L, 8L)
+    expect_length(words, 500L)
+    expect_true(all(grepl("^[A-Za-z0-9]{8}$", words)))
+    expect_identical(fast.string:::.bench_rate_label(c(6206379, 480115, 999)),
+                     c("6.21M", "480k", "999"))
 })
 
 test_that("run_benchmark_example() rejects an invalid family", {

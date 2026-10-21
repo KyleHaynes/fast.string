@@ -473,20 +473,22 @@ if (has_stringdist) {
 }
 ```
 
-## fuzzywuzzy-style ratios
+## RapidFuzz scorers
 
-No R package implements fuzzywuzzy's specific scoring (Ratcliff/Obershelp
-matching blocks); this is absolute throughput only.
+The `fuzz_*()` ports of Python's RapidFuzz scorers on the same
+multi-token names. None of the comparison packages here implements these
+scores, so this is absolute throughput only.
 
 ```{r}
-#| label: bench-fuzzywuzzy
+#| label: bench-rapidfuzz
 t_ratio   <- system.time(fast.string::fuzz_ratio(tok_a, tok_b))["elapsed"]
 t_partial <- system.time(fast.string::fuzz_partial_ratio(tok_a, tok_b))["elapsed"]
 t_tsort   <- system.time(fast.string::fuzz_token_sort_ratio(tok_a, tok_b))["elapsed"]
 t_tset    <- system.time(fast.string::fuzz_token_set_ratio(tok_a, tok_b))["elapsed"]
+t_wratio  <- system.time(fast.string::fuzz_wratio(tok_a, tok_b))["elapsed"]
 cat(sprintf(
-    "fast.string::fuzz_ratio            %.3fs\nfast.string::fuzz_partial_ratio    %.3fs\nfast.string::fuzz_token_sort_ratio %.3fs\nfast.string::fuzz_token_set_ratio  %.3fs\n",
-    t_ratio, t_partial, t_tsort, t_tset
+    "fast.string::fuzz_ratio            %.3fs\nfast.string::fuzz_partial_ratio    %.3fs\nfast.string::fuzz_token_sort_ratio %.3fs\nfast.string::fuzz_token_set_ratio  %.3fs\nfast.string::fuzz_wratio           %.3fs\n",
+    t_ratio, t_partial, t_tsort, t_tset, t_wratio
 ))
 ```
 

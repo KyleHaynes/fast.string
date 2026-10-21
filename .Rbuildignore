@@ -22,3 +22,4 @@
 ^examples_fast_str\.md$
 ^fast-string\.qmd$
 ^fast\.string-workspace\.code-workspace$
+^tools$

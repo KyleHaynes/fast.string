@@ -296,14 +296,17 @@ and twice on the other, which cosine sees and Jaccard cannot. Repetition
 like this is common in the numeric and code-like fields (`"0000"`,
 `"AAA-111"`) that sit next to names in a linkage file.
 
-## fuzzywuzzy-style ratios
+## RapidFuzz scorers
 
-`fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_token_sort_ratio()`, and
-`fuzz_token_set_ratio()` are vectorised ports of Python's
-[fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy) package — useful if
-you're porting a matching pipeline from Python, or just want its specific
-flavour of fuzzy scoring (Ratcliff/Obershelp matching blocks, *not* edit
-distance). All four return `0-100` like the originals.
+`fuzz_ratio()`, `fuzz_partial_ratio()`, the token ratios, `fuzz_wratio()`
+and the rest are vectorised ports of the scorers in Python's
+[RapidFuzz](https://github.com/rapidfuzz/RapidFuzz), the maintained
+successor to fuzzywuzzy. Their scores agree with `rapidfuzz.fuzz` to
+floating-point precision, which makes them the natural choice when porting
+a matching pipeline from Python. All return `0-100`. With
+`full_process = TRUE` (the default) both strings are lowercased and
+stripped of punctuation first, as RapidFuzz's
+`processor = default_process` does.
 
 ```{r}
 #| label: fuzz
@@ -311,6 +314,20 @@ fuzz_ratio("this is a test", "this is a test!")
 fuzz_partial_ratio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear")
 fuzz_token_sort_ratio("fuzzy was a bear", "bear was a fuzzy")
 fuzz_token_set_ratio("fuzzy was a bear", "fuzzy fuzzy bear was a bear")
+fuzz_wratio("New York Mets", "The New York Mets baseball club")
+```
+
+`fuzz_extract()` and `fuzz_extract_one()` port RapidFuzz's
+`process.extract()` and `extractOne()`. They find each query's best
+matches in a table, scoring in parallel and pruning candidates that cannot
+make the list.
+
+```{r}
+#| label: fuzz-extract
+teams <- c("Atlanta Falcons", "New York Jets", "New York Giants",
+           "Dallas Cowboys")
+fuzz_extract("new york jets", teams, limit = 2)
+fuzz_extract_one(c("cowboys", "falcon"), teams)
 ```
 
 ## Putting it together

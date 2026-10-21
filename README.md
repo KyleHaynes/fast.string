@@ -28,8 +28,8 @@ remotes::install_github("KyleHaynes/fast.string")
   - *Jaro-Winkler*: `jaro_winkler()`, `jaro_winkler_matrix()`, `jaro_winkler_tokens()`
   - *Edit distance*: `levenshtein()`, `osa_distance()`, `damerau_levenshtein()`, `hamming()` (+ `_similarity()`, `_matrix()`, and `levenshtein_within()` variants)
   - *Q-gram overlap*: `jaccard_index()`, `dice_coefficient()`, `tversky_index()`, `cosine_similarity()` (+ `_matrix()` variants)
-  - *fuzzywuzzy ratios* (R port of Python's `fuzzywuzzy`): `fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_token_sort_ratio()`, `fuzz_token_set_ratio()`
-- **Fuzzy lookup**: `fuzzy_match()`, `fuzzy_top_n()` (streaming best/top-N matches without a full matrix)
+  - *RapidFuzz scorers* (ports of Python's [RapidFuzz](https://github.com/rapidfuzz/RapidFuzz), the successor to fuzzywuzzy; scores match `rapidfuzz.fuzz`): `fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_partial_ratio_alignment()`, `fuzz_token_sort_ratio()`, `fuzz_token_set_ratio()`, `fuzz_token_ratio()`, `fuzz_partial_token_sort_ratio()`, `fuzz_partial_token_set_ratio()`, `fuzz_partial_token_ratio()`, `fuzz_wratio()`, `fuzz_qratio()`, `fuzz_default_process()`, `fuzz_cdist()`, `fuzz_cpdist()`
+- **Fuzzy lookup**: `fuzzy_match()`, `fuzzy_top_n()` (streaming best/top-N matches without a full matrix), and RapidFuzz's `process.extract()`/`extractOne()` as `fuzz_extract()`/`fuzz_extract_one()`
 
 Loading the package (`library(fast.string)`) prints every exported function
 as a colour-coded tree grouped by these categories, each with a one-line

@@ -11,8 +11,8 @@ run_benchmark_example(n = NULL, family = NULL, reps = NULL, seed = 1)
 for a value in interactive sessions, or uses \code{100000} otherwise.}
 
 \item{family}{One of \code{"matching"}, \code{"strings"}, \code{"dates"}, \code{"similarity"},
-\code{"phonetic"}, or \code{"all"}. \code{NULL} prompts in interactive sessions, or
-uses \code{"all"} otherwise.}
+\code{"phonetic"}, \code{"rapidfuzz"}, or \code{"all"}. \code{NULL} prompts in interactive
+sessions, or uses \code{"all"} otherwise.}
 
 \item{reps}{Number of timed repetitions per comparison; the fastest run
 is reported. \code{NULL} prompts in interactive sessions, or uses \code{1}
@@ -53,6 +53,22 @@ lower similarity threshold, so it agrees with \code{\link[=jaro_winkler]{jaro_wi
 near-duplicate pairs but diverges on largely-unrelated ones. Anything
 else that disagrees is flagged clearly — that's a real finding, worth
 investigating rather than ignoring.
+
+The \code{"rapidfuzz"} family has no live baseline. It runs the \link{fuzz} ports
+on the workload of the benchmark in RapidFuzz's README: 100 random
+alphanumeric words, each scored against 10,000 others, for 1,000,000
+pairs. It sets the results against the throughput RapidFuzz publishes
+for itself and for fuzzywuzzy. The words number \code{min(n, 10000)}, so \code{n}
+below 10,000 scales the workload down. Those figures were measured on one
+thread on another machine; a row's baseline time is what the quoted rate
+implies for this run's number of pairs, and fast.string is timed on one
+thread to match. A table of pairs per second also shows fast.string on
+every thread, both as one vectorised call over all pairs and through
+\code{\link[=fuzz_cdist]{fuzz_cdist()}}. RapidFuzz's per-pair figures include Python's cost of one
+function call per pair; its cdist figures are the like-for-like batch
+comparison. Before timing, each scorer's output is checked against scores
+from RapidFuzz 3.14.6. The fuzzywuzzy rows are marked "differs
+(expected)", since fuzzywuzzy scores with difflib and rounds.
 
 In an interactive session it asks for the input size, function family,
 and repetition count; any argument supplied explicitly (or every

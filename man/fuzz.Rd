@@ -6,74 +6,156 @@
 \alias{fuzz_partial_ratio}
 \alias{fuzz_token_sort_ratio}
 \alias{fuzz_token_set_ratio}
-\title{fuzzywuzzy-style fuzzy string ratios}
+\alias{fuzz_token_ratio}
+\alias{fuzz_partial_token_sort_ratio}
+\alias{fuzz_partial_token_set_ratio}
+\alias{fuzz_partial_token_ratio}
+\alias{fuzz_wratio}
+\alias{fuzz_qratio}
+\title{RapidFuzz string scorers}
 \usage{
-fuzz_ratio(a, b, full_process = TRUE, nthreads = NULL)
+fuzz_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
 
-fuzz_partial_ratio(a, b, full_process = TRUE, nthreads = NULL)
+fuzz_partial_ratio(
+  a,
+  b,
+  full_process = TRUE,
+  score_cutoff = 0,
+  nthreads = NULL
+)
 
-fuzz_token_sort_ratio(a, b, full_process = TRUE, nthreads = NULL)
+fuzz_token_sort_ratio(
+  a,
+  b,
+  full_process = TRUE,
+  score_cutoff = 0,
+  nthreads = NULL
+)
 
-fuzz_token_set_ratio(a, b, full_process = TRUE, nthreads = NULL)
+fuzz_token_set_ratio(
+  a,
+  b,
+  full_process = TRUE,
+  score_cutoff = 0,
+  nthreads = NULL
+)
+
+fuzz_token_ratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+
+fuzz_partial_token_sort_ratio(
+  a,
+  b,
+  full_process = TRUE,
+  score_cutoff = 0,
+  nthreads = NULL
+)
+
+fuzz_partial_token_set_ratio(
+  a,
+  b,
+  full_process = TRUE,
+  score_cutoff = 0,
+  nthreads = NULL
+)
+
+fuzz_partial_token_ratio(
+  a,
+  b,
+  full_process = TRUE,
+  score_cutoff = 0,
+  nthreads = NULL
+)
+
+fuzz_wratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
+
+fuzz_qratio(a, b, full_process = TRUE, score_cutoff = 0, nthreads = NULL)
 }
 \arguments{
 \item{a, b}{Equal-length character vectors.}
 
-\item{full_process}{Logical (default \code{TRUE}). Preprocess both strings as
-fuzzywuzzy's \code{full_process()} does: delete the characters U+0080 to
-U+00FF (its default \code{force_ascii}), turn every other character except
-letters, digits and \verb{_} into a space, lowercase, and trim. Characters
-from U+0100 up are kept unchanged. This is fuzzywuzzy's default for
-\code{token_sort_ratio()} and \code{token_set_ratio()}; its \code{ratio()} and
-\code{partial_ratio()} never preprocess, so use \code{full_process = FALSE} to
-reproduce those (\code{fuzz_ratio()} with preprocessing is fuzzywuzzy's
-\code{QRatio()}).}
+\item{full_process}{Logical (default \code{TRUE}). When \code{TRUE}, both strings
+first go through \code{\link[=fuzz_default_process]{fuzz_default_process()}}: letters are lowercased,
+every other character except digits becomes a space, and the ends are
+trimmed. This matches passing \code{processor = utils.default_process} in
+RapidFuzz. Use \code{FALSE} to compare the strings as given, which is
+RapidFuzz's default. Only a literal \code{TRUE} turns processing on.}
+
+\item{score_cutoff}{Number between 0 and 100 (default 0). Scores below
+it are returned as 0, as in RapidFuzz, and the scorers use it to stop
+early.}
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
-Numeric vector of scores in \verb{[0, 100]}, \code{length(a)} long. \code{NA} if
-either \code{a[i]} or \code{b[i]} is \code{NA}.
+Numeric vector of scores in \verb{[0, 100]}, \code{length(a)} long, and \code{NA}
+where \code{a[i]} or \code{b[i]} is \code{NA}. Scores are not rounded; fuzzywuzzy and
+thefuzz round them to whole numbers.
 }
 \description{
-Vectorised ports of the Python \href{https://github.com/seatgeek/fuzzywuzzy}{fuzzywuzzy}
-package's headline functions — \code{fuzz.ratio}, \code{fuzz.partial_ratio},
-\code{fuzz.token_sort_ratio}, and \code{fuzz.token_set_ratio} — implementing the same
-Ratcliff/Obershelp matching-blocks algorithm fuzzywuzzy itself falls back
-to (the one behind Python's \code{difflib.SequenceMatcher}, used whenever the
-optional \code{python-Levenshtein} speedup isn't installed), so scores match
-fuzzywuzzy's reference behaviour. All four return \code{0-100} like the Python
-originals, run a single parallelised C++ pass over the whole vector (via
-Intel TBB through RcppParallel), and have no Python/reticulate dependency.
+Vectorised ports of the scorers in the Python
+\href{https://github.com/rapidfuzz/RapidFuzz}{RapidFuzz} package's \code{fuzz}
+module, the maintained successor to fuzzywuzzy (thefuzz, fuzzywuzzy's own
+successor, now runs on RapidFuzz too). Each compares \code{a[i]} with \code{b[i]}
+and returns a similarity from 0 to 100. The arithmetic follows
+rapidfuzz-cpp step by step, so scores agree with \code{rapidfuzz.fuzz} to
+floating-point precision. Pairs are scored in parallel through
+RcppParallel, with no Python dependency.
 }
 \details{
 \itemize{
-\item \code{fuzz_ratio()} — overall similarity: \code{2*M / (len(a)+len(b))}, where \code{M}
-is the total length of the longest-common matching blocks (found
-recursively, Ratcliff/Obershelp-style — \emph{not} edit distance).
-\item \code{fuzz_partial_ratio()} — best alignment of the shorter string against
-any equal-length window of the longer one; high when one string is a
-near-substring of the other regardless of what surrounds it.
-\item \code{fuzz_token_sort_ratio()} — splits each string into whitespace tokens,
-sorts them, rejoins, then runs \code{fuzz_ratio()} on the result — so word
-order stops mattering.
-\item \code{fuzz_token_set_ratio()} — splits into token \emph{sets} and compares the
-shared-token core against each side's leftovers, taking the best of the
-three pairwise ratios — robust to one side simply having extra words.
+\item \code{fuzz_ratio()}: the normalised Indel similarity,
+\code{100 * (1 - d / (nchar(a) + nchar(b)))}, where \code{d} counts the
+insertions and deletions that turn one string into the other. This
+equals \code{200 * L / (nchar(a) + nchar(b))} for a longest common
+subsequence of length \code{L}.
+\item \code{fuzz_partial_ratio()}: the best \code{fuzz_ratio()} of the shorter string
+against a window of the longer one: every same-length window, plus
+the shorter windows at either end. The search is exhaustive, so the
+optimal alignment is always found; \code{\link[=fuzz_partial_ratio_alignment]{fuzz_partial_ratio_alignment()}}
+also reports where it is.
+\item \code{fuzz_token_sort_ratio()}: \code{fuzz_ratio()} after sorting each string's
+whitespace-separated words, so word order stops mattering.
+\item \code{fuzz_token_set_ratio()}: compares the words both strings share with
+the words only one of them has. Duplicate words are ignored, and the
+score is 100 when one string's words are a subset of the other's.
+\item \code{fuzz_token_ratio()}: the larger of \code{fuzz_token_sort_ratio()} and
+\code{fuzz_token_set_ratio()}, computed together.
+\item \code{fuzz_partial_token_sort_ratio()}, \code{fuzz_partial_token_set_ratio()} and
+\code{fuzz_partial_token_ratio()}: the same three with
+\code{fuzz_partial_ratio()} in place of \code{fuzz_ratio()}. The set versions
+score 100 as soon as the strings share a word.
+\item \code{fuzz_wratio()}: RapidFuzz's \code{WRatio}, a weighted best of the scorers
+above. It switches to the partial scorers once one string is 1.5
+times the length of the other.
+\item \code{fuzz_qratio()}: RapidFuzz's \code{QRatio}, which is \code{fuzz_ratio()} except
+that an empty string scores 0.
 }
 
-Scores follow fuzzywuzzy's own rules for equal and empty strings: equal
-inputs score 100, and an empty input scores 0. With \code{full_process = TRUE}
-an input that processes to nothing (only punctuation, say) also scores 0.
+Strings are compared by Unicode code point, as Python compares the
+characters of a \code{str}. As in RapidFuzz, a no-break space (U+00A0) or
+U+0085 only separates words in a string that also contains a character
+above U+00FF. Python stores other strings with one byte per character,
+and RapidFuzz then splits only at ASCII whitespace.
+
+Empty strings follow RapidFuzz. \code{fuzz_token_set_ratio()},
+\code{fuzz_partial_token_set_ratio()}, \code{fuzz_wratio()} and \code{fuzz_qratio()}
+score 0 when either string is empty (for the set scorers, when either has
+no words). The other scorers give two empty strings 100.
 }
 \examples{
-fuzz_ratio("this is a test", "this is a test!")
+fuzz_ratio("this is a test", "this is a test!", full_process = FALSE)
 fuzz_partial_ratio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear")
 fuzz_token_sort_ratio("fuzzy was a bear", "bear was a fuzzy")
 fuzz_token_set_ratio("fuzzy was a bear", "fuzzy fuzzy bear was a bear")
+fuzz_token_ratio("fuzzy was a bear", "a fuzzy bear")
+fuzz_partial_token_set_ratio("Acme Pty Ltd", "ACME Corporation")
+fuzz_wratio("New York Mets", "The New York Mets baseball club")
+fuzz_qratio("", "")
 }
 \seealso{
-\code{\link[=jaro_winkler_tokens]{jaro_winkler_tokens()}} for a word-order-tolerant score built on
-Jaro-Winkler, and \link{edit_distance} for edit-based measures.
+\code{\link[=fuzz_extract]{fuzz_extract()}}, \code{\link[=fuzz_extract_one]{fuzz_extract_one()}} and \code{\link[=fuzz_cdist]{fuzz_cdist()}} to
+search a table with these scorers, \code{\link[=jaro_winkler_tokens]{jaro_winkler_tokens()}} for a
+word-order-tolerant Jaro-Winkler score, and \link{edit_distance} for
+edit-based measures.
 }

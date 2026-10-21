@@ -106,18 +106,30 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=cosine_similarity]{cosine_similarity()}} - frequency-weighted overlap
 \item \code{\link[=cosine_matrix]{cosine_matrix()}} - all-pairs matrix
 }
-\item \emph{fuzzywuzzy ratios}
+\item \emph{RapidFuzz scorers (0-100)}
 \itemize{
-\item \code{\link[=fuzz_ratio]{fuzz_ratio()}} - overall ratio (0-100)
-\item \code{\link[=fuzz_partial_ratio]{fuzz_partial_ratio()}} - best-substring ratio
+\item \code{\link[=fuzz_ratio]{fuzz_ratio()}} - normalised Indel similarity
+\item \code{\link[=fuzz_partial_ratio]{fuzz_partial_ratio()}} - best-aligned substring
+\item \code{\link[=fuzz_partial_ratio_alignment]{fuzz_partial_ratio_alignment()}} - partial ratio and where it aligns
 \item \code{\link[=fuzz_token_sort_ratio]{fuzz_token_sort_ratio()}} - ignores word order
 \item \code{\link[=fuzz_token_set_ratio]{fuzz_token_set_ratio()}} - ignores extra/duplicate words
+\item \code{\link[=fuzz_token_ratio]{fuzz_token_ratio()}} - best of token sort and set
+\item \code{\link[=fuzz_partial_token_sort_ratio]{fuzz_partial_token_sort_ratio()}} - partial ratio of sorted words
+\item \code{\link[=fuzz_partial_token_set_ratio]{fuzz_partial_token_set_ratio()}} - partial ratio of word sets
+\item \code{\link[=fuzz_partial_token_ratio]{fuzz_partial_token_ratio()}} - best of partial sort and set
+\item \code{\link[=fuzz_wratio]{fuzz_wratio()}} - weighted best of the scorers
+\item \code{\link[=fuzz_qratio]{fuzz_qratio()}} - ratio; 0 if either is empty
+\item \code{\link[=fuzz_default_process]{fuzz_default_process()}} - lowercase, strip non-alphanumerics
+\item \code{\link[=fuzz_cdist]{fuzz_cdist()}} - all-pairs score matrix
+\item \code{\link[=fuzz_cpdist]{fuzz_cpdist()}} - element-wise, scorer by name
 }
 }
 \item \strong{Fuzzy lookup}
 \itemize{
 \item \code{\link[=fuzzy_match]{fuzzy_match()}} - best table match per query
 \item \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} - top-N matches, no full matrix
+\item \code{\link[=fuzz_extract]{fuzz_extract()}} - top-N matches, RapidFuzz scorers
+\item \code{\link[=fuzz_extract_one]{fuzz_extract_one()}} - best match, RapidFuzz scorers
 }
 \item \strong{Benchmarking}
 \itemize{
@@ -138,7 +150,9 @@ default) uses the RcppParallel setting, see
 \item \strong{Bytes or code points}: \code{\link[=jaro_winkler]{jaro_winkler()}} and the \link{edit_distance}
 functions compare encoded bytes by default (\code{use_bytes = TRUE}) for
 compatibility and speed; pass \code{use_bytes = FALSE} to compare UTF-8 code
-points. \code{\link[=fuzzy_match]{fuzzy_match()}} and \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} default to code points.
+points. \code{\link[=fuzzy_match]{fuzzy_match()}} and \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} default to code points,
+and the RapidFuzz ports (\link{fuzz}, \link{fuzz_process}) always use them, as
+RapidFuzz compares Python \code{str} characters.
 \item \strong{Regular expressions}: \code{\link[=fgrepl]{fgrepl()}}, \code{\link[=fcount]{fcount()}}, \code{\link[=fsub]{fsub()}}, \code{\link[=fgsub]{fgsub()}}
 and \code{\link[=gsub_all]{gsub_all()}} run every pattern on PCRE2. With \code{perl = FALSE} they
 follow base R's default (TRE) regular expressions, except that the
@@ -172,6 +186,12 @@ fuzzy_match(clean, reference, min_score = 0.85)
 Authors:
 \itemize{
   \item Kyle Haynes \email{kyle@kylehaynes.com.au}
+}
+
+Other contributors:
+\itemize{
+  \item Max Bachmann (Author of RapidFuzz, whose scorers src/rapidfuzz_core.h ports) [contributor, copyright holder]
+  \item Adam Cohen (Author of fuzzywuzzy, on which RapidFuzz's fuzz module builds) [copyright holder]
 }
 
 }

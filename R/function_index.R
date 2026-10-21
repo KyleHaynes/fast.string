@@ -72,16 +72,28 @@
             cosine_similarity = "frequency-weighted overlap",
             cosine_matrix     = "all-pairs matrix"
         ),
-        "fuzzywuzzy ratios" = list(
-            fuzz_ratio            = "overall ratio (0-100)",
-            fuzz_partial_ratio    = "best-substring ratio",
-            fuzz_token_sort_ratio = "ignores word order",
-            fuzz_token_set_ratio  = "ignores extra/duplicate words"
+        "RapidFuzz scorers (0-100)" = list(
+            fuzz_ratio                    = "normalised Indel similarity",
+            fuzz_partial_ratio            = "best-aligned substring",
+            fuzz_partial_ratio_alignment  = "partial ratio and where it aligns",
+            fuzz_token_sort_ratio         = "ignores word order",
+            fuzz_token_set_ratio          = "ignores extra/duplicate words",
+            fuzz_token_ratio              = "best of token sort and set",
+            fuzz_partial_token_sort_ratio = "partial ratio of sorted words",
+            fuzz_partial_token_set_ratio  = "partial ratio of word sets",
+            fuzz_partial_token_ratio      = "best of partial sort and set",
+            fuzz_wratio                   = "weighted best of the scorers",
+            fuzz_qratio                   = "ratio; 0 if either is empty",
+            fuzz_default_process          = "lowercase, strip non-alphanumerics",
+            fuzz_cdist                    = "all-pairs score matrix",
+            fuzz_cpdist                   = "element-wise, scorer by name"
         )
     ),
     "Fuzzy lookup" = list(
-        fuzzy_match = "best table match per query",
-        fuzzy_top_n = "top-N matches, no full matrix"
+        fuzzy_match      = "best table match per query",
+        fuzzy_top_n      = "top-N matches, no full matrix",
+        fuzz_extract     = "top-N matches, RapidFuzz scorers",
+        fuzz_extract_one = "best match, RapidFuzz scorers"
     ),
     "Benchmarking" = list(
         run_benchmark_example = "interactive speed demo vs base R"

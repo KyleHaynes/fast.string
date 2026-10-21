@@ -534,28 +534,37 @@ Jaro-Winkler make a reasonable *pair* of features for a linkage decision —
 @sec-workflow scores candidates on both and treats a wide disagreement
 between them as something to look at rather than average away.
 
-## fuzzywuzzy-style ratios: Ratcliff/Obershelp matching blocks
+## RapidFuzz scorers: Indel similarity
 
-`fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_token_sort_ratio()`, and
-`fuzz_token_set_ratio()` port Python's
-[fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy) package — useful when
-migrating a matching pipeline from Python, or when you specifically want
-fuzzywuzzy's flavour of scoring rather than edit distance or Jaro-Winkler.
+The `fuzz_*()` functions port the scorers of Python's
+[RapidFuzz](https://github.com/rapidfuzz/RapidFuzz), the maintained
+successor to fuzzywuzzy (whose own successor, thefuzz, now runs on
+RapidFuzz too). They are useful when migrating a matching pipeline from
+Python, or when you want this family's scoring rather than edit distance
+or Jaro-Winkler. The C++ follows rapidfuzz-cpp step by step, so scores,
+alignments and tie-breaks agree with the Python package.
 
-The core of all four is the **Ratcliff/Obershelp algorithm** — the same
-algorithm behind Python's `difflib.SequenceMatcher`, which is what
-fuzzywuzzy itself falls back to whenever the optional `python-Levenshtein`
-C extension isn't installed (this package implements that always-available
-reference behaviour, not the optional Levenshtein-based shortcut). It
-works by recursively finding the *longest common contiguous matching
-block* between two strings, then recursing into the unmatched left and
-right remainders on each side — repeating until no more matches are
-found. The total length of every matched block, `M`, gives a similarity
-ratio of `2*M / (len(a) + len(b))`. This is a meaningfully different
-notion of "similar" from edit distance: it rewards long shared *runs*
-rather than penalising every single-character difference equally, so a
-short insertion in the middle of an otherwise-identical string costs far
-less here than under Levenshtein.
+The core of every scorer is `fuzz_ratio()`, the **normalised Indel
+similarity**. Indel distance counts the insertions and deletions (no
+substitutions) needed to turn one string into the other. That count is
+`len(a) + len(b) - 2 * LCS`, where `LCS` is the length of their longest
+common subsequence, so
+
+$$\text{ratio} = 100 \cdot \frac{2 \cdot \text{LCS}}{\text{len}(a) + \text{len}(b)}.$$
+
+A substitution costs two edits here (a deletion and an insertion), so a
+changed character weighs twice what it does under Levenshtein. The LCS is
+found with Hyyrö's bit-parallel recurrence: the shorter string becomes a
+bit mask per character, and each character of the longer string updates
+64 positions at once with a handful of word operations. Strings longer
+than 64 characters chain several words with carries, so any length takes
+`O(len(a) * len(b) / 64)` time.
+
+The original fuzzywuzzy scored with difflib's Ratcliff/Obershelp
+*matching blocks* instead: it repeatedly takes the longest common
+contiguous run, then recurses on either side. That heuristic can miss the
+longest common subsequence, so its ratios are equal to or lower than
+RapidFuzz's.
 
 ```{r}
 #| label: fuzz-demo
@@ -563,15 +572,33 @@ fuzz_ratio("this is a test", "this is a test!")
 fuzz_partial_ratio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear")
 ```
 
-`fuzz_partial_ratio()` builds on the same matching-blocks primitive: align
-the *shorter* string against every position the longer one offers (via
-those same matching blocks) and keep the best full-ratio alignment —
-useful when one string is plausibly a true substring of the other, padded
-with unrelated text on either side. `fuzz_token_sort_ratio()` and
-`fuzz_token_set_ratio()` layer tokenisation on top (sort-and-rejoin, or
-set-intersection-and-leftovers respectively) before running the same
-ratio underneath, the same way `jaro_winkler_tokens()` layers tokenisation
-on top of plain Jaro-Winkler.
+The other scorers build on that ratio:
+
+- `fuzz_partial_ratio()` slides the shorter string along the longer one
+  and keeps the best `fuzz_ratio()` of any window. The search is exact:
+  shifting a window by one position changes its Indel distance by at most
+  2, so after scoring the two ends of a range the best score anywhere in
+  between is bounded, and ranges that cannot win are skipped. Windows
+  overhanging either end are tried too.
+  `fuzz_partial_ratio_alignment()` reports which slices won.
+- `fuzz_token_sort_ratio()` sorts each string's words before the ratio;
+  `fuzz_token_set_ratio()` splits the words into shared and one-sided sets
+  and scores the shared core against each side, giving 100 when one
+  string's words are a subset of the other's. `fuzz_token_ratio()` is the
+  better of the two, and the `fuzz_partial_token_*()` variants use the
+  partial ratio instead.
+- `fuzz_wratio()` (RapidFuzz's `WRatio`) picks by length. When the
+  longer string is under 1.5 times the shorter, it returns the larger of
+  `fuzz_ratio()` and 0.95 times `fuzz_token_ratio()`. Otherwise the
+  partial scorers come in, scaled by 0.9 (or 0.6 beyond a length ratio of
+  8), and their token variant by a further 0.95.
+
+All of them compare Unicode code points, the characters of a Python
+`str`. With `full_process = TRUE` both strings first pass through
+`fuzz_default_process()`: every character that is not a letter or digit
+becomes a space, letters are lowercased with Python's Unicode tables, and
+the ends are trimmed. As with `jaro_winkler_tokens()` over plain
+Jaro-Winkler, the token scorers only change what the core metric is run on.
 
 ## Fast, fixed-format dates
 
