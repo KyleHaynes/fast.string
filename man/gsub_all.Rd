@@ -47,8 +47,11 @@ Character vector the same length as \code{x}.
 Replace several patterns in \code{x} either sequentially (one full pass per
 pattern, like chaining \code{\link[=fgsub]{fgsub()}} calls) or, for fixed patterns, in a single
 combined scan (\code{sequential = FALSE}), parallelised across CPU cores via
-Intel TBB. Non-sequential regular-expression replacement is rejected
-because combined capture/backreference semantics are not implemented.
+Intel TBB. With eight or more patterns the single scan uses an
+Aho-Corasick automaton (as \code{\link[=fgrepl_any]{fgrepl_any()}} does), so its cost barely grows
+with the number of patterns. Non-sequential regular-expression
+replacement is rejected because combined capture/backreference semantics
+are not implemented.
 }
 \examples{
 x <- c("cat and hat", "a cat")
@@ -63,9 +66,12 @@ gsub_all(c("a", "b"), c("b", "c"), "ab", fixed = TRUE, sequential = FALSE)
 \code{\link[=fgsub]{fgsub()}} for a single pattern.
 
 Other matching and substitution functions:
+\code{\link[=fagrepl]{fagrepl()}},
 \code{\link[=fcount]{fcount()}},
+\code{\link[=fextract]{fextract()}},
 \code{\link[=fgrep]{fgrep()}},
 \code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fgrepl_any]{fgrepl_any()}},
 \code{\link[=fgsub]{fgsub()}},
 \code{\link[=fsub]{fsub()}}
 }

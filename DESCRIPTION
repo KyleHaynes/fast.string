@@ -7,23 +7,40 @@ Authors@R: c(
     person("Max", "Bachmann", role = c("ctb", "cph"),
            comment = "Author of RapidFuzz, whose scorers src/rapidfuzz_core.h ports"),
     person("Adam", "Cohen", role = "cph",
-           comment = "Author of fuzzywuzzy, on which RapidFuzz's fuzz module builds")
+           comment = "Author of fuzzywuzzy, on which RapidFuzz's fuzz module builds"),
+    person("James P.", "Howard", role = "cph",
+           comment = "Author of phonics, whose Statistics Canada, Lein, Phonex and Roger Root rules are reproduced"),
+    person("The Apache Software Foundation", role = "cph",
+           comment = "Apache Commons Codec, whose Metaphone is ported"),
+    person("OpenRefine contributors", role = "cph",
+           comment = "Fingerprint keyers followed by fingerprint() and src/fingerprint_table.h"),
+    person("Unicode, Inc.", role = "cph",
+           comment = "CLDR Latin-ASCII data in src/ascii_fold_table.h")
     )
 Depends:
     R (>= 4.1.0)
-Description: Fast equivalents of grepl(), grep(), sub(), and gsub() that
-    use PCRE2 for regular expressions and prepared literal search for fixed
-    strings, parallelised across CPU cores via Intel TBB through
-    RcppParallel. Also provides byte- and Unicode-aware string similarities,
-    edit distances, q-gram set and cosine similarity, ports of the
-    'RapidFuzz' fuzzy-matching scorers and search functions
-    <https://github.com/rapidfuzz/RapidFuzz>, phonetic blocking keys
-    (Soundex, Refined Soundex, NYSIIS, Cologne, Double Metaphone,
-    Caverphone), fixed-format date and timestamp parsing, and
-    memory-efficient top-N fuzzy lookup without allocating a full comparison
-    matrix. Includes a reproducible benchmark harness for measuring
-    workload- and platform-specific performance.
+Description: Fast equivalents of grepl(), grep(), sub(), gsub() and agrepl()
+    that use PCRE2 for regular expressions, prepared literal search and
+    Aho-Corasick automata for fixed strings, and Myers' bit-parallel
+    algorithm for approximate matching, parallelised across CPU cores via
+    Intel TBB through RcppParallel. Also provides match extraction, field
+    splitting, whitespace squishing, ASCII folding and 'OpenRefine'
+    clustering keys; byte- and Unicode-aware string similarities and edit
+    distances (Levenshtein with weights, OSA, Damerau-Levenshtein, LCS,
+    Indel, Editex, Smith-Waterman-Gotoh, Monge-Elkan, q-gram set and cosine
+    similarity, and edit operations); ports of the 'RapidFuzz'
+    fuzzy-matching scorers and search functions
+    <https://github.com/rapidfuzz/RapidFuzz>; phonetic blocking keys
+    (Soundex, Refined Soundex, NYSIIS, Cologne, Metaphone, Double Metaphone,
+    Caverphone, Match Rating Approach, Statistics Canada, Lein, Phonex,
+    Roger Root and ONCA); fixed-format date and timestamp parsing; and
+    candidate search for record linkage without a full comparison matrix
+    (top-N lookup, symmetric-delete search within k edits, TF-IDF n-gram
+    cosine matching and MinHash locality-sensitive hashing). Includes a
+    reproducible benchmark harness for measuring workload- and
+    platform-specific performance.
 License: MIT + file LICENSE
+Copyright: See file COPYRIGHTS.
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:

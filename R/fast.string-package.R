@@ -1,13 +1,17 @@
 #' fast.string: parallel string, date and fuzzy-matching functions
 #'
 #' Fast, multi-core alternatives to base R's string functions, plus the
-#' building blocks of a record-linkage pipeline: fixed-format date and
-#' timestamp parsing, phonetic blocking keys, string-similarity and
-#' edit-distance measures, and memory-bounded fuzzy lookup.
+#' building blocks of a record-linkage pipeline: text cleaning (match
+#' extraction, field splitting, ASCII folding, OpenRefine clustering keys),
+#' fixed-format date and timestamp parsing, phonetic blocking keys,
+#' string-similarity and edit-distance measures, and candidate search that
+#' never builds a full comparison matrix (top-N lookup, everything within k
+#' edits, TF-IDF n-gram matching, MinHash locality-sensitive hashing).
 #'
-#' Regular expressions run on PCRE2 and fixed strings on a prepared literal
-#' searcher, with work split across cores by Intel TBB (through
-#' RcppParallel). Small inputs are processed serially in the calling thread;
+#' Regular expressions run on PCRE2, a single fixed string on a prepared
+#' literal searcher and many fixed strings on an Aho-Corasick automaton, and
+#' approximate matching on Myers' bit-parallel algorithm, with work split
+#' across cores by Intel TBB (through RcppParallel). Small inputs are processed serially in the calling thread;
 #' larger ones are divided between threads.
 #'
 #' Loading the package prints the function index below as a tree. Silence it
@@ -32,11 +36,14 @@
 #' * **Bytes or code points**: [jaro_winkler()] and the [edit_distance]
 #'   functions compare encoded bytes by default (`use_bytes = TRUE`) for
 #'   compatibility and speed; pass `use_bytes = FALSE` to compare UTF-8 code
-#'   points. [fuzzy_match()] and [fuzzy_top_n()] default to code points,
-#'   and the RapidFuzz ports ([fuzz], [fuzz_process]) always use them, as
-#'   RapidFuzz compares Python `str` characters.
-#' * **Regular expressions**: [fgrepl()], [fcount()], [fsub()], [fgsub()]
-#'   and [gsub_all()] run every pattern on PCRE2. With `perl = FALSE` they
+#'   points. [fuzzy_match()], [fuzzy_top_n()] and the functions added
+#'   since (such as [lcs_seq_distance()], [editex()], [fuzzy_within()],
+#'   [tfidf_top_n()] and [minhash_pairs()]) default to code points, and the
+#'   RapidFuzz ports ([fuzz], [fuzz_process]) always use them, as RapidFuzz
+#'   compares Python `str` characters.
+#' * **Regular expressions**: [fgrepl()], [fcount()], [fsub()], [fgsub()],
+#'   [gsub_all()], [fextract()] and [fsplit_field()] run every pattern on
+#'   PCRE2. With `perl = FALSE` they
 #'   follow base R's default (TRE) regular expressions, except that the
 #'   first matching alternative wins rather than the longest; patterns with
 #'   PCRE-only syntax (lookarounds, atomic groups, ...) get `perl = TRUE`
@@ -49,10 +56,11 @@
 #' raw <- c("  Smith, John ", "SMITH,  JON", "Jones, Mary", NA)
 #'
 #' # Clean: trim, collapse repeated whitespace, unify case.
-#' clean <- toupper(fgsub("[[:space:]]+", " ", ftrimws(raw)))
+#' clean <- toupper(fsquish(raw))
 #' clean
 #'
-#' # Block on a phonetic key...
+#' # Group spelling variants, or block on a phonetic key...
+#' fingerprint(clean)
 #' soundex(clean)
 #'
 #' # ...then score candidates against a reference table.

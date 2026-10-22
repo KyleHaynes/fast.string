@@ -58,8 +58,11 @@ fcount("[aeiou]", x)            # vowels per string
 \code{\link[base:gregexpr]{base::gregexpr()}}
 
 Other matching and substitution functions:
+\code{\link[=fagrepl]{fagrepl()}},
+\code{\link[=fextract]{fextract()}},
 \code{\link[=fgrep]{fgrep()}},
 \code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fgrepl_any]{fgrepl_any()}},
 \code{\link[=fgsub]{fgsub()}},
 \code{\link[=fsub]{fsub()}},
 \code{\link[=gsub_all]{gsub_all()}}

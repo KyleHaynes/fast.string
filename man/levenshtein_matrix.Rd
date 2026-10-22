@@ -4,7 +4,13 @@
 \alias{levenshtein_matrix}
 \title{Levenshtein all-pairs distance matrix}
 \usage{
-levenshtein_matrix(a, b, nthreads = NULL, use_bytes = TRUE)
+levenshtein_matrix(
+  a,
+  b,
+  nthreads = NULL,
+  use_bytes = TRUE,
+  weights = c(1, 1, 1)
+)
 }
 \arguments{
 \item{a, b}{Equal-length character vectors.}
@@ -14,6 +20,9 @@ RcppParallel default.}
 
 \item{use_bytes}{Logical scalar. Compare encoded bytes when \code{TRUE}, or
 UTF-8 code points when \code{FALSE}.}
+
+\item{weights}{Costs of an insertion, a deletion and a substitution, as
+in \code{\link[=levenshtein]{levenshtein()}}.}
 }
 \value{
 Numeric matrix with \code{length(a)} rows and \code{length(b)} columns,
@@ -29,7 +38,13 @@ levenshtein_matrix(c("kitten", "flaw"), c("sitting", "lawn"))
 Other edit distance functions:
 \code{\link[=damerau_levenshtein_matrix]{damerau_levenshtein_matrix()}},
 \code{\link{edit_distance}},
+\code{\link[=edit_ops]{edit_ops()}},
+\code{\link[=editex]{editex()}},
+\code{\link{lcs_seq}},
+\code{\link[=lcs_str]{lcs_str()}},
 \code{\link[=levenshtein_within]{levenshtein_within()}},
-\code{\link[=osa_distance_matrix]{osa_distance_matrix()}}
+\code{\link[=monge_elkan]{monge_elkan()}},
+\code{\link[=osa_distance_matrix]{osa_distance_matrix()}},
+\code{\link[=smith_waterman]{smith_waterman()}}
 }
 \concept{edit distance functions}

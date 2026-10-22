@@ -33,7 +33,11 @@ fchartr("a-cx", "A-CX", "abcxyz")      # ranges, as in base R
 \code{\link[base:chartr]{base::chartr()}}
 
 Other string utilities:
+\code{\link[=ascii_fold]{ascii_fold()}},
+\code{\link[=fingerprint]{fingerprint()}},
 \code{\link[=fnchar]{fnchar()}},
+\code{\link[=fsplit_field]{fsplit_field()}},
+\code{\link[=fsquish]{fsquish()}},
 \code{\link[=fsubstr]{fsubstr()}},
 \code{\link[=ftrimws]{ftrimws()}}
 }

@@ -57,9 +57,12 @@ fsub("(\\\\w+) (\\\\w+)", "\\\\2 \\\\1", x)      # swap the two words
 \code{\link[base:sub]{base::sub()}}
 
 Other matching and substitution functions:
+\code{\link[=fagrepl]{fagrepl()}},
 \code{\link[=fcount]{fcount()}},
+\code{\link[=fextract]{fextract()}},
 \code{\link[=fgrep]{fgrep()}},
 \code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fgrepl_any]{fgrepl_any()}},
 \code{\link[=fgsub]{fgsub()}},
 \code{\link[=gsub_all]{gsub_all()}}
 }

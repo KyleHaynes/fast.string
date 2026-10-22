@@ -68,8 +68,11 @@ fgrepl("APPLE", x, fixed = TRUE, ignore.case = TRUE)
 \code{\link[base:grepl]{base::grepl()}}
 
 Other matching and substitution functions:
+\code{\link[=fagrepl]{fagrepl()}},
 \code{\link[=fcount]{fcount()}},
+\code{\link[=fextract]{fextract()}},
 \code{\link[=fgrep]{fgrep()}},
+\code{\link[=fgrepl_any]{fgrepl_any()}},
 \code{\link[=fgsub]{fgsub()}},
 \code{\link[=fsub]{fsub()}},
 \code{\link[=gsub_all]{gsub_all()}}

@@ -58,8 +58,11 @@ fgrep("an", x, invert = TRUE)   # everything else, including the NA
 \code{\link[base:grep]{base::grep()}}
 
 Other matching and substitution functions:
+\code{\link[=fagrepl]{fagrepl()}},
 \code{\link[=fcount]{fcount()}},
+\code{\link[=fextract]{fextract()}},
 \code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fgrepl_any]{fgrepl_any()}},
 \code{\link[=fgsub]{fgsub()}},
 \code{\link[=fsub]{fsub()}},
 \code{\link[=gsub_all]{gsub_all()}}

@@ -37,8 +37,12 @@ ftrimws(x, which = "left")
 \code{\link[base:trimws]{base::trimws()}}
 
 Other string utilities:
+\code{\link[=ascii_fold]{ascii_fold()}},
 \code{\link[=fchartr]{fchartr()}},
+\code{\link[=fingerprint]{fingerprint()}},
 \code{\link[=fnchar]{fnchar()}},
+\code{\link[=fsplit_field]{fsplit_field()}},
+\code{\link[=fsquish]{fsquish()}},
 \code{\link[=fsubstr]{fsubstr()}}
 }
 \concept{string utilities}

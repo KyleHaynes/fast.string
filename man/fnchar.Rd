@@ -43,7 +43,11 @@ fnchar(x, type = "bytes")    # the accented letter takes two bytes in UTF-8
 \code{\link[base:nchar]{base::nchar()}}
 
 Other string utilities:
+\code{\link[=ascii_fold]{ascii_fold()}},
 \code{\link[=fchartr]{fchartr()}},
+\code{\link[=fingerprint]{fingerprint()}},
+\code{\link[=fsplit_field]{fsplit_field()}},
+\code{\link[=fsquish]{fsquish()}},
 \code{\link[=fsubstr]{fsubstr()}},
 \code{\link[=ftrimws]{ftrimws()}}
 }

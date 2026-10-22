@@ -39,8 +39,12 @@ fsubstr(c("abcdef", "xyz", NA), 2, 4)   # out-of-range stops are clamped
 \code{\link[base:substr]{base::substr()}}
 
 Other string utilities:
+\code{\link[=ascii_fold]{ascii_fold()}},
 \code{\link[=fchartr]{fchartr()}},
+\code{\link[=fingerprint]{fingerprint()}},
 \code{\link[=fnchar]{fnchar()}},
+\code{\link[=fsplit_field]{fsplit_field()}},
+\code{\link[=fsquish]{fsquish()}},
 \code{\link[=ftrimws]{ftrimws()}}
 }
 \concept{string utilities}

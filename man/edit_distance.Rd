@@ -11,7 +11,7 @@
 \alias{damerau_levenshtein_similarity}
 \title{Parallel edit distances and normalized similarities}
 \usage{
-levenshtein(a, b, nthreads = NULL, use_bytes = TRUE)
+levenshtein(a, b, nthreads = NULL, use_bytes = TRUE, weights = c(1, 1, 1))
 
 osa_distance(a, b, nthreads = NULL, use_bytes = TRUE)
 
@@ -19,7 +19,13 @@ damerau_levenshtein(a, b, nthreads = NULL, use_bytes = TRUE)
 
 hamming(a, b, nthreads = NULL, use_bytes = TRUE)
 
-levenshtein_similarity(a, b, nthreads = NULL, use_bytes = TRUE)
+levenshtein_similarity(
+  a,
+  b,
+  nthreads = NULL,
+  use_bytes = TRUE,
+  weights = c(1, 1, 1)
+)
 
 osa_similarity(a, b, nthreads = NULL, use_bytes = TRUE)
 
@@ -33,6 +39,11 @@ RcppParallel default.}
 
 \item{use_bytes}{Logical scalar. Compare encoded bytes when \code{TRUE}, or
 UTF-8 code points when \code{FALSE}.}
+
+\item{weights}{Non-negative numeric vector of length 3: the cost of an
+insertion, a deletion and a substitution, in that order (or named
+\code{insert}, \code{delete} and \code{substitute}). Insertion and deletion are as seen
+from \code{a}: inserting a character of \code{b}, deleting one of \code{a}.}
 }
 \value{
 A numeric vector the same length as \code{a}; \code{NA} when either input is
@@ -51,9 +62,18 @@ more than one edit. \code{hamming()} counts differing positions and returns
 Existing functions default to byte comparison for compatibility. Set
 \code{use_bytes = FALSE} to compare UTF-8 code points. This is code-point
 comparison, not grapheme-cluster comparison or Unicode normalization.
+
+\code{levenshtein()}, \code{\link[=levenshtein_matrix]{levenshtein_matrix()}} and \code{levenshtein_similarity()}
+take \code{weights}, the costs of an insertion, a deletion and a
+substitution (as in RapidFuzz's \code{Levenshtein}, and \code{costs} in
+\code{\link[utils:adist]{utils::adist()}}). With other weights than the default all-ones the
+distance is the cheapest total cost, and the similarity divides it by the
+cost of the most expensive way to do the job (RapidFuzz's
+\code{levenshtein_maximum}).
 }
 \examples{
 levenshtein("kitten", "sitting")
+levenshtein("kitten", "sitting", weights = c(1, 1, 2))  # substitution costs 2
 osa_distance("ca", "abc")
 damerau_levenshtein("ca", "abc")
 levenshtein_similarity("kitten", "sitting")
@@ -68,8 +88,14 @@ metrics without building a full matrix.
 
 Other edit distance functions:
 \code{\link[=damerau_levenshtein_matrix]{damerau_levenshtein_matrix()}},
+\code{\link[=edit_ops]{edit_ops()}},
+\code{\link[=editex]{editex()}},
+\code{\link{lcs_seq}},
+\code{\link[=lcs_str]{lcs_str()}},
 \code{\link[=levenshtein_matrix]{levenshtein_matrix()}},
 \code{\link[=levenshtein_within]{levenshtein_within()}},
-\code{\link[=osa_distance_matrix]{osa_distance_matrix()}}
+\code{\link[=monge_elkan]{monge_elkan()}},
+\code{\link[=osa_distance_matrix]{osa_distance_matrix()}},
+\code{\link[=smith_waterman]{smith_waterman()}}
 }
 \concept{edit distance functions}

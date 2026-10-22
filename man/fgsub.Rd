@@ -57,9 +57,12 @@ fgsub("(^|\\\\s)(\\\\w)", "\\\\1\\\\U\\\\2", x)    # capitalise each word
 \code{\link[base:gsub]{base::gsub()}}
 
 Other matching and substitution functions:
+\code{\link[=fagrepl]{fagrepl()}},
 \code{\link[=fcount]{fcount()}},
+\code{\link[=fextract]{fextract()}},
 \code{\link[=fgrep]{fgrep()}},
 \code{\link[=fgrepl]{fgrepl()}},
+\code{\link[=fgrepl_any]{fgrepl_any()}},
 \code{\link[=fsub]{fsub()}},
 \code{\link[=gsub_all]{gsub_all()}}
 }

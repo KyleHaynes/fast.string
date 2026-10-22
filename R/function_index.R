@@ -13,13 +13,32 @@
         fcount   = "count matches per string",
         fsub     = "sub() equivalent",
         fgsub    = "gsub() equivalent",
-        gsub_all = "many patterns in one pass"
+        gsub_all = "many patterns in one pass",
+        fextract     = "first match (or group) per string",
+        fextract_all = "every match per string",
+        "Many literal patterns (Aho-Corasick)" = list(
+            fgrepl_any   = "contains any of the patterns",
+            fcount_any   = "matches of any pattern",
+            fwhich_any   = "first pattern found, by priority",
+            fextract_any = "the matched text"
+        ),
+        "Approximate" = list(
+            fagrepl = "agrepl() equivalent",
+            fagrep  = "agrep() equivalent"
+        )
     ),
     "String utilities" = list(
         ftrimws = "trimws() equivalent",
         fsubstr = "substr() equivalent",
         fnchar  = "nchar() equivalent",
-        fchartr = "chartr() equivalent"
+        fchartr = "chartr() equivalent",
+        fsquish      = "trim and collapse inner whitespace",
+        fsplit_field = "one field of delimited text",
+        ascii_fold   = "accents and symbols to ASCII"
+    ),
+    "Clustering keys" = list(
+        fingerprint       = "OpenRefine fingerprint key",
+        ngram_fingerprint = "OpenRefine n-gram fingerprint key"
     ),
     "Dates & timestamps" = list(
         "Parse" = list(
@@ -41,7 +60,15 @@
         nysiis           = "NYSIIS",
         cologne          = "Cologne (German pronunciation)",
         double_metaphone = "Double Metaphone (two codes)",
-        caverphone       = "Caverphone 2.0 (NZ/AU names)"
+        caverphone       = "Caverphone 2.0 (NZ/AU names)",
+        metaphone        = "Metaphone (Commons Codec)",
+        mra_encode       = "Match Rating Approach codex",
+        mra_compare      = "Match Rating Approach match test",
+        statcan          = "Statistics Canada name code",
+        lein             = "Lein name code",
+        phonex           = "Phonex (Soundex plus Phonix)",
+        roger_root       = "Roger Root name code",
+        onca             = "ONCA (NYSIIS, then Soundex)"
     ),
     "String similarity" = list(
         "Jaro-Winkler" = list(
@@ -60,7 +87,26 @@
             damerau_levenshtein            = "unrestricted transpositions",
             damerau_levenshtein_similarity = "normalised 0-1 similarity",
             damerau_levenshtein_matrix     = "all-pairs distance matrix",
-            hamming                        = "count of differing positions"
+            hamming                        = "count of differing positions",
+            edit_ops                       = "the edits themselves, or opcodes",
+            editex                         = "phonetic edit distance for names",
+            editex_similarity              = "normalised 0-1 similarity"
+        ),
+        "Subsequence & affix" = list(
+            lcs_seq_distance   = "longer length minus the LCS",
+            lcs_seq_similarity = "LCS over the longer length",
+            indel_distance     = "insertions and deletions only",
+            indel_similarity   = "normalised 0-1 similarity",
+            prefix_distance    = "longer length minus common prefix",
+            prefix_similarity  = "common prefix over longer length",
+            postfix_distance   = "longer length minus common suffix",
+            postfix_similarity = "common suffix over longer length"
+        ),
+        "Alignment & tokens" = list(
+            lcs_str            = "longest common substring",
+            lcs_str_similarity = "its length over the longer length",
+            smith_waterman     = "local alignment, affine gaps",
+            monge_elkan        = "mean best word-to-word similarity"
         ),
         "Q-gram overlap" = list(
             jaccard_index     = "Jaccard set overlap",
@@ -93,7 +139,11 @@
         fuzzy_match      = "best table match per query",
         fuzzy_top_n      = "top-N matches, no full matrix",
         fuzz_extract     = "top-N matches, RapidFuzz scorers",
-        fuzz_extract_one = "best match, RapidFuzz scorers"
+        fuzz_extract_one = "best match, RapidFuzz scorers",
+        fuzzy_within     = "all entries within k edits",
+        tfidf_top_n      = "top-N by TF-IDF n-gram cosine",
+        tfidf_match      = "best match by TF-IDF cosine",
+        minhash_pairs    = "MinHash LSH candidate pairs"
     ),
     "Benchmarking" = list(
         run_benchmark_example = "interactive speed demo vs base R"

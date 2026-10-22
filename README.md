@@ -20,16 +20,21 @@ remotes::install_github("KyleHaynes/fast.string")
 
 ## Functions
 
-- **Matching & substitution**: `fgrepl()`, `fgrep()`, `fcount()`, `fsub()`, `fgsub()`, `gsub_all()`
-- **String utilities**: `ftrimws()`, `fsubstr()`, `fnchar()`, `fchartr()`
+- **Matching & substitution**: `fgrepl()`, `fgrep()`, `fcount()`, `fsub()`, `fgsub()`, `gsub_all()`, `fextract()`, `fextract_all()`
+  - *Many literal patterns at once* (Aho-Corasick): `fgrepl_any()`, `fcount_any()`, `fwhich_any()`, `fextract_any()`
+  - *Approximate matching*: `fagrepl()`, `fagrep()` (faster `agrepl()`/`agrep()`)
+- **String utilities**: `ftrimws()`, `fsubstr()`, `fnchar()`, `fchartr()`, `fsquish()`, `fsplit_field()`, `ascii_fold()`
+- **Clustering keys** (OpenRefine): `fingerprint()`, `ngram_fingerprint()`
 - **Dates & timestamps**: `fas.Date()` (fixed-format strings, or day counts from the Excel, SAS/Stata, SPSS, MATLAB and Julian-day epochs), `fas.POSIXct()`, `format_date()`, `format_datetime()`, `date_parts()`, `format_date_parts()`
-- **Phonetic codes** (blocking keys): `soundex()`, `refined_soundex()`, `nysiis()`, `cologne()`, `double_metaphone()`, `caverphone()`
+- **Phonetic codes** (blocking keys): `soundex()`, `refined_soundex()`, `nysiis()`, `cologne()`, `metaphone()`, `double_metaphone()`, `caverphone()`, `mra_encode()`/`mra_compare()`, `statcan()`, `lein()`, `phonex()`, `roger_root()`, `onca()`
 - **String similarity**
   - *Jaro-Winkler*: `jaro_winkler()`, `jaro_winkler_matrix()`, `jaro_winkler_tokens()`
-  - *Edit distance*: `levenshtein()`, `osa_distance()`, `damerau_levenshtein()`, `hamming()` (+ `_similarity()`, `_matrix()`, and `levenshtein_within()` variants)
+  - *Edit distance*: `levenshtein()` (with optional insert/delete/substitute `weights`), `osa_distance()`, `damerau_levenshtein()`, `hamming()` (+ `_similarity()`, `_matrix()`, and `levenshtein_within()` variants), `edit_ops()`, `editex()`, `editex_similarity()`
+  - *Subsequence & affix* (RapidFuzz's distance module): `lcs_seq_distance()`, `lcs_seq_similarity()`, `indel_distance()`, `indel_similarity()`, `prefix_distance()`, `prefix_similarity()`, `postfix_distance()`, `postfix_similarity()`
+  - *Alignment & tokens*: `lcs_str()`, `lcs_str_similarity()`, `smith_waterman()`, `monge_elkan()`
   - *Q-gram overlap*: `jaccard_index()`, `dice_coefficient()`, `tversky_index()`, `cosine_similarity()` (+ `_matrix()` variants)
   - *RapidFuzz scorers* (ports of Python's [RapidFuzz](https://github.com/rapidfuzz/RapidFuzz), the successor to fuzzywuzzy; scores match `rapidfuzz.fuzz`): `fuzz_ratio()`, `fuzz_partial_ratio()`, `fuzz_partial_ratio_alignment()`, `fuzz_token_sort_ratio()`, `fuzz_token_set_ratio()`, `fuzz_token_ratio()`, `fuzz_partial_token_sort_ratio()`, `fuzz_partial_token_set_ratio()`, `fuzz_partial_token_ratio()`, `fuzz_wratio()`, `fuzz_qratio()`, `fuzz_default_process()`, `fuzz_cdist()`, `fuzz_cpdist()`
-- **Fuzzy lookup**: `fuzzy_match()`, `fuzzy_top_n()` (streaming best/top-N matches without a full matrix), and RapidFuzz's `process.extract()`/`extractOne()` as `fuzz_extract()`/`fuzz_extract_one()`
+- **Fuzzy lookup**: `fuzzy_match()`, `fuzzy_top_n()` (streaming best/top-N matches without a full matrix), RapidFuzz's `process.extract()`/`extractOne()` as `fuzz_extract()`/`fuzz_extract_one()`, and candidate search that never scores every pair: `fuzzy_within()` (everything within k edits, SymSpell's symmetric-delete index), `tfidf_top_n()`/`tfidf_match()` (TF-IDF character n-gram cosine) and `minhash_pairs()` (MinHash LSH blocking)
 
 Loading the package (`library(fast.string)`) prints every exported function
 as a colour-coded tree grouped by these categories, each with a one-line

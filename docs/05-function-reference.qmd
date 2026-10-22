@@ -175,10 +175,109 @@ gsub_all(patterns, replacements, x, fixed = FALSE, ignore.case = FALSE,
 gsub_all(c("Mr\\.", "Mrs\\."), c("Mister", "Missus"), c("Mr. Smith", "Mrs. Jones"))
 ```
 
+### `fextract()` / `fextract_all()`
+
+The first match (or a capture group of it), or every non-overlapping match,
+as `regmatches(x, regexpr(...))` / `regmatches(x, gregexpr(...))` or
+`stringr::str_extract()` / `str_extract_all()` would return it. Patterns
+follow `fgrepl()`'s rules; after an empty match the search moves on one
+character, as in `fcount()`.
+
+```r
+fextract(pattern, x, ignore.case = FALSE, perl = FALSE, fixed = FALSE,
+         useBytes = FALSE, group = 0L, nthreads = NULL)
+fextract_all(pattern, x, ignore.case = FALSE, perl = FALSE, fixed = FALSE,
+             useBytes = FALSE, group = 0L, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `pattern`, `x`, `ignore.case`, `perl`, `fixed`, `useBytes` | As in `fgrepl()`. |
+| `group` | `0` for the whole match, `k` for capture group `k` (`NA` when the group did not take part). Must be `0` with `fixed = TRUE`. |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
+
+**Returns:** `fextract()` a character vector (`NA` for no match);
+`fextract_all()` a list of character vectors (`character(0)` for no match,
+`NA` for a missing string). Both keep `names(x)`.
+
+```{r}
+x <- c("Unit 4, 12 Smith St", "PO Box 99", NA)
+fextract("[0-9]+", x)
+fextract_all("[0-9]+", x)
+fextract("([0-9]+) ([A-Za-z]+) St", x, group = 2)
+```
+
+### `fgrepl_any()` / `fcount_any()` / `fwhich_any()` / `fextract_any()`
+
+Searches for any of many literal strings in one pass with an Aho-Corasick
+automaton, so thousands of keywords cost about as much as a few. Matches are
+leftmost-first: the earliest match wins, and among matches at the same
+position the pattern listed first. `fwhich_any()` returns the first pattern
+(in the order of `patterns`) found anywhere in the string, which suits
+priority-ordered keyword categories.
+
+```r
+fgrepl_any(patterns, x, ignore.case = FALSE, useBytes = FALSE, nthreads = NULL)
+fcount_any(patterns, x, ignore.case = FALSE, useBytes = FALSE, nthreads = NULL)
+fwhich_any(patterns, x, ignore.case = FALSE, useBytes = FALSE, nthreads = NULL)
+fextract_any(patterns, x, all = FALSE, ignore.case = FALSE, useBytes = FALSE,
+             nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `patterns` | Literal strings to look for (no `NA` or `""`). |
+| `x` | Character vector. `NA` elements return `NA`. |
+| `ignore.case` | Fold ASCII letters, as `fgrepl(fixed = TRUE)` does. |
+| `useBytes` | Match bytes rather than UTF-8 text. |
+| `all` | `fextract_any()`: return every match (a list). |
+| `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
+
+**Returns:** a logical vector, integer vectors, or the matched text (a
+list with `all = TRUE`), the same length as `x`.
+
+`gsub_all(fixed = TRUE, sequential = FALSE)` uses the same automaton once
+there are eight or more patterns.
+
+```{r}
+notes <- c("stolen bicycle", "break and enter, tools taken", "graffiti", NA)
+keywords <- c("stolen", "taken", "break and enter", "graffiti")
+fgrepl_any(keywords, notes)
+fwhich_any(keywords, notes)
+fextract_any(keywords, notes, all = TRUE)
+```
+
+### `fagrepl()` / `fagrep()`
+
+Equivalents of `agrepl()` and `agrep()`: does each string contain something
+within `max.distance` edits of a literal `pattern`? Uses Myers' bit-parallel
+algorithm. A `max.distance` below 1 is a fraction of the pattern length,
+rounded up, as in base R. Regular-expression patterns, custom `costs` and
+per-operation limits are passed to base R.
+
+```r
+fagrepl(pattern, x, max.distance = 0.1, costs = NULL, ignore.case = FALSE,
+        fixed = TRUE, useBytes = FALSE, nthreads = NULL)
+fagrep(pattern, x, max.distance = 0.1, costs = NULL, ignore.case = FALSE,
+       value = FALSE, fixed = TRUE, useBytes = FALSE, nthreads = NULL)
+```
+
+**Returns:** `fagrepl()` a logical vector (`NA` for `NA` input, where base R
+gives `FALSE`); `fagrep()` indices, or the matching elements with
+`value = TRUE`.
+
+```{r}
+x <- c("1 lazy 2", "1 lasy 2", "1 LAZY 2", NA)
+fagrepl("lasy", x)
+fagrepl("lasy", x, ignore.case = TRUE)
+fagrep("lasy", x, value = TRUE)
+```
+
 ## String utilities
 
-All four functions in this group preserve `names(x)` and `NA` handling
-exactly like their base R equivalents.
+The four base R equivalents (`ftrimws()`, `fsubstr()`, `fnchar()`,
+`fchartr()`) preserve `names(x)` and `NA` handling exactly like base R; the
+others keep names too.
 
 ### `ftrimws()`
 
@@ -261,6 +360,80 @@ single-byte/ASCII characters).
 ```{r}
 fchartr("'-", "  ", c("O'Brien", "Smith-Jones"))
 fchartr("aeiou", "AEIOU", "fast string")
+```
+
+### `fsquish()`
+
+Trims both ends and collapses internal runs of whitespace to one space,
+like `stringr::str_squish()`. Whitespace is Unicode's `White_Space` set
+(including the no-break space and the ideographic space).
+
+```r
+fsquish(x, nthreads = NULL)
+```
+
+```{r}
+fsquish(c("  12   Smith\tSt  ", "already clean", NA))
+```
+
+### `fsplit_field()`
+
+One field of each string split at `split`, like `stringr::str_split_i()` or
+DuckDB's `split_part()`, without building the intermediate list. Every field
+counts, including empty ones.
+
+```r
+fsplit_field(x, split, field, fixed = FALSE, perl = FALSE,
+             ignore.case = FALSE, useBytes = FALSE, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `split` | The separator: a regular expression unless `fixed = TRUE`; must not match `""`. |
+| `field` | Non-zero integer; negative values count from the end (`-1` is the last field). |
+
+**Returns:** character vector, `NA` where the string has fewer fields.
+
+```{r}
+x <- c("2024-03-15", "1999-12-31", "bad", NA)
+fsplit_field(x, "-", 1, fixed = TRUE)
+fsplit_field(x, "-", -1, fixed = TRUE)
+```
+
+### `ascii_fold()`
+
+ICU's `"Latin-ASCII"` transliteration (`stringi::stri_trans_general(x,
+"Latin-ASCII")`) from a built-in table: accents removed, ligatures and
+special letters spelled out, typographic punctuation and spaces made ASCII.
+Characters it cannot fold are kept, or replaced by `sub`.
+
+```r
+ascii_fold(x, sub = NULL, nthreads = NULL)
+```
+
+```{r}
+ascii_fold(c("François Müller", "Æsir Ørsted", "Straße"))
+ascii_fold("Δι café", sub = "")
+```
+
+## Clustering keys
+
+### `fingerprint()` / `ngram_fingerprint()`
+
+OpenRefine's key-collision keys for grouping spelling variants. The
+fingerprint lowercases, decomposes and strips accents and punctuation, then
+sorts and de-duplicates the words; the n-gram fingerprint removes all
+whitespace and keeps the sorted, de-duplicated character n-grams.
+
+```r
+fingerprint(x, nthreads = NULL)
+ngram_fingerprint(x, n = 2L, nthreads = NULL)
+```
+
+```{r}
+x <- c("Smith, John", "john SMITH", "John  Smith.", "Jon Smith")
+fingerprint(x)
+ngram_fingerprint(c("Acme Pty Ltd", "ACME PtyLtd"))
 ```
 
 ## Dates
@@ -568,6 +741,57 @@ preserved; each element either `NA` or exactly 10 characters.
 caverphone(c("Peter", "Tedder", "Stevenson"))
 ```
 
+### `metaphone()`
+
+Lawrence Philips' original Metaphone, as Apache Commons Codec implements it
+(which Solr and Elasticsearch use). `phonics::metaphone()` follows PHP's
+variant instead.
+
+```r
+metaphone(x, max_length = 4L, nthreads = NULL)
+```
+
+```{r}
+metaphone(c("Thompson", "Knight", "Wright", "Christopher"))
+```
+
+### `mra_encode()` / `mra_compare()`
+
+The Western Airlines Match Rating Approach (1977): a codex of at most six
+letters, and a pairwise match test, following the published rules as the
+Python `jellyfish` package implements them.
+
+```r
+mra_encode(x, nthreads = NULL)
+mra_compare(a, b, nthreads = NULL)
+```
+
+```{r}
+mra_encode(c("Byrne", "Boern", "Catherine", "Kathryn"))
+mra_compare(c("Byrne", "Michael"), c("Boern", "Mike"))
+```
+
+### `statcan()`, `lein()`, `phonex()`, `roger_root()`, `onca()`
+
+Five more name codes from the record-linkage literature. The first four
+reproduce the `phonics` package rule for rule (but ignore non-letters
+instead of returning `NA`, and fold accents); `onca()` is NYSIIS followed by
+Soundex.
+
+```r
+statcan(x, max_length = 4L, nthreads = NULL)
+lein(x, max_length = 4L, nthreads = NULL)
+phonex(x, max_length = 4L, nthreads = NULL)
+roger_root(x, max_length = 5L, nthreads = NULL)
+onca(x, max_length = 4L, nthreads = NULL)
+```
+
+```{r}
+x <- c("William", "Peter", "Stevenson", "Stephenson")
+data.frame(x, statcan = statcan(x), lein = lein(x), phonex = phonex(x),
+           roger_root = roger_root(x), onca = onca(x))
+```
+
 ## Fuzzy string similarity
 
 ### `jaro_winkler()`
@@ -683,6 +907,67 @@ fuzzy_top_n("kitten", c("sitting", "mitten", "cat"),
             method = "levenshtein", top_n = 2)
 ```
 
+### `fuzzy_within()`
+
+Every table entry within `max_distance` edits of each query, found with
+SymSpell's symmetric-delete index instead of comparing every pair. Candidates
+are verified with the exact distance, so the result is exactly the set of
+pairs within the cutoff.
+
+```r
+fuzzy_within(x, table, max_distance = 1L,
+             method = c("osa", "levenshtein", "damerau_levenshtein"),
+             prefix_length = 7L, nthreads = NULL, use_bytes = FALSE)
+```
+
+**Returns:** a data frame of `query_index`, `table_index` and `distance`.
+
+```{r}
+fuzzy_within(c("SMITH", "JONSE"),
+             c("SMITH", "SMYTH", "SMITHE", "SIMTH", "JONES", "SMITHS"))
+```
+
+### `tfidf_top_n()` / `tfidf_match()`
+
+Cosine similarity of TF-IDF weighted character n-grams, as ING's
+`sparse_dot_topn` and `string_grouper` compute it, with the IDF learnt from
+`table`. An inverted index means each query only meets the entries it shares
+an n-gram with.
+
+```r
+tfidf_top_n(x, table, top_n = 5L, q = 3L, min_score = 0, nthreads = NULL,
+            use_bytes = FALSE)
+tfidf_match(x, table, q = 3L, min_score = 0, nomatch = NA_integer_,
+            nthreads = NULL, use_bytes = FALSE)
+```
+
+```{r}
+companies <- c("ACME PTY LTD", "ACME HOLDINGS PTY LTD", "APEX PTY LTD",
+               "BETA INDUSTRIES PTY LTD")
+tfidf_top_n(c("ACME LTD", "BETA IND"), companies, top_n = 2)
+```
+
+### `minhash_pairs()`
+
+Candidate pairs whose q-gram Jaccard similarity probably reaches
+`threshold`, by MinHash signatures and banded locality-sensitive hashing
+(as `datasketch`'s `MinHashLSH` and `zoomerjoin`). Bands and rows are chosen
+as `datasketch` does; with `verify = TRUE` every pair returned has an exact
+Jaccard similarity of at least `threshold`, and `weights = c(0.1, 0.9)`
+trades time for fewer missed pairs.
+
+```r
+minhash_pairs(x, y = NULL, threshold = 0.5, q = 3L, n_hash = 128L,
+              bands = NULL, weights = c(0.5, 0.5), seed = 1, verify = TRUE,
+              nthreads = NULL, use_bytes = FALSE)
+```
+
+```{r}
+x <- c("12 SMITH STREET BRISBANE", "12 SMITH ST BRISBANE",
+       "45 JONES ROAD IPSWICH", "45 JONES RD IPSWICH", "7 KING LANE")
+minhash_pairs(x, threshold = 0.4)
+```
+
 ## Edit distance
 
 The edit-distance family distinguishes OSA from unrestricted
@@ -692,7 +977,7 @@ is the compatibility default; `use_bytes = FALSE` compares UTF-8 code points.
 ### `levenshtein()`
 
 ```r
-levenshtein(a, b, nthreads = NULL, use_bytes = TRUE)
+levenshtein(a, b, nthreads = NULL, use_bytes = TRUE, weights = c(1, 1, 1))
 ```
 
 | Argument | Description |
@@ -700,6 +985,7 @@ levenshtein(a, b, nthreads = NULL, use_bytes = TRUE)
 | `a`, `b` | Equal-length character vectors. |
 | `nthreads` | Positive integer per-call thread cap, or `NULL` for the RcppParallel default; `1` forces serial execution. |
 | `use_bytes` | `TRUE` for encoded bytes; `FALSE` for UTF-8 code points. |
+| `weights` | Costs of an insertion, a deletion and a substitution (as RapidFuzz's `weights`); also accepted by `levenshtein_matrix()` and `levenshtein_similarity()`. |
 
 **Returns:** numeric vector the same length as `a` (minimum number of
 single-character insertions/deletions/substitutions). `NA` if either side
@@ -780,6 +1066,86 @@ same length as `a`; `Inf` for a pair of unequal length (matching
 ```{r}
 hamming("karolin", "kathrin")
 hamming("abc", "ab")  # Inf -- unequal length
+```
+
+### `edit_ops()`
+
+The edits that turn each `a[i]` into `b[i]`, as RapidFuzz's
+`Levenshtein.editops()` / `opcodes()` list them, choosing the same
+alignment when several are equally short. Positions are 1-based.
+
+```r
+edit_ops(a, b, type = c("editops", "opcodes"), use_bytes = FALSE)
+```
+
+```{r}
+edit_ops("kitten", "sitting")
+edit_ops("kitten", "sitting", type = "opcodes")
+```
+
+### `lcs_seq_distance()` and relatives
+
+The rest of RapidFuzz's distance module: `lcs_seq_distance()` /
+`lcs_seq_similarity()` (longest common subsequence), `indel_distance()` /
+`indel_similarity()` (insertions and deletions only; the similarity is
+`fuzz_ratio() / 100`), and `prefix_*()` / `postfix_*()` (common prefix or
+suffix). All take `(a, b, nthreads = NULL, use_bytes = FALSE)`.
+
+```{r}
+lcs_seq_distance("kitten", "sitting")
+indel_similarity("kitten", "sitting")
+prefix_similarity(c("Johnson", "Johnston"), c("Johnston", "Jonson"))
+```
+
+### `editex()` / `editex_similarity()`
+
+Zobel and Dart's Editex: an edit distance in which letters that sound alike
+cost less to swap, following the `abydos` and `textdistance` packages.
+
+```{r}
+editex(c("Phillips", "Smith"), c("Filips", "Smyth"))
+editex_similarity("Niall", "Neil")
+```
+
+### `lcs_str()` / `lcs_str_similarity()`
+
+The longest common substring (contiguous), choosing the one that starts
+earliest in `a`, as `difflib`'s `find_longest_match()` does.
+
+```{r}
+lcs_str("acme holdings pty ltd", "acme holdings limited")
+```
+
+### `smith_waterman()`
+
+Smith-Waterman local alignment with Gotoh's affine gaps; the defaults
+reproduce SimMetrics' `SmithWatermanGotoh`.
+
+```r
+smith_waterman(a, b, match = 1, mismatch = -2, gap_open = -0.5,
+               gap_extend = gap_open, normalize = TRUE, nthreads = NULL,
+               use_bytes = FALSE)
+```
+
+```{r}
+smith_waterman("Dept of Health", "Queensland Health")
+```
+
+### `monge_elkan()`
+
+The mean, over the words of `a[i]`, of the best similarity to a word of
+`b[i]` (Jaro-Winkler by default); `symmetric = TRUE` averages both
+directions.
+
+```r
+monge_elkan(a, b, method = c("jaro_winkler", "levenshtein", "osa",
+                             "damerau_levenshtein"),
+            p = 0.1, symmetric = FALSE, nthreads = NULL, use_bytes = FALSE)
+```
+
+```{r}
+monge_elkan("Smith John", "Jon Smyth")
+monge_elkan("Smith", "John Smith", symmetric = TRUE)
 ```
 
 ## Q-gram similarity

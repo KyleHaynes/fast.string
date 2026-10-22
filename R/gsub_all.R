@@ -3,8 +3,11 @@
 #' Replace several patterns in `x` either sequentially (one full pass per
 #' pattern, like chaining [fgsub()] calls) or, for fixed patterns, in a single
 #' combined scan (`sequential = FALSE`), parallelised across CPU cores via
-#' Intel TBB. Non-sequential regular-expression replacement is rejected
-#' because combined capture/backreference semantics are not implemented.
+#' Intel TBB. With eight or more patterns the single scan uses an
+#' Aho-Corasick automaton (as [fgrepl_any()] does), so its cost barely grows
+#' with the number of patterns. Non-sequential regular-expression
+#' replacement is rejected because combined capture/backreference semantics
+#' are not implemented.
 #'
 #' @param patterns Character vector of patterns to search for. An `NA`
 #'   pattern makes every result `NA`, as chaining [base::gsub()] would.

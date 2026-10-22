@@ -44,6 +44,9 @@ caverphone(c("Peter", "Tedder", "Stevenson"))
 Other phonetic codes:
 \code{\link[=cologne]{cologne()}},
 \code{\link[=double_metaphone]{double_metaphone()}},
+\code{\link[=metaphone]{metaphone()}},
+\code{\link[=mra_encode]{mra_encode()}},
+\code{\link{name_codes}},
 \code{\link[=nysiis]{nysiis()}},
 \code{\link[=refined_soundex]{refined_soundex()}},
 \code{\link[=soundex]{soundex()}}

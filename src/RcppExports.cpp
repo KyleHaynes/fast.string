@@ -10,6 +10,214 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// fast_editex_impl
+NumericVector fast_editex_impl(const StringVector& a, const StringVector& b, bool similarity, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_editex_impl(SEXP aSEXP, SEXP bSEXP, SEXP similaritySEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< bool >::type similarity(similaritySEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_editex_impl(a, b, similarity, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_lcs_str_impl
+SEXP fast_lcs_str_impl(const StringVector& a, const StringVector& b, bool similarity, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_lcs_str_impl(SEXP aSEXP, SEXP bSEXP, SEXP similaritySEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< bool >::type similarity(similaritySEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_lcs_str_impl(a, b, similarity, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_smith_waterman_impl
+NumericVector fast_smith_waterman_impl(const StringVector& a, const StringVector& b, double match, double mismatch, double gap_open, double gap_extend, bool normalize, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_smith_waterman_impl(SEXP aSEXP, SEXP bSEXP, SEXP matchSEXP, SEXP mismatchSEXP, SEXP gap_openSEXP, SEXP gap_extendSEXP, SEXP normalizeSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< double >::type match(matchSEXP);
+    Rcpp::traits::input_parameter< double >::type mismatch(mismatchSEXP);
+    Rcpp::traits::input_parameter< double >::type gap_open(gap_openSEXP);
+    Rcpp::traits::input_parameter< double >::type gap_extend(gap_extendSEXP);
+    Rcpp::traits::input_parameter< bool >::type normalize(normalizeSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_smith_waterman_impl(a, b, match, mismatch, gap_open, gap_extend, normalize, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_monge_elkan_impl
+NumericVector fast_monge_elkan_impl(const StringVector& a, const StringVector& b, int method, double p, bool symmetric, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_monge_elkan_impl(SEXP aSEXP, SEXP bSEXP, SEXP methodSEXP, SEXP pSEXP, SEXP symmetricSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type method(methodSEXP);
+    Rcpp::traits::input_parameter< double >::type p(pSEXP);
+    Rcpp::traits::input_parameter< bool >::type symmetric(symmetricSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_monge_elkan_impl(a, b, method, p, symmetric, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_agrepl_impl
+LogicalVector fast_agrepl_impl(const std::string& pattern, const StringVector& x, double max_distance, bool ignore_case, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_agrepl_impl(SEXP patternSEXP, SEXP xSEXP, SEXP max_distanceSEXP, SEXP ignore_caseSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type max_distance(max_distanceSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_agrepl_impl(pattern, x, max_distance, ignore_case, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_simple_metric_impl
+NumericVector fast_simple_metric_impl(const StringVector& a, const StringVector& b, int metric, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_simple_metric_impl(SEXP aSEXP, SEXP bSEXP, SEXP metricSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type metric(metricSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_simple_metric_impl(a, b, metric, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_weighted_levenshtein_impl
+NumericVector fast_weighted_levenshtein_impl(const StringVector& a, const StringVector& b, NumericVector weights, bool similarity, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_weighted_levenshtein_impl(SEXP aSEXP, SEXP bSEXP, SEXP weightsSEXP, SEXP similaritySEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< bool >::type similarity(similaritySEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_weighted_levenshtein_impl(a, b, weights, similarity, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_weighted_levenshtein_matrix_impl
+NumericMatrix fast_weighted_levenshtein_matrix_impl(const StringVector& a, const StringVector& b, NumericVector weights, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_weighted_levenshtein_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP weightsSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_weighted_levenshtein_matrix_impl(a, b, weights, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_edit_ops_impl
+List fast_edit_ops_impl(const StringVector& a, const StringVector& b, bool opcodes, bool use_bytes);
+RcppExport SEXP _fast_string_fast_edit_ops_impl(SEXP aSEXP, SEXP bSEXP, SEXP opcodesSEXP, SEXP use_bytesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< bool >::type opcodes(opcodesSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_edit_ops_impl(a, b, opcodes, use_bytes));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_extract_impl
+CharacterVector fast_extract_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int syntax, bool fixed, bool use_bytes, int group, int nthreads);
+RcppExport SEXP _fast_string_fast_extract_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP syntaxSEXP, SEXP fixedSEXP, SEXP use_bytesSEXP, SEXP groupSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type syntax(syntaxSEXP);
+    Rcpp::traits::input_parameter< bool >::type fixed(fixedSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_extract_impl(pattern, x, ignore_case, syntax, fixed, use_bytes, group, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_extract_all_impl
+List fast_extract_all_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int syntax, bool fixed, bool use_bytes, int group, int nthreads);
+RcppExport SEXP _fast_string_fast_extract_all_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP syntaxSEXP, SEXP fixedSEXP, SEXP use_bytesSEXP, SEXP groupSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type pattern(patternSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type syntax(syntaxSEXP);
+    Rcpp::traits::input_parameter< bool >::type fixed(fixedSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_extract_all_impl(pattern, x, ignore_case, syntax, fixed, use_bytes, group, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_split_field_impl
+CharacterVector fast_split_field_impl(const std::string& split, const StringVector& x, double field, bool ignore_case, int syntax, bool fixed, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_split_field_impl(SEXP splitSEXP, SEXP xSEXP, SEXP fieldSEXP, SEXP ignore_caseSEXP, SEXP syntaxSEXP, SEXP fixedSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type split(splitSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type field(fieldSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type syntax(syntaxSEXP);
+    Rcpp::traits::input_parameter< bool >::type fixed(fixedSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_split_field_impl(split, x, field, ignore_case, syntax, fixed, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_squish_impl
+CharacterVector fast_squish_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_squish_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_squish_impl(x, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_grepl_impl
 LogicalVector fast_grepl_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int syntax, bool use_bytes, int nthreads);
 RcppExport SEXP _fast_string_fast_grepl_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP syntaxSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
@@ -351,6 +559,109 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_metaphone_impl
+CharacterVector fast_metaphone_impl(const StringVector& x, int max_length, int nthreads);
+RcppExport SEXP _fast_string_fast_metaphone_impl(SEXP xSEXP, SEXP max_lengthSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type max_length(max_lengthSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_metaphone_impl(x, max_length, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_mra_encode_impl
+CharacterVector fast_mra_encode_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_mra_encode_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_mra_encode_impl(x, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_mra_compare_impl
+LogicalVector fast_mra_compare_impl(const StringVector& a, const StringVector& b, int nthreads);
+RcppExport SEXP _fast_string_fast_mra_compare_impl(SEXP aSEXP, SEXP bSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_mra_compare_impl(a, b, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_statcan_impl
+CharacterVector fast_statcan_impl(const StringVector& x, int max_length, int nthreads);
+RcppExport SEXP _fast_string_fast_statcan_impl(SEXP xSEXP, SEXP max_lengthSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type max_length(max_lengthSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_statcan_impl(x, max_length, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_lein_impl
+CharacterVector fast_lein_impl(const StringVector& x, int max_length, int nthreads);
+RcppExport SEXP _fast_string_fast_lein_impl(SEXP xSEXP, SEXP max_lengthSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type max_length(max_lengthSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_lein_impl(x, max_length, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_phonex_impl
+CharacterVector fast_phonex_impl(const StringVector& x, int max_length, int nthreads);
+RcppExport SEXP _fast_string_fast_phonex_impl(SEXP xSEXP, SEXP max_lengthSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type max_length(max_lengthSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_phonex_impl(x, max_length, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_roger_root_impl
+CharacterVector fast_roger_root_impl(const StringVector& x, int max_length, int nthreads);
+RcppExport SEXP _fast_string_fast_roger_root_impl(SEXP xSEXP, SEXP max_lengthSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type max_length(max_lengthSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_roger_root_impl(x, max_length, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_onca_impl
+CharacterVector fast_onca_impl(const StringVector& x, int max_length, int nthreads);
+RcppExport SEXP _fast_string_fast_onca_impl(SEXP xSEXP, SEXP max_lengthSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type max_length(max_lengthSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_onca_impl(x, max_length, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_trimws_impl
 CharacterVector fast_trimws_impl(const StringVector& x, int which);
 RcppExport SEXP _fast_string_fast_trimws_impl(SEXP xSEXP, SEXP whichSEXP) {
@@ -404,6 +715,45 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     rcpp_result_gen = Rcpp::wrap(fast_chartr_impl(old_chars, new_chars, x, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_ascii_fold_impl
+CharacterVector fast_ascii_fold_impl(const StringVector& x, const std::string& sub, bool has_sub, int nthreads);
+RcppExport SEXP _fast_string_fast_ascii_fold_impl(SEXP xSEXP, SEXP subSEXP, SEXP has_subSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type sub(subSEXP);
+    Rcpp::traits::input_parameter< bool >::type has_sub(has_subSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_ascii_fold_impl(x, sub, has_sub, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_fingerprint_impl
+CharacterVector fast_fingerprint_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_fingerprint_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fingerprint_impl(x, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_ngram_fingerprint_impl
+CharacterVector fast_ngram_fingerprint_impl(const StringVector& x, int n, int nthreads);
+RcppExport SEXP _fast_string_fast_ngram_fingerprint_impl(SEXP xSEXP, SEXP nSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_ngram_fingerprint_impl(x, n, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -631,6 +981,59 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_minhash_pairs_impl
+List fast_minhash_pairs_impl(const StringVector& x, const StringVector& y, bool y_present, int q, int bands, int rows, double seed, double threshold, bool verify, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_minhash_pairs_impl(SEXP xSEXP, SEXP ySEXP, SEXP y_presentSEXP, SEXP qSEXP, SEXP bandsSEXP, SEXP rowsSEXP, SEXP seedSEXP, SEXP thresholdSEXP, SEXP verifySEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< bool >::type y_present(y_presentSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< int >::type bands(bandsSEXP);
+    Rcpp::traits::input_parameter< int >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< double >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold(thresholdSEXP);
+    Rcpp::traits::input_parameter< bool >::type verify(verifySEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_minhash_pairs_impl(x, y, y_present, q, bands, rows, seed, threshold, verify, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_any_impl
+SEXP fast_any_impl(const StringVector& patterns, const StringVector& x, bool ignore_case, bool use_bytes, int mode, int nthreads);
+RcppExport SEXP _fast_string_fast_any_impl(SEXP patternsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP use_bytesSEXP, SEXP modeSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type patterns(patternsSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type mode(modeSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_any_impl(patterns, x, ignore_case, use_bytes, mode, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_extract_any_impl
+SEXP fast_extract_any_impl(const StringVector& patterns, const StringVector& x, bool ignore_case, bool use_bytes, bool all, int nthreads);
+RcppExport SEXP _fast_string_fast_extract_any_impl(SEXP patternsSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP use_bytesSEXP, SEXP allSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type patterns(patternsSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< bool >::type all(allSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_extract_any_impl(patterns, x, ignore_case, use_bytes, all, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_jaccard_impl
 NumericVector fast_jaccard_impl(const StringVector& a, const StringVector& b, int q, int nthreads, bool use_bytes);
 RcppExport SEXP _fast_string_fast_jaccard_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
@@ -755,8 +1158,55 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_fuzzy_within_impl
+List fast_fuzzy_within_impl(const StringVector& x, const StringVector& table, int max_distance, int method, int prefix_length, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_fuzzy_within_impl(SEXP xSEXP, SEXP tableSEXP, SEXP max_distanceSEXP, SEXP methodSEXP, SEXP prefix_lengthSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type table(tableSEXP);
+    Rcpp::traits::input_parameter< int >::type max_distance(max_distanceSEXP);
+    Rcpp::traits::input_parameter< int >::type method(methodSEXP);
+    Rcpp::traits::input_parameter< int >::type prefix_length(prefix_lengthSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fuzzy_within_impl(x, table, max_distance, method, prefix_length, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_tfidf_top_n_impl
+List fast_tfidf_top_n_impl(const StringVector& x, const StringVector& table, int top_n, int q, double min_score, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_tfidf_top_n_impl(SEXP xSEXP, SEXP tableSEXP, SEXP top_nSEXP, SEXP qSEXP, SEXP min_scoreSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type table(tableSEXP);
+    Rcpp::traits::input_parameter< int >::type top_n(top_nSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< double >::type min_score(min_scoreSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_tfidf_top_n_impl(x, table, top_n, q, min_score, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_fast_string_fast_editex_impl", (DL_FUNC) &_fast_string_fast_editex_impl, 5},
+    {"_fast_string_fast_lcs_str_impl", (DL_FUNC) &_fast_string_fast_lcs_str_impl, 5},
+    {"_fast_string_fast_smith_waterman_impl", (DL_FUNC) &_fast_string_fast_smith_waterman_impl, 9},
+    {"_fast_string_fast_monge_elkan_impl", (DL_FUNC) &_fast_string_fast_monge_elkan_impl, 7},
+    {"_fast_string_fast_agrepl_impl", (DL_FUNC) &_fast_string_fast_agrepl_impl, 6},
+    {"_fast_string_fast_simple_metric_impl", (DL_FUNC) &_fast_string_fast_simple_metric_impl, 5},
+    {"_fast_string_fast_weighted_levenshtein_impl", (DL_FUNC) &_fast_string_fast_weighted_levenshtein_impl, 6},
+    {"_fast_string_fast_weighted_levenshtein_matrix_impl", (DL_FUNC) &_fast_string_fast_weighted_levenshtein_matrix_impl, 5},
+    {"_fast_string_fast_edit_ops_impl", (DL_FUNC) &_fast_string_fast_edit_ops_impl, 4},
+    {"_fast_string_fast_extract_impl", (DL_FUNC) &_fast_string_fast_extract_impl, 8},
+    {"_fast_string_fast_extract_all_impl", (DL_FUNC) &_fast_string_fast_extract_all_impl, 8},
+    {"_fast_string_fast_split_field_impl", (DL_FUNC) &_fast_string_fast_split_field_impl, 8},
+    {"_fast_string_fast_squish_impl", (DL_FUNC) &_fast_string_fast_squish_impl, 2},
     {"_fast_string_fast_grepl_impl", (DL_FUNC) &_fast_string_fast_grepl_impl, 6},
     {"_fast_string_fast_fixed_impl", (DL_FUNC) &_fast_string_fast_fixed_impl, 5},
     {"_fast_string_fast_regex_count_impl", (DL_FUNC) &_fast_string_fast_regex_count_impl, 6},
@@ -781,10 +1231,21 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_cologne_impl", (DL_FUNC) &_fast_string_fast_cologne_impl, 2},
     {"_fast_string_fast_double_metaphone_impl", (DL_FUNC) &_fast_string_fast_double_metaphone_impl, 2},
     {"_fast_string_fast_caverphone_impl", (DL_FUNC) &_fast_string_fast_caverphone_impl, 2},
+    {"_fast_string_fast_metaphone_impl", (DL_FUNC) &_fast_string_fast_metaphone_impl, 3},
+    {"_fast_string_fast_mra_encode_impl", (DL_FUNC) &_fast_string_fast_mra_encode_impl, 2},
+    {"_fast_string_fast_mra_compare_impl", (DL_FUNC) &_fast_string_fast_mra_compare_impl, 3},
+    {"_fast_string_fast_statcan_impl", (DL_FUNC) &_fast_string_fast_statcan_impl, 3},
+    {"_fast_string_fast_lein_impl", (DL_FUNC) &_fast_string_fast_lein_impl, 3},
+    {"_fast_string_fast_phonex_impl", (DL_FUNC) &_fast_string_fast_phonex_impl, 3},
+    {"_fast_string_fast_roger_root_impl", (DL_FUNC) &_fast_string_fast_roger_root_impl, 3},
+    {"_fast_string_fast_onca_impl", (DL_FUNC) &_fast_string_fast_onca_impl, 3},
     {"_fast_string_fast_trimws_impl", (DL_FUNC) &_fast_string_fast_trimws_impl, 2},
     {"_fast_string_fast_substr_impl", (DL_FUNC) &_fast_string_fast_substr_impl, 5},
     {"_fast_string_fast_nchar_impl", (DL_FUNC) &_fast_string_fast_nchar_impl, 5},
     {"_fast_string_fast_chartr_impl", (DL_FUNC) &_fast_string_fast_chartr_impl, 4},
+    {"_fast_string_fast_ascii_fold_impl", (DL_FUNC) &_fast_string_fast_ascii_fold_impl, 4},
+    {"_fast_string_fast_fingerprint_impl", (DL_FUNC) &_fast_string_fast_fingerprint_impl, 2},
+    {"_fast_string_fast_ngram_fingerprint_impl", (DL_FUNC) &_fast_string_fast_ngram_fingerprint_impl, 3},
     {"_fast_string_fast_fuzz_score_impl", (DL_FUNC) &_fast_string_fast_fuzz_score_impl, 6},
     {"_fast_string_fast_fuzz_alignment_impl", (DL_FUNC) &_fast_string_fast_fuzz_alignment_impl, 5},
     {"_fast_string_fast_fuzz_default_process_impl", (DL_FUNC) &_fast_string_fast_fuzz_default_process_impl, 2},
@@ -800,6 +1261,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_hamming_impl", (DL_FUNC) &_fast_string_fast_hamming_impl, 4},
     {"_fast_string_fast_edit_similarity_impl", (DL_FUNC) &_fast_string_fast_edit_similarity_impl, 5},
     {"_fast_string_fast_levenshtein_within_impl", (DL_FUNC) &_fast_string_fast_levenshtein_within_impl, 5},
+    {"_fast_string_fast_minhash_pairs_impl", (DL_FUNC) &_fast_string_fast_minhash_pairs_impl, 11},
+    {"_fast_string_fast_any_impl", (DL_FUNC) &_fast_string_fast_any_impl, 6},
+    {"_fast_string_fast_extract_any_impl", (DL_FUNC) &_fast_string_fast_extract_any_impl, 6},
     {"_fast_string_fast_jaccard_impl", (DL_FUNC) &_fast_string_fast_jaccard_impl, 5},
     {"_fast_string_fast_jaccard_matrix_impl", (DL_FUNC) &_fast_string_fast_jaccard_matrix_impl, 5},
     {"_fast_string_fast_dice_impl", (DL_FUNC) &_fast_string_fast_dice_impl, 5},
@@ -808,6 +1272,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_tversky_matrix_impl", (DL_FUNC) &_fast_string_fast_tversky_matrix_impl, 7},
     {"_fast_string_fast_cosine_impl", (DL_FUNC) &_fast_string_fast_cosine_impl, 5},
     {"_fast_string_fast_cosine_matrix_impl", (DL_FUNC) &_fast_string_fast_cosine_matrix_impl, 5},
+    {"_fast_string_fast_fuzzy_within_impl", (DL_FUNC) &_fast_string_fast_fuzzy_within_impl, 7},
+    {"_fast_string_fast_tfidf_top_n_impl", (DL_FUNC) &_fast_string_fast_tfidf_top_n_impl, 7},
     {NULL, NULL, 0}
 };
 

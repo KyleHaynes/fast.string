@@ -11,11 +11,23 @@
 #' `use_bytes = FALSE` to compare UTF-8 code points. This is code-point
 #' comparison, not grapheme-cluster comparison or Unicode normalization.
 #'
+#' `levenshtein()`, [levenshtein_matrix()] and `levenshtein_similarity()`
+#' take `weights`, the costs of an insertion, a deletion and a
+#' substitution (as in RapidFuzz's `Levenshtein`, and `costs` in
+#' [utils::adist()]). With other weights than the default all-ones the
+#' distance is the cheapest total cost, and the similarity divides it by the
+#' cost of the most expensive way to do the job (RapidFuzz's
+#' `levenshtein_maximum`).
+#'
 #' @param a,b Equal-length character vectors.
 #' @param nthreads Positive integer per-call thread cap, or `NULL` for the
 #'   RcppParallel default.
 #' @param use_bytes Logical scalar. Compare encoded bytes when `TRUE`, or
 #'   UTF-8 code points when `FALSE`.
+#' @param weights Non-negative numeric vector of length 3: the cost of an
+#'   insertion, a deletion and a substitution, in that order (or named
+#'   `insert`, `delete` and `substitute`). Insertion and deletion are as seen
+#'   from `a`: inserting a character of `b`, deleting one of `a`.
 #' @return A numeric vector the same length as `a`; `NA` when either input is
 #'   `NA`. Distance functions return raw edit counts. Similarity functions
 #'   return values in `[0, 1]`.
@@ -24,6 +36,7 @@
 #' @family edit distance functions
 #' @examples
 #' levenshtein("kitten", "sitting")
+#' levenshtein("kitten", "sitting", weights = c(1, 1, 2))  # substitution costs 2
 #' osa_distance("ca", "abc")
 #' damerau_levenshtein("ca", "abc")
 #' levenshtein_similarity("kitten", "sitting")
@@ -63,22 +76,51 @@ NULL
 
 #' @rdname edit_distance
 #' @export
-levenshtein <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
+levenshtein <- function(a, b, nthreads = NULL, use_bytes = TRUE,
+                        weights = c(1, 1, 1)) {
     .editdist_validate(a, b, use_bytes)
+    weights <- .levenshtein_weights(weights)
+    if (!all(weights == 1))
+        return(fast_weighted_levenshtein_impl(
+            a, b, weights, FALSE, use_bytes, .as_nthreads(nthreads)
+        ))
     fast_levenshtein_impl(a, b, .as_nthreads(nthreads), use_bytes)
+}
+
+# Validates `weights` and returns c(insert, delete, substitute).
+.levenshtein_weights <- function(weights) {
+    if (!is.numeric(weights) || length(weights) != 3L || anyNA(weights) ||
+        any(!is.finite(weights)) || any(weights < 0))
+        stop("`weights` must be three non-negative numbers: insert, delete, substitute.")
+    nm <- names(weights)
+    if (!is.null(nm) && all(nzchar(nm))) {
+        idx <- c(pmatch("ins", nm), pmatch("del", nm), pmatch("sub", nm))
+        if (anyNA(idx))
+            stop("`weights` names must be `insert`, `delete` and `substitute`.")
+        weights <- weights[idx]
+    }
+    as.double(unname(weights))
 }
 
 #' Levenshtein all-pairs distance matrix
 #'
 #' @inheritParams edit_distance
+#' @param weights Costs of an insertion, a deletion and a substitution, as
+#'   in [levenshtein()].
 #' @return Numeric matrix with `length(a)` rows and `length(b)` columns,
 #'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family edit distance functions
 #' @examples
 #' levenshtein_matrix(c("kitten", "flaw"), c("sitting", "lawn"))
 #' @export
-levenshtein_matrix <-function(a, b, nthreads = NULL, use_bytes = TRUE) {
+levenshtein_matrix <-function(a, b, nthreads = NULL, use_bytes = TRUE,
+                              weights = c(1, 1, 1)) {
     .editdist_validate_matrix(a, b, use_bytes)
+    weights <- .levenshtein_weights(weights)
+    if (!all(weights == 1))
+        return(.matrix_dimnames(fast_weighted_levenshtein_matrix_impl(
+            a, b, weights, use_bytes, .as_nthreads(nthreads)
+        ), a, b))
     .matrix_dimnames(fast_levenshtein_matrix_impl(a, b, .as_nthreads(nthreads), use_bytes), a, b)
 }
 
@@ -147,7 +189,14 @@ hamming <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 #' @rdname edit_distance
 #' @export
 levenshtein_similarity <- function(a, b, nthreads = NULL,
-                                   use_bytes = TRUE) {
+                                   use_bytes = TRUE, weights = c(1, 1, 1)) {
+    weights <- .levenshtein_weights(weights)
+    if (!all(weights == 1)) {
+        .editdist_validate(a, b, use_bytes)
+        return(fast_weighted_levenshtein_impl(
+            a, b, weights, TRUE, use_bytes, .as_nthreads(nthreads)
+        ))
+    }
     .edit_similarity(a, b, 1L, nthreads, use_bytes)
 }
 

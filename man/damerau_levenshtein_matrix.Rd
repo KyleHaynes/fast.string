@@ -29,8 +29,14 @@ damerau_levenshtein_matrix(c("ca", "abc"), c("abc", "ca"))
 \seealso{
 Other edit distance functions:
 \code{\link{edit_distance}},
+\code{\link[=edit_ops]{edit_ops()}},
+\code{\link[=editex]{editex()}},
+\code{\link{lcs_seq}},
+\code{\link[=lcs_str]{lcs_str()}},
 \code{\link[=levenshtein_matrix]{levenshtein_matrix()}},
 \code{\link[=levenshtein_within]{levenshtein_within()}},
-\code{\link[=osa_distance_matrix]{osa_distance_matrix()}}
+\code{\link[=monge_elkan]{monge_elkan()}},
+\code{\link[=osa_distance_matrix]{osa_distance_matrix()}},
+\code{\link[=smith_waterman]{smith_waterman()}}
 }
 \concept{edit distance functions}

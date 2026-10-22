@@ -7,14 +7,18 @@
 \title{fast.string: parallel string, date and fuzzy-matching functions}
 \description{
 Fast, multi-core alternatives to base R's string functions, plus the
-building blocks of a record-linkage pipeline: fixed-format date and
-timestamp parsing, phonetic blocking keys, string-similarity and
-edit-distance measures, and memory-bounded fuzzy lookup.
+building blocks of a record-linkage pipeline: text cleaning (match
+extraction, field splitting, ASCII folding, OpenRefine clustering keys),
+fixed-format date and timestamp parsing, phonetic blocking keys,
+string-similarity and edit-distance measures, and candidate search that
+never builds a full comparison matrix (top-N lookup, everything within k
+edits, TF-IDF n-gram matching, MinHash locality-sensitive hashing).
 }
 \details{
-Regular expressions run on PCRE2 and fixed strings on a prepared literal
-searcher, with work split across cores by Intel TBB (through
-RcppParallel). Small inputs are processed serially in the calling thread;
+Regular expressions run on PCRE2, a single fixed string on a prepared
+literal searcher and many fixed strings on an Aho-Corasick automaton, and
+approximate matching on Myers' bit-parallel algorithm, with work split
+across cores by Intel TBB (through RcppParallel). Small inputs are processed serially in the calling thread;
 larger ones are divided between threads.
 
 Loading the package prints the function index below as a tree. Silence it
@@ -38,6 +42,20 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=fsub]{fsub()}} - sub() equivalent
 \item \code{\link[=fgsub]{fgsub()}} - gsub() equivalent
 \item \code{\link[=gsub_all]{gsub_all()}} - many patterns in one pass
+\item \code{\link[=fextract]{fextract()}} - first match (or group) per string
+\item \code{\link[=fextract_all]{fextract_all()}} - every match per string
+\item \emph{Many literal patterns (Aho-Corasick)}
+\itemize{
+\item \code{\link[=fgrepl_any]{fgrepl_any()}} - contains any of the patterns
+\item \code{\link[=fcount_any]{fcount_any()}} - matches of any pattern
+\item \code{\link[=fwhich_any]{fwhich_any()}} - first pattern found, by priority
+\item \code{\link[=fextract_any]{fextract_any()}} - the matched text
+}
+\item \emph{Approximate}
+\itemize{
+\item \code{\link[=fagrepl]{fagrepl()}} - agrepl() equivalent
+\item \code{\link[=fagrep]{fagrep()}} - agrep() equivalent
+}
 }
 \item \strong{String utilities}
 \itemize{
@@ -45,6 +63,14 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=fsubstr]{fsubstr()}} - substr() equivalent
 \item \code{\link[=fnchar]{fnchar()}} - nchar() equivalent
 \item \code{\link[=fchartr]{fchartr()}} - chartr() equivalent
+\item \code{\link[=fsquish]{fsquish()}} - trim and collapse inner whitespace
+\item \code{\link[=fsplit_field]{fsplit_field()}} - one field of delimited text
+\item \code{\link[=ascii_fold]{ascii_fold()}} - accents and symbols to ASCII
+}
+\item \strong{Clustering keys}
+\itemize{
+\item \code{\link[=fingerprint]{fingerprint()}} - OpenRefine fingerprint key
+\item \code{\link[=ngram_fingerprint]{ngram_fingerprint()}} - OpenRefine n-gram fingerprint key
 }
 \item \strong{Dates & timestamps}
 \itemize{
@@ -72,6 +98,14 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=cologne]{cologne()}} - Cologne (German pronunciation)
 \item \code{\link[=double_metaphone]{double_metaphone()}} - Double Metaphone (two codes)
 \item \code{\link[=caverphone]{caverphone()}} - Caverphone 2.0 (NZ/AU names)
+\item \code{\link[=metaphone]{metaphone()}} - Metaphone (Commons Codec)
+\item \code{\link[=mra_encode]{mra_encode()}} - Match Rating Approach codex
+\item \code{\link[=mra_compare]{mra_compare()}} - Match Rating Approach match test
+\item \code{\link[=statcan]{statcan()}} - Statistics Canada name code
+\item \code{\link[=lein]{lein()}} - Lein name code
+\item \code{\link[=phonex]{phonex()}} - Phonex (Soundex plus Phonix)
+\item \code{\link[=roger_root]{roger_root()}} - Roger Root name code
+\item \code{\link[=onca]{onca()}} - ONCA (NYSIIS, then Soundex)
 }
 \item \strong{String similarity}
 \itemize{
@@ -94,6 +128,27 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=damerau_levenshtein_similarity]{damerau_levenshtein_similarity()}} - normalised 0-1 similarity
 \item \code{\link[=damerau_levenshtein_matrix]{damerau_levenshtein_matrix()}} - all-pairs distance matrix
 \item \code{\link[=hamming]{hamming()}} - count of differing positions
+\item \code{\link[=edit_ops]{edit_ops()}} - the edits themselves, or opcodes
+\item \code{\link[=editex]{editex()}} - phonetic edit distance for names
+\item \code{\link[=editex_similarity]{editex_similarity()}} - normalised 0-1 similarity
+}
+\item \emph{Subsequence & affix}
+\itemize{
+\item \code{\link[=lcs_seq_distance]{lcs_seq_distance()}} - longer length minus the LCS
+\item \code{\link[=lcs_seq_similarity]{lcs_seq_similarity()}} - LCS over the longer length
+\item \code{\link[=indel_distance]{indel_distance()}} - insertions and deletions only
+\item \code{\link[=indel_similarity]{indel_similarity()}} - normalised 0-1 similarity
+\item \code{\link[=prefix_distance]{prefix_distance()}} - longer length minus common prefix
+\item \code{\link[=prefix_similarity]{prefix_similarity()}} - common prefix over longer length
+\item \code{\link[=postfix_distance]{postfix_distance()}} - longer length minus common suffix
+\item \code{\link[=postfix_similarity]{postfix_similarity()}} - common suffix over longer length
+}
+\item \emph{Alignment & tokens}
+\itemize{
+\item \code{\link[=lcs_str]{lcs_str()}} - longest common substring
+\item \code{\link[=lcs_str_similarity]{lcs_str_similarity()}} - its length over the longer length
+\item \code{\link[=smith_waterman]{smith_waterman()}} - local alignment, affine gaps
+\item \code{\link[=monge_elkan]{monge_elkan()}} - mean best word-to-word similarity
 }
 \item \emph{Q-gram overlap}
 \itemize{
@@ -130,6 +185,10 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} - top-N matches, no full matrix
 \item \code{\link[=fuzz_extract]{fuzz_extract()}} - top-N matches, RapidFuzz scorers
 \item \code{\link[=fuzz_extract_one]{fuzz_extract_one()}} - best match, RapidFuzz scorers
+\item \code{\link[=fuzzy_within]{fuzzy_within()}} - all entries within k edits
+\item \code{\link[=tfidf_top_n]{tfidf_top_n()}} - top-N by TF-IDF n-gram cosine
+\item \code{\link[=tfidf_match]{tfidf_match()}} - best match by TF-IDF cosine
+\item \code{\link[=minhash_pairs]{minhash_pairs()}} - MinHash LSH candidate pairs
 }
 \item \strong{Benchmarking}
 \itemize{
@@ -150,11 +209,14 @@ default) uses the RcppParallel setting, see
 \item \strong{Bytes or code points}: \code{\link[=jaro_winkler]{jaro_winkler()}} and the \link{edit_distance}
 functions compare encoded bytes by default (\code{use_bytes = TRUE}) for
 compatibility and speed; pass \code{use_bytes = FALSE} to compare UTF-8 code
-points. \code{\link[=fuzzy_match]{fuzzy_match()}} and \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} default to code points,
-and the RapidFuzz ports (\link{fuzz}, \link{fuzz_process}) always use them, as
-RapidFuzz compares Python \code{str} characters.
-\item \strong{Regular expressions}: \code{\link[=fgrepl]{fgrepl()}}, \code{\link[=fcount]{fcount()}}, \code{\link[=fsub]{fsub()}}, \code{\link[=fgsub]{fgsub()}}
-and \code{\link[=gsub_all]{gsub_all()}} run every pattern on PCRE2. With \code{perl = FALSE} they
+points. \code{\link[=fuzzy_match]{fuzzy_match()}}, \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} and the functions added
+since (such as \code{\link[=lcs_seq_distance]{lcs_seq_distance()}}, \code{\link[=editex]{editex()}}, \code{\link[=fuzzy_within]{fuzzy_within()}},
+\code{\link[=tfidf_top_n]{tfidf_top_n()}} and \code{\link[=minhash_pairs]{minhash_pairs()}}) default to code points, and the
+RapidFuzz ports (\link{fuzz}, \link{fuzz_process}) always use them, as RapidFuzz
+compares Python \code{str} characters.
+\item \strong{Regular expressions}: \code{\link[=fgrepl]{fgrepl()}}, \code{\link[=fcount]{fcount()}}, \code{\link[=fsub]{fsub()}}, \code{\link[=fgsub]{fgsub()}},
+\code{\link[=gsub_all]{gsub_all()}}, \code{\link[=fextract]{fextract()}} and \code{\link[=fsplit_field]{fsplit_field()}} run every pattern on
+PCRE2. With \code{perl = FALSE} they
 follow base R's default (TRE) regular expressions, except that the
 first matching alternative wins rather than the longest; patterns with
 PCRE-only syntax (lookarounds, atomic groups, ...) get \code{perl = TRUE}
@@ -169,10 +231,11 @@ accented and plain spellings of a name get the same code.
 raw <- c("  Smith, John ", "SMITH,  JON", "Jones, Mary", NA)
 
 # Clean: trim, collapse repeated whitespace, unify case.
-clean <- toupper(fgsub("[[:space:]]+", " ", ftrimws(raw)))
+clean <- toupper(fsquish(raw))
 clean
 
-# Block on a phonetic key...
+# Group spelling variants, or block on a phonetic key...
+fingerprint(clean)
 soundex(clean)
 
 # ...then score candidates against a reference table.
@@ -192,6 +255,10 @@ Other contributors:
 \itemize{
   \item Max Bachmann (Author of RapidFuzz, whose scorers src/rapidfuzz_core.h ports) [contributor, copyright holder]
   \item Adam Cohen (Author of fuzzywuzzy, on which RapidFuzz's fuzz module builds) [copyright holder]
+  \item James P. Howard (Author of phonics, whose Statistics Canada, Lein, Phonex and Roger Root rules are reproduced) [copyright holder]
+  \item The Apache Software Foundation (Apache Commons Codec, whose Metaphone is ported) [copyright holder]
+  \item OpenRefine contributors (Fingerprint keyers followed by fingerprint() and src/fingerprint_table.h) [copyright holder]
+  \item Unicode, Inc. (CLDR Latin-ASCII data in src/ascii_fold_table.h) [copyright holder]
 }
 
 }
