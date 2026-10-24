@@ -36,6 +36,11 @@ Comparison baselines, used wherever they have a real equivalent:
   points for `double_metaphone()`/`caverphone()`; they implement different
   algorithm revisions, so outputs aren't expected to match (the comparison
   is "a phonetic-coding R function over this vector", not output parity).
+- **readr**, **curl**, **openssl**, **digest**, **xml2**, **data.table** and
+  **igraph** — the usual packages for parsing numbers, URL coding, hashing,
+  HTML decoding, joins and graph components, against which the newer text,
+  validation and linkage functions are measured (at 1 million strings,
+  near the end of the chapter).
 
 ```{r}
 #| label: versions
@@ -491,6 +496,203 @@ cat(sprintf(
     t_ratio, t_partial, t_tsort, t_tset, t_wratio
 ))
 ```
+
+## Text cleaning, extraction, validation and linkage
+
+The newer functions have the widest gaps, because their usual R
+equivalents are either loops over strings in R code, one regular expression
+per dictionary entry, or packages that call into C one string at a time.
+These run on **1 million** strings (`n_new` below) of a shape that suits each
+task. A few baselines would take minutes at that size -- `utils::URLencode()`,
+`xml2` used to decode HTML, `digest::digest()` called per string, and a
+1,000-term alternation -- so they run on a sample and are scaled to
+`n_new`; the table marks those rows.
+
+```{r}
+#| label: bench-new-data
+set.seed(2)
+n_new <- 1e6
+results_new <- list()
+record_new <- function(op, baseline, baseline_s, fast_s, sampled = FALSE) {
+    results_new[[length(results_new) + 1]] <<- data.frame(
+        operation = op, baseline = baseline, scaled = if (sampled) "yes" else "",
+        baseline_s = unname(baseline_s), fast_s = unname(fast_s),
+        speedup = unname(baseline_s / fast_s)
+    )
+}
+words <- c("12", "SMITH", "ST", "RD", "AVE", "UNIT", "MR", "DR", "JOHN",
+           "NORTH", "QLD", "4000", "BRISBANE", "CRES", "HWY", "PDE")
+addr <- do.call(paste, lapply(1:5, function(i) sample(words, n_new, TRUE)))
+```
+
+```{r}
+#| label: bench-new-text
+from <- c("ST", "RD", "AVE", "CRES", "HWY", "PDE", "MR", "DR")
+to   <- c("STREET", "ROAD", "AVENUE", "CRESCENT", "HIGHWAY", "PARADE", "", "")
+t_base <- system.time({
+    tok <- strsplit(addr, " ", fixed = TRUE)
+    vapply(tok, function(t) {
+        m <- match(t, from); t[!is.na(m)] <- to[m[!is.na(m)]]
+        paste(t[nzchar(t)], collapse = " ")
+    }, "")
+})["elapsed"]
+t_stri <- system.time(stri_replace_all_regex(addr, paste0("\\b", from, "\\b"), to,
+                                             vectorize_all = FALSE))["elapsed"]
+t_fast <- system.time(freplace_tokens(addr, from, to))["elapsed"]
+record_new("freplace_tokens (8 words)", "strsplit + match + paste", t_base, t_fast)
+record_new("freplace_tokens (8 words)", "stringi regex, one per word", t_stri, t_fast)
+
+pc <- as.character(sample(200:9999, n_new, TRUE))
+t_stri <- system.time(stri_pad_left(pc, 4, "0"))["elapsed"]
+t_fast <- system.time(fpad(pc, 4, pad = "0"))["elapsed"]
+record_new("fpad", "stringi::stri_pad_left", t_stri, t_fast)
+
+acc <- do.call(paste, lapply(1:3, function(i) sample(
+    c("Fran\u00e7ois", "M\u00fcller", "Zo\u00eb", "caf\u00e9", "plain", "\u00c6sir"),
+    n_new, TRUE)))
+t_stri <- system.time(stri_trans_general(acc, "Latin-ASCII"))["elapsed"]
+t_fast <- system.time(ascii_fold(acc))["elapsed"]
+record_new("ascii_fold", "stringi Latin-ASCII", t_stri, t_fast)
+
+ht <- rep(c("Tom &amp; Jerry", "caf&eacute; &#233; &#x41;", "a &lt;b&gt; c",
+            "plain text"), length.out = n_new)
+k <- 2000
+t_base <- system.time(vapply(ht[1:k], function(s)
+    xml2::xml_text(xml2::read_html(paste0("<p>", s, "</p>"))), ""))["elapsed"] * n_new / k
+t_fast <- system.time(html_unescape(ht))["elapsed"]
+record_new("html_unescape", "xml2, one string at a time", t_base, t_fast, sampled = TRUE)
+
+u <- paste0("https://example.com/search?q=", stri_rand_strings(n_new, 20, "[a-z/\\&\\u0020]"))
+k <- 10000
+t_base <- system.time(URLencode(u[1:k], reserved = TRUE))["elapsed"] * n_new / k
+t_curl <- system.time(curl::curl_escape(u))["elapsed"]
+t_fast <- system.time(enc <- url_encode(u, reserved = TRUE))["elapsed"]
+record_new("url_encode", "utils::URLencode", t_base, t_fast, sampled = TRUE)
+record_new("url_encode", "curl::curl_escape", t_curl, t_fast)
+t_base <- system.time(URLdecode(enc[1:k]))["elapsed"] * n_new / k
+t_curl <- system.time(curl::curl_unescape(enc))["elapsed"]
+t_fast <- system.time(url_decode(enc))["elapsed"]
+record_new("url_decode", "utils::URLdecode", t_base, t_fast, sampled = TRUE)
+record_new("url_decode", "curl::curl_unescape", t_curl, t_fast)
+
+comp <- do.call(paste, lapply(1:4, function(i) sample(
+    c("Acme", "PTY", "Ltd.", "Holdings", "&", "Co"), n_new, TRUE)))
+fingerprint_r <- function(s) {
+    s <- tolower(stri_trans_general(trimws(s), "Latin-ASCII"))
+    s <- gsub("[[:punct:][:cntrl:]]", "", s)
+    vapply(strsplit(s, "\\s+"), function(t) paste(sort(unique(t[nzchar(t)])), collapse = " "), "")
+}
+t_base <- system.time(fingerprint_r(comp))["elapsed"]
+t_fast <- system.time(fingerprint(comp))["elapsed"]
+record_new("fingerprint", "R: stringi + strsplit + sort", t_base, t_fast)
+```
+
+```{r}
+#| label: bench-new-extract
+notes <- do.call(paste, lapply(1:8, function(i) sample(
+    c(words, "paracetamol", "police"), n_new, TRUE)))
+terms <- c("paracetamol", stri_rand_strings(999, 8, "[a-z]"))
+k <- 20000
+t_base <- system.time(grepl(paste(terms, collapse = "|"), notes[1:k]))["elapsed"] * n_new / k
+t_fast <- system.time(fgrepl_any(terms, notes))["elapsed"]
+record_new("fgrepl_any (1,000 terms)", "grepl, one alternation", t_base, t_fast, sampled = TRUE)
+
+t_base <- system.time(agrepl("paracetamol", notes, max.distance = 2))["elapsed"]
+t_fast <- system.time(fagrepl("paracetamol", notes, max.distance = 2))["elapsed"]
+record_new("fagrepl", "base::agrepl", t_base, t_fast)
+
+t_base <- system.time(regmatches(addr, gregexpr("[0-9]+", addr)))["elapsed"]
+t_stri <- system.time(stri_extract_all_regex(addr, "[0-9]+"))["elapsed"]
+t_fast <- system.time(fextract_all("[0-9]+", addr))["elapsed"]
+record_new("fextract_all", "regmatches + gregexpr", t_base, t_fast)
+record_new("fextract_all", "stringi::stri_extract_all_regex", t_stri, t_fast)
+
+amounts <- sprintf("$%s.%02d", formatC(sample.int(1e6, n_new, TRUE), big.mark = ",",
+                                       format = "d"), sample.int(99, n_new, TRUE))
+t_readr <- system.time(readr::parse_number(amounts))["elapsed"]
+t_base  <- system.time(as.numeric(gsub("[^0-9.]", "", amounts)))["elapsed"]
+t_fast  <- system.time(fparse_number(amounts))["elapsed"]
+record_new("fparse_number", "readr::parse_number", t_readr, t_fast)
+record_new("fparse_number", "as.numeric(gsub())", t_base, t_fast)
+
+phone <- sprintf("04%02d %03d %03d", sample.int(99, n_new, TRUE),
+                 sample.int(999, n_new, TRUE), sample.int(999, n_new, TRUE))
+t_base <- system.time(gsub("(.)\\1+", "\\1", chartr(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+    paste0(strrep("a", 26), strrep("A", 26), strrep("9", 10)), phone), perl = TRUE))["elapsed"]
+t_fast <- system.time(string_shape(phone, collapse = TRUE))["elapsed"]
+record_new("string_shape", "chartr + gsub", t_base, t_fast)
+
+cards <- stri_rand_strings(n_new, 16, "[0-9]")
+luhn_r <- function(s) {
+    d <- matrix(as.integer(unlist(strsplit(s, ""))), nrow = 16)
+    dbl <- d[seq(15, 1, -2), , drop = FALSE] * 2L
+    (colSums(d[seq(16, 2, -2), , drop = FALSE]) + colSums(dbl - 9L * (dbl > 9L))) %% 10L == 0L
+}
+t_base <- system.time(luhn_r(cards))["elapsed"]
+t_fast <- system.time(valid_id(cards, "luhn"))["elapsed"]
+record_new("valid_id (Luhn)", "vectorised base R", t_base, t_fast)
+```
+
+```{r}
+#| label: bench-new-hash
+ids <- sprintf("%09d", sample.int(999999999, n_new))
+t_base <- system.time(openssl::sha256(ids))["elapsed"]
+t_fast <- system.time(fhash(ids))["elapsed"]
+record_new("fhash (SHA-256)", "openssl::sha256", t_base, t_fast)
+t_base <- system.time(openssl::sha256(ids, key = "secret"))["elapsed"]
+t_fast <- system.time(fhash(ids, key = "secret"))["elapsed"]
+record_new("fhash (HMAC-SHA-256)", "openssl::sha256(key =)", t_base, t_fast)
+k <- 20000
+t_base <- system.time(vapply(ids[1:k], digest::digest, "", algo = "xxhash64",
+                             serialize = FALSE))["elapsed"] * n_new / k
+t_fast <- system.time(fhash(ids, "xxh64"))["elapsed"]
+record_new("fhash (XXH64)", "digest::digest per string", t_base, t_fast, sampled = TRUE)
+```
+
+```{r}
+#| label: bench-new-linkage
+key1 <- sample(sprintf("K%05d", 1:100000), n_new, TRUE)
+key2 <- sample(sprintf("D%05d", 1:100000), n_new, TRUE)
+t_base <- system.time({
+    d <- data.table::data.table(i = seq_len(n_new), k1 = key1, k2 = key2)
+    a <- d[d, on = "k1", allow.cartesian = TRUE, nomatch = NULL][i < i.i, .(i, j = i.i)]
+    b <- d[d, on = "k2", allow.cartesian = TRUE, nomatch = NULL][i < i.i, .(i, j = i.i)]
+    unique(data.table::rbindlist(list(a, b)))
+})["elapsed"]
+t_fast <- system.time(pairs <- block_pairs(data.frame(key1, key2)))["elapsed"]
+record_new("block_pairs (2 passes)", "data.table joins + unique", t_base, t_fast)
+
+pi_ <- sample.int(n_new, n_new, TRUE)
+pj  <- sample.int(n_new, n_new, TRUE)
+t_base <- system.time(igraph::components(
+    igraph::graph_from_edgelist(cbind(pi_, pj), directed = FALSE))$membership)["elapsed"]
+t_fast <- system.time(cluster_pairs(pi_, pj, n = n_new))["elapsed"]
+record_new("cluster_pairs", "igraph::components", t_base, t_fast)
+```
+
+```{r}
+#| label: tbl-new
+#| tbl-cap: !expr sprintf("Newer functions, n = %s strings, %d cores, one run per cell (this machine -- yours will vary). \"scaled\" marks baselines timed on a sample and scaled to n.", format(n_new, big.mark = ",", scientific = FALSE), parallel::detectCores())
+new_tbl <- do.call(rbind, results_new)
+new_tbl$baseline_s <- round(new_tbl$baseline_s, 3)
+new_tbl$fast_s     <- round(new_tbl$fast_s, 3)
+# below the timer's resolution, the speedup is only a lower bound
+new_tbl$speedup    <- ifelse(new_tbl$baseline_s < 0.01, "",
+                      ifelse(new_tbl$fast_s < 0.01,
+                             sprintf("> %.0fx", new_tbl$baseline_s / 0.01),
+                             sprintf("%.0fx", new_tbl$baseline_s / new_tbl$fast_s)))
+knitr::kable(new_tbl, row.names = FALSE,
+             col.names = c("Operation", "Baseline", "Scaled", "Baseline (s)",
+                           "fast.string (s)", "Speedup"))
+```
+
+Two caveats when reading it. Functions that return new strings
+(`url_encode()`, `fhash()`, `fpad()`) spend most of their time in R's own
+string allocation, which is single-threaded, so their margin over a fast C
+baseline such as `curl` is smaller than over the R-level ones. And
+`block_pairs()` returns more than the `data.table` version: the pass that
+found each pair, in sorted order.
 
 ## The small-n crossover
 

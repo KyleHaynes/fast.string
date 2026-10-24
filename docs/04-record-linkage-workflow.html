@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="generator" content="quarto-1.9.38">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>4&nbsp; A worked record-linkage pipeline – fast.string</title>
+<title>9&nbsp; A worked record-linkage pipeline – fast.string</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -302,7 +302,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./04-record-linkage-workflow.html"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./04-record-linkage-workflow.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -363,52 +363,93 @@ window.Quarto = {
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
- <span class="menu-text">Under the hood</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">Use cases</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  <a href="./uc-clean.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Clean and standardise text</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  <a href="./uc-extract.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Find, flag and extract</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-profile.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Profile and validate columns</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-link.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
   </div>
 </li>
       </ul>
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
- <span class="menu-text">Reference</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Under the hood</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
   </div>
 </li>
       </ul>
@@ -421,21 +462,21 @@ window.Quarto = {
         <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
    
   <ul>
-<li><a href="#the-data" id="toc-the-data" class="nav-link active" data-scroll-target="#the-data"><span class="header-section-number">4.1</span> The data</a></li>
-  <li><a href="#step-1-profile-before-you-match" id="toc-step-1-profile-before-you-match" class="nav-link" data-scroll-target="#step-1-profile-before-you-match"><span class="header-section-number">4.2</span> Step 1: profile before you match</a></li>
-  <li><a href="#step-2-parse-dates-and-timestamps" id="toc-step-2-parse-dates-and-timestamps" class="nav-link" data-scroll-target="#step-2-parse-dates-and-timestamps"><span class="header-section-number">4.3</span> Step 2: parse dates and timestamps</a></li>
-  <li><a href="#step-3-normalise-and-quarantine" id="toc-step-3-normalise-and-quarantine" class="nav-link" data-scroll-target="#step-3-normalise-and-quarantine"><span class="header-section-number">4.4</span> Step 3: normalise and quarantine</a></li>
-  <li><a href="#step-4-collapse-duplicates-inside-the-batch" id="toc-step-4-collapse-duplicates-inside-the-batch" class="nav-link" data-scroll-target="#step-4-collapse-duplicates-inside-the-batch"><span class="header-section-number">4.5</span> Step 4: collapse duplicates inside the batch</a></li>
-  <li><a href="#step-5-block-on-more-than-one-phonetic-key" id="toc-step-5-block-on-more-than-one-phonetic-key" class="nav-link" data-scroll-target="#step-5-block-on-more-than-one-phonetic-key"><span class="header-section-number">4.6</span> Step 5: block on more than one phonetic key</a></li>
-  <li><a href="#step-6-score-the-candidates" id="toc-step-6-score-the-candidates" class="nav-link" data-scroll-target="#step-6-score-the-candidates"><span class="header-section-number">4.7</span> Step 6: score the candidates</a></li>
-  <li><a href="#step-7-decide-and-admit-ambiguity" id="toc-step-7-decide-and-admit-ambiguity" class="nav-link" data-scroll-target="#step-7-decide-and-admit-ambiguity"><span class="header-section-number">4.8</span> Step 7: decide, and admit ambiguity</a></li>
-  <li><a href="#step-8-stamp-the-output" id="toc-step-8-stamp-the-output" class="nav-link" data-scroll-target="#step-8-stamp-the-output"><span class="header-section-number">4.9</span> Step 8: stamp the output</a></li>
-  <li><a href="#why-the-fast-versions-matter-here" id="toc-why-the-fast-versions-matter-here" class="nav-link" data-scroll-target="#why-the-fast-versions-matter-here"><span class="header-section-number">4.10</span> Why the fast versions matter here</a></li>
+<li><a href="#the-data" id="toc-the-data" class="nav-link active" data-scroll-target="#the-data"><span class="header-section-number">9.1</span> The data</a></li>
+  <li><a href="#step-1-profile-before-you-match" id="toc-step-1-profile-before-you-match" class="nav-link" data-scroll-target="#step-1-profile-before-you-match"><span class="header-section-number">9.2</span> Step 1: profile before you match</a></li>
+  <li><a href="#step-2-parse-dates-and-timestamps" id="toc-step-2-parse-dates-and-timestamps" class="nav-link" data-scroll-target="#step-2-parse-dates-and-timestamps"><span class="header-section-number">9.3</span> Step 2: parse dates and timestamps</a></li>
+  <li><a href="#step-3-normalise-and-quarantine" id="toc-step-3-normalise-and-quarantine" class="nav-link" data-scroll-target="#step-3-normalise-and-quarantine"><span class="header-section-number">9.4</span> Step 3: normalise and quarantine</a></li>
+  <li><a href="#step-4-collapse-duplicates-inside-the-batch" id="toc-step-4-collapse-duplicates-inside-the-batch" class="nav-link" data-scroll-target="#step-4-collapse-duplicates-inside-the-batch"><span class="header-section-number">9.5</span> Step 4: collapse duplicates inside the batch</a></li>
+  <li><a href="#step-5-block-on-more-than-one-phonetic-key" id="toc-step-5-block-on-more-than-one-phonetic-key" class="nav-link" data-scroll-target="#step-5-block-on-more-than-one-phonetic-key"><span class="header-section-number">9.6</span> Step 5: block on more than one phonetic key</a></li>
+  <li><a href="#step-6-score-the-candidates" id="toc-step-6-score-the-candidates" class="nav-link" data-scroll-target="#step-6-score-the-candidates"><span class="header-section-number">9.7</span> Step 6: score the candidates</a></li>
+  <li><a href="#step-7-decide-and-admit-ambiguity" id="toc-step-7-decide-and-admit-ambiguity" class="nav-link" data-scroll-target="#step-7-decide-and-admit-ambiguity"><span class="header-section-number">9.8</span> Step 7: decide, and admit ambiguity</a></li>
+  <li><a href="#step-8-stamp-the-output" id="toc-step-8-stamp-the-output" class="nav-link" data-scroll-target="#step-8-stamp-the-output"><span class="header-section-number">9.9</span> Step 8: stamp the output</a></li>
+  <li><a href="#why-the-fast-versions-matter-here" id="toc-why-the-fast-versions-matter-here" class="nav-link" data-scroll-target="#why-the-fast-versions-matter-here"><span class="header-section-number">9.10</span> Why the fast versions matter here</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/04-record-linkage-workflow.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./04-record-linkage-workflow.html"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></a></li></ol></nav><div class="quarto-title">
-<h1 class="title"><span id="sec-workflow" class="quarto-section-identifier"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></h1>
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./04-record-linkage-workflow.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></a></li></ol></nav><div class="quarto-title">
+<h1 class="title"><span id="sec-workflow" class="quarto-section-identifier"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></h1>
 </div>
 
 
@@ -451,8 +492,8 @@ window.Quarto = {
 
 </header><p>This chapter strings every piece from <a href="02-quickstart.html" class="quarto-xref"><span>Chapter 2</span></a> together into a single, realistic linkage pipeline: an incoming batch of records needs to be matched against a reference database. It’s the same shape of problem <code>examples_data_linkage.R</code> in the repo demonstrates, written out here as a narrative.</p>
 <p>The batch arrives the way batches actually arrive — names in mixed case with punctuation, dates as strings in a local format, a load timestamp per row, a junk record that should never have been sent, and the same person submitted twice. Getting from that to a defensible set of links is eight steps, and most of the functions in this package show up in one of them.</p>
-<section id="the-data" class="level2" data-number="4.1"><h2 data-number="4.1" class="anchored" data-anchor-id="the-data">
-<span class="header-section-number">4.1</span> The data</h2>
+<section id="the-data" class="level2" data-number="9.1"><h2 data-number="9.1" class="anchored" data-anchor-id="the-data">
+<span class="header-section-number">9.1</span> The data</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
 <span>    id       <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">7</span>,</span>
@@ -500,8 +541,8 @@ window.Quarto = {
 </div>
 </div>
 <p>Seven incoming records, six reference records, deliberately messy: inconsistent casing, stray whitespace, punctuation, typos, a near-duplicate in the reference file (<code>"JOHN BRIEN"</code> vs.&nbsp;<code>"JON OBRIEN"</code>), a fully reordered multi-token name (<code>"Kyle John Haynes"</code> vs.&nbsp;<code>"Haynes John Kyle"</code>), a German name spelled two ways (<code>"Hans Müller"</code> vs.&nbsp;<code>"Hans Mueller"</code>), a placeholder record (<code>"UNKNOWN 00000000"</code>), and one person submitted twice in the same batch (ids 1 and 7).</p>
-</section><section id="step-1-profile-before-you-match" class="level2" data-number="4.2"><h2 data-number="4.2" class="anchored" data-anchor-id="step-1-profile-before-you-match">
-<span class="header-section-number">4.2</span> Step 1: profile before you match</h2>
+</section><section id="step-1-profile-before-you-match" class="level2" data-number="9.2"><h2 data-number="9.2" class="anchored" data-anchor-id="step-1-profile-before-you-match">
+<span class="header-section-number">9.2</span> Step 1: profile before you match</h2>
 <p>The cheapest way to improve a linkage run is to not feed it rubbish. <code>fcount()</code> counts non-overlapping matches per element, which makes column-level quality rules one vectorised call each: how many digits are in a name field (a name with digits is almost always a placeholder or a concatenated identifier), and how many tokens a name has.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span><span class="op">$</span><span class="va">n_digits</span> <span class="op">&lt;-</span> <span class="fu">fcount</span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">incoming</span><span class="op">$</span><span class="va">name</span><span class="op">)</span></span>
@@ -532,8 +573,8 @@ window.Quarto = {
 <pre><code>[1] TRUE</code></pre>
 </div>
 </div>
-</section><section id="step-2-parse-dates-and-timestamps" class="level2" data-number="4.3"><h2 data-number="4.3" class="anchored" data-anchor-id="step-2-parse-dates-and-timestamps">
-<span class="header-section-number">4.3</span> Step 2: parse dates and timestamps</h2>
+</section><section id="step-2-parse-dates-and-timestamps" class="level2" data-number="9.3"><h2 data-number="9.3" class="anchored" data-anchor-id="step-2-parse-dates-and-timestamps">
+<span class="header-section-number">9.3</span> Step 2: parse dates and timestamps</h2>
 <p>The batch carries dates as <code>DD/MM/YYYY</code> strings and a load timestamp per row. <code>fas.Date()</code> and <code>fas.POSIXct()</code> parse one fixed, locale-free shape each — no format guessing, no timezone-database lookup.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span><span class="op">$</span><span class="va">dob_date</span>    <span class="op">&lt;-</span> <span class="fu">fas.Date</span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">dob</span>, <span class="st">"dmy"</span><span class="op">)</span></span>
@@ -563,8 +604,8 @@ window.Quarto = {
 </div>
 </div>
 <p>So the parsers double as a validity check on the date and timestamp columns, and an <code>NA</code> there is a legitimate reason to quarantine a row.</p>
-</section><section id="step-3-normalise-and-quarantine" class="level2" data-number="4.4"><h2 data-number="4.4" class="anchored" data-anchor-id="step-3-normalise-and-quarantine">
-<span class="header-section-number">4.4</span> Step 3: normalise and quarantine</h2>
+</section><section id="step-3-normalise-and-quarantine" class="level2" data-number="9.4"><h2 data-number="9.4" class="anchored" data-anchor-id="step-3-normalise-and-quarantine">
+<span class="header-section-number">9.4</span> Step 3: normalise and quarantine</h2>
 <p>Strip punctuation and whitespace inconsistencies <em>before</em> comparing, so the comparison step measures genuine name similarity rather than formatting noise — then set aside the rows the profile step flagged.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">incoming</span><span class="op">$</span><span class="va">name_clean</span> <span class="op">&lt;-</span> <span class="fu">fgsub</span><span class="op">(</span><span class="st">" +"</span>, <span class="st">" "</span>, <span class="fu">fchartr</span><span class="op">(</span><span class="st">"'-"</span>, <span class="st">"  "</span>, <span class="fu">ftrimws</span><span class="op">(</span><span class="va">incoming</span><span class="op">$</span><span class="va">name</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -592,9 +633,9 @@ window.Quarto = {
 <pre><code>[1] 1</code></pre>
 </div>
 </div>
-<p>(<code>jaro_winkler_tokens()</code> does its own internal punctuation stripping and case-folding — see <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 5</span></a> — but normalising up front keeps this example explicit, and matters for <code>jaro_winkler()</code>/<code>jaro_winkler_matrix()</code> and the q-gram metrics, which don’t.)</p>
-</section><section id="step-4-collapse-duplicates-inside-the-batch" class="level2" data-number="4.5"><h2 data-number="4.5" class="anchored" data-anchor-id="step-4-collapse-duplicates-inside-the-batch">
-<span class="header-section-number">4.5</span> Step 4: collapse duplicates inside the batch</h2>
+<p>(<code>jaro_winkler_tokens()</code> does its own internal punctuation stripping and case-folding — see <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 10</span></a> — but normalising up front keeps this example explicit, and matters for <code>jaro_winkler()</code>/<code>jaro_winkler_matrix()</code> and the q-gram metrics, which don’t.)</p>
+</section><section id="step-4-collapse-duplicates-inside-the-batch" class="level2" data-number="9.5"><h2 data-number="9.5" class="anchored" data-anchor-id="step-4-collapse-duplicates-inside-the-batch">
+<span class="header-section-number">9.5</span> Step 4: collapse duplicates inside the batch</h2>
 <p>Ids 1 and 7 are the same person, sent twice. Deduplicating <em>before</em> matching keeps a single incoming record from generating two competing links to the same reference row. The parsed timestamp decides which copy survives — last write wins.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">batch</span><span class="op">$</span><span class="va">dedupe_key</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu">fgsub</span><span class="op">(</span><span class="st">" "</span>, <span class="st">""</span>, <span class="fu"><a href="https://rdrr.io/r/base/chartr.html">toupper</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">name_clean</span><span class="op">)</span><span class="op">)</span>, <span class="va">batch</span><span class="op">$</span><span class="va">dob_date</span><span class="op">)</span></span>
@@ -622,9 +663,9 @@ window.Quarto = {
 7  7      JOHN OBRIEN 1985-03-15 2024-06-18 14:20:00</code></pre>
 </div>
 </div>
-<p>Record 1 (09:15) is dropped in favour of record 7 (14:20). Note that this step only catches duplicates that normalise to the <em>same</em> string — genuinely fuzzy within-batch duplicates need the same scoring machinery as the linkage itself, run with <code>batch</code> on both sides.</p>
-</section><section id="step-5-block-on-more-than-one-phonetic-key" class="level2" data-number="4.6"><h2 data-number="4.6" class="anchored" data-anchor-id="step-5-block-on-more-than-one-phonetic-key">
-<span class="header-section-number">4.6</span> Step 5: block on more than one phonetic key</h2>
+<p>Record 1 (09:15) is dropped in favour of record 7 (14:20). Note that this step only catches duplicates that normalise to the <em>same</em> string — genuinely fuzzy within-batch duplicates need the same scoring machinery as the linkage itself, run with <code>batch</code> on both sides: <code>block_pairs()</code> or <code>sorted_neighbourhood()</code> for the candidates, then <code>cluster_pairs()</code> to give each person one identifier (<a href="uc-link.html" class="quarto-xref"><span>Chapter 6</span></a>).</p>
+</section><section id="step-5-block-on-more-than-one-phonetic-key" class="level2" data-number="9.6"><h2 data-number="9.6" class="anchored" data-anchor-id="step-5-block-on-more-than-one-phonetic-key">
+<span class="header-section-number">9.6</span> Step 5: block on more than one phonetic key</h2>
 <p>Comparing every incoming record against every reference record is <span class="math inline">\(O(n \times m)\)</span> — fine at this toy scale, prohibitive at millions of rows. <strong>Blocking</strong> groups records by a cheap, coarse key first and only compares records <em>within</em> the same block.</p>
 <p>The classic key is <code>soundex()</code> on a surname, but a single key inherits that scheme’s blind spots. Two of the additions here exist precisely to cover different ones:</p>
 <div class="cell">
@@ -646,7 +687,7 @@ window.Quarto = {
 </div>
 <p>Read that table in the direction of <em>how much each key merges</em>. Classic <code>soundex()</code> does catch <code>"Müller"</code>/<code>"Mueller"</code> here — but only as a side effect of discarding vowels entirely, which is also why it drops <code>"Miller"</code> in with them and collapses <code>"Meier"</code>/<code>"Meyer"</code> to a single <code>M600</code>. That bluntness is the thing you’re trying to get away from at scale: coarse keys make big blocks, and big blocks are what blocking exists to avoid.</p>
 <p><code>refined_soundex()</code> is the precise end. It encodes vowels rather than discarding them and doesn’t truncate, so blocks get smaller — but the umlaut isn’t an ASCII vowel it can encode, so it splits <code>"Müller"</code> (<code>M8709</code>) from <code>"Mueller"</code> (<code>M80709</code>) and on its own would never make that pair a candidate. <code>cologne()</code> folds umlauts by design and gives both <code>657</code>, while staying coarse enough to pull <code>"Miller"</code> in too.</p>
-<p>Neither key is right on its own, and that’s the point: running both and unioning the candidate sets recovers the specific pair the precise key misses without adopting the coarse key’s block sizes everywhere else. <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> quantifies the selectivity difference across a wider surname list.</p>
+<p>Neither key is right on its own, and that’s the point: running both and unioning the candidate sets recovers the specific pair the precise key misses without adopting the coarse key’s block sizes everywhere else. <a href="03-theory.html" class="quarto-xref"><span>Chapter 8</span></a> quantifies the selectivity difference across a wider surname list.</p>
 <p>Because names arrive in inconsistent token order, block on the phonetic code of <em>every</em> token rather than a positional “surname” — a record is a candidate if it shares any token code, within the same birth year.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">block_keys</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ids</span>, <span class="va">names_vec</span>, <span class="va">years</span>, <span class="va">scheme</span><span class="op">)</span> <span class="op">{</span></span>
@@ -717,6 +758,7 @@ window.Quarto = {
 </div>
 </div>
 <p>Six candidate pairs instead of thirty. At this scale that saving is cosmetic; the point is the ratio, which is what survives to five million rows — and that every true match is still in the set.</p>
+<p>Tokens make this a many-keys-per-record blocking, hence the explicit <code><a href="https://rdrr.io/r/base/merge.html">merge()</a></code>. When each record has one key per pass (a phonetic surname, a date of birth, a postcode), <code>block_pairs()</code> runs all the passes, removes the duplicate pairs and records which pass found each one in a single parallel call; <a href="uc-link.html" class="quarto-xref"><span>Chapter 6</span></a> uses it on 100,000 records.</p>
 <p>Keeping the token alongside the key makes the blocking step auditable — you can ask <em>why</em> any given pair is a candidate, which matters when you’re tuning keys and need to know which one is carrying the recall:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">hits</span><span class="op">[</span><span class="va">hits</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="fl">5</span> <span class="op">&amp;</span> <span class="va">hits</span><span class="op">$</span><span class="va">ref_id</span> <span class="op">==</span> <span class="fl">106</span>,</span>
@@ -730,8 +772,8 @@ window.Quarto = {
 </div>
 </div>
 <p>Note what this says, and what it doesn’t. The <code>"Hans Müller"</code> pair is reachable under <em>both</em> schemes, because the given name is identical and <code>refined_soundex()</code> blocks it happily. Cologne’s contribution is the second row: it is the only one of the two that also links the <em>surnames</em> (<code>"Müller"</code>/<code>"Mueller"</code> → <code>657</code>). On this batch that’s redundant — but given names disagree across systems constantly (<code>"Hans"</code>/<code>"Johann"</code>/<code>"H"</code>), and when they do, that surname key is the only thing keeping the pair alive.</p>
-</section><section id="step-6-score-the-candidates" class="level2" data-number="4.7"><h2 data-number="4.7" class="anchored" data-anchor-id="step-6-score-the-candidates">
-<span class="header-section-number">4.7</span> Step 6: score the candidates</h2>
+</section><section id="step-6-score-the-candidates" class="level2" data-number="9.7"><h2 data-number="9.7" class="anchored" data-anchor-id="step-6-score-the-candidates">
+<span class="header-section-number">9.7</span> Step 6: score the candidates</h2>
 <p>Score name similarity only among surviving candidates, with two deliberately different metrics. <code>jaro_winkler_tokens()</code> compares names token by token and is insensitive to token order by construction. <code>cosine_similarity()</code> compares q-gram <em>frequency profiles</em> across the whole string, so it is order-sensitive and weights repeated q-grams — an independent signal rather than a restatement of the first.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pairs</span><span class="op">$</span><span class="va">name_a</span>  <span class="op">&lt;-</span> <span class="va">batch</span><span class="op">$</span><span class="va">name_clean</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html">match</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">id</span>, <span class="va">batch</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">]</span></span>
@@ -757,8 +799,8 @@ window.Quarto = {
 </div>
 </div>
 <p>The two scores disagree in informative ways. <code>"Kyle John Haynes"</code> vs. <code>"Haynes John Kyle"</code> is a perfect <code>1.000</code> under token comparison — every token has an exact partner — but <code>0.867</code> under cosine, which sees the reordering as changed bigrams across token boundaries. That gap <em>is</em> the information: a high <code>jw</code> with a lower <code>cos</code> says “same tokens, different arrangement”, which is a different kind of evidence from “same arrangement, one typo”.</p>
-</section><section id="step-7-decide-and-admit-ambiguity" class="level2" data-number="4.8"><h2 data-number="4.8" class="anchored" data-anchor-id="step-7-decide-and-admit-ambiguity">
-<span class="header-section-number">4.8</span> Step 7: decide, and admit ambiguity</h2>
+</section><section id="step-7-decide-and-admit-ambiguity" class="level2" data-number="9.8"><h2 data-number="9.8" class="anchored" data-anchor-id="step-7-decide-and-admit-ambiguity">
+<span class="header-section-number">9.8</span> Step 7: decide, and admit ambiguity</h2>
 <p>Apply a cutoff to decide which candidate pairs are accepted as links. 0.85 is a common starting point for Jaro-Winkler on names; the right value depends on your data and how costly false positives/negatives are relative to each other — tune it against a labelled sample if you have one. The date gap is a second field-level filter, tolerating a small typo in the day or month without accepting an unrelated birth date.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">[</span><span class="va">pairs</span><span class="op">$</span><span class="va">jw</span> <span class="op">&gt;=</span> <span class="fl">0.85</span> <span class="op">&amp;</span> <span class="va">pairs</span><span class="op">$</span><span class="va">dob_gap</span> <span class="op">&lt;=</span> <span class="fl">2</span>, <span class="op">]</span></span>
@@ -794,8 +836,8 @@ window.Quarto = {
 </div>
 </div>
 <p>A margin of 0.007 between the top two candidates is not a decision, it’s a coin toss with extra steps. The second metric doesn’t break the tie here — it agrees — and that agreement is itself the finding: <code>"JOHN OBRIEN"</code> is genuinely close to both <code>"JOHN BRIEN"</code> and <code>"JON OBRIEN"</code>, and no threshold on this evidence can tell you which. The right output is a review queue, not a link. Routing thin-margin pairs to clerical review, rather than letting <code>!duplicated()</code> silently pick the first row, is the difference between a linkage you can defend and one you can’t.</p>
-</section><section id="step-8-stamp-the-output" class="level2" data-number="4.9"><h2 data-number="4.9" class="anchored" data-anchor-id="step-8-stamp-the-output">
-<span class="header-section-number">4.9</span> Step 8: stamp the output</h2>
+</section><section id="step-8-stamp-the-output" class="level2" data-number="9.9"><h2 data-number="9.9" class="anchored" data-anchor-id="step-8-stamp-the-output">
+<span class="header-section-number">9.9</span> Step 8: stamp the output</h2>
 <p>Downstream loads need to know which batch they’re looking at. <code>format_datetime()</code> writes the batch watermark without a timezone-database lookup, in UTC or at one fixed offset for a local-time report:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">watermark</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">received_ts</span><span class="op">)</span></span>
@@ -814,8 +856,8 @@ window.Quarto = {
 </div>
 </div>
 <p><code>"iso_offset"</code> applies one fixed numeric offset to every value — it is not a timezone. It has no daylight-saving rules, so a batch spanning a DST boundary needs <code><a href="https://rdrr.io/r/base/format.html">base::format()</a></code> with a real timezone; for stamping a single load with a known offset, this is the cheap and correct tool.</p>
-</section><section id="why-the-fast-versions-matter-here" class="level2" data-number="4.10"><h2 data-number="4.10" class="anchored" data-anchor-id="why-the-fast-versions-matter-here">
-<span class="header-section-number">4.10</span> Why the fast versions matter here</h2>
+</section><section id="why-the-fast-versions-matter-here" class="level2" data-number="9.10"><h2 data-number="9.10" class="anchored" data-anchor-id="why-the-fast-versions-matter-here">
+<span class="header-section-number">9.10</span> Why the fast versions matter here</h2>
 <p>Steps 1 and 2 are the ones that quietly dominate a real batch load: they touch every row of every column, before any of the interesting matching work starts. A single timed run on this machine, over 300,000 rows:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
@@ -828,25 +870,25 @@ window.Quarto = {
 <span>                   <span class="kw">function</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="va">m</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;</span> <span class="fl">0L</span><span class="op">)</span> <span class="fl">0L</span> <span class="kw">else</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   1.66    0.14    1.83 </code></pre>
+   1.55    0.25    1.83 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fcount</span><span class="op">(</span><span class="st">"[0-9]"</span>, <span class="va">nm</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.02    0.00    0.01 </code></pre>
+   0.11    0.10    0.01 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html">as.POSIXct</a></span><span class="op">(</span><span class="va">ts</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   2.93    0.02    2.95 </code></pre>
+   2.65    0.30    2.95 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb53"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fas.POSIXct</span><span class="op">(</span><span class="va">ts</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.02    0.00    0.02 </code></pre>
+   0.00    0.02    0.00 </code></pre>
 </div>
 </div>
-<p>Both are single runs on one machine and will vary with cores and input shape — <a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 6</span></a> is the chapter with the reproducible harness, and it scales the comparison step of this exact pipeline shape up to 3 million rows.</p>
+<p>Both are single runs on one machine and will vary with cores and input shape — <a href="06-benchmarks.html" class="quarto-xref"><span>Chapter 11</span></a> is the chapter with the reproducible harness, and it scales the comparison step of this exact pipeline shape up to 3 million rows.</p>
 
 
 </section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
@@ -1263,12 +1305,12 @@ window.Quarto = {
   });
   </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
       <a href="./03-theory.html" class="pagination-link" aria-label="Algorithms under the hood">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span>
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
       <a href="./05-function-reference.html" class="pagination-link" aria-label="Function reference">
-        <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Function reference</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Function reference</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

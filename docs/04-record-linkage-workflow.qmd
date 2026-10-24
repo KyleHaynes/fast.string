@@ -167,7 +167,9 @@ batch[, c("id", "name_clean", "dob_date", "received_ts")]
 Record 1 (09:15) is dropped in favour of record 7 (14:20). Note that this
 step only catches duplicates that normalise to the *same* string —
 genuinely fuzzy within-batch duplicates need the same scoring machinery as
-the linkage itself, run with `batch` on both sides.
+the linkage itself, run with `batch` on both sides: `block_pairs()` or
+`sorted_neighbourhood()` for the candidates, then `cluster_pairs()` to give
+each person one identifier (@sec-uc-link).
 
 ## Step 5: block on more than one phonetic key
 
@@ -268,6 +270,12 @@ pairs
 Six candidate pairs instead of thirty. At this scale that saving is
 cosmetic; the point is the ratio, which is what survives to five million
 rows — and that every true match is still in the set.
+
+Tokens make this a many-keys-per-record blocking, hence the explicit
+`merge()`. When each record has one key per pass (a phonetic surname, a
+date of birth, a postcode), `block_pairs()` runs all the passes, removes the
+duplicate pairs and records which pass found each one in a single parallel
+call; @sec-uc-link uses it on 100,000 records.
 
 Keeping the token alongside the key makes the blocking step auditable —
 you can ask *why* any given pair is a candidate, which matters when you're

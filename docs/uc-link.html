@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>6&nbsp; Match, deduplicate and link records – fast.string</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./uc-privacy.html" rel="next">
+<link href="./uc-profile.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-90da5b13ae942b47784375143f8d2ef3.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-25db13ffafacac8718dcb08e13c69784.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-90da5b13ae942b47784375143f8d2ef3.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-adc770f3e85a40ed08f857da2325632e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-5da3d176e6a07b8a932cd584db14f99f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-adc770f3e85a40ed08f857da2325632e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light"><script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script><style>html{ scroll-behavior: smooth; }</style>
+<script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script><script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+</head>
+<body class="nav-sidebar docked quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top"><nav class="quarto-secondary-nav"><div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./uc-clean.html">Use cases</a></li><li class="breadcrumb-item"><a href="./uc-link.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav></header><!-- content --><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">fast.string</a> 
+        <div class="sidebar-tools-main tools-wide">
+    <a href="https://github.com/KyleHaynes/fast.string" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">Getting started</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-about.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">About fast.string</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-quickstart.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Quickstart</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Use cases</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-clean.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Clean and standardise text</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-extract.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Find, flag and extract</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-profile.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Profile and validate columns</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-link.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">Under the hood</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+    </ul>
+</div>
+</nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+<li><a href="#candidate-pairs-by-blocking" id="toc-candidate-pairs-by-blocking" class="nav-link active" data-scroll-target="#candidate-pairs-by-blocking"><span class="header-section-number">6.1</span> Candidate pairs by blocking</a></li>
+  <li><a href="#the-sorted-neighbourhood-method" id="toc-the-sorted-neighbourhood-method" class="nav-link" data-scroll-target="#the-sorted-neighbourhood-method"><span class="header-section-number">6.2</span> The sorted neighbourhood method</a></li>
+  <li><a href="#choose-phonetic-keys-by-how-much-they-merge" id="toc-choose-phonetic-keys-by-how-much-they-merge" class="nav-link" data-scroll-target="#choose-phonetic-keys-by-how-much-they-merge"><span class="header-section-number">6.3</span> Choose phonetic keys by how much they merge</a></li>
+  <li><a href="#candidates-without-blocking-keys" id="toc-candidates-without-blocking-keys" class="nav-link" data-scroll-target="#candidates-without-blocking-keys"><span class="header-section-number">6.4</span> Candidates without blocking keys</a></li>
+  <li><a href="#score-with-the-comparison-that-fits-the-field" id="toc-score-with-the-comparison-that-fits-the-field" class="nav-link" data-scroll-target="#score-with-the-comparison-that-fits-the-field"><span class="header-section-number">6.5</span> Score with the comparison that fits the field</a></li>
+  <li><a href="#from-matched-pairs-to-entities" id="toc-from-matched-pairs-to-entities" class="nav-link" data-scroll-target="#from-matched-pairs-to-entities"><span class="header-section-number">6.6</span> From matched pairs to entities</a></li>
+  <li><a href="#end-to-end-deduplicating-100000-records" id="toc-end-to-end-deduplicating-100000-records" class="nav-link" data-scroll-target="#end-to-end-deduplicating-100000-records"><span class="header-section-number">6.7</span> End to end: deduplicating 100,000 records</a></li>
+  </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/uc-link.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./uc-clean.html">Use cases</a></li><li class="breadcrumb-item"><a href="./uc-link.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></a></li></ol></nav><div class="quarto-title">
+<h1 class="title"><span id="sec-uc-link" class="quarto-section-identifier"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header><p>Record linkage – finding the records that refer to the same person, business or address, within one file or across several – has the same shape whatever the data:</p>
+<ol type="1">
+<li>
+<strong>Standardise</strong> the fields you compare (<a href="uc-clean.html" class="quarto-xref"><span>Chapter 3</span></a>).</li>
+<li>
+<strong>Generate candidate pairs</strong> cheaply, so that only plausible pairs are compared in detail: blocking, the sorted neighbourhood method, or a similarity search.</li>
+<li>
+<strong>Score</strong> each candidate pair, field by field.</li>
+<li>
+<strong>Decide</strong> which pairs are matches.</li>
+<li>
+<strong>Cluster</strong> the matched pairs into entities.</li>
+</ol>
+<p><a href="04-record-linkage-workflow.html" class="quarto-xref"><span>Chapter 9</span></a> walks through a small linkage end to end. This chapter is the toolbox for each stage, and finishes by deduplicating 100,000 records.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Stage</th>
+<th>Functions</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Candidate pairs from keys</td>
+<td>
+<code>block_pairs()</code>, <code>sorted_neighbourhood()</code>
+</td>
+</tr>
+<tr class="even">
+<td>Phonetic keys</td>
+<td>
+<code>soundex()</code>, <code>nysiis()</code>, <code>metaphone()</code>, <code>double_metaphone()</code>, <code>statcan()</code>, <code>phonex()</code>, <code>onca()</code>, <code>mra_encode()</code>, …</td>
+</tr>
+<tr class="odd">
+<td>Candidates by similarity search</td>
+<td>
+<code>fuzzy_within()</code>, <code>tfidf_top_n()</code>, <code>tfidf_match()</code>, <code>minhash_pairs()</code>, <code>fuzzy_top_n()</code>
+</td>
+</tr>
+<tr class="even">
+<td>Scoring</td>
+<td>
+<code>jaro_winkler()</code>, <code>editex()</code>, <code>monge_elkan()</code>, <code>smith_waterman()</code>, <code>lcs_str()</code>, <code>levenshtein()</code>, <code>fuzz_*()</code>
+</td>
+</tr>
+<tr class="odd">
+<td>Explaining a score</td>
+<td><code>edit_ops()</code></td>
+</tr>
+<tr class="even">
+<td>Entities from matches</td>
+<td><code>cluster_pairs()</code></td>
+</tr>
+</tbody>
+</table>
+<section id="candidate-pairs-by-blocking" class="level2" data-number="6.1"><h2 data-number="6.1" class="anchored" data-anchor-id="candidate-pairs-by-blocking">
+<span class="header-section-number">6.1</span> Candidate pairs by blocking</h2>
+<p>Comparing every record with every other is <span class="math inline">\(O(n^2)\)</span>: five billion pairs for 100,000 records. <strong>Blocking</strong> only pairs records that agree exactly on a key, such as the Soundex code of the surname plus the date of birth. One key misses every true match with an error in that key, so linkage projects run several <em>passes</em> with different keys and take the union. <code>block_pairs()</code> does that in one call, with one column per pass, and reports each pair once along with the first pass that found it:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">people</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    surname  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, <span class="st">"JONES"</span>, <span class="st">"SMITH"</span>, <span class="st">"JONSE"</span>, <span class="st">"BROWN"</span>, <span class="st">"SMITH-JONES"</span><span class="op">)</span>,</span>
+<span>    given    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN"</span>, <span class="st">"JON"</span>, <span class="st">"MARY"</span>, <span class="st">"JOHN"</span>, <span class="st">"MARY"</span>, <span class="st">"ROBERT"</span>, <span class="st">"MARY"</span><span class="op">)</span>,</span>
+<span>    dob      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1980-01-02"</span>, <span class="st">"1980-01-02"</span>, <span class="st">"1975-06-30"</span>, <span class="st">"1990-12-01"</span>,</span>
+<span>                         <span class="st">"1975-06-30"</span>, <span class="st">"1962-03-03"</span>, <span class="st">"1975-03-06"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    postcode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"4000"</span>, <span class="st">"4000"</span>, <span class="st">"2000"</span>, <span class="st">"4101"</span>, <span class="st">"2000"</span>, <span class="st">"3000"</span>, <span class="st">"2000"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">keys</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    surname_dob <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">people</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>, <span class="va">people</span><span class="op">$</span><span class="va">dob</span><span class="op">)</span>,</span>
+<span>    dob         <span class="op">=</span> <span class="va">people</span><span class="op">$</span><span class="va">dob</span>,</span>
+<span>    initial_pc  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">people</span><span class="op">$</span><span class="va">given</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, <span class="va">people</span><span class="op">$</span><span class="va">postcode</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu">block_pairs</span><span class="op">(</span><span class="va">keys</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  x_index y_index pass
+1       1       2    1
+2       3       5    1
+3       3       7    3
+4       5       7    3</code></pre>
+</div>
+</div>
+<p>Record 7 – Mary Jones after a double-barrelled marriage, with day and month swapped in her date of birth – only shares the third key with records 3 and 5, and the <code>pass</code> column shows it. That makes a blocking design auditable: you can see which pass carries the recall, and drop the ones that only add noise. A missing key (<code>NA</code>) never pairs, and <code>max_block_size</code> skips blocks too big to be useful, such as the most common surname, with a warning.</p>
+<p>Linking two files instead of deduplicating one is the same call with a second set of keys: <code>block_pairs(keys_a, keys_b)</code> returns pairs with one record from each.</p>
+</section><section id="the-sorted-neighbourhood-method" class="level2" data-number="6.2"><h2 data-number="6.2" class="anchored" data-anchor-id="the-sorted-neighbourhood-method">
+<span class="header-section-number">6.2</span> The sorted neighbourhood method</h2>
+<p>Exact keys miss pairs whose keys differ in the last characters (<code>SMITH</code> and <code>SMITHE</code>). <code>sorted_neighbourhood()</code> sorts the distinct key values and pairs records whose values are within <code>(window - 1) / 2</code> places of each other, as well as records with equal values. A second pass on the <em>reversed</em> key catches errors at the start of the string:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">surname</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMITHE"</span>, <span class="st">"SMYTH"</span>, <span class="st">"JONES"</span>, <span class="st">"JONSON"</span>, <span class="st">"XMITH"</span><span class="op">)</span></span>
+<span><span class="va">rev_str</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/strsplit.html">strsplit</a></span><span class="op">(</span><span class="va">s</span>, <span class="cn">NULL</span><span class="op">)</span>,</span>
+<span>                              <span class="kw">function</span><span class="op">(</span><span class="va">ch</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">ch</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">""</span><span class="op">)</span>, <span class="st">""</span><span class="op">)</span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">sorted_neighbourhood</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">surname</span>, <span class="fu">rev_str</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span><span class="op">)</span>, window <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>a <span class="op">=</span> <span class="va">surname</span><span class="op">[</span><span class="va">p</span><span class="op">$</span><span class="va">x_index</span><span class="op">]</span>, b <span class="op">=</span> <span class="va">surname</span><span class="op">[</span><span class="va">p</span><span class="op">$</span><span class="va">y_index</span><span class="op">]</span>, pass <span class="op">=</span> <span class="va">p</span><span class="op">$</span><span class="va">pass</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>       a      b pass
+1  SMITH SMITHE    1
+2  SMITH JONSON    1
+3  SMITH  XMITH    2
+4 SMITHE  SMYTH    1
+5  SMYTH JONSON    2
+6  SMYTH  XMITH    1
+7  JONES JONSON    1</code></pre>
+</div>
+</div>
+<p><code>XMITH</code> only meets <code>SMITH</code> in the reversed pass. The window moves over distinct values, as in Python’s <code>recordlinkage</code> package, so the pairs do not depend on the order of the records and every tie is paired. Keys can be dates or numbers too: a date of birth with <code>window = 3</code> pairs dates one day apart.</p>
+</section><section id="choose-phonetic-keys-by-how-much-they-merge" class="level2" data-number="6.3"><h2 data-number="6.3" class="anchored" data-anchor-id="choose-phonetic-keys-by-how-much-they-merge">
+<span class="header-section-number">6.3</span> Choose phonetic keys by how much they merge</h2>
+<p>Every phonetic code merges some spellings and separates others, and the trade-off is block size against recall. Comparing codes on a list of known variants shows the differences quickly:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">surn</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, <span class="st">"SCHMIDT"</span>, <span class="st">"MEYER"</span>, <span class="st">"MEIER"</span>, <span class="st">"MCDONALD"</span>,</span>
+<span>          <span class="st">"MACDONALD"</span>, <span class="st">"THOMPSON"</span>, <span class="st">"TOMSON"</span>, <span class="st">"NGUYEN"</span>, <span class="st">"NGYUEN"</span>, <span class="st">"PHILLIPS"</span>,</span>
+<span>          <span class="st">"FILLIPS"</span><span class="op">)</span></span>
+<span><span class="va">codes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>name <span class="op">=</span> <span class="va">surn</span>, soundex <span class="op">=</span> <span class="fu">soundex</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>, nysiis <span class="op">=</span> <span class="fu">nysiis</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>,</span>
+<span>                    metaphone <span class="op">=</span> <span class="fu">metaphone</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>, statcan <span class="op">=</span> <span class="fu">statcan</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>,</span>
+<span>                    phonex <span class="op">=</span> <span class="fu">phonex</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>, onca <span class="op">=</span> <span class="fu">onca</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>,</span>
+<span>                    mra <span class="op">=</span> <span class="fu">mra_encode</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">codes</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        name soundex nysiis metaphone statcan phonex onca    mra
+1      SMITH    S530   SNAT       SM0    SMTH   S530 S530   SMTH
+2      SMYTH    S530   SNYT       SM0    SMTH   S530 S530  SMYTH
+3    SCHMIDT    S530   SNAD      SKMT    SCHM   S253 S530 SCHMDT
+4      MEYER    M600  MAYAR       MYR      MR   M600 M600    MYR
+5      MEIER    M600    MAR        MR      MR   M600 M600     MR
+6   MCDONALD    M235 MCDANA      MKTN    MCDN   M235 M235 MCDNLD
+7  MACDONALD    M235 MCDANA      MKTN    MCDN   M235 M235 MCDNLD
+8   THOMPSON    T512 TANPSA      0MPS    THMP   T512 T512 THMPSN
+9     TOMSON    T525 TANSAN      TMSN    TMSN   T525 T525   TMSN
+10    NGUYEN    N250 NGAYAN      NKYN     NGN   N250 N250   NGYN
+11    NGYUEN    N250  NGYAN      NJYN     NGN   N250 N250   NGYN
+12  PHILLIPS    P412  FALAP      FLPS    PHLP   F410 F410  PHLPS
+13   FILLIPS    F412  FALAP      FLPS    FLPS   F410 F410   FLPS</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">codes</span><span class="op">[</span><span class="op">-</span><span class="fl">1</span><span class="op">]</span>, <span class="kw">function</span><span class="op">(</span><span class="va">k</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">k</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>   <span class="co"># fewer = coarser blocks</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  soundex    nysiis metaphone   statcan    phonex      onca       mra 
+        8        11        10         9         8         7        11 </code></pre>
+</div>
+</div>
+<p>Soundex merges <code>SCHMIDT</code> with <code>SMITH</code> but separates <code>PHILLIPS</code> from <code>FILLIPS</code>; Phonex and ONCA join the latter pair; NYSIIS and Metaphone separate more spellings, which makes smaller blocks and needs more passes. The Match Rating Approach is designed as a comparison rather than a key: <code>mra_compare()</code> says whether two names match under its rules.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">mra_compare</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"BYRNE"</span>, <span class="st">"CATHERINE"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMYTH"</span>, <span class="st">"BOERN"</span>, <span class="st">"KATHRYN"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] TRUE TRUE TRUE</code></pre>
+</div>
+</div>
+</section><section id="candidates-without-blocking-keys" class="level2" data-number="6.4"><h2 data-number="6.4" class="anchored" data-anchor-id="candidates-without-blocking-keys">
+<span class="header-section-number">6.4</span> Candidates without blocking keys</h2>
+<p>When there is no good key, search for similar strings directly; none of these functions builds the full comparison matrix.</p>
+<p><code>fuzzy_within()</code> returns every table entry within <code>k</code> edits of each query, using SymSpell’s symmetric-delete index – the right tool for checking typed values against a reference list such as a street gazetteer:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span>
+<span><span class="va">streets</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"KING"</span>, <span class="st">"QUEEN"</span>, <span class="st">"GEORGE"</span>, <span class="st">"ELIZABETH"</span>, <span class="st">"ANN"</span>, <span class="st">"ADELAIDE"</span>, <span class="st">"WICKHAM"</span>,</span>
+<span>             <span class="st">"BRUNSWICK"</span>, <span class="st">"LOGAN"</span>, <span class="st">"IPSWICH"</span>, <span class="st">"OXLEY"</span>, <span class="st">"SANDGATE"</span>, <span class="st">"GYMPIE"</span>,</span>
+<span>             <span class="st">"STANLEY"</span>, <span class="st">"MAIN"</span>, <span class="st">"CHURCH"</span>, <span class="st">"STATION"</span>, <span class="st">"RIVER"</span><span class="op">)</span>, <span class="fl">4000</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ST"</span>, <span class="st">"RD"</span>, <span class="st">"AVE"</span>, <span class="st">"TCE"</span>, <span class="st">"PDE"</span>, <span class="st">"LANE"</span>, <span class="st">"CT"</span>, <span class="st">"CRES"</span><span class="op">)</span>, <span class="fl">4000</span>, <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">q</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"KIGN ST"</span>, <span class="st">"QUEEN SRT"</span>, <span class="st">"WICKAM TCE"</span>, <span class="st">"LOGAN RD"</span><span class="op">)</span></span>
+<span><span class="va">w</span> <span class="op">&lt;-</span> <span class="fu">fuzzy_within</span><span class="op">(</span><span class="va">q</span>, <span class="va">streets</span>, max_distance <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>query <span class="op">=</span> <span class="va">q</span><span class="op">[</span><span class="va">w</span><span class="op">$</span><span class="va">query_index</span><span class="op">]</span>, match <span class="op">=</span> <span class="va">streets</span><span class="op">[</span><span class="va">w</span><span class="op">$</span><span class="va">table_index</span><span class="op">]</span>,</span>
+<span>           distance <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">distance</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        query       match distance
+1     KIGN ST     KING ST        1
+2     KIGN ST     KING CT        2
+3   QUEEN SRT    QUEEN ST        1
+4   QUEEN SRT    QUEEN CT        2
+5   QUEEN SRT    QUEEN RD        2
+6  WICKAM TCE WICKHAM TCE        1
+7    LOGAN RD    LOGAN RD        0
+8    LOGAN RD   LOGAN PDE        2
+9    LOGAN RD    LOGAN ST        2
+10   LOGAN RD    LOGAN CT        2</code></pre>
+</div>
+</div>
+<p>Results come ordered by distance, so the first row per query is the best. The result is exact – the same pairs as filtering a full <code>osa_distance_matrix()</code> – at a fraction of the cost for large tables.</p>
+<p>For names that differ by whole words – organisations with and without <code>THE</code>, <code>UNI</code> for <code>UNIVERSITY</code>, an extra department – edit distance is the wrong measure. <code>tfidf_match()</code> compares TF-IDF-weighted character n-grams, so rare, informative words dominate and common ones barely count:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">orgs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"UNIVERSITY OF QUEENSLAND"</span>, <span class="st">"QUEENSLAND UNIVERSITY OF TECHNOLOGY"</span>,</span>
+<span>          <span class="st">"GRIFFITH UNIVERSITY"</span>, <span class="st">"QUEENSLAND HEALTH"</span>, <span class="st">"BRISBANE CITY COUNCIL"</span>,</span>
+<span>          <span class="st">"LOGAN CITY COUNCIL"</span>, <span class="st">"UNIVERSITY OF SYDNEY"</span><span class="op">)</span></span>
+<span><span class="va">qs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"THE UNIVERSITY OF QUEENSLAND"</span>, <span class="st">"QLD UNIVERSITY OF TECHNOLOGY"</span>,</span>
+<span>        <span class="st">"BRISBANE CITY COUNCIL LIBRARIES"</span>, <span class="st">"GRIFFITH UNI"</span>, <span class="st">"SYDNEY UNIVERSITY"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>query <span class="op">=</span> <span class="va">qs</span>, match <span class="op">=</span> <span class="va">orgs</span><span class="op">[</span><span class="fu">tfidf_match</span><span class="op">(</span><span class="va">qs</span>, <span class="va">orgs</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                            query                               match
+1    THE UNIVERSITY OF QUEENSLAND            UNIVERSITY OF QUEENSLAND
+2    QLD UNIVERSITY OF TECHNOLOGY QUEENSLAND UNIVERSITY OF TECHNOLOGY
+3 BRISBANE CITY COUNCIL LIBRARIES               BRISBANE CITY COUNCIL
+4                    GRIFFITH UNI                 GRIFFITH UNIVERSITY
+5               SYDNEY UNIVERSITY                UNIVERSITY OF SYDNEY</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">tfidf_top_n</span><span class="op">(</span><span class="st">"QLD UNIVERSITY OF TECHNOLOGY"</span>, <span class="va">orgs</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  query_index table_index     score rank
+1           1           2 0.8001508    1
+2           1           7 0.3253862    2
+3           1           1 0.3249688    3</code></pre>
+</div>
+</div>
+<p>For long text – product descriptions, case notes, addresses with free-text additions – <code>minhash_pairs()</code> finds pairs whose q-gram sets probably overlap by at least <code>threshold</code> (Jaccard), using locality-sensitive hashing, and verifies each candidate exactly:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">descr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Stainless steel kettle 1.7 litre with auto shut-off and boil-dry protection"</span>,</span>
+<span>           <span class="st">"Stainless steel kettle 1.7L with auto shut off and boil dry protection"</span>,</span>
+<span>           <span class="st">"Cordless stick vacuum cleaner with HEPA filter and wall mount"</span>,</span>
+<span>           <span class="st">"Cordless stick vacuum with HEPA filter, wall mount included"</span>,</span>
+<span>           <span class="st">"Cast iron frying pan 28cm pre-seasoned"</span><span class="op">)</span></span>
+<span><span class="fu">minhash_pairs</span><span class="op">(</span><span class="va">descr</span>, threshold <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  x_index y_index   jaccard
+1       1       2 0.7195122
+2       3       4 0.6197183</code></pre>
+</div>
+</div>
+</section><section id="score-with-the-comparison-that-fits-the-field" class="level2" data-number="6.5"><h2 data-number="6.5" class="anchored" data-anchor-id="score-with-the-comparison-that-fits-the-field">
+<span class="header-section-number">6.5</span> Score with the comparison that fits the field</h2>
+<p>Jaro-Winkler is the standard for short names, but each kind of field has its own kind of difference:</p>
+<ul>
+<li>
+<p><strong>Phonetic misspellings</strong> (<code>PH</code>/<code>F</code>, <code>C</code>/<code>K</code>) cost less under <code>editex()</code>, an edit distance whose substitution cost depends on whether the letters sound alike:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"PHILIP"</span>, <span class="st">"CATHERINE"</span>, <span class="st">"SHEPHERD"</span><span class="op">)</span></span>
+<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"FILIP"</span>, <span class="st">"KATHRYN"</span>, <span class="st">"SHEPPARD"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, levenshtein <span class="op">=</span> <span class="fu">levenshtein_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>           editex <span class="op">=</span> <span class="fu">editex_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          a        b levenshtein    editex
+1    PHILIP    FILIP   0.6666667 0.7500000
+2 CATHERINE  KATHRYN   0.5555556 0.7222222
+3  SHEPHERD SHEPPARD   0.7500000 0.8125000</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>Multi-word names</strong> with reordered, missing or extra words suit <code>monge_elkan()</code> (the mean best match of each word) or <code>jaro_winkler_tokens()</code>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN PAUL SMITH"</span>, <span class="st">"MARY JANE O BRIEN"</span>, <span class="st">"ROBERT JONES"</span><span class="op">)</span></span>
+<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH JOHN"</span>, <span class="st">"OBRIEN MARY"</span>, <span class="st">"BOB JONES"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, jaro_winkler <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>           monge_elkan <span class="op">=</span> <span class="fu">monge_elkan</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>, tokens <span class="op">=</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                  a           b jaro_winkler monge_elkan    tokens
+1   JOHN PAUL SMITH  SMITH JOHN    0.5000000   0.6666667 0.6666667
+2 MARY JANE O BRIEN OBRIEN MARY    0.5659537   0.7986111 0.5666667
+3      ROBERT JONES   BOB JONES    0.7060185   0.7888889 0.7500000</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>One string inside another</strong> – a street address inside a full address line – is local alignment: <code>smith_waterman()</code> scores the best-matching substring, and <code>lcs_str()</code> returns the longest common substring:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">smith_waterman</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"9 KING ST"</span>, <span class="st">"9 KING ST"</span><span class="op">)</span>,</span>
+<span>               <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"UNIT 4 9 KING ST BRISBANE"</span>, <span class="st">"19 KINGS ST"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1.0000000 0.9444444</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">lcs_str</span><span class="op">(</span><span class="st">"9 KING ST"</span>, <span class="st">"UNIT 4 9 KING ST BRISBANE"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "9 KING ST"</code></pre>
+</div>
+</div>
+</li>
+</ul>
+<p>When a pair goes to clerical review, <code>edit_ops()</code> explains a distance as the edits themselves:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">edit_ops</span><span class="op">(</span><span class="st">"JONATHAN"</span>, <span class="st">"JONHATAN"</span>, type <span class="op">=</span> <span class="st">"opcodes"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  pair   type a_start a_end b_start b_end
+1    1  equal       1     3       1     3
+2    1 insert       4     3       4     4
+3    1  equal       4     5       5     6
+4    1 delete       6     6       7     6
+5    1  equal       7     8       7     8</code></pre>
+</div>
+</div>
+</section><section id="from-matched-pairs-to-entities" class="level2" data-number="6.6"><h2 data-number="6.6" class="anchored" data-anchor-id="from-matched-pairs-to-entities">
+<span class="header-section-number">6.6</span> From matched pairs to entities</h2>
+<p>Deduplication needs one identifier per entity, not a list of pairs. <code>cluster_pairs()</code> joins records connected by any chain of matches (the connected components of the match graph):</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># 1 matches 2, 2 matches 3, 4 matches 5; record 6 matches nothing</span></span>
+<span><span class="fu">cluster_pairs</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">5</span><span class="op">)</span>, n <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1 1 1 2 2 3</code></pre>
+</div>
+</div>
+<p>Chaining is also the risk: if 1 and 3 do not match directly, the cluster rests on record 2. Look at the largest clusters before trusting them, or raise the threshold for pairs that join large clusters.</p>
+</section><section id="end-to-end-deduplicating-100000-records" class="level2" data-number="6.7"><h2 data-number="6.7" class="anchored" data-anchor-id="end-to-end-deduplicating-100000-records">
+<span class="header-section-number">6.7</span> End to end: deduplicating 100,000 records</h2>
+<p>To see the whole pipeline at a useful scale, build a file of 80,000 people in which a quarter appear a second time with one error each: a typo in the surname or given name, a date of birth one day out, or a missing postcode.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span><span class="va">surnames</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"JONES"</span>, <span class="st">"WILLIAMS"</span>, <span class="st">"BROWN"</span>, <span class="st">"WILSON"</span>, <span class="st">"TAYLOR"</span>, <span class="st">"JOHNSON"</span>,</span>
+<span>    <span class="st">"WHITE"</span>, <span class="st">"MARTIN"</span>, <span class="st">"ANDERSON"</span>, <span class="st">"THOMPSON"</span>, <span class="st">"NGUYEN"</span>, <span class="st">"THOMAS"</span>, <span class="st">"WALKER"</span>, <span class="st">"HARRIS"</span>,</span>
+<span>    <span class="st">"LEE"</span>, <span class="st">"RYAN"</span>, <span class="st">"ROBINSON"</span>, <span class="st">"KELLY"</span>, <span class="st">"KING"</span>, <span class="st">"DAVIS"</span>, <span class="st">"WRIGHT"</span>, <span class="st">"EVANS"</span>, <span class="st">"ROBERTS"</span>,</span>
+<span>    <span class="st">"GREEN"</span>, <span class="st">"HALL"</span>, <span class="st">"WOOD"</span>, <span class="st">"JACKSON"</span>, <span class="st">"CLARKE"</span>, <span class="st">"PATEL"</span>, <span class="st">"KHAN"</span>, <span class="st">"LEWIS"</span>, <span class="st">"JAMES"</span>,</span>
+<span>    <span class="st">"PHILLIPS"</span>, <span class="st">"MITCHELL"</span>, <span class="st">"CAMPBELL"</span>, <span class="st">"MORRIS"</span>, <span class="st">"YOUNG"</span>, <span class="st">"SCOTT"</span>, <span class="st">"MURPHY"</span>, <span class="st">"COOK"</span>,</span>
+<span>    <span class="st">"BAKER"</span>, <span class="st">"TURNER"</span>, <span class="st">"COOPER"</span>, <span class="st">"HILL"</span>, <span class="st">"WARD"</span>, <span class="st">"HUGHES"</span>, <span class="st">"MOORE"</span>, <span class="st">"CHEN"</span>, <span class="st">"WANG"</span>,</span>
+<span>    <span class="st">"SINGH"</span>, <span class="st">"OBRIEN"</span>, <span class="st">"MCDONALD"</span>, <span class="st">"STEWART"</span>, <span class="st">"MACDONALD"</span>, <span class="st">"SULLIVAN"</span>, <span class="st">"MURRAY"</span>,</span>
+<span>    <span class="st">"WATSON"</span>, <span class="st">"PRICE"</span>, <span class="st">"BELL"</span>, <span class="st">"ALLEN"</span><span class="op">)</span></span>
+<span><span class="va">given</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN"</span>, <span class="st">"MARY"</span>, <span class="st">"ROBERT"</span>, <span class="st">"JENNIFER"</span>, <span class="st">"MICHAEL"</span>, <span class="st">"LINDA"</span>, <span class="st">"WILLIAM"</span>,</span>
+<span>    <span class="st">"ELIZABETH"</span>, <span class="st">"DAVID"</span>, <span class="st">"SUSAN"</span>, <span class="st">"JAMES"</span>, <span class="st">"MARGARET"</span>, <span class="st">"PETER"</span>, <span class="st">"SARAH"</span>, <span class="st">"ANDREW"</span>,</span>
+<span>    <span class="st">"JESSICA"</span>, <span class="st">"DANIEL"</span>, <span class="st">"EMILY"</span>, <span class="st">"MATTHEW"</span>, <span class="st">"CHLOE"</span>, <span class="st">"THOMAS"</span>, <span class="st">"OLIVIA"</span>, <span class="st">"JOSHUA"</span>,</span>
+<span>    <span class="st">"EMMA"</span>, <span class="st">"RYAN"</span>, <span class="st">"GRACE"</span>, <span class="st">"BENJAMIN"</span>, <span class="st">"SOPHIE"</span>, <span class="st">"LUKE"</span>, <span class="st">"HANNAH"</span>, <span class="st">"KYLE"</span>, <span class="st">"ZOE"</span>,</span>
+<span>    <span class="st">"NATHAN"</span>, <span class="st">"AMY"</span>, <span class="st">"SAMUEL"</span>, <span class="st">"LUCY"</span><span class="op">)</span></span>
+<span><span class="va">n_people</span> <span class="op">&lt;-</span> <span class="fl">80000</span></span>
+<span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    person   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq_len</a></span><span class="op">(</span><span class="va">n_people</span><span class="op">)</span>,</span>
+<span>    surname  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">surnames</span>, <span class="va">n_people</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>    given    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">given</span>, <span class="va">n_people</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>    dob      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="st">"1940-01-01"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">25000</span>, <span class="va">n_people</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>    postcode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"%04d"</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">800</span><span class="op">:</span><span class="fl">899</span>, <span class="fl">2000</span><span class="op">:</span><span class="fl">4999</span><span class="op">)</span>, <span class="va">n_people</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># One random substitution, deletion or transposition per string</span></span>
+<span><span class="va">typo</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">k</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nchar.html">nchar</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span></span>
+<span>    <span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">floor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html">runif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="va">k</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span></span>
+<span>    <span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html">runif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">out</span> <span class="op">&lt;-</span> <span class="va">s</span></span>
+<span>    <span class="va">sub_</span> <span class="op">&lt;-</span> <span class="va">r</span> <span class="op">&lt;</span> <span class="fl">0.4</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">out</span><span class="op">[</span><span class="va">sub_</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">sub_</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">sub_</span><span class="op">]</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">LETTERS</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">sub_</span><span class="op">)</span>, <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>    <span class="va">del</span> <span class="op">&lt;-</span> <span class="va">r</span> <span class="op">&gt;=</span> <span class="fl">0.4</span> <span class="op">&amp;</span> <span class="va">r</span> <span class="op">&lt;</span> <span class="fl">0.7</span></span>
+<span>    <span class="va">out</span><span class="op">[</span><span class="va">del</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">del</span><span class="op">]</span>, <span class="fl">1</span>, <span class="va">i</span><span class="op">[</span><span class="va">del</span><span class="op">]</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">del</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">del</span><span class="op">]</span> <span class="op">+</span> <span class="fl">1</span>, <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">tr</span> <span class="op">&lt;-</span> <span class="va">r</span> <span class="op">&gt;=</span> <span class="fl">0.7</span> <span class="op">&amp;</span> <span class="va">i</span> <span class="op">&lt;</span> <span class="va">k</span></span>
+<span>    <span class="va">out</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="fl">1</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">+</span> <span class="fl">1</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>                      <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">+</span> <span class="fl">2</span>, <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">out</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">copies</span> <span class="op">&lt;-</span> <span class="va">truth</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">n_people</span>, <span class="va">n_people</span> <span class="op">/</span> <span class="fl">4</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html">runif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">copies</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">copies</span><span class="op">$</span><span class="va">surname</span><span class="op">[</span><span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.3</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">typo</span><span class="op">(</span><span class="va">copies</span><span class="op">$</span><span class="va">surname</span><span class="op">[</span><span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.3</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">copies</span><span class="op">$</span><span class="va">given</span><span class="op">[</span><span class="va">e</span> <span class="op">&gt;=</span> <span class="fl">0.3</span> <span class="op">&amp;</span> <span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.5</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">typo</span><span class="op">(</span><span class="va">copies</span><span class="op">$</span><span class="va">given</span><span class="op">[</span><span class="va">e</span> <span class="op">&gt;=</span> <span class="fl">0.3</span> <span class="op">&amp;</span> <span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.5</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">off</span> <span class="op">&lt;-</span> <span class="va">e</span> <span class="op">&gt;=</span> <span class="fl">0.5</span> <span class="op">&amp;</span> <span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.65</span></span>
+<span><span class="va">copies</span><span class="op">$</span><span class="va">dob</span><span class="op">[</span><span class="va">off</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">copies</span><span class="op">$</span><span class="va">dob</span><span class="op">[</span><span class="va">off</span><span class="op">]</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">off</span><span class="op">)</span>, <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">copies</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">e</span> <span class="op">&gt;=</span> <span class="fl">0.65</span> <span class="op">&amp;</span> <span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.8</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA</span></span>
+<span></span>
+<span><span class="va">records</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind</a></span><span class="op">(</span><span class="va">truth</span>, <span class="va">copies</span><span class="op">)</span></span>
+<span><span class="va">records</span> <span class="op">&lt;-</span> <span class="va">records</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">records</span><span class="op">)</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">records</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 100000</code></pre>
+</div>
+</div>
+<p>Three blocking passes, each robust to a different kind of error: a phonetic surname with the date of birth (survives most surname typos), the given name with the date of birth (survives any surname change), and the exact names with the postcode (survives date errors):</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span></span>
+<span>    <span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu">block_pairs</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>        surname_dob <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>, <span class="va">records</span><span class="op">$</span><span class="va">dob</span><span class="op">)</span>,</span>
+<span>        given_dob   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">given</span>, <span class="va">records</span><span class="op">$</span><span class="va">dob</span><span class="op">)</span>,</span>
+<span>        names_pc    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">surname</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">given</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>                            <span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">)</span></span>
+<span>    <span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+   0.39    0.11    0.48 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 35763</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>pass <span class="op">=</span> <span class="va">pairs</span><span class="op">$</span><span class="va">pass</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>pass
+    1     2     3 
+17395  8201 10167 </code></pre>
+</div>
+</div>
+<p>Score each candidate on every field, weight them, and keep pairs above a threshold:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">i</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">$</span><span class="va">x_index</span></span>
+<span>    <span class="va">j</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">$</span><span class="va">y_index</span></span>
+<span>    <span class="va">surname_sim</span> <span class="op">&lt;-</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">surname</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="va">records</span><span class="op">$</span><span class="va">surname</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="va">given_sim</span>   <span class="op">&lt;-</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">given</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="va">records</span><span class="op">$</span><span class="va">given</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="va">dob_agree</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">abs</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">dob</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">-</span> <span class="va">records</span><span class="op">$</span><span class="va">dob</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span> <span class="op">&lt;=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">pc_agree</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span>, <span class="fl">0.5</span>,</span>
+<span>                          <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">==</span> <span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">pairs</span><span class="op">$</span><span class="va">score</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">surname_sim</span> <span class="op">+</span> <span class="va">given_sim</span> <span class="op">+</span> <span class="va">dob_agree</span> <span class="op">+</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="va">pc_agree</span><span class="op">)</span> <span class="op">/</span> <span class="fl">4.5</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+      0       0       0 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">matches</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">[</span><span class="va">pairs</span><span class="op">$</span><span class="va">score</span> <span class="op">&gt;=</span> <span class="fl">0.9</span>, <span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Then cluster the matches into entities:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="va">entity</span> <span class="op">&lt;-</span> <span class="fu">cluster_pairs</span><span class="op">(</span><span class="va">matches</span>, n <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">records</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+      0       0       0 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>entities <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span>, true_people <span class="op">=</span> <span class="va">n_people</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   entities true_people 
+      80045       80000 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>cluster_size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tabulate.html">tabulate</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>cluster_size
+    1     2     3     4 
+60094 19948     2     1 </code></pre>
+</div>
+</div>
+<p>Because the data are synthetic we know the truth, so we can measure how well each stage did:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb48"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">same_person</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="va">records</span><span class="op">$</span><span class="va">person</span><span class="op">[</span><span class="va">a</span><span class="op">]</span> <span class="op">==</span> <span class="va">records</span><span class="op">$</span><span class="va">person</span><span class="op">[</span><span class="va">b</span><span class="op">]</span></span>
+<span><span class="va">true_pairs</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Special.html">choose</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">person</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span></span>
+<span>    blocking_recall <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu">same_person</span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">x_index</span>, <span class="va">pairs</span><span class="op">$</span><span class="va">y_index</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="va">true_pairs</span>,</span>
+<span>    precision       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html">mean</a></span><span class="op">(</span><span class="fu">same_person</span><span class="op">(</span><span class="va">matches</span><span class="op">$</span><span class="va">x_index</span>, <span class="va">matches</span><span class="op">$</span><span class="va">y_index</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    recall          <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu">same_person</span><span class="op">(</span><span class="va">matches</span><span class="op">$</span><span class="va">x_index</span>, <span class="va">matches</span><span class="op">$</span><span class="va">y_index</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="va">true_pairs</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>blocking_recall       precision          recall 
+      1.0000000       0.9997996       0.9976000 </code></pre>
+</div>
+</div>
+<p>Blocking reduced five billion possible pairs to a few tens of thousands without losing a true match, and the whole run takes well under a second. The weights and threshold here are picked by hand; on real data, tune them against a labelled sample, or estimate them with a probabilistic model (the <code>fastLink</code> and <code>reclin2</code> packages fit Fellegi-Sunter weights) and use <code>fast.string</code> for the steps around it.</p>
+
+
+</section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
+      <a href="./uc-profile.html" class="pagination-link" aria-label="Profile and validate columns">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Profile and validate columns</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./uc-privacy.html" class="pagination-link" aria-label="Pseudonymise identifiers">
+        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer"><div class="nav-footer">
+    <div class="nav-footer-left">
+<p>fast.string — PCRE2 + prepared literal search + RcppParallel for R</p>
+</div>   
+    <div class="nav-footer-center">
+      &nbsp;
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/uc-link.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+<p>Built with Quarto</p>
+</div>
+  </div>
+</footer>
+
+
+<script src="site_libs/quarto-html/zenscroll-min.js"></script>
+</body></html>

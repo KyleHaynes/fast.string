@@ -8,11 +8,16 @@
 \description{
 Fast, multi-core alternatives to base R's string functions, plus the
 building blocks of a record-linkage pipeline: text cleaning (match
-extraction, field splitting, ASCII folding, OpenRefine clustering keys),
+extraction, field splitting, padding, dictionary replacement of whole
+words, ASCII folding, URL and HTML entity decoding, OpenRefine clustering
+keys), parsing and validation (numbers from messy text, format profiles,
+identifier check digits, keyed hashing for pseudonymisation),
 fixed-format date and timestamp parsing, phonetic blocking keys,
-string-similarity and edit-distance measures, and candidate search that
-never builds a full comparison matrix (top-N lookup, everything within k
-edits, TF-IDF n-gram matching, MinHash locality-sensitive hashing).
+string-similarity and edit-distance measures, candidate pairs by
+multi-pass blocking or the sorted neighbourhood method, candidate search
+that never builds a full comparison matrix (top-N lookup, everything
+within k edits, TF-IDF n-gram matching, MinHash locality-sensitive
+hashing), and entity clusters from matched pairs.
 }
 \details{
 Regular expressions run on PCRE2, a single fixed string on a prepared
@@ -66,6 +71,30 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=fsquish]{fsquish()}} - trim and collapse inner whitespace
 \item \code{\link[=fsplit_field]{fsplit_field()}} - one field of delimited text
 \item \code{\link[=ascii_fold]{ascii_fold()}} - accents and symbols to ASCII
+\item \code{\link[=fpad]{fpad()}} - pad to a width, e.g. zero-pad
+\item \code{\link[=freplace_tokens]{freplace_tokens()}} - replace whole words from a dictionary
+\item \emph{Web text}
+\itemize{
+\item \code{\link[=url_encode]{url_encode()}} - URLencode() equivalent
+\item \code{\link[=url_decode]{url_decode()}} - URLdecode() equivalent
+\item \code{\link[=html_unescape]{html_unescape()}} - decode HTML character references
+}
+}
+\item \strong{Tokens & affixes}
+\itemize{
+\item \code{\link[=token_counts]{token_counts()}} - token and document frequencies
+\item \code{\link[=token_sort]{token_sort()}} - sort the words in each string
+\item \code{\link[=token_initials]{token_initials()}} - initials, e.g. JPS
+\item \code{\link[=freverse]{freverse()}} - reverse, keeping accents on letters
+\item \code{\link[=longest_prefix]{longest_prefix()}} - index of the longest matching prefix
+\item \code{\link[=longest_suffix]{longest_suffix()}} - index of the longest matching suffix
+}
+\item \strong{Parsing, validation & hashing}
+\itemize{
+\item \code{\link[=fparse_number]{fparse_number()}} - numbers from text such as $1,234.50
+\item \code{\link[=valid_id]{valid_id()}} - check digits: ABN, TFN, IBAN, ...
+\item \code{\link[=string_shape]{string_shape()}} - format profile, e.g. AAA 9999
+\item \code{\link[=fhash]{fhash()}} - SHA-256, MD5, XXH64; keyed HMAC
 }
 \item \strong{Clustering keys}
 \itemize{
@@ -190,6 +219,12 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=tfidf_match]{tfidf_match()}} - best match by TF-IDF cosine
 \item \code{\link[=minhash_pairs]{minhash_pairs()}} - MinHash LSH candidate pairs
 }
+\item \strong{Blocking & clustering}
+\itemize{
+\item \code{\link[=block_pairs]{block_pairs()}} - pairs that share any key
+\item \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}} - pairs with nearby sorted keys
+\item \code{\link[=cluster_pairs]{cluster_pairs()}} - entity IDs from matched pairs
+}
 \item \strong{Benchmarking}
 \itemize{
 \item \code{\link[=run_benchmark_example]{run_benchmark_example()}} - interactive speed demo vs base R
@@ -242,6 +277,11 @@ soundex(clean)
 reference <- c("JONES, MARY", "SMITH, JOHN")
 round(jaro_winkler_matrix(clean, reference), 2)
 fuzzy_match(clean, reference, min_score = 0.85)
+
+# Or deduplicate: candidate pairs, scores, then one ID per person.
+p <- block_pairs(soundex(clean))
+p <- p[jaro_winkler(clean[p$x_index], clean[p$y_index]) > 0.9, ]
+cluster_pairs(p, n = length(clean))
 }
 \author{
 \strong{Maintainer}: Kyle Haynes \email{kyle@kylehaynes.com.au}
@@ -258,7 +298,8 @@ Other contributors:
   \item James P. Howard (Author of phonics, whose Statistics Canada, Lein, Phonex and Roger Root rules are reproduced) [copyright holder]
   \item The Apache Software Foundation (Apache Commons Codec, whose Metaphone is ported) [copyright holder]
   \item OpenRefine contributors (Fingerprint keyers followed by fingerprint() and src/fingerprint_table.h) [copyright holder]
-  \item Unicode, Inc. (CLDR Latin-ASCII data in src/ascii_fold_table.h) [copyright holder]
+  \item Unicode, Inc. (CLDR Latin-ASCII data in src/ascii_fold_table.h and Unicode Character Database categories in src/shape_table.h) [copyright holder]
+  \item WHATWG (HTML named character references in src/html_entities.h (CC BY 4.0)) [copyright holder]
 }
 
 }

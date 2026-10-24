@@ -24,6 +24,13 @@ book:
       chapters:
         - 01-about.qmd
         - 02-quickstart.qmd
+    - part: "Use cases"
+      chapters:
+        - uc-clean.qmd
+        - uc-extract.qmd
+        - uc-profile.qmd
+        - uc-link.qmd
+        - uc-privacy.qmd
     - part: "Under the hood"
       chapters:
         - 03-theory.qmd

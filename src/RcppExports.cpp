@@ -853,6 +853,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_hash_impl
+CharacterVector fast_hash_impl(const StringVector& x, int algo, bool keyed, const RawVector& key, double seed, int nthreads);
+RcppExport SEXP _fast_string_fast_hash_impl(SEXP xSEXP, SEXP algoSEXP, SEXP keyedSEXP, SEXP keySEXP, SEXP seedSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type algo(algoSEXP);
+    Rcpp::traits::input_parameter< bool >::type keyed(keyedSEXP);
+    Rcpp::traits::input_parameter< const RawVector& >::type key(keySEXP);
+    Rcpp::traits::input_parameter< double >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_hash_impl(x, algo, keyed, key, seed, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_levenshtein_impl
 NumericVector fast_levenshtein_impl(const StringVector& a, const StringVector& b, int nthreads, bool use_bytes);
 RcppExport SEXP _fast_string_fast_levenshtein_impl(SEXP aSEXP, SEXP bSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
@@ -981,6 +997,36 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_candidate_pairs_impl
+List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes, const IntegerVector& n_codes, const IntegerVector& half_windows, bool dedupe, double max_block, int nthreads);
+RcppExport SEXP _fast_string_fast_candidate_pairs_impl(SEXP x_codesSEXP, SEXP y_codesSEXP, SEXP n_codesSEXP, SEXP half_windowsSEXP, SEXP dedupeSEXP, SEXP max_blockSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const List& >::type x_codes(x_codesSEXP);
+    Rcpp::traits::input_parameter< const List& >::type y_codes(y_codesSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type n_codes(n_codesSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type half_windows(half_windowsSEXP);
+    Rcpp::traits::input_parameter< bool >::type dedupe(dedupeSEXP);
+    Rcpp::traits::input_parameter< double >::type max_block(max_blockSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_candidate_pairs_impl(x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_cluster_pairs_impl
+IntegerVector fast_cluster_pairs_impl(const IntegerVector& i, const IntegerVector& j, int n);
+RcppExport SEXP _fast_string_fast_cluster_pairs_impl(SEXP iSEXP, SEXP jSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const IntegerVector& >::type i(iSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type j(jSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_cluster_pairs_impl(i, j, n));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_minhash_pairs_impl
 List fast_minhash_pairs_impl(const StringVector& x, const StringVector& y, bool y_present, int q, int bands, int rows, double seed, double threshold, bool verify, bool use_bytes, int nthreads);
 RcppExport SEXP _fast_string_fast_minhash_pairs_impl(SEXP xSEXP, SEXP ySEXP, SEXP y_presentSEXP, SEXP qSEXP, SEXP bandsSEXP, SEXP rowsSEXP, SEXP seedSEXP, SEXP thresholdSEXP, SEXP verifySEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
@@ -1031,6 +1077,33 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type all(allSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     rcpp_result_gen = Rcpp::wrap(fast_extract_any_impl(patterns, x, ignore_case, use_bytes, all, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_parse_number_impl
+NumericVector fast_parse_number_impl(const StringVector& x, const std::string& decimal_mark, const StringVector& grouping_marks, int nthreads);
+RcppExport SEXP _fast_string_fast_parse_number_impl(SEXP xSEXP, SEXP decimal_markSEXP, SEXP grouping_marksSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type decimal_mark(decimal_markSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type grouping_marks(grouping_marksSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_parse_number_impl(x, decimal_mark, grouping_marks, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_valid_id_impl
+LogicalVector fast_valid_id_impl(const StringVector& x, int type, int nthreads);
+RcppExport SEXP _fast_string_fast_valid_id_impl(SEXP xSEXP, SEXP typeSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_valid_id_impl(x, type, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1175,6 +1248,156 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_replace_tokens_impl
+CharacterVector fast_replace_tokens_impl(const StringVector& x, const StringVector& from, const StringVector& to, bool ignore_case, int nthreads);
+RcppExport SEXP _fast_string_fast_replace_tokens_impl(SEXP xSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type to(toSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_replace_tokens_impl(x, from, to, ignore_case, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_pad_impl
+CharacterVector fast_pad_impl(const StringVector& x, int width, int side, const std::string& pad, int nthreads);
+RcppExport SEXP _fast_string_fast_pad_impl(SEXP xSEXP, SEXP widthSEXP, SEXP sideSEXP, SEXP padSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type width(widthSEXP);
+    Rcpp::traits::input_parameter< int >::type side(sideSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type pad(padSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_pad_impl(x, width, side, pad, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_string_shape_impl
+CharacterVector fast_string_shape_impl(const StringVector& x, bool collapse, bool ignore_case, int nthreads);
+RcppExport SEXP _fast_string_fast_string_shape_impl(SEXP xSEXP, SEXP collapseSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type collapse(collapseSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_string_shape_impl(x, collapse, ignore_case, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_url_encode_impl
+CharacterVector fast_url_encode_impl(const StringVector& x, bool reserved, bool repeated, int nthreads);
+RcppExport SEXP _fast_string_fast_url_encode_impl(SEXP xSEXP, SEXP reservedSEXP, SEXP repeatedSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type reserved(reservedSEXP);
+    Rcpp::traits::input_parameter< bool >::type repeated(repeatedSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_url_encode_impl(x, reserved, repeated, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_url_decode_impl
+CharacterVector fast_url_decode_impl(const StringVector& x, bool plus, int nthreads);
+RcppExport SEXP _fast_string_fast_url_decode_impl(SEXP xSEXP, SEXP plusSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type plus(plusSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_url_decode_impl(x, plus, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_html_unescape_impl
+CharacterVector fast_html_unescape_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_html_unescape_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_html_unescape_impl(x, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_token_sort_impl
+CharacterVector fast_token_sort_impl(const StringVector& x, bool unique, bool decreasing, int nthreads);
+RcppExport SEXP _fast_string_fast_token_sort_impl(SEXP xSEXP, SEXP uniqueSEXP, SEXP decreasingSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type unique(uniqueSEXP);
+    Rcpp::traits::input_parameter< bool >::type decreasing(decreasingSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_token_sort_impl(x, unique, decreasing, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_token_initials_impl
+CharacterVector fast_token_initials_impl(const StringVector& x, const std::string& sep, int nthreads);
+RcppExport SEXP _fast_string_fast_token_initials_impl(SEXP xSEXP, SEXP sepSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type sep(sepSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_token_initials_impl(x, sep, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_reverse_impl
+CharacterVector fast_reverse_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_reverse_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_reverse_impl(x, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_token_counts_impl
+List fast_token_counts_impl(const StringVector& x, bool ignore_case, int nthreads);
+RcppExport SEXP _fast_string_fast_token_counts_impl(SEXP xSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_token_counts_impl(x, ignore_case, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_longest_affix_impl
+IntegerVector fast_longest_affix_impl(const StringVector& x, const StringVector& affixes, bool suffix, bool ignore_case, int nthreads);
+RcppExport SEXP _fast_string_fast_longest_affix_impl(SEXP xSEXP, SEXP affixesSEXP, SEXP suffixSEXP, SEXP ignore_caseSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type affixes(affixesSEXP);
+    Rcpp::traits::input_parameter< bool >::type suffix(suffixSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_longest_affix_impl(x, affixes, suffix, ignore_case, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_tfidf_top_n_impl
 List fast_tfidf_top_n_impl(const StringVector& x, const StringVector& table, int top_n, int q, double min_score, bool use_bytes, int nthreads);
 RcppExport SEXP _fast_string_fast_tfidf_top_n_impl(SEXP xSEXP, SEXP tableSEXP, SEXP top_nSEXP, SEXP qSEXP, SEXP min_scoreSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
@@ -1252,6 +1475,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_fuzz_cdist_impl", (DL_FUNC) &_fast_string_fast_fuzz_cdist_impl, 6},
     {"_fast_string_fast_fuzz_extract_impl", (DL_FUNC) &_fast_string_fast_fuzz_extract_impl, 7},
     {"_fast_string_fast_fuzzy_top_n_impl", (DL_FUNC) &_fast_string_fast_fuzzy_top_n_impl, 10},
+    {"_fast_string_fast_hash_impl", (DL_FUNC) &_fast_string_fast_hash_impl, 6},
     {"_fast_string_fast_levenshtein_impl", (DL_FUNC) &_fast_string_fast_levenshtein_impl, 4},
     {"_fast_string_fast_levenshtein_matrix_impl", (DL_FUNC) &_fast_string_fast_levenshtein_matrix_impl, 4},
     {"_fast_string_fast_osa_distance_impl", (DL_FUNC) &_fast_string_fast_osa_distance_impl, 4},
@@ -1261,9 +1485,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_hamming_impl", (DL_FUNC) &_fast_string_fast_hamming_impl, 4},
     {"_fast_string_fast_edit_similarity_impl", (DL_FUNC) &_fast_string_fast_edit_similarity_impl, 5},
     {"_fast_string_fast_levenshtein_within_impl", (DL_FUNC) &_fast_string_fast_levenshtein_within_impl, 5},
+    {"_fast_string_fast_candidate_pairs_impl", (DL_FUNC) &_fast_string_fast_candidate_pairs_impl, 7},
+    {"_fast_string_fast_cluster_pairs_impl", (DL_FUNC) &_fast_string_fast_cluster_pairs_impl, 3},
     {"_fast_string_fast_minhash_pairs_impl", (DL_FUNC) &_fast_string_fast_minhash_pairs_impl, 11},
     {"_fast_string_fast_any_impl", (DL_FUNC) &_fast_string_fast_any_impl, 6},
     {"_fast_string_fast_extract_any_impl", (DL_FUNC) &_fast_string_fast_extract_any_impl, 6},
+    {"_fast_string_fast_parse_number_impl", (DL_FUNC) &_fast_string_fast_parse_number_impl, 4},
+    {"_fast_string_fast_valid_id_impl", (DL_FUNC) &_fast_string_fast_valid_id_impl, 3},
     {"_fast_string_fast_jaccard_impl", (DL_FUNC) &_fast_string_fast_jaccard_impl, 5},
     {"_fast_string_fast_jaccard_matrix_impl", (DL_FUNC) &_fast_string_fast_jaccard_matrix_impl, 5},
     {"_fast_string_fast_dice_impl", (DL_FUNC) &_fast_string_fast_dice_impl, 5},
@@ -1273,6 +1501,17 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_cosine_impl", (DL_FUNC) &_fast_string_fast_cosine_impl, 5},
     {"_fast_string_fast_cosine_matrix_impl", (DL_FUNC) &_fast_string_fast_cosine_matrix_impl, 5},
     {"_fast_string_fast_fuzzy_within_impl", (DL_FUNC) &_fast_string_fast_fuzzy_within_impl, 7},
+    {"_fast_string_fast_replace_tokens_impl", (DL_FUNC) &_fast_string_fast_replace_tokens_impl, 5},
+    {"_fast_string_fast_pad_impl", (DL_FUNC) &_fast_string_fast_pad_impl, 5},
+    {"_fast_string_fast_string_shape_impl", (DL_FUNC) &_fast_string_fast_string_shape_impl, 4},
+    {"_fast_string_fast_url_encode_impl", (DL_FUNC) &_fast_string_fast_url_encode_impl, 4},
+    {"_fast_string_fast_url_decode_impl", (DL_FUNC) &_fast_string_fast_url_decode_impl, 3},
+    {"_fast_string_fast_html_unescape_impl", (DL_FUNC) &_fast_string_fast_html_unescape_impl, 2},
+    {"_fast_string_fast_token_sort_impl", (DL_FUNC) &_fast_string_fast_token_sort_impl, 4},
+    {"_fast_string_fast_token_initials_impl", (DL_FUNC) &_fast_string_fast_token_initials_impl, 3},
+    {"_fast_string_fast_reverse_impl", (DL_FUNC) &_fast_string_fast_reverse_impl, 2},
+    {"_fast_string_fast_token_counts_impl", (DL_FUNC) &_fast_string_fast_token_counts_impl, 3},
+    {"_fast_string_fast_longest_affix_impl", (DL_FUNC) &_fast_string_fast_longest_affix_impl, 5},
     {"_fast_string_fast_tfidf_top_n_impl", (DL_FUNC) &_fast_string_fast_tfidf_top_n_impl, 7},
     {NULL, NULL, 0}
 };

@@ -2,11 +2,16 @@
 #'
 #' Fast, multi-core alternatives to base R's string functions, plus the
 #' building blocks of a record-linkage pipeline: text cleaning (match
-#' extraction, field splitting, ASCII folding, OpenRefine clustering keys),
+#' extraction, field splitting, padding, dictionary replacement of whole
+#' words, ASCII folding, URL and HTML entity decoding, OpenRefine clustering
+#' keys), parsing and validation (numbers from messy text, format profiles,
+#' identifier check digits, keyed hashing for pseudonymisation),
 #' fixed-format date and timestamp parsing, phonetic blocking keys,
-#' string-similarity and edit-distance measures, and candidate search that
-#' never builds a full comparison matrix (top-N lookup, everything within k
-#' edits, TF-IDF n-gram matching, MinHash locality-sensitive hashing).
+#' string-similarity and edit-distance measures, candidate pairs by
+#' multi-pass blocking or the sorted neighbourhood method, candidate search
+#' that never builds a full comparison matrix (top-N lookup, everything
+#' within k edits, TF-IDF n-gram matching, MinHash locality-sensitive
+#' hashing), and entity clusters from matched pairs.
 #'
 #' Regular expressions run on PCRE2, a single fixed string on a prepared
 #' literal searcher and many fixed strings on an Aho-Corasick automaton, and
@@ -67,4 +72,9 @@
 #' reference <- c("JONES, MARY", "SMITH, JOHN")
 #' round(jaro_winkler_matrix(clean, reference), 2)
 #' fuzzy_match(clean, reference, min_score = 0.85)
+#'
+#' # Or deduplicate: candidate pairs, scores, then one ID per person.
+#' p <- block_pairs(soundex(clean))
+#' p <- p[jaro_winkler(clean[p$x_index], clean[p$y_index]) > 0.9, ]
+#' cluster_pairs(p, n = length(clean))
 "_PACKAGE"

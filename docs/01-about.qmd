@@ -25,6 +25,19 @@ gap none of them cover on another:
 | Jaccard / cosine q-gram similarity | no | no | `stringdist(method="jaccard"/"cosine")` | no | **yes, parallelised** |
 | Dice / Tversky q-gram similarity | no | no | no | no | **yes, parallelised** |
 | RapidFuzz/fuzzywuzzy scorers (`ratio`, `partial_ratio`, token ratios, `WRatio`) and `extract()` | no | no | no | no | **yes** (port of Python's `RapidFuzz`) |
+| Any of thousands of literal terms in one pass (Aho-Corasick) | no | one pattern at a time | — | — | **yes** (`fgrepl_any()`, `fwhich_any()`, ...) |
+| Approximate substring search | `agrepl()` | no | `afind()` | — | **yes, parallelised** (`fagrepl()`) |
+| Match extraction with capture groups | `regmatches()` | `stri_extract()`, `stri_match()` | — | — | **yes, parallelised** (`fextract()`) |
+| Whole-word dictionary replacement | no | one regex per word | — | — | **yes** (`freplace_tokens()`) |
+| HTML entity decoding | no | no | — | — | **yes** (`html_unescape()`) |
+| Numbers from messy text | no | no | — | — | **yes** (`fparse_number()`; `readr::parse_number()` is serial) |
+| Format profiles (`"AAA 9999"`) | no | no | — | — | **yes** (`string_shape()`) |
+| Identifier check digits (Luhn, ABN, TFN, Medicare, ISBN, IBAN, ...) | no | no | — | — | **yes** (`valid_id()`) |
+| Vectorised digests and keyed HMAC pseudonyms | no | no | — | — | **yes, parallelised** (`fhash()`; `openssl` is serial) |
+| OpenRefine clustering keys | no | no | — | — | **yes** (`fingerprint()`, `ngram_fingerprint()`) |
+| Candidate pairs: multi-pass blocking, sorted neighbourhood | no | no | — | blocking via `blockfld` in `compare.*()` | **yes** (`block_pairs()`, `sorted_neighbourhood()`) |
+| Candidates within k edits, by TF-IDF or MinHash, without a full matrix | no | no | `amatch()` (best only) | — | **yes** (`fuzzy_within()`, `tfidf_top_n()`, `minhash_pairs()`) |
+| Entity clusters from matched pairs | no | no | — | — | **yes** (`cluster_pairs()`; `igraph` has components) |
 
 A few things worth calling out explicitly:
 
@@ -41,9 +54,10 @@ A few things worth calling out explicitly:
   Tversky, token-reorder-aware comparison, the RapidFuzz scorers). The
   benchmark chapter measures the overlapping kernels on the current
   checkout. What `stringdist` still has that this package doesn't is the
-  raw LCS and q-gram-count distances (`fuzz_ratio()` is a normalised LCS
-  similarity) — and it has nothing on the
-  regex/substitution side, which is the other half of `fast.string`.
+  q-gram-count distance (LCS distances are covered by `lcs_seq_distance()`
+  and `indel_distance()`) — and it has nothing on the regex/substitution
+  side, the text-cleaning and validation functions, or candidate-pair
+  generation, which are the other half of `fast.string`.
 - **RecordLinkage** is a full record-linkage *framework* (blocking,
   EM-based classification, training), not a string-function library. Its
   `soundex()`/`jarowinkler()` are useful comparison points (used directly

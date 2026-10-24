@@ -15,7 +15,9 @@ Authors@R: c(
     person("OpenRefine contributors", role = "cph",
            comment = "Fingerprint keyers followed by fingerprint() and src/fingerprint_table.h"),
     person("Unicode, Inc.", role = "cph",
-           comment = "CLDR Latin-ASCII data in src/ascii_fold_table.h")
+           comment = "CLDR Latin-ASCII data in src/ascii_fold_table.h and Unicode Character Database categories in src/shape_table.h"),
+    person("WHATWG", role = "cph",
+           comment = "HTML named character references in src/html_entities.h (CC BY 4.0)")
     )
 Depends:
     R (>= 4.1.0)
@@ -24,8 +26,13 @@ Description: Fast equivalents of grepl(), grep(), sub(), gsub() and agrepl()
     Aho-Corasick automata for fixed strings, and Myers' bit-parallel
     algorithm for approximate matching, parallelised across CPU cores via
     Intel TBB through RcppParallel. Also provides match extraction, field
-    splitting, whitespace squishing, ASCII folding and 'OpenRefine'
-    clustering keys; byte- and Unicode-aware string similarities and edit
+    splitting, whitespace squishing, padding, whole-token dictionary
+    replacement, ASCII folding, URL and HTML entity decoding and
+    'OpenRefine' clustering keys; parsing numbers from messy text,
+    character-class shapes for profiling formats, check-digit validation of
+    identifiers (Luhn, ABN, ACN, TFN, Medicare, ISBN, EAN, IBAN) and keyed
+    hashing (HMAC with SHA-256, SHA-512, SHA-1 or MD5, and XXH64) for
+    pseudonymisation; byte- and Unicode-aware string similarities and edit
     distances (Levenshtein with weights, OSA, Damerau-Levenshtein, LCS,
     Indel, Editex, Smith-Waterman-Gotoh, Monge-Elkan, q-gram set and cosine
     similarity, and edit operations); ports of the 'RapidFuzz'
@@ -36,7 +43,9 @@ Description: Fast equivalents of grepl(), grep(), sub(), gsub() and agrepl()
     Roger Root and ONCA); fixed-format date and timestamp parsing; and
     candidate search for record linkage without a full comparison matrix
     (top-N lookup, symmetric-delete search within k edits, TF-IDF n-gram
-    cosine matching and MinHash locality-sensitive hashing). Includes a
+    cosine matching and MinHash locality-sensitive hashing), multi-pass
+    blocking and the sorted neighbourhood method for candidate pairs, and
+    connected-component clustering of matched pairs. Includes a
     reproducible benchmark harness for measuring workload- and
     platform-specific performance.
 License: MIT + file LICENSE
@@ -55,7 +64,10 @@ Suggests:
     RecordLinkage,
     phonics,
     microbenchmark,
-    knitr
+    knitr,
+    openssl,
+    digest,
+    igraph
 LinkingTo:
     Rcpp,
     RcppParallel (>= 5.1.1)

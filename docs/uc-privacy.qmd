@@ -1,0 +1,156 @@
+# Pseudonymise identifiers {#sec-uc-privacy}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+```
+
+Linking data held by different organisations often means sharing
+identifiers that should not leave the building: tax file numbers, Medicare
+numbers, names and dates of birth. The usual answer is to replace each
+identifier with a **pseudonym** -- a value that is the same every time the
+same identifier goes in, so records still join, but that cannot be turned
+back into the identifier. `fhash()` computes the digests this needs, over
+whole columns and on every core.
+
+This chapter is about using hashing *correctly* for that purpose. Hashing is
+one control among several -- access rules, separation of duties, output
+checking -- not a substitute for them.
+
+## Why an unkeyed hash is not a pseudonym
+
+A plain SHA-256 digest looks opaque, but most identifiers come from a small,
+structured space. Anyone who knows the format can hash every possible value
+and look the digest up. A million 9-digit candidates take a moment:
+
+```{r}
+#| label: brute-force
+candidates <- sprintf("%09d", 0:999999)
+system.time(digests <- fhash(candidates))
+
+leaked <- fhash("000654321")          # a digest from a "de-identified" file
+candidates[match(leaked, digests)]    # ...is an identifier again
+```
+
+At that rate the whole 9-digit space -- every possible TFN -- is a lunch
+break on one laptop; most of the time above is R allocating the result
+strings, and dedicated hardware computes billions of digests a second.
+Names and dates of birth are an even smaller space. So an unkeyed hash of an
+identifier is, for privacy purposes, the identifier.
+
+## Keyed hashing (HMAC)
+
+Give `fhash()` a secret `key` and it computes an HMAC instead (RFC 2104).
+Without the key nobody can compute the pseudonym of a guessed identifier,
+so the dictionary attack above fails; with it, the same identifier always
+gets the same pseudonym:
+
+```{r}
+#| label: hmac
+key <- "a long random secret held only by the linkage unit"
+fhash(c("123456782", "123456782", "987654321"), key = key)
+```
+
+Generate the key randomly (for example `openssl::rand_bytes(32)`, which
+`fhash()` accepts as a raw vector), keep it out of code and version
+control, and give it only to the people who must compute pseudonyms. Two
+custodians who hash with the same key can send their pseudonymised
+extracts to a linkage unit that never sees an identifier, and that unit can
+join them exactly.
+
+## Normalise before you hash
+
+Hashing is exact: one character of difference gives an unrelated digest.
+Formatting differences that a human would ignore therefore break the join,
+unless every party normalises the same way first:
+
+```{r}
+#| label: normalise
+raw <- c("123456782", "123 456 782", "123-456-782")
+fhash(raw, key = key)                                  # three pseudonyms
+fhash(fgsub("[^0-9]", "", raw), key = key)             # one pseudonym
+```
+
+Write the normalisation down and share it with the key. For names that
+means case, accents, punctuation and whitespace at least
+(`toupper()`, `ascii_fold()`, `fgsub()`, `fsquish()`), and often nicknames
+and titles too (`freplace_tokens()`, @sec-uc-clean). Validate identifiers
+before hashing (`valid_id()`, @sec-uc-profile): a mistyped number hashes to a
+pseudonym that will never match anything.
+
+## Linkage keys from names and dates of birth
+
+Where there is no shared identifier, a *statistical linkage key* built from
+name fragments, date of birth and sex stands in for one. In Australian
+health and community-services data the standard is the AIHW's SLK-581:
+letters 2, 3 and 5 of the family name, letters 2 and 3 of the given name,
+the date of birth as `DDMMYYYY` and a sex code. A sketch of the core rules,
+built from vectorised pieces, then hashed with the key:
+
+```{r}
+#| label: slk581
+slk_letters <- function(name, positions, missing) {
+    letters_only <- fgsub("[^A-Z]", "", toupper(ascii_fold(name)))
+    # short names are padded with "2"
+    padded <- fpad(letters_only, max(positions), side = "right", pad = "2")
+    out <- do.call(paste0, lapply(positions, function(p) fsubstr(padded, p, p)))
+    out[is.na(name) | !nzchar(letters_only)] <- missing
+    out
+}
+slk581 <- function(family, given, dob, sex) {
+    paste0(slk_letters(family, c(2, 3, 5), "999"),
+           slk_letters(given, c(2, 3), "99"),
+           fgsub("/", "", format_date(dob, "dmy"), fixed = TRUE),
+           sex)
+}
+
+people <- data.frame(
+    family = c("O'Brien", "Smith", "Ng", "Smith-Jones", NA),
+    given  = c("Mary", "Jo", "Li", "Bill", "Ann"),
+    dob    = as.Date(c("1985-03-15", "1990-07-22", "1975-12-01", "1988-01-05",
+                       "2000-02-29")),
+    sex    = c(2, 1, 9, 1, 2)
+)
+people$slk <- slk581(people$family, people$given, people$dob, people$sex)
+people$pseudonym <- fhash(people$slk, key = key)
+people[, c("family", "given", "slk", "pseudonym")]
+```
+
+The AIHW specification has further rules (for example for names given only
+as initials) -- follow it for production use. An SLK is coarse by design:
+different people can share one, and one person's key changes with a change
+of surname, so treat matches on it as evidence, not proof.
+
+## Fast fingerprints for change detection
+
+Not every hash needs to be secret. XXH64 is a fast, non-cryptographic
+64-bit hash: useful for spotting which rows changed between two extracts,
+partitioning data or building compact join keys. Hash each row's fields
+joined with a separator that cannot occur in the data:
+
+```{r}
+#| label: change-detection
+old <- data.frame(id = 1:5, name = c("A", "B", "C", "D", "E"),
+                  addr = c("1 X St", "2 Y St", "3 Z St", "4 W St", "5 V St"))
+new <- old
+new$addr[c(2, 5)] <- c("22 Y St", "5 V Street")
+new <- rbind(new, data.frame(id = 6, name = "F", addr = "6 U St"))
+
+row_hash <- function(df) fhash(do.call(paste, c(df, sep = "\x1f")), "xxh64")
+new$id[!row_hash(new) %in% row_hash(old)]     # rows that are new or changed
+```
+
+## Which algorithm
+
+| Purpose | Use |
+|---|---|
+| Pseudonyms for sharing or linking | `fhash(x, "sha256", key = key)` (or `"sha512"`) |
+| Matching an existing hashed dataset | whatever it used -- often unkeyed SHA-256, or MD5/SHA-1 for older data |
+| Change detection, partitioning, compact keys | `fhash(x, "xxh64")` |
+
+MD5 and SHA-1 are broken for collision resistance; use them only to match
+data that is already hashed that way. Digests agree with `openssl` and
+`digest`, so pseudonyms computed here can be reproduced elsewhere -- and
+strings are hashed as UTF-8, so the result does not depend on how R happens
+to store the text.

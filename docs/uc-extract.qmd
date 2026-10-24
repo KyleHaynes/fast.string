@@ -1,0 +1,199 @@
+# Find, flag and extract {#sec-uc-extract}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+```
+
+Free-text fields hide structured values -- a postcode at the end of an
+address, an amount in a description, a drug name in a case note. This
+chapter is about getting them out: flagging records that mention any of a
+long list of terms, tolerating misspellings, and extracting fields and
+numbers in one vectorised pass.
+
+| Task | Function | Instead of |
+|---|---|---|
+| Does the text mention any of N terms? Which? How often? | `fgrepl_any()`, `fwhich_any()`, `fcount_any()`, `fextract_any()` | `grepl(paste(terms, collapse = "|"), x)` |
+| The same, allowing typos | `fagrepl()`, `fagrep()` | `agrepl()`, `agrep()` |
+| First or every regex match, or a capture group | `fextract()`, `fextract_all()` | `regmatches()` + `regexpr()`/`gregexpr()` |
+| One field of delimited text | `fsplit_field()` | `sapply(strsplit(x, sep), "[", i)` |
+| Numbers inside text | `fparse_number()` | `readr::parse_number()`, `as.numeric(gsub(...))` |
+| Count matches per string | `fcount()` | `lengths(gregexpr(...))` with `NA` fixes |
+
+## Flag records that mention any of many terms
+
+Keyword lists are long -- medicines, product codes, place names, sanctions
+lists -- and the obvious approaches scale badly: one `grepl()` per term
+reads the text once per term, and a single alternation of thousands of
+terms is slow for a backtracking regex engine. `fgrepl_any()` and its
+siblings build an Aho-Corasick automaton from the terms and read each
+string once, however many terms there are:
+
+```{r}
+#| label: any-basic
+notes <- c("Pt given paracetamol 500mg and ibuprofen",
+           "Reports nausea after AMOXICILLIN course",
+           "No medication. Seen by police at home",
+           "Advised to stop taking aspirin; started warfarin",
+           "paracetemol 1g PRN",
+           "Discussed diet and exercise")
+drugs <- c("paracetamol", "ibuprofen", "amoxicillin", "aspirin", "warfarin",
+           "ice", "codeine")
+
+data.frame(
+    any   = fgrepl_any(drugs, notes, ignore.case = TRUE),
+    first = drugs[fwhich_any(drugs, notes, ignore.case = TRUE)],
+    count = fcount_any(drugs, notes, ignore.case = TRUE)
+)
+```
+
+`fwhich_any()` reports the *first term in the list* that occurs, so the
+order of `terms` is a priority order -- put the most specific or most
+serious terms first. `fextract_any(all = TRUE)` lists every occurrence.
+
+Two things stand out. The terms are matched as substrings, so `"ice"` (the
+street name for methamphetamine) is found inside `"police"`. Pad both sides
+with spaces to match whole words only:
+
+```{r}
+#| label: any-words
+as_words <- function(s) paste0(" ", fsquish(fgsub("[^[:alnum:]]+", " ", s)), " ")
+fextract_any(paste0(" ", drugs, " "), as_words(notes), all = TRUE,
+             ignore.case = TRUE)
+```
+
+And `"paracetemol"` is misspelled, so no exact method finds it -- that is
+the next section.
+
+The speed difference is large even for a modest list. Here are 100,000
+notes against 2,007 terms:
+
+```{r}
+#| label: any-timing
+set.seed(2)
+n <- 1e5
+vocab <- c(drugs, "patient", "reviewed", "today", "pain", "mg", "daily",
+           "home", "police", "nurse")
+big <- vapply(seq_len(n), function(i) paste(sample(vocab, 8, TRUE), collapse = " "), "")
+terms <- c(drugs, vapply(1:2000, function(i) paste(sample(letters, 8, TRUE), collapse = ""), ""))
+
+system.time(hit_fast <- fgrepl_any(terms, big))
+system.time(hit_base <- grepl(paste(terms, collapse = "|"), big))
+identical(hit_fast, hit_base)
+```
+
+## Allow for typos
+
+`fagrepl()` is `agrepl()` -- the same arguments and the same results --
+computed with Myers' bit-parallel algorithm on every core. It finds the
+pattern anywhere in each string within `max.distance` edits:
+
+```{r}
+#| label: agrep
+fagrepl("paracetamol", notes, max.distance = 2, ignore.case = TRUE)
+identical(fagrepl("paracetamol", notes, max.distance = 2, ignore.case = TRUE),
+          agrepl("paracetamol", notes, max.distance = 2, ignore.case = TRUE))
+```
+
+For a list of terms, call it once per term; it is fast enough that a few
+hundred terms over a million notes is practical. When the question is
+"which dictionary entry is this *whole* value closest to", use
+`fuzzy_within()` instead (@sec-uc-link).
+
+## Extract values with regular expressions
+
+`fextract()` returns the first match per string, or one capture group of
+it; `fextract_all()` returns every match. Here are the state and postcode
+at the end of an Australian address:
+
+```{r}
+#| label: extract
+addr <- c("12 Smith St, Brisbane QLD 4000", "Unit 3, 45 North Rd, Darwin NT 0800",
+          "PO Box 99, Hobart TAS 7001", "No postcode here")
+data.frame(
+    state    = fextract("\\b(NSW|QLD|VIC|SA|WA|TAS|NT|ACT)\\s+[0-9]{4}$", addr, group = 1),
+    postcode = fextract("\\b(NSW|QLD|VIC|SA|WA|TAS|NT|ACT)\\s+([0-9]{4})$", addr, group = 2)
+)
+```
+
+And every phone number or email address in a message:
+
+```{r}
+#| label: extract-all
+msg <- c("Call 0412 345 678 or 07 3123 4567", "email a.b@x.com, c@y.org", "nothing")
+fextract_all("0[0-9][0-9 ]{7,11}[0-9]", msg)
+fextract_all("[[:alnum:]._]+@[[:alnum:].]+\\.[a-z]+", msg)
+```
+
+Patterns follow the same rules as `fgrepl()`: base R's extended regular
+expressions by default, PCRE with `perl = TRUE`, literal text with
+`fixed = TRUE`. Strings with no match give `NA` (or `character(0)` from
+`fextract_all()`), so the result lines up with the input row for row.
+
+## Split delimited fields
+
+`fsplit_field()` returns one field of delimited text without building the
+list that `strsplit()` would, which matters when you only want one or two
+fields of millions of rows:
+
+```{r}
+#| label: split-field
+full <- c("SMITH, John Paul", "O'BRIEN, Mary", "NGUYEN,Van  Anh", "MADONNA")
+data.frame(full,
+           surname = fsplit_field(full, ",", 1, fixed = TRUE),
+           given   = fsquish(fsplit_field(full, ",", 2, fixed = TRUE)))
+
+codes <- c("QLD|4000|BRISBANE", "NSW|2000|SYDNEY|CBD", "VIC||MELBOURNE")
+data.frame(state    = fsplit_field(codes, "|", 1, fixed = TRUE),
+           postcode = fsplit_field(codes, "|", 2, fixed = TRUE),
+           last     = fsplit_field(codes, "|", -1, fixed = TRUE))
+```
+
+Every field counts, including empty ones (`"VIC||MELBOURNE"` has an empty
+postcode), and negative positions count from the end.
+
+## Numbers inside text
+
+Amounts typed into free-text or spreadsheet columns come with currency
+symbols, thousands separators, units and labels. `fparse_number()` finds
+the first number in each string and ignores the rest:
+
+```{r}
+#| label: parse-number
+prices <- c("$1,234.50", "AUD 99", "12.5%", "approx. 3,000 kg", "-$45.10",
+            "(1,200)", "N/A", "Free")
+data.frame(prices,
+           fparse_number = fparse_number(prices),
+           readr = suppressWarnings(readr::parse_number(prices)),
+           gsub  = suppressWarnings(as.numeric(gsub("[^0-9.-]", "", prices))))
+```
+
+The common shortcut of deleting everything but digits fails as soon as the
+text contains another full stop (`"approx."` becomes `0.3`).
+`readr::parse_number()` returns `NA` for that case and for a minus sign in
+front of a currency symbol, and (in our tests) rounds about a quarter of
+two-decimal amounts to a neighbouring double; `fparse_number()` returns
+exactly what `as.numeric()` gives for the number it finds. Accounting-style negatives such as
+`"(1,200)"` are read as positive by both, so test for the parentheses
+separately if your data uses them. Other conventions are one argument
+away:
+
+```{r}
+#| label: parse-number-eu
+fparse_number(c("1.234,50 \u20ac", "12,5 %", "1 234 567,89"),
+              decimal_mark = ",", grouping_mark = c(".", " "))
+```
+
+## Count things per record
+
+`fcount()` counts matches per string, which turns data-quality rules into
+one vectorised call each -- digits in a name field, or the number of words:
+
+```{r}
+#| label: count
+names <- c("JOHN SMITH", "KYLE 2", "UNKNOWN 0000", "MARY-JANE O'NEIL")
+data.frame(names, digits = fcount("[0-9]", names), words = fcount("[^ ]+", names))
+```
+
+@sec-uc-profile builds on this to profile whole columns.

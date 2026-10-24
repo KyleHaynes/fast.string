@@ -34,7 +34,28 @@
         fchartr = "chartr() equivalent",
         fsquish      = "trim and collapse inner whitespace",
         fsplit_field = "one field of delimited text",
-        ascii_fold   = "accents and symbols to ASCII"
+        ascii_fold   = "accents and symbols to ASCII",
+        fpad            = "pad to a width, e.g. zero-pad",
+        freplace_tokens = "replace whole words from a dictionary",
+        "Web text" = list(
+            url_encode    = "URLencode() equivalent",
+            url_decode    = "URLdecode() equivalent",
+            html_unescape = "decode HTML character references"
+        )
+    ),
+    "Tokens & affixes" = list(
+        token_counts   = "token and document frequencies",
+        token_sort     = "sort the words in each string",
+        token_initials = "initials, e.g. JPS",
+        freverse       = "reverse, keeping accents on letters",
+        longest_prefix = "index of the longest matching prefix",
+        longest_suffix = "index of the longest matching suffix"
+    ),
+    "Parsing, validation & hashing" = list(
+        fparse_number = "numbers from text such as $1,234.50",
+        valid_id      = "check digits: ABN, TFN, IBAN, ...",
+        string_shape  = "format profile, e.g. AAA 9999",
+        fhash         = "SHA-256, MD5, XXH64; keyed HMAC"
     ),
     "Clustering keys" = list(
         fingerprint       = "OpenRefine fingerprint key",
@@ -144,6 +165,11 @@
         tfidf_top_n      = "top-N by TF-IDF n-gram cosine",
         tfidf_match      = "best match by TF-IDF cosine",
         minhash_pairs    = "MinHash LSH candidate pairs"
+    ),
+    "Blocking & clustering" = list(
+        block_pairs          = "pairs that share any key",
+        sorted_neighbourhood = "pairs with nearby sorted keys",
+        cluster_pairs        = "entity IDs from matched pairs"
     ),
     "Benchmarking" = list(
         run_benchmark_example = "interactive speed demo vs base R"

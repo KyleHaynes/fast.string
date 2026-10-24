@@ -416,6 +416,92 @@ ascii_fold(c("François Müller", "Æsir Ørsted", "Straße"))
 ascii_fold("Δι café", sub = "")
 ```
 
+### `fpad()`
+
+Pads each string to at least `width` characters, like `stringr::str_pad()`.
+Width counts characters (code points), so accented text pads correctly.
+
+```r
+fpad(x, width, side = c("left", "right", "both"), pad = " ", nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `side` | `"left"` (right-aligns the text), `"right"` or `"both"` (the left gets the smaller half). |
+| `pad` | A single character. |
+
+```{r}
+fpad(c("800", "4000", "2", NA), 4, pad = "0")
+fpad("abc", 7, side = "both", pad = "*")
+```
+
+### `freplace_tokens()`
+
+Splits each string at whitespace, replaces every token found in `from` with
+the matching element of `to` (`""` deletes it) and joins the tokens with
+single spaces. Only whole tokens are replaced; replacements are not
+re-scanned. See @sec-uc-clean for dictionaries of abbreviations and
+nicknames.
+
+```r
+freplace_tokens(x, from, to, ignore_case = FALSE, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `from` | Tokens to replace: non-empty, no whitespace; the first of any duplicates wins. |
+| `to` | Replacements, the same length as `from` or length 1. |
+| `ignore_case` | Match regardless of the case of ASCII letters. |
+
+**Returns:** character vector; the result is squished even where nothing is
+replaced.
+
+```{r}
+freplace_tokens(c("12 SMITH ST", "  7   KING   ST  "), c("ST", "RD"),
+                c("STREET", "ROAD"))
+freplace_tokens("Dr John Smith", c("dr", "mr"), "", ignore_case = TRUE)
+```
+
+### `url_encode()` / `url_decode()`
+
+Percent-encoding as `utils::URLencode()` and decoding as
+`utils::URLdecode()`, over whole vectors in parallel. `url_decode()` keeps a
+broken escape such as `%zz` as it is, and with `plus = TRUE` decodes `+` as a
+space.
+
+```r
+url_encode(x, reserved = FALSE, repeated = FALSE, nthreads = NULL)
+url_decode(x, plus = FALSE, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `reserved` | Also encode the reserved characters (for one URL component). |
+| `repeated` | Encode strings that already contain `%xx` escapes (`URLencode()` returns them unchanged). |
+| `plus` | Decode `+` as a space, as form data and query strings use it. |
+
+```{r}
+enc <- url_encode(c("fish & chips", "caf\u00e9 /menu"), reserved = TRUE)
+enc
+url_decode(enc)
+url_decode("q=meat+pie%21", plus = TRUE)
+```
+
+### `html_unescape()`
+
+Decodes HTML character references exactly as Python's `html.unescape()`:
+all 2,231 named references of the HTML standard (including legacy ones
+without a semicolon) and decimal and hexadecimal numeric references, with
+the standard's rules for invalid numbers.
+
+```r
+html_unescape(x, nthreads = NULL)
+```
+
+```{r}
+html_unescape(c("Fish &amp; Chips", "caf&eacute; &#8211; open", "AT&T"))
+```
+
 ## Clustering keys
 
 ### `fingerprint()` / `ngram_fingerprint()`
@@ -434,6 +520,97 @@ ngram_fingerprint(x, n = 2L, nthreads = NULL)
 x <- c("Smith, John", "john SMITH", "John  Smith.", "Jon Smith")
 fingerprint(x)
 ngram_fingerprint(c("Acme Pty Ltd", "ACME PtyLtd"))
+```
+
+## Parsing, validation and hashing
+
+### `fparse_number()`
+
+The first number in each string, ignoring currency symbols, units, labels
+and grouping marks, like `readr::parse_number()`. A minus sign counts even
+with a currency symbol or space between it and the digits, but not when it
+joins two words (`"SKU-123"` is 123). The value is the correctly rounded
+double, as `as.numeric()` would give for the number found.
+
+```r
+fparse_number(x, decimal_mark = ".", grouping_mark = ",", nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `decimal_mark` | A single character. |
+| `grouping_mark` | Characters allowed between digit groups (`""` for none). |
+
+**Returns:** double vector, `NA` where a string holds no number.
+
+```{r}
+fparse_number(c("$1,234.50", "12.5%", "approx. 3,000 kg", "-$45", "n/a"))
+fparse_number("1.234,50 EUR", decimal_mark = ",", grouping_mark = ".")
+```
+
+### `valid_id()`
+
+Whether each string is a well-formed identifier of the given type: right
+length, right characters and a correct check digit, ignoring spaces and
+hyphens. Types: `"luhn"` (payment cards, IMEIs, ...), `"abn"`, `"acn"`,
+`"tfn"` (9 digits; 8-digit TFNs give `NA`), `"medicare"`, `"isbn"` (10 or
+13), `"ean"` (EAN-8, UPC-A, EAN-13, GTIN-14) and `"iban"`. Apart from
+Medicare, the rules are tested against `python-stdnum`.
+
+```r
+valid_id(x, type = c("luhn", "abn", "acn", "tfn", "medicare", "isbn", "ean", "iban"),
+         nthreads = NULL)
+```
+
+```{r}
+valid_id(c("51 824 753 556", "51 824 753 557"), "abn")
+valid_id(c("4111 1111 1111 1111", "4111 1111 1111 1112"), "luhn")
+valid_id("GB82 WEST 1234 5698 7654 32", "iban")
+```
+
+### `string_shape()`
+
+Each string's pattern of character classes -- `A` for an upper-case letter,
+`a` for a lower-case one, `9` for a digit, everything else kept -- for
+profiling the formats in a column (@sec-uc-profile). Classes follow Unicode
+categories; combining marks are dropped.
+
+```r
+string_shape(x, collapse = FALSE, ignore_case = FALSE, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `collapse` | Collapse each run of `A`, `a` or `9` to one character. |
+| `ignore_case` | Map every letter to `a`. |
+
+```{r}
+string_shape(c("0412 345 678", "(07) 3123 4567", "QLD 4000", "O'Brien"))
+string_shape(c("0412 345 678", "O'Brien"), collapse = TRUE)
+```
+
+### `fhash()`
+
+A lower-case hex digest of each string's UTF-8 bytes: SHA-256 (default),
+SHA-1, MD5, SHA-512 or the non-cryptographic XXH64. With a `key`, the SHA
+and MD5 digests become HMACs, the standard keyed pseudonym
+(@sec-uc-privacy). Digests agree with `openssl` and `digest`.
+
+```r
+fhash(x, algo = c("sha256", "sha1", "md5", "sha512", "xxh64"), key = NULL,
+      seed = 0, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `key` | Secret for an HMAC: a string or a raw vector. Not allowed with `"xxh64"`. |
+| `seed` | Seed for `"xxh64"`. |
+
+```{r}
+fhash("abc")
+fhash("abc", "md5")
+fhash("123456782", key = "secret")
+fhash("abc", "xxh64")
 ```
 
 ## Dates
@@ -966,6 +1143,69 @@ minhash_pairs(x, y = NULL, threshold = 0.5, q = 3L, n_hash = 128L,
 x <- c("12 SMITH STREET BRISBANE", "12 SMITH ST BRISBANE",
        "45 JONES ROAD IPSWICH", "45 JONES RD IPSWICH", "7 KING LANE")
 minhash_pairs(x, threshold = 0.4)
+```
+
+## Blocking and clustering
+
+### `block_pairs()`
+
+Every pair of records that agree exactly on at least one key. Each column of
+a data frame is one blocking pass; a pair found by several passes is
+reported once, with the first. `NA` keys never pair. With `y`, pairs link
+`x` to `y`; without it, pairs are within `x` (`x_index < y_index`).
+
+```r
+block_pairs(x, y = NULL, max_block_size = Inf, nthreads = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `x`, `y` | A key vector, or a data frame or list of keys (one per pass). |
+| `max_block_size` | Skip blocks with more records than this, with a warning. |
+
+**Returns:** data frame with `x_index`, `y_index` and `pass`.
+
+```{r}
+people <- data.frame(surname = c("SMITH", "SMYTH", "JONES", "SMITH"),
+                     dob = as.Date(c("1980-01-02", "1980-01-02", "1975-06-30",
+                                     "1990-12-01")))
+block_pairs(data.frame(soundex(people$surname), people$dob))
+```
+
+### `sorted_neighbourhood()`
+
+The sorted neighbourhood method: sorts the distinct key values and pairs
+records whose values are within `(window - 1) / 2` places of each other (and
+records with equal values), as Python's `recordlinkage` does. Several keys
+give several passes, as in `block_pairs()`.
+
+```r
+sorted_neighbourhood(x, y = NULL, window = 3L, nthreads = NULL)
+```
+
+```{r}
+surname <- c("SMITH", "SMITHE", "SMYTH", "JONES", "JONSON")
+sorted_neighbourhood(surname, window = 3)
+```
+
+### `cluster_pairs()`
+
+Entity identifiers from matched pairs: records joined by any chain of pairs
+share a cluster (connected components, by union-find). Clusters are
+numbered in the order of their lowest-indexed record; records in no pair are
+clusters of their own.
+
+```r
+cluster_pairs(i, j = NULL, n = NULL)
+```
+
+| Argument | Description |
+|---|---|
+| `i`, `j` | The two record indices of each pair, or a data frame of pairs as `i`. |
+| `n` | Number of records (default: the largest index). |
+
+```{r}
+cluster_pairs(c(1, 2, 5), c(2, 4, 6))
 ```
 
 ## Edit distance

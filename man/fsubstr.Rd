@@ -43,8 +43,13 @@ Other string utilities:
 \code{\link[=fchartr]{fchartr()}},
 \code{\link[=fingerprint]{fingerprint()}},
 \code{\link[=fnchar]{fnchar()}},
+\code{\link[=fpad]{fpad()}},
+\code{\link[=freplace_tokens]{freplace_tokens()}},
 \code{\link[=fsplit_field]{fsplit_field()}},
 \code{\link[=fsquish]{fsquish()}},
-\code{\link[=ftrimws]{ftrimws()}}
+\code{\link[=ftrimws]{ftrimws()}},
+\code{\link[=html_unescape]{html_unescape()}},
+\code{\link[=string_shape]{string_shape()}},
+\code{\link[=url_encode]{url_encode()}}
 }
 \concept{string utilities}

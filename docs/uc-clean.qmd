@@ -1,0 +1,232 @@
+# Clean and standardise text {#sec-uc-clean}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+```
+
+Most matching problems are really cleaning problems. Two records for the
+same business rarely differ by a typo; they differ by `&amp;` against `&`,
+`St.` against `Street`, `Müller` against `Mueller`, or a postcode that lost
+its leading zero on the way through a spreadsheet. This chapter collects the
+functions that remove that noise, each of them one vectorised, multi-core
+call.
+
+| Task | Function | Instead of |
+|---|---|---|
+| Decode `&amp;`, `&eacute;`, `&#8211;` | `html_unescape()` | `xml2` one string at a time, or nothing |
+| Decode `%20`, `+` in URLs and query strings | `url_decode()` | `utils::URLdecode()` (R code, per string) |
+| Trim and collapse all Unicode whitespace | `fsquish()` | `stringr::str_squish()` |
+| Accents and typographic symbols to ASCII | `ascii_fold()` | `stringi::stri_trans_general(x, "Latin-ASCII")` |
+| Replace whole words from a dictionary | `freplace_tokens()` | `strsplit()` + `match()` + `paste()` |
+| Restore leading zeros, fixed widths | `fpad()` | `stringr::str_pad()`, `formatC()` |
+| Group spelling variants | `fingerprint()`, `ngram_fingerprint()` | OpenRefine's key collision clustering |
+
+## Web residue: entities, escapes and odd spaces
+
+Text that has passed through a web page, a CMS export or a JSON API often
+arrives with HTML character references still in it, and with non-breaking
+or ideographic spaces where you expect ordinary ones.
+`html_unescape()` decodes every named and numeric reference of the HTML
+standard -- exactly as Python's `html.unescape()` does -- and `fsquish()`
+trims and collapses every kind of Unicode whitespace:
+
+```{r}
+#| label: web-residue
+scraped <- c("  Caf\u00e9\u00a0Nero ", "Fish &amp; Chips\tCo.",
+             "O\u2019Brien &#8211; Plumbing", "M\u00fcller\u3000GmbH",
+             "Smith &amp;&nbsp;Sons", "PLAIN NAME")
+fsquish(html_unescape(scraped))
+```
+
+`&nbsp;` decodes to a non-breaking space, which is why `fsquish()` runs
+second. Strings without an `&` are returned untouched (not even copied), so
+running `html_unescape()` over a column that is mostly clean costs almost
+nothing.
+
+Web logs and exported URLs carry percent-encoding instead. Pull out the part
+you need with `fextract()` and decode it; `plus = TRUE` treats `+` as a
+space, as HTML forms encode it:
+
+```{r}
+#| label: url-decode
+logs <- c("/search?q=fish+%26+chips&page=2", "/search?q=caf%C3%A9+latte",
+          "/search?page=1&q=100%25+beef", "/about")
+q <- fextract("[?&]q=([^&]*)", logs, group = 1)
+data.frame(q, decoded = url_decode(q, plus = TRUE))
+```
+
+`url_encode()` goes the other way, with `reserved = TRUE` for a single
+query value. Both agree with `utils::URLencode()`/`URLdecode()` -- except
+that a broken escape such as `%zz` is kept as it is rather than turned into
+garbage -- and are several hundred times faster, because the base functions
+loop over characters in R code.
+
+## Accents and typographic symbols
+
+Names keyed on different systems disagree about accents: one has
+`François Müller`, another `Francois Muller`. `ascii_fold()` applies the
+same Latin-to-ASCII transliteration as ICU (and `stringi`), including
+ligatures, Nordic letters and typographic punctuation:
+
+```{r}
+#| label: ascii-fold
+names <- c("Fran\u00e7ois M\u00fcller", "Zo\u00eb \u00c6lfric",
+           "Bj\u00f6rk Gu\u00f0mundsd\u00f3ttir", "\u0141\u00f3d\u017a",
+           "\u201cQuoted\u201d \u2013 dash", "\u00bd price \u2026")
+data.frame(names, folded = ascii_fold(names))
+```
+
+Characters with no ASCII spelling (other scripts, emoji) are kept, or
+replaced with `sub` when the output must be pure ASCII:
+
+```{r}
+#| label: ascii-fold-sub
+ascii_fold("Tokyo \u6771\u4eac caf\u00e9", sub = "?")
+```
+
+The phonetic codes (`soundex()`, `nysiis()` and the rest) already fold
+accented letters internally; fold explicitly before the similarity
+functions and before hashing, where `é` and `e` would otherwise differ.
+
+## Standardise words with a dictionary
+
+Abbreviations are the biggest single source of disagreement in addresses
+and organisation names. `freplace_tokens()` replaces every whitespace-
+separated token found in a dictionary, in one hashed pass per string. An
+empty replacement deletes the token, and the result comes back squished.
+Strip the punctuation that clings to tokens first:
+
+```{r}
+#| label: replace-tokens
+addr <- c("12 Smith St.", "3/45 North Rd", "UNIT 7, 9 KING STREET",
+          "Flat 2 18 Queen st", "U 5/22 the Esplanade Hwy")
+abbrev <- data.frame(
+    from = c("ST", "RD", "AVE", "HWY", "CRES", "PDE", "FLAT", "U"),
+    to   = c("STREET", "ROAD", "AVENUE", "HIGHWAY", "CRESCENT", "PARADE",
+             "UNIT", "UNIT")
+)
+std <- freplace_tokens(fgsub("[.,]+", " ", toupper(addr)), abbrev$from, abbrev$to)
+data.frame(addr, std)
+```
+
+Only whole tokens change -- `ST` becomes `STREET`, but `STAR` and `STREET`
+itself are left alone -- which is what makes a dictionary approach safe
+where `gsub("ST", "STREET", x)` is not. Matching can ignore ASCII case, and
+replacements may contain several words. The same mechanism maps name
+variants to one canonical form, here a (very) short nickname table:
+
+```{r}
+#| label: nicknames
+nick <- data.frame(
+    from = c("BILL", "BILLY", "WILL", "BOB", "ROB", "BOBBY", "PEG", "PEGGY",
+             "LIZ", "BETH"),
+    to   = c("WILLIAM", "WILLIAM", "WILLIAM", "ROBERT", "ROBERT", "ROBERT",
+             "MARGARET", "MARGARET", "ELIZABETH", "ELIZABETH")
+)
+freplace_tokens(c("BILL", "Bob", "peggy", "WILLIAM", "LIZ ANNE"),
+                nick$from, nick$to, ignore_case = TRUE)
+```
+
+Dictionaries of thousands of entries cost no more per token than a
+dictionary of ten, because each token is one hash lookup. The equivalent
+in base R splits every string into a list, matches and pastes back:
+
+```{r}
+#| label: replace-tokens-timing
+set.seed(1)
+n <- 2e5
+words <- c("12", "SMITH", "ST", "RD", "AVE", "UNIT", "MR", "DR", "JOHN",
+           "NORTH", "QLD", "4000")
+x <- vapply(seq_len(n), function(i) paste(sample(words, 5, TRUE), collapse = " "), "")
+
+system.time(freplace_tokens(x, abbrev$from, abbrev$to))
+system.time({
+    tok <- strsplit(x, " ", fixed = TRUE)
+    vapply(tok, function(t) {
+        m <- match(t, abbrev$from)
+        t[!is.na(m)] <- abbrev$to[m[!is.na(m)]]
+        paste(t, collapse = " ")
+    }, "")
+})
+```
+
+## Restore leading zeros
+
+Spreadsheets and CSV readers turn postcodes, phone numbers and identifiers
+into numbers and silently drop their leading zeros -- every Northern
+Territory postcode (`0800`-`0899`) comes back as three digits. `fpad()`
+puts them back; `side = "right"` pads text for fixed-width exports:
+
+```{r}
+#| label: pad
+fpad(as.character(c(800, 810, 2000, 4000, 870)), 4, pad = "0")
+fpad(c("ID", "NAME", "POSTCODE"), 10, side = "right")
+```
+
+Width counts characters, not bytes, so accented text pads correctly too.
+
+## Find the spelling variants
+
+Before matching against anything else, it helps to know how many ways one
+value is spelled *within* a column. OpenRefine's **key collision**
+clustering does this with a fingerprint: lower-case, fold accents, remove
+punctuation, then sort the unique words. Values that share a fingerprint
+are almost always the same thing:
+
+```{r}
+#| label: fingerprint
+companies <- c("Acme Pty Ltd", "ACME PTY. LTD.", "Ltd Acme Pty", "acme pty ltd ",
+               "Acme Holdings", "Bolt & Nut Co", "Bolt and Nut Co",
+               "Bolt & Nut Co.", "Cafe Nero", "Caf\u00e9 Nero")
+key <- fingerprint(companies)
+clusters <- split(companies, key)
+clusters[lengths(clusters) > 1]
+```
+
+`"Bolt and Nut Co"` stays out, because the fingerprint deletes `&` but keeps
+`and`. A dictionary pass first fixes that, which is the general pattern:
+standardise with `freplace_tokens()`, then cluster:
+
+```{r}
+#| label: fingerprint-dictionary
+key2 <- fingerprint(freplace_tokens(companies, "and", "&", ignore_case = TRUE))
+split(companies, key2)[["bolt co nut"]]
+```
+
+`ngram_fingerprint()` sorts the unique character n-grams instead of words,
+so it also joins values that differ by spacing or transposed letters
+(`n = 1` is the most forgiving):
+
+```{r}
+#| label: ngram-fingerprint
+ngram_fingerprint(c("Cafe Nero", "CafeNero", "Cafe Neor"), n = 1)
+```
+
+Use the clusters to build the dictionary for `freplace_tokens()`, or as a
+deduplication key in their own right.
+
+## A cleaning pipeline
+
+In practice these run as one function applied to each name or address
+column before blocking and scoring:
+
+```{r}
+#| label: pipeline
+clean_name <- function(x) {
+    x <- html_unescape(x)
+    x <- ascii_fold(x)
+    x <- toupper(x)
+    x <- fgsub("[^A-Z0-9 ]+", " ", x)
+    x <- freplace_tokens(x, c(nick$from, "DR", "MR", "MRS", "MS"),
+                         c(nick$to, "", "", "", ""))
+    fsquish(x)
+}
+clean_name(c("  Dr. Fran\u00e7ois  O\u2019Brien-Smith ", "MR&nbsp;BILL  JONES",
+             "bob jones"))
+```
+
+Every step is parallel and returns unchanged strings without copying them,
+so a pipeline like this keeps up with the matching steps that follow
+(@sec-uc-link) even at millions of rows.

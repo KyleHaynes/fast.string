@@ -93,6 +93,50 @@ fnchar(c("café", NA, ""), type = "chars")
 fchartr("'-", "  ", c("O'Brien", "Smith-Jones"))
 ```
 
+## Text cleaning and extraction
+
+Beyond the base equivalents, the cleaning functions handle what base R has
+no direct answer for: HTML entities, every kind of Unicode whitespace,
+accents, whole-word dictionaries and lost leading zeros
+(@sec-uc-clean has the full recipes).
+
+```{r}
+#| label: cleaning
+html_unescape("Fish &amp; Chips &#8211; open")
+fsquish("  12   Smith\tSt  ")
+ascii_fold("Fran\u00e7ois M\u00fcller")
+freplace_tokens("12 SMITH ST", c("ST", "RD"), c("STREET", "ROAD"))
+fpad(c("800", "4000"), 4, pad = "0")
+url_decode("q=meat+pie%21", plus = TRUE)
+```
+
+Extraction pulls structured values out of free text: regex matches and
+capture groups, one field of delimited text, any of thousands of literal
+terms in one pass, approximate matches, and numbers (@sec-uc-extract).
+
+```{r}
+#| label: extraction
+addr <- c("12 Smith St, Brisbane QLD 4000", "PO Box 99, Hobart TAS 7001")
+fextract("([0-9]{4})$", addr, group = 1)
+fsplit_field("SMITH, John", ",", 1, fixed = TRUE)
+fgrepl_any(c("aspirin", "warfarin"), c("started warfarin", "no meds"))
+fagrepl("paracetamol", "paracetemol 1g", max.distance = 1)
+fparse_number(c("$1,234.50", "-$45", "approx. 3,000 kg"))
+```
+
+## Profiling, validation and hashing
+
+`string_shape()` reduces values to their format, `valid_id()` checks
+identifier check digits, and `fhash()` computes digests and keyed
+pseudonyms (@sec-uc-profile, @sec-uc-privacy).
+
+```{r}
+#| label: profiling
+string_shape(c("0412 345 678", "(07) 3123 4567", "QLD 4000"))
+valid_id(c("51 824 753 556", "51 824 753 557"), "abn")
+fhash("123456782", key = "secret")
+```
+
 ## Dates
 
 `format_date()`/`fas.Date()` trade `base::as.Date()`'s locale-aware,
@@ -255,6 +299,21 @@ fuzzy_match(c("SMITH", "JONES"), choices)
 fuzzy_top_n("kitten", choices, method = "levenshtein", top_n = 2)
 ```
 
+## Candidate pairs and entity clusters
+
+`block_pairs()` and `sorted_neighbourhood()` generate candidate pairs from
+one or more keys without comparing every pair, and `cluster_pairs()` turns
+the pairs you accept into one identifier per entity (@sec-uc-link).
+
+```{r}
+#| label: pairs
+surname <- c("SMITH", "SMYTH", "JONES", "SMITHE")
+p <- block_pairs(soundex(surname))
+p
+sorted_neighbourhood(surname, window = 3)
+cluster_pairs(p, n = length(surname))
+```
+
 ## Q-gram similarity
 
 `jaccard_index()`, `dice_coefficient()`, `tversky_index()`, and
@@ -338,4 +397,8 @@ load timestamps with `fas.Date()`/`fas.POSIXct()`, normalises with
 `refined_soundex()`/`cologne()`/`format_date()`, scores candidates within
 each block with `jaro_winkler_tokens()` and `cosine_similarity()`, and
 stamps the result with `format_datetime()`. @sec-workflow walks through
-exactly that, end to end, on a small linkage example.
+exactly that, end to end, on a small linkage example, and the use-case
+chapters (@sec-uc-clean to @sec-uc-privacy) take each stage further --
+including a deduplication of 100,000 records with `block_pairs()`,
+`jaro_winkler()` and `cluster_pairs()` in well under a second
+(@sec-uc-link).

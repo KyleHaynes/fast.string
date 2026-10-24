@@ -233,6 +233,10 @@ fast_fuzzy_top_n_impl <- function(x, table, method, top_n, p, min_score, max_dis
     .Call(`_fast_string_fast_fuzzy_top_n_impl`, x, table, method, top_n, p, min_score, max_distance, match_na, nthreads, use_bytes)
 }
 
+fast_hash_impl <- function(x, algo, keyed, key, seed, nthreads) {
+    .Call(`_fast_string_fast_hash_impl`, x, algo, keyed, key, seed, nthreads)
+}
+
 fast_levenshtein_impl <- function(a, b, nthreads, use_bytes) {
     .Call(`_fast_string_fast_levenshtein_impl`, a, b, nthreads, use_bytes)
 }
@@ -269,6 +273,14 @@ fast_levenshtein_within_impl <- function(a, b, max_distance, nthreads, use_bytes
     .Call(`_fast_string_fast_levenshtein_within_impl`, a, b, max_distance, nthreads, use_bytes)
 }
 
+fast_candidate_pairs_impl <- function(x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads) {
+    .Call(`_fast_string_fast_candidate_pairs_impl`, x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads)
+}
+
+fast_cluster_pairs_impl <- function(i, j, n) {
+    .Call(`_fast_string_fast_cluster_pairs_impl`, i, j, n)
+}
+
 fast_minhash_pairs_impl <- function(x, y, y_present, q, bands, rows, seed, threshold, verify, use_bytes, nthreads) {
     .Call(`_fast_string_fast_minhash_pairs_impl`, x, y, y_present, q, bands, rows, seed, threshold, verify, use_bytes, nthreads)
 }
@@ -279,6 +291,14 @@ fast_any_impl <- function(patterns, x, ignore_case, use_bytes, mode, nthreads) {
 
 fast_extract_any_impl <- function(patterns, x, ignore_case, use_bytes, all, nthreads) {
     .Call(`_fast_string_fast_extract_any_impl`, patterns, x, ignore_case, use_bytes, all, nthreads)
+}
+
+fast_parse_number_impl <- function(x, decimal_mark, grouping_marks, nthreads) {
+    .Call(`_fast_string_fast_parse_number_impl`, x, decimal_mark, grouping_marks, nthreads)
+}
+
+fast_valid_id_impl <- function(x, type, nthreads) {
+    .Call(`_fast_string_fast_valid_id_impl`, x, type, nthreads)
 }
 
 fast_jaccard_impl <- function(a, b, q, nthreads, use_bytes) {
@@ -315,6 +335,50 @@ fast_cosine_matrix_impl <- function(a, b, q, nthreads, use_bytes) {
 
 fast_fuzzy_within_impl <- function(x, table, max_distance, method, prefix_length, use_bytes, nthreads) {
     .Call(`_fast_string_fast_fuzzy_within_impl`, x, table, max_distance, method, prefix_length, use_bytes, nthreads)
+}
+
+fast_replace_tokens_impl <- function(x, from, to, ignore_case, nthreads) {
+    .Call(`_fast_string_fast_replace_tokens_impl`, x, from, to, ignore_case, nthreads)
+}
+
+fast_pad_impl <- function(x, width, side, pad, nthreads) {
+    .Call(`_fast_string_fast_pad_impl`, x, width, side, pad, nthreads)
+}
+
+fast_string_shape_impl <- function(x, collapse, ignore_case, nthreads) {
+    .Call(`_fast_string_fast_string_shape_impl`, x, collapse, ignore_case, nthreads)
+}
+
+fast_url_encode_impl <- function(x, reserved, repeated, nthreads) {
+    .Call(`_fast_string_fast_url_encode_impl`, x, reserved, repeated, nthreads)
+}
+
+fast_url_decode_impl <- function(x, plus, nthreads) {
+    .Call(`_fast_string_fast_url_decode_impl`, x, plus, nthreads)
+}
+
+fast_html_unescape_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_html_unescape_impl`, x, nthreads)
+}
+
+fast_token_sort_impl <- function(x, unique, decreasing, nthreads) {
+    .Call(`_fast_string_fast_token_sort_impl`, x, unique, decreasing, nthreads)
+}
+
+fast_token_initials_impl <- function(x, sep, nthreads) {
+    .Call(`_fast_string_fast_token_initials_impl`, x, sep, nthreads)
+}
+
+fast_reverse_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_reverse_impl`, x, nthreads)
+}
+
+fast_token_counts_impl <- function(x, ignore_case, nthreads) {
+    .Call(`_fast_string_fast_token_counts_impl`, x, ignore_case, nthreads)
+}
+
+fast_longest_affix_impl <- function(x, affixes, suffix, ignore_case, nthreads) {
+    .Call(`_fast_string_fast_longest_affix_impl`, x, affixes, suffix, ignore_case, nthreads)
 }
 
 fast_tfidf_top_n_impl <- function(x, table, top_n, q, min_score, use_bytes, nthreads) {

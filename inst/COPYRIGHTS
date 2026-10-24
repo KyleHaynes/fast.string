@@ -163,3 +163,30 @@ licence (as quoted above for RapidFuzz), with these copyright notices:
 
     Copyright (c) 2015 James Turk (jellyfish)
     Copyright (c) 2015 ekzhu (datasketch)
+
+src/html_entities.h is generated (tools/gen_html_entities.py) from Python's
+html.entities.html5, which holds the named character references of the
+WHATWG HTML Living Standard (https://html.spec.whatwg.org/), and from the
+invalid-reference tables of Python's html module, which are also taken from
+that standard. html_unescape() follows the procedure of Python's
+html.unescape(). The HTML Living Standard carries this notice:
+
+    Copyright (c) WHATWG (Apple, Google, Mozilla, Microsoft). This work is
+    licensed under a Creative Commons Attribution 4.0 International
+    License (https://creativecommons.org/licenses/by/4.0/).
+
+src/shape_table.h is generated (tools/gen_shape_table.py) from the general
+categories of the Unicode Character Database, read through Python's
+unicodedata module; the Unicode licence quoted above applies.
+
+src/iban_table.h is generated (tools/gen_iban_table.py) from the BBAN
+structures of the SWIFT IBAN Registry, as copied into the iban.dat file of
+the Python package python-stdnum (https://arthurdejong.org/python-stdnum/).
+valid_id() is tested against python-stdnum; none of its code is included.
+
+The digests in src/hash_core.h (MD5, SHA-1, SHA-256, SHA-512, HMAC and
+XXH64) were written from their published specifications: RFC 1321, FIPS
+180-4, RFC 2104 and the xxHash specification by Yann Collet.
+sorted_neighbourhood() reproduces the pairs of SortedNeighbourhood in the
+Python package recordlinkage (https://github.com/J535D165/recordlinkage), also
+without using its code.

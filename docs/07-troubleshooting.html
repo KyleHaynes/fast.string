@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="generator" content="quarto-1.9.38">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>7&nbsp; Troubleshooting &amp; FAQ – fast.string</title>
+<title>12&nbsp; Troubleshooting &amp; FAQ – fast.string</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -275,7 +275,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./05-function-reference.html">Reference</a></li><li class="breadcrumb-item"><a href="./07-troubleshooting.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./05-function-reference.html">Reference</a></li><li class="breadcrumb-item"><a href="./07-troubleshooting.html"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -337,7 +337,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
- <span class="menu-text">Under the hood</span></a>
+ <span class="menu-text">Use cases</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -345,43 +345,84 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  <a href="./uc-clean.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Clean and standardise text</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  <a href="./uc-extract.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Find, flag and extract</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-profile.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Profile and validate columns</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-link.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
   </div>
 </li>
       </ul>
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
- <span class="menu-text">Reference</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">Under the hood</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
   </div>
 </li>
       </ul>
@@ -395,14 +436,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
 <li>
-<a href="#installation" id="toc-installation" class="nav-link active" data-scroll-target="#installation"><span class="header-section-number">7.1</span> Installation</a>
+<a href="#installation" id="toc-installation" class="nav-link active" data-scroll-target="#installation"><span class="header-section-number">12.1</span> Installation</a>
   <ul class="collapse">
 <li><a href="#could-not-find-tools-necessary-to-compile-a-package-install-fails" id="toc-could-not-find-tools-necessary-to-compile-a-package-install-fails" class="nav-link" data-scroll-target="#could-not-find-tools-necessary-to-compile-a-package-install-fails">“could not find tools necessary to compile a package” / install fails</a></li>
   <li><a href="#reinstalling-after-pulling-new-source-changes" id="toc-reinstalling-after-pulling-new-source-changes" class="nav-link" data-scroll-target="#reinstalling-after-pulling-new-source-changes">Reinstalling after pulling new source changes</a></li>
   </ul>
 </li>
   <li>
-<a href="#na-empty-strings-and-encoding" id="toc-na-empty-strings-and-encoding" class="nav-link" data-scroll-target="#na-empty-strings-and-encoding"><span class="header-section-number">7.2</span> NA, empty strings, and encoding</a>
+<a href="#na-empty-strings-and-encoding" id="toc-na-empty-strings-and-encoding" class="nav-link" data-scroll-target="#na-empty-strings-and-encoding"><span class="header-section-number">12.2</span> NA, empty strings, and encoding</a>
   <ul class="collapse">
 <li><a href="#why-does-my-function-return-na-for-a-non-na-input" id="toc-why-does-my-function-return-na-for-a-non-na-input" class="nav-link" data-scroll-target="#why-does-my-function-return-na-for-a-non-na-input">Why does my function return <code>NA</code> for a non-<code>NA</code> input?</a></li>
   <li><a href="#fchartr-silently-fell-back-to-basechartr-why" id="toc-fchartr-silently-fell-back-to-basechartr-why" class="nav-link" data-scroll-target="#fchartr-silently-fell-back-to-basechartr-why"><code>fchartr()</code> silently fell back to <code>base::chartr()</code> — why?</a></li>
@@ -411,26 +452,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul>
 </li>
   <li>
-<a href="#threading" id="toc-threading" class="nav-link" data-scroll-target="#threading"><span class="header-section-number">7.3</span> Threading</a>
+<a href="#threading" id="toc-threading" class="nav-link" data-scroll-target="#threading"><span class="header-section-number">12.3</span> Threading</a>
   <ul class="collapse">
 <li><a href="#does-nthreads-affect-later-calls" id="toc-does-nthreads-affect-later-calls" class="nav-link" data-scroll-target="#does-nthreads-affect-later-calls">Does <code>nthreads</code> affect later calls?</a></li>
   <li><a href="#does-nthreads-help-on-a-machine-with-few-cores" id="toc-does-nthreads-help-on-a-machine-with-few-cores" class="nav-link" data-scroll-target="#does-nthreads-help-on-a-machine-with-few-cores">Does <code>nthreads</code> help on a machine with few cores?</a></li>
   </ul>
 </li>
   <li>
-<a href="#regex-behaviour" id="toc-regex-behaviour" class="nav-link" data-scroll-target="#regex-behaviour"><span class="header-section-number">7.4</span> Regex behaviour</a>
+<a href="#regex-behaviour" id="toc-regex-behaviour" class="nav-link" data-scroll-target="#regex-behaviour"><span class="header-section-number">12.4</span> Regex behaviour</a>
   <ul class="collapse">
 <li><a href="#fsubfgsub-with-perl-false-replaced-a-different-match-than-base-r" id="toc-fsubfgsub-with-perl-false-replaced-a-different-match-than-base-r" class="nav-link" data-scroll-target="#fsubfgsub-with-perl-false-replaced-a-different-match-than-base-r"><code>fsub()</code>/<code>fgsub()</code> with <code>perl = FALSE</code> replaced a different match than base R</a></li>
   <li><a href="#a-warning-says-pcre2-error-match-limit-exceeded-for-element" id="toc-a-warning-says-pcre2-error-match-limit-exceeded-for-element" class="nav-link" data-scroll-target="#a-warning-says-pcre2-error-match-limit-exceeded-for-element">A warning says “PCRE2 error ‘match limit exceeded’ for element …”</a></li>
   <li><a href="#catastrophic-backtracking-am-i-safe" id="toc-catastrophic-backtracking-am-i-safe" class="nav-link" data-scroll-target="#catastrophic-backtracking-am-i-safe">Catastrophic backtracking — am I safe?</a></li>
   </ul>
 </li>
-  <li><a href="#getting-help" id="toc-getting-help" class="nav-link" data-scroll-target="#getting-help"><span class="header-section-number">7.5</span> Getting help</a></li>
+  <li><a href="#getting-help" id="toc-getting-help" class="nav-link" data-scroll-target="#getting-help"><span class="header-section-number">12.5</span> Getting help</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/07-troubleshooting.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./05-function-reference.html">Reference</a></li><li class="breadcrumb-item"><a href="./07-troubleshooting.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></a></li></ol></nav><div class="quarto-title">
-<h1 class="title"><span id="sec-troubleshooting" class="quarto-section-identifier"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></h1>
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./05-function-reference.html">Reference</a></li><li class="breadcrumb-item"><a href="./07-troubleshooting.html"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></a></li></ol></nav><div class="quarto-title">
+<h1 class="title"><span id="sec-troubleshooting" class="quarto-section-identifier"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></h1>
 </div>
 
 
@@ -444,8 +485,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   
 
 
-</header><section id="installation" class="level2" data-number="7.1"><h2 data-number="7.1" class="anchored" data-anchor-id="installation">
-<span class="header-section-number">7.1</span> Installation</h2>
+</header><section id="installation" class="level2" data-number="12.1"><h2 data-number="12.1" class="anchored" data-anchor-id="installation">
+<span class="header-section-number">12.1</span> Installation</h2>
 <section id="could-not-find-tools-necessary-to-compile-a-package-install-fails" class="level3"><h3 class="anchored" data-anchor-id="could-not-find-tools-necessary-to-compile-a-package-install-fails">“could not find tools necessary to compile a package” / install fails</h3>
 <p><code>fast.string</code> compiles C++ source on install (PCRE2 bindings, prepared literal search, RcppParallel). You need a working toolchain:</p>
 <ul>
@@ -460,8 +501,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>If <code>pkgbuild::has_build_tools(debug = TRUE)</code> returns <code>FALSE</code>, the underlying compiler invocation it prints is the fastest way to see exactly what’s missing.</p>
 </section><section id="reinstalling-after-pulling-new-source-changes" class="level3"><h3 class="anchored" data-anchor-id="reinstalling-after-pulling-new-source-changes">Reinstalling after pulling new source changes</h3>
 <p>If you’re developing against a local checkout rather than installing a release, <code><a href="https://devtools.r-lib.org/reference/load_all.html">devtools::load_all()</a></code> recompiles changed <code>src/*.cpp</code> files automatically; a plain <code><a href="https://rdrr.io/r/base/library.html">library(fast.string)</a></code> won’t pick up source changes without reinstalling first.</p>
-</section></section><section id="na-empty-strings-and-encoding" class="level2" data-number="7.2"><h2 data-number="7.2" class="anchored" data-anchor-id="na-empty-strings-and-encoding">
-<span class="header-section-number">7.2</span> NA, empty strings, and encoding</h2>
+</section></section><section id="na-empty-strings-and-encoding" class="level2" data-number="12.2"><h2 data-number="12.2" class="anchored" data-anchor-id="na-empty-strings-and-encoding">
+<span class="header-section-number">12.2</span> NA, empty strings, and encoding</h2>
 <section id="why-does-my-function-return-na-for-a-non-na-input" class="level3"><h3 class="anchored" data-anchor-id="why-does-my-function-return-na-for-a-non-na-input">Why does my function return <code>NA</code> for a non-<code>NA</code> input?</h3>
 <p>Every function in this package returns <code>NA</code> for <code>NA</code> input — but a few functions also return <code>NA</code> for specific <em>valid-looking but unparseable</em> inputs:</p>
 <ul>
@@ -470,7 +511,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>
 <code>fas.Date()</code> returns <code>NA</code> for any string that doesn’t match the specified <code>format</code> <em>exactly</em> (wrong length, wrong separator position, non-digit where a digit is expected) or has an out-of-range month/day. Unlike <code><a href="https://rdrr.io/r/base/as.Date.html">base::as.Date()</a></code>, it does <strong>not</strong> attempt multiple formats or partial parsing.</li>
 <li>
-<code>fas.POSIXct()</code> is stricter still: on top of the same exact-shape rule, it validates the <strong>whole calendar</strong>, so <code>"2023-02-29 00:00:00"</code> is <code>NA</code> even though every field is individually in range. This is deliberate and is the one place the timestamp functions are less permissive than the date functions — see <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>.</li>
+<code>fas.POSIXct()</code> is stricter still: on top of the same exact-shape rule, it validates the <strong>whole calendar</strong>, so <code>"2023-02-29 00:00:00"</code> is <code>NA</code> even though every field is individually in range. This is deliberate and is the one place the timestamp functions are less permissive than the date functions — see <a href="03-theory.html" class="quarto-xref"><span>Chapter 8</span></a>.</li>
 </ul>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">soundex</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Smith"</span>, <span class="st">"123"</span>, <span class="st">""</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -511,30 +552,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section><section id="similarity-bytes-vs.-unicode-code-points" class="level3"><h3 class="anchored" data-anchor-id="similarity-bytes-vs.-unicode-code-points">Similarity bytes vs.&nbsp;Unicode code points</h3>
 <p>Established edit-distance and Jaro-Winkler functions default to <code>use_bytes = TRUE</code> for compatibility. Set <code>use_bytes = FALSE</code> when one accented character or emoji should count as one comparison symbol. Fuzzy lookup defaults to code points. This does not perform Unicode normalization: precomposed and decomposed spellings can still compare differently.</p>
 <p>Bytes-encoded R strings cannot be decoded as Unicode and produce an indexed error in code-point mode; pass <code>use_bytes = TRUE</code> when those bytes are the intended data.</p>
-</section></section><section id="threading" class="level2" data-number="7.3"><h2 data-number="7.3" class="anchored" data-anchor-id="threading">
-<span class="header-section-number">7.3</span> Threading</h2>
+</section></section><section id="threading" class="level2" data-number="12.3"><h2 data-number="12.3" class="anchored" data-anchor-id="threading">
+<span class="header-section-number">12.3</span> Threading</h2>
 <section id="does-nthreads-affect-later-calls" class="level3"><h3 class="anchored" data-anchor-id="does-nthreads-affect-later-calls">Does <code>nthreads</code> affect later calls?</h3>
 <p>No.&nbsp;Functions that expose <code>nthreads</code> pass it to the native dispatcher as a <strong>per-call cap</strong>; they do not change RcppParallel’s process-wide options. <code>NULL</code> uses the RcppParallel default for that call, a positive integer limits it to at most that many threads, and <code>nthreads = 1</code> forces strict serial execution. A later call without <code>nthreads</code> is unaffected.</p>
 <p>The dispatcher can use fewer threads than the cap when the input contains too little useful work. String-utility, date, and phonetic functions keep their existing signatures and use the default scheduler for their own calls.</p>
 </section><section id="does-nthreads-help-on-a-machine-with-few-cores" class="level3"><h3 class="anchored" data-anchor-id="does-nthreads-help-on-a-machine-with-few-cores">Does <code>nthreads</code> help on a machine with few cores?</h3>
-<p>Not much below 4 cores, and the package’s own size thresholds (<a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>) mean it won’t even try to parallelise small inputs regardless. If you’re running inside a container with a CPU limit lower than <code><a href="https://rdrr.io/r/parallel/detectCores.html">parallel::detectCores()</a></code> reports (common in CI and some cloud environments), set <code>nthreads</code> explicitly to the actual limit — TBB doesn’t know about cgroup CPU quotas and will otherwise oversubscribe.</p>
+<p>Not much below 4 cores, and the package’s own size thresholds (<a href="03-theory.html" class="quarto-xref"><span>Chapter 8</span></a>) mean it won’t even try to parallelise small inputs regardless. If you’re running inside a container with a CPU limit lower than <code><a href="https://rdrr.io/r/parallel/detectCores.html">parallel::detectCores()</a></code> reports (common in CI and some cloud environments), set <code>nthreads</code> explicitly to the actual limit — TBB doesn’t know about cgroup CPU quotas and will otherwise oversubscribe.</p>
 <p>The supported Windows build always uses TBB. On a diagnostic build forced to RcppParallel’s TinyThread backend, values above one are advisory because that backend ignores the native thread-count argument; the dispatcher coarsens its ranges to limit useful parallel work instead. <code>nthreads = 1</code> still runs strictly serially on either backend. Set the build variable <code>FAST_STRING_TINYTHREAD=1</code> only when installing such a diagnostic build.</p>
-</section></section><section id="regex-behaviour" class="level2" data-number="7.4"><h2 data-number="7.4" class="anchored" data-anchor-id="regex-behaviour">
-<span class="header-section-number">7.4</span> Regex behaviour</h2>
+</section></section><section id="regex-behaviour" class="level2" data-number="12.4"><h2 data-number="12.4" class="anchored" data-anchor-id="regex-behaviour">
+<span class="header-section-number">12.4</span> Regex behaviour</h2>
 <section id="fsubfgsub-with-perl-false-replaced-a-different-match-than-base-r" class="level3"><h3 class="anchored" data-anchor-id="fsubfgsub-with-perl-false-replaced-a-different-match-than-base-r">
 <code>fsub()</code>/<code>fgsub()</code> with <code>perl = FALSE</code> replaced a different match than base R</h3>
-<p>Where alternatives can match at the same position, base R’s default (TRE) engine takes the <em>longest</em> match and PCRE2 takes the <em>first</em> alternative that matches: <code>sub("a|ab", "X", "abc")</code> gives <code>"Xc"</code>, <code>fsub()</code> gives <code>"Xbc"</code>. Whether something matches (<code>fgrepl()</code>) is unaffected. List the longer alternative first (<code>"ab|a"</code>) to get the same result from both. Everything else about <code>perl = FALSE</code> follows base R’s rules – see <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a>.</p>
+<p>Where alternatives can match at the same position, base R’s default (TRE) engine takes the <em>longest</em> match and PCRE2 takes the <em>first</em> alternative that matches: <code>sub("a|ab", "X", "abc")</code> gives <code>"Xc"</code>, <code>fsub()</code> gives <code>"Xbc"</code>. Whether something matches (<code>fgrepl()</code>) is unaffected. List the longer alternative first (<code>"ab|a"</code>) to get the same result from both. Everything else about <code>perl = FALSE</code> follows base R’s rules – see <a href="03-theory.html" class="quarto-xref"><span>Chapter 8</span></a>.</p>
 <p>Patterns that only PCRE understands (lookarounds, atomic groups, possessive quantifiers, named groups) run with <code>perl = TRUE</code> semantics even when <code>perl = FALSE</code>, still on the fast path. <code>fcount()</code> delegates only an empty <code>pattern</code> to <code><a href="https://rdrr.io/r/base/grep.html">base::gregexpr()</a></code>, because base R counts those matches in characters.</p>
 </section><section id="a-warning-says-pcre2-error-match-limit-exceeded-for-element" class="level3"><h3 class="anchored" data-anchor-id="a-warning-says-pcre2-error-match-limit-exceeded-for-element">A warning says “PCRE2 error ‘match limit exceeded’ for element …”</h3>
 <p>The pattern backtracked too much on that element (see the next question). As in base R, that element counts as not matching – <code>FALSE</code> for <code>fgrepl()</code>, unchanged for <code>fsub()</code>/<code>fgsub()</code>, <code>0</code> for <code>fcount()</code> – and the rest of the vector is processed normally.</p>
 </section><section id="catastrophic-backtracking-am-i-safe" class="level3"><h3 class="anchored" data-anchor-id="catastrophic-backtracking-am-i-safe">Catastrophic backtracking — am I safe?</h3>
 <p>Only partially. The prepared <code>fixed = TRUE</code> path treats the pattern as literal bytes, so regex backtracking cannot occur. PCRE2 (used for general regex) is <strong>not</strong> immune — it’s still a backtracking engine, in the same risk class as base R’s <code>perl = TRUE</code>. If you’re matching untrusted patterns against untrusted input, that risk exists regardless of which package you use; this package doesn’t add to it, but doesn’t remove it either. Prefer <code>fixed = TRUE</code> whenever the pattern is actually a literal string: it avoids regex backtracking and is also the fastest path in the package.</p>
-</section></section><section id="getting-help" class="level2" data-number="7.5"><h2 data-number="7.5" class="anchored" data-anchor-id="getting-help">
-<span class="header-section-number">7.5</span> Getting help</h2>
+</section></section><section id="getting-help" class="level2" data-number="12.5"><h2 data-number="12.5" class="anchored" data-anchor-id="getting-help">
+<span class="header-section-number">12.5</span> Getting help</h2>
 <ul>
 <li>Found a bug, or a discrepancy between <code>fast.string</code> and base R’s behaviour on some input? Open an issue: <a href="https://github.com/KyleHaynes/anthropic_fast/issues" class="uri">https://github.com/KyleHaynes/anthropic_fast/issues</a>.</li>
-<li>For the underlying algorithms, <a href="03-theory.html" class="quarto-xref"><span>Chapter 3</span></a> has the full detail behind every function’s behaviour.</li>
-<li>For exact argument-by-argument documentation, <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 5</span></a>.</li>
+<li>For the underlying algorithms, <a href="03-theory.html" class="quarto-xref"><span>Chapter 8</span></a> has the full detail behind every function’s behaviour.</li>
+<li>For exact argument-by-argument documentation, <a href="05-function-reference.html" class="quarto-xref"><span>Chapter 10</span></a>.</li>
 </ul>
 
 
@@ -952,7 +993,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   });
   </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
       <a href="./06-benchmarks.html" class="pagination-link" aria-label="Benchmarks at scale">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span>
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

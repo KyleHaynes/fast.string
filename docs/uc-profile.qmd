@@ -1,0 +1,155 @@
+# Profile and validate columns {#sec-uc-profile}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+```
+
+Before a column is cleaned or matched on, it pays to know what is in it:
+which formats occur, how often, and which values cannot possibly be right.
+Two functions do most of that work. `string_shape()` reduces each value to
+its *pattern* of character classes, and `valid_id()` checks the check digits
+that most real-world identifiers carry. Together with `fcount()`,
+`fparse_number()` and the strict date parsers they make a quick,
+vectorised data-quality report.
+
+| Question | Function |
+|---|---|
+| Which formats does this column hold? | `string_shape()` |
+| Is this ABN / ACN / TFN / Medicare / card / ISBN / EAN / IBAN well formed? | `valid_id()` |
+| How many digits, words or symbols per value? | `fcount()` |
+| Do these amounts parse? | `fparse_number()` |
+| Are these dates real calendar dates? | `fas.Date()` (`NA` for 31 June, 29 Feb 2023, ...) |
+
+## What formats are in this column?
+
+`string_shape()` replaces upper-case letters with `A`, lower-case letters
+with `a` and digits with `9`, and keeps everything else. Tabulating the
+shapes of a phone-number column shows its formats at a glance:
+
+```{r}
+#| label: shapes
+set.seed(3)
+n <- 1e5
+phone <- sprintf(
+    sample(c("04%02d %03d %03d", "04%02d%03d%03d", "(07) %04d %04d",
+             "+61 4%02d %03d %03d"), n, TRUE, prob = c(.5, .25, .15, .1)),
+    sample.int(99, n, TRUE), sample.int(999, n, TRUE), sample.int(999, n, TRUE)
+)
+phone[sample(n, 40)] <- sample(c("unknown", "N/A", "0412 345 67",
+                                 "call after 5pm", "1234"), 40, TRUE)
+
+shape <- string_shape(phone)
+sort(table(shape), decreasing = TRUE)
+```
+
+Four legitimate formats account for almost every row; everything with a
+small count deserves a look. The ten-digit mobile number that lost a digit
+(`9999 999 99`) is the kind of error no type check would catch:
+
+```{r}
+#| label: rare-shapes
+rare <- names(which(table(shape) < 50))
+unique(phone[shape %in% rare])
+```
+
+`collapse = TRUE` reduces each run of one class to a single character,
+which groups values by structure rather than length -- useful for free-text
+or name columns, where exact lengths vary:
+
+```{r}
+#| label: shapes-collapse
+string_shape(c("Smith", "SMITH", "O'Brien", "van der Berg", "J. Smith",
+               "SMITH JNR", "Smith2"), collapse = TRUE)
+```
+
+Postcodes show how much a shape reveals with no domain rules at all -- the
+letter O typed for a zero, a lost leading zero, a stray state or trailing
+space:
+
+```{r}
+#| label: postcode-shapes
+pc <- c("4000", "0800", "800", "4OOO", "2000 ", "NSW 2000", "40000", NA)
+data.frame(pc, shape = string_shape(pc))
+```
+
+Letters and digits are classified by their Unicode category, so accented
+and non-Latin letters count as letters and combining accents disappear into
+the letter they modify.
+
+## Validate identifiers
+
+Most identifiers that people key in carry a check digit, chosen so that the
+common typing errors -- one wrong digit, two adjacent digits swapped --
+produce an invalid number. `valid_id()` checks them for the identifiers
+that come up most in Australian and international data, ignoring spaces
+and hyphens:
+
+```{r}
+#| label: valid-id
+valid_id(c("51 824 753 556", "51 824 753 557", "5182475355"), "abn")
+valid_id(c("2123 45670 1", "2123 45671 1", "7123 45670 1"), "medicare")
+valid_id(c("123 456 782", "123 456 789", "12345678"), "tfn")
+valid_id(c("4111 1111 1111 1111", "4111 1111 1111 1112"), "luhn")
+valid_id(c("978-0-306-40615-7", "0-8044-2957-X"), "isbn")
+valid_id("GB82 WEST 1234 5698 7654 32", "iban")
+```
+
+An 8-digit TFN gives `NA`: the older numbers use different weights, which
+the ATO does not publish, so the function will not guess. Passing the check
+does not prove that a number was ever issued -- only that it is not a
+mistyped version of one.
+
+To see how much this catches, take 5,000 well-formed ABNs, introduce a
+one-digit typo into 150 of them and blank out 30:
+
+```{r}
+#| label: valid-id-typos
+set.seed(4)
+cand <- sprintf("%011.0f", floor(runif(1e6, 1e10, 1e11)))
+abn <- head(cand[valid_id(cand, "abn")], 5000)   # about 1 in 89 is valid
+abn <- ifelse(runif(5000) < 0.5,
+              sub("^(..)(...)(...)(...)$", "\\1 \\2 \\3 \\4", abn), abn)
+typo <- sample(5000, 150)
+substr(abn[typo], 5, 5) <- as.character(sample(0:9, 150, TRUE))
+abn[sample(5000, 30)] <- NA
+
+table(valid = valid_id(abn, "abn"), useNA = "ifany")
+```
+
+Every invalid value is a typo, and every typo that changed a digit is
+invalid: ABN's mod-89 check catches any single wrong digit. The typos it
+"missed" put back the digit that was already there, or landed on a row that
+was then blanked. Generating a million candidates and keeping the valid ones,
+as above, is itself a vectorised call that takes a fraction of a second.
+
+## A column profile
+
+Put together, a few vectorised calls give a one-row summary per column that
+is cheap enough to run on every column of every extract:
+
+```{r}
+#| label: profile
+profile_column <- function(x, id_type = NULL) {
+    x <- as.character(x)
+    shapes <- sort(table(string_shape(x, collapse = TRUE)), decreasing = TRUE)
+    data.frame(
+        n         = length(x),
+        missing   = mean(is.na(x) | !nzchar(fsquish(x))),
+        distinct  = length(unique(x)),
+        shapes    = length(shapes),
+        top_shape = names(shapes)[1],
+        top_share = round(as.numeric(shapes[1]) / sum(!is.na(x)), 3),
+        valid     = if (is.null(id_type)) NA
+                    else round(mean(valid_id(x, id_type), na.rm = TRUE), 3)
+    )
+}
+rbind(cbind(column = "phone", profile_column(phone)),
+      cbind(column = "abn", profile_column(abn, "abn")))
+```
+
+Extend it with whatever rules matter for the data: `fcount("[0-9]", x)`
+for digits in name fields, `is.na(fparse_number(x))` for amounts that do
+not parse, `is.na(fas.Date(x, "dmy"))` for impossible dates
+(@sec-workflow shows the date parsers used this way).

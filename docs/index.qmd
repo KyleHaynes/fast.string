@@ -66,6 +66,13 @@ scale.
   against base R, `stringi`/`stringr`, `stringdist`, and `RecordLinkage`
   (@sec-about), then a hands-on tour of every function group
   (@sec-quickstart).
+- **Use cases** — task-oriented recipes: cleaning and standardising text
+  (entities, accents, abbreviation dictionaries, leading zeros, spelling
+  variants; @sec-uc-clean), finding, flagging and extracting values from
+  free text (@sec-uc-extract), profiling and validating columns (format
+  shapes, identifier check digits; @sec-uc-profile), matching, deduplicating
+  and linking records at scale (@sec-uc-link), and pseudonymising
+  identifiers with keyed hashes (@sec-uc-privacy).
 - **Under the hood** — the algorithms (@sec-theory): how regex and
   fixed-literal matching differ, how the bit-parallel Jaro-Winkler
   implementation works, how the phonetic schemes trade block size against
