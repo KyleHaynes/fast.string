@@ -1208,6 +1208,76 @@ cluster_pairs(i, j = NULL, n = NULL)
 cluster_pairs(c(1, 2, 5), c(2, 4, 6))
 ```
 
+### `rLink()`
+
+Blocking, comparison and assembly in one call: finds candidate pairs with
+`block_pairs()` (or `sorted_neighbourhood()`), scores them with any number of
+comparators, and returns one `data.table` of pairs, the columns of both
+inputs and the scores. Blocking keys and comparison columns are written as
+expressions evaluated against the data, so a phonetic code or a substring
+goes in the call rather than into a prepared column. Pass `data_2 = NULL` to
+deduplicate one file instead.
+
+```r
+rLink(data_1, data_2 = NULL, block = NULL, block_2 = NULL, compare = NULL,
+      pairs = NULL, block_method = c("exact", "sorted_neighbourhood"),
+      window = 3L, max_block_size = Inf, match_missing = FALSE,
+      na_strings = "", force_upper_case = TRUE, normalise = TRUE,
+      keep = NULL, suffixes = c("_1", "_2"),
+      score_position = c("grouped", "end"), nthreads = NULL,
+      verbose = FALSE)
+```
+
+| Argument | Description |
+|---|---|
+| `data_1`, `data_2` | The inputs, never modified. `data_2 = NULL` deduplicates within `data_1`. |
+| `block` | Blocking passes. A top-level `list()` separates passes; `list()` or `c()` within a pass separates the terms joined into one key. |
+| `block_2` | Blocking expressions for `data_2`, when the two inputs name or store the same thing differently. A `NULL` pass reuses `block`'s. |
+| `compare` | Comparator calls whose first argument is the column, e.g. `jaro_winkler(surname)`. Write `a \| b` for columns named differently. |
+| `pairs` | Candidate pairs to score instead of blocking, such as a `minhash_pairs()` result. |
+| `block_method`, `window` | Exact key agreement, or the sorted neighbourhood with this window. |
+| `max_block_size` | Skip blocks larger than this, with a warning. |
+| `match_missing`, `na_strings` | Whether records missing a key term pair with each other, and what counts as missing. |
+| `force_upper_case` | Upper-case keys and comparison values. Affects the scores, never the columns returned. |
+| `normalise` | Convert each comparator's score so that 1 means an exact match. |
+| `keep`, `suffixes`, `score_position` | Which columns to carry, how to distinguish the two sides, and where the scores sit. |
+| `verbose` | Print per-stage timings. They are returned as `attr(out, "timings")` either way. |
+
+```{r}
+enrol <- data.frame(
+    surname = c("SMITH", "JONES", "BROWN", "SMYTH"),
+    given   = c("JOHN", "MARY", "ROB", "JON"),
+    dob     = as.Date(c("1980-01-02", "1975-06-30", "1990-12-01",
+                        "1980-01-02"))
+)
+claims <- data.frame(
+    surname = c("SMITH", "JONSE", "BROWNE"),
+    given   = c("JON", "MARY", "ROBERT"),
+    dob     = as.Date(c("1980-01-02", "1975-06-30", "1990-12-01"))
+)
+
+out <- rLink(
+    enrol, claims,
+    block   = list(list(soundex(surname), dob), fsubstr(given, 1, 2)),
+    compare = list(jaro_winkler(given), sn = jaro_winkler(surname))
+)
+as.data.frame(out[, c("index_1", "index_2", "pass", "surname_1", "surname_2",
+                      "sn", "given_jaro_winkler")])
+```
+
+Comparators disagree about which end of their scale is an exact match, so
+each is probed once and converted where needed: `jaro_winkler()` already
+returns 1, the edit distances return 0, and the `fuzz_*` scorers return 100.
+With `normalise = TRUE` (the default) 1 always means an exact match, and an
+unbounded edit distance is divided pairwise by the longer of the two strings.
+
+```{r}
+rLink(enrol, claims, block = list(soundex(surname)),
+      compare = list(lev = levenshtein(surname),
+                     jw  = jaro_winkler(surname),
+                     fz  = fuzz_ratio(surname)))$lev
+```
+
 ## Edit distance
 
 The edit-distance family distinguishes OSA from unrestricted

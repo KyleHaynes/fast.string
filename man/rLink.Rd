@@ -145,9 +145,13 @@ metric is a one-word edit:
     jaro_winkler(given_name),
     sn_jac = jaccard_index(surname, q = 3),
     name   = jaro_winkler_tokens(full_name, contractions = TRUE),
-    exact  = function(a, b) a == b
+    exact  = (function(a, b) a == b)(postcode)
 )
 }\if{html}{\out{</div>}}
+
+A comparator of your own is applied to its column the same way, so it is
+either named first (\code{my_cmp(surname)}) or written inline and applied, as
+\code{exact} is above. A function on its own names no column and is an error.
 
 A score column takes its name from the list element; unnamed elements fall
 back to \verb{<column>_<comparator>}, so \code{jaro_winkler(given_name)} becomes
