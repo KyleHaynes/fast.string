@@ -62,6 +62,7 @@ problem for large databases. ACM SIGMOD Record, 24(2), 127-138.
 \seealso{
 Other record linkage pair functions:
 \code{\link[=block_pairs]{block_pairs()}},
-\code{\link[=cluster_pairs]{cluster_pairs()}}
+\code{\link[=cluster_pairs]{cluster_pairs()}},
+\code{\link[=rLink]{rLink()}}
 }
 \concept{record linkage pair functions}

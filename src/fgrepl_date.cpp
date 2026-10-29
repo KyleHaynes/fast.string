@@ -78,6 +78,25 @@ static inline int format_ymd(char* output,
             output[7] = '/';
             write2(output + 8, day);
             return 10;
+        case 4:
+            write4(output, year);
+            return 4;
+        case 5:
+            write2(output, month);
+            return 2;
+        case 6:
+            write2(output, day);
+            return 2;
+        case 7:
+            write4(output, year);
+            output[4] = '-';
+            write2(output + 5, month);
+            return 7;
+        case 8:
+            write2(output, month);
+            output[2] = '-';
+            write2(output + 3, day);
+            return 5;
     }
     return 0;
 }
@@ -86,6 +105,36 @@ static inline bool ymd_in_width(int year, int month, int day) {
     return year >= 0 && year <= 9999 &&
         month >= 0 && month <= 99 &&
         day >= 0 && day <= 99;
+}
+
+// A partial format writes only some of the three fields, so only those are
+// checked for NA and field width; the rest never reach the output buffer.
+static const int DATE_FIELD_YEAR = 1;
+static const int DATE_FIELD_MONTH = 2;
+static const int DATE_FIELD_DAY = 4;
+
+static inline int format_fields(int format_code) {
+    switch (format_code) {
+        case 4: return DATE_FIELD_YEAR;
+        case 5: return DATE_FIELD_MONTH;
+        case 6: return DATE_FIELD_DAY;
+        case 7: return DATE_FIELD_YEAR | DATE_FIELD_MONTH;
+        case 8: return DATE_FIELD_MONTH | DATE_FIELD_DAY;
+    }
+    return DATE_FIELD_YEAR | DATE_FIELD_MONTH | DATE_FIELD_DAY;
+}
+
+static inline bool parts_in_width(int fields, int year, int month, int day) {
+    if ((fields & DATE_FIELD_YEAR) &&
+        (year == NA_INTEGER || year < 0 || year > 9999))
+        return false;
+    if ((fields & DATE_FIELD_MONTH) &&
+        (month == NA_INTEGER || month < 0 || month > 99))
+        return false;
+    if ((fields & DATE_FIELD_DAY) &&
+        (day == NA_INTEGER || day < 0 || day > 99))
+        return false;
+    return true;
 }
 
 static inline long ymd_to_jdn(int year, int month, int day);
@@ -196,12 +245,12 @@ struct PartsFormatWorker : public Worker {
           lengths(lengths_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
+        const int fields = format_fields(format_code);
         for (std::size_t i = begin; i < end; ++i) {
             const int year = years[i];
             const int month = months[i];
             const int day = days[i];
-            if (year == NA_INTEGER || month == NA_INTEGER ||
-                day == NA_INTEGER || !ymd_in_width(year, month, day)) {
+            if (!parts_in_width(fields, year, month, day)) {
                 lengths[i] = DATE_NA_LENGTH;
                 continue;
             }
@@ -288,9 +337,10 @@ static bool parse_date(const char* input,
                        std::size_t length,
                        int format_code,
                        double& output) {
-    int year = 0;
-    int month = 0;
-    int day = 0;
+    // Fields a partial format does not read are filled from 1970-01-01.
+    int year = 1970;
+    int month = 1;
+    int day = 1;
     bool valid = false;
     switch (format_code) {
         case 0:
@@ -312,6 +362,23 @@ static bool parse_date(const char* input,
             valid = length == 10 && input[4] == '/' && input[7] == '/' &&
                 parse4(input, 0, year) && parse2(input, 5, month) &&
                 parse2(input, 8, day);
+            break;
+        case 4:
+            valid = length == 4 && parse4(input, 0, year);
+            break;
+        case 5:
+            valid = length == 2 && parse2(input, 0, month);
+            break;
+        case 6:
+            valid = length == 2 && parse2(input, 0, day);
+            break;
+        case 7:
+            valid = length == 7 && input[4] == '-' &&
+                parse4(input, 0, year) && parse2(input, 5, month);
+            break;
+        case 8:
+            valid = length == 5 && input[2] == '-' &&
+                parse2(input, 0, month) && parse2(input, 3, day);
             break;
     }
     // Impossible dates (2023-02-29, 2024-04-31) are NA, as in base R.

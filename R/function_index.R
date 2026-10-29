@@ -169,7 +169,8 @@
     "Blocking & clustering" = list(
         block_pairs          = "pairs that share any key",
         sorted_neighbourhood = "pairs with nearby sorted keys",
-        cluster_pairs        = "entity IDs from matched pairs"
+        cluster_pairs        = "entity IDs from matched pairs",
+        rLink                = "block, compare and score pairs"
     ),
     "Benchmarking" = list(
         run_benchmark_example = "interactive speed demo vs base R"

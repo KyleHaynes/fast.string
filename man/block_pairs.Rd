@@ -63,6 +63,7 @@ similarity-based candidates.
 
 Other record linkage pair functions:
 \code{\link[=cluster_pairs]{cluster_pairs()}},
+\code{\link[=rLink]{rLink()}},
 \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}}
 }
 \concept{record linkage pair functions}

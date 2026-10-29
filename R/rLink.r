@@ -1,1144 +1,790 @@
-# 02-11-2016
+#' Link or deduplicate records
+#'
+#' Finds candidate record pairs by blocking, scores each pair with any number
+#' of string comparators, and returns one table of pairs and their scores. It
+#' is a single call over [block_pairs()] (or [sorted_neighbourhood()]) and the
+#' comparison functions in this package.
+#'
+#' Blocking keys and comparison columns are written as ordinary R expressions
+#' evaluated against the data, so a phonetic code, a substring or any other
+#' transformation goes in the call itself rather than into a column prepared
+#' beforehand:
+#'
+#' ```
+#' block = list(list(soundex(surname), dob), fsubstr(postcode, 1, 2))
+#' ```
+#'
+#' The outer `list()` separates blocking *passes*: a pair is a candidate if it
+#' agrees on the key of any one pass, and each pair is reported once, with
+#' `pass` recording the first pass that found it. Within a pass, `list()` or
+#' `c()` separates the *terms* joined into one key, so the pass above requires
+#' the same Soundex of surname *and* the same date of birth. Passes may have
+#' different numbers of terms. A single expression, or a `c()` of column
+#' names, is one pass.
+#'
+#' Expressions see the data first and the calling environment behind it, so
+#' `soundex(surname, nthreads = my_threads)` resolves `my_threads` from the
+#' caller. `.data$x` and `.env$x` disambiguate a column that shares a name
+#' with a local variable, and `!!` builds a specification programmatically.
+#'
+#' @section Missing values:
+#' A record whose key is missing pairs with nothing, which is what makes
+#' blocking on an incomplete variable safe. With the default
+#' `match_missing = FALSE` a missing value in *any* term makes the whole key
+#' for that pass missing. `match_missing = TRUE` instead treats "missing" as a
+#' value of its own, so two records both missing a term can pair on it --- the
+#' behaviour of the `missingPos = FALSE` default in the function this
+#' replaces. `na_strings` lists the text that counts as missing, `""` by
+#' default; set it to `character()` to take blanks literally.
+#'
+#' @section Comparators:
+#' `compare` is a list of comparator calls whose first argument is the column
+#' to compare. Any function of two character vectors works, so switching
+#' metric is a one-word edit:
+#'
+#' ```
+#' compare = list(
+#'     jaro_winkler(given_name),
+#'     sn_jac = jaccard_index(surname, q = 3),
+#'     name   = jaro_winkler_tokens(full_name, contractions = TRUE),
+#'     exact  = (function(a, b) a == b)(postcode)
+#' )
+#' ```
+#'
+#' A comparator of your own is applied to its column the same way, so it is
+#' either named first (`my_cmp(surname)`) or written inline and applied, as
+#' `exact` is above. A function on its own names no column and is an error.
+#'
+#' A score column takes its name from the list element; unnamed elements fall
+#' back to `<column>_<comparator>`, so `jaro_winkler(given_name)` becomes
+#' `given_name_jaro_winkler`. Write `column_1 | column_2` to compare columns
+#' named differently in the two inputs. `nthreads` reaches a comparator only
+#' when it declares that argument, so plain functions of two arguments are
+#' safe to supply.
+#'
+#' Comparators disagree about which end of their scale means "identical":
+#' [jaro_winkler()] and the `*_similarity()` family return 1, edit distances
+#' such as [levenshtein()] and [hamming()] return 0, and the RapidFuzz
+#' `fuzz_*` scorers return 100. Each comparator is therefore probed once on a
+#' calibration pair and, where needed, converted so that **1 always means an
+#' exact match** --- an unbounded edit distance by
+#' `1 - distance / max(nchar(a), nchar(b))`, pairwise. `normalise = FALSE`
+#' leaves every comparator's own scale untouched. What was detected is
+#' recorded in `attr(out, "compare")` and printed when `verbose = TRUE`.
+#'
+#' @param data_1 A data frame (or `data.table`). Never modified.
+#' @param data_2 An optional second data frame to link `data_1` to. When
+#'   `NULL` (the default) `rLink()` deduplicates within `data_1`, returning
+#'   pairs with `index_1 < index_2` and no record paired with itself.
+#' @param block Blocking passes, as described above. Required unless `pairs`
+#'   is given.
+#' @param block_2 Optional blocking expressions for `data_2`, for when the two
+#'   inputs name or store the same information differently (`dob` as a `Date`
+#'   in one and `"DDMMYYYY"` text in the other). Must have as many passes as
+#'   `block`, each with the same number of terms; a pass given as `NULL`
+#'   reuses `block`'s. By default `block`'s own expressions are evaluated
+#'   against `data_2`.
+#' @param compare A list of comparator calls, as described above. `NULL`
+#'   returns the candidate pairs unscored.
+#' @param pairs Optional candidate pairs to score instead of blocking: any
+#'   data frame with `x_index` and `y_index` columns, such as the result of
+#'   [minhash_pairs()], [fuzzy_within()] or [tfidf_top_n()]. Supply this or
+#'   `block`, not both.
+#' @param block_method `"exact"` (the default) requires keys to be equal, via
+#'   [block_pairs()]. `"sorted_neighbourhood"` also pairs records whose keys
+#'   are near each other in sorted order, via [sorted_neighbourhood()].
+#' @param window Window width for `block_method = "sorted_neighbourhood"`; an
+#'   odd positive integer, `3` by default.
+#' @param max_block_size Blocks holding more records than this are skipped,
+#'   with a warning saying how many. `Inf` (the default) keeps every block.
+#' @param match_missing Whether records missing a key term can pair with each
+#'   other. See *Missing values*.
+#' @param na_strings Character vector of values to read as missing in keys and
+#'   comparison columns, `""` by default.
+#' @param force_upper_case Whether to upper-case keys and comparison values
+#'   before use. Affects the scores, never the columns returned.
+#' @param normalise Whether to convert each comparator's score so that 1 means
+#'   an exact match. See *Comparators*.
+#' @param keep Columns to carry onto the output, or `NULL` (the default) for
+#'   all of them. `character()` carries none.
+#' @param suffixes Length-2 character vector distinguishing the two sides of
+#'   each pair, `c("_1", "_2")` by default.
+#' @param score_position `"grouped"` (the default) puts each score beside the
+#'   pair of columns it scores; `"end"` puts all scores after all carried
+#'   columns.
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
+#' @param verbose Whether to print per-stage timings and the pairs found.
+#'   Timings are returned either way, as `attr(out, "timings")`.
+#' @return A `data.table` with one row per candidate pair: `pair_id`,
+#'   `index_1` and `index_2` (row numbers into `data_1` and `data_2`, suffixed
+#'   as `suffixes` says), `pass`, `block_key`, the carried columns under both
+#'   suffixes, and one column per comparator. Attributes `timings` and
+#'   `compare` describe the run.
+#' @seealso [block_pairs()] and [sorted_neighbourhood()] for the candidate
+#'   pairs alone, [cluster_pairs()] to turn matched pairs into entity
+#'   identifiers, and [minhash_pairs()], [fuzzy_within()] and [tfidf_top_n()]
+#'   for similarity-based candidates to pass as `pairs`.
+#' @family record linkage pair functions
+#' @examples
+#' enrol <- data.frame(
+#'     id      = 1:4,
+#'     surname = c("SMITH", "JONES", "BROWN", "SMYTH"),
+#'     given   = c("JOHN", "MARY", "ROB", "JON"),
+#'     dob     = as.Date(c("1980-01-02", "1975-06-30", "1990-12-01",
+#'                         "1980-01-02"))
+#' )
+#' claims <- data.frame(
+#'     ref     = c("A", "B", "C"),
+#'     surname = c("SMITH", "JONSE", "BROWNE"),
+#'     given   = c("JON", "MARY", "ROBERT"),
+#'     dob     = as.Date(c("1980-01-02", "1975-06-30", "1990-12-01"))
+#' )
+#'
+#' # Block on the Soundex of surname together with date of birth, then score
+#' out <- rLink(
+#'     enrol, claims,
+#'     block   = list(list(soundex(surname), dob)),
+#'     compare = list(jaro_winkler(given), sn = jaro_winkler(surname))
+#' )
+#' out$given_jaro_winkler
+#'
+#' # An edit distance is converted so that 1 is still an exact match
+#' rLink(enrol, claims,
+#'       block   = list(soundex(surname)),
+#'       compare = list(lev = levenshtein(surname)))$lev
+#'
+#' # Two passes: same Soundex of surname, or same date of birth
+#' rLink(enrol, claims, block = list(soundex(surname), dob))$pass
+#'
+#' # Deduplicating one file, then turning the matches into entity IDs
+#' dup <- rLink(enrol, block = list(soundex(surname)),
+#'              compare = list(jaro_winkler(given)))
+#' cluster_pairs(dup$index_1[dup$given_jaro_winkler > 0.8],
+#'               dup$index_2[dup$given_jaro_winkler > 0.8], n = nrow(enrol))
+#' @export
+rLink <- function(data_1,
+                  data_2 = NULL,
+                  block = NULL,
+                  block_2 = NULL,
+                  compare = NULL,
+                  pairs = NULL,
+                  block_method = c("exact", "sorted_neighbourhood"),
+                  window = 3L,
+                  max_block_size = Inf,
+                  match_missing = FALSE,
+                  na_strings = "",
+                  force_upper_case = TRUE,
+                  normalise = TRUE,
+                  keep = NULL,
+                  suffixes = c("_1", "_2"),
+                  score_position = c("grouped", "end"),
+                  nthreads = NULL,
+                  verbose = FALSE) {
+    t_all <- .bench_now()
+    timings <- list()
+    t0 <- t_all
 
-## R LINKAGE
-# Performs deduplication on one dataset or linkage on two datasets. 
-# Allows for multiple blocking strategies. 
-# Includes Soundex, Jaro-Winkler and Damerau-Levenshtein Edit Distance.
-# Allows comparisons that split strings using regular expressions.
+    # Captured before anything touches them, so a term naming a column is
+    # never evaluated as a variable in the caller first.
+    quo_block <- rlang::enquo(block)
+    quo_block_2 <- rlang::enquo(block_2)
+    quo_compare <- rlang::enquo(compare)
 
+    block_method <- match.arg(block_method)
+    score_position <- match.arg(score_position)
+    .check_flag(match_missing, "match_missing")
+    .check_flag(force_upper_case, "force_upper_case")
+    .check_flag(normalise, "normalise")
+    .check_flag(verbose, "verbose")
+    # Validated here but deliberately not converted: every function called
+    # below runs .as_nthreads() itself, and the -1L that marks "the
+    # RcppParallel default" would fail that check if it were passed on.
+    .as_nthreads(nthreads)
 
-## CURRENT LIMITATIONS
-# Two datasets
-# RAM
+    if (!is.data.frame(data_1)) stop("`data_1` must be a data frame.")
+    dedupe <- is.null(data_2)
+    if (!dedupe && !is.data.frame(data_2))
+        stop("`data_2` must be a data frame or NULL.")
+    .rlink_check_names(data_1, "data_1")
+    if (!dedupe) .rlink_check_names(data_2, "data_2")
+    # A binding, not a copy: columns are only ever read.
+    d2 <- if (dedupe) data_1 else data_2
 
-## IMPROVEMENT LIST
-# More than 2 datasets - Not a path I will take this program down
-# NLS probabilities
-# Likelihood of match based on frequency
-# BigMatch Jaro-Winkler variant
-# Memory management -> written in another file, but it's slow and SQL is gross :( Not a path I will take this program down
-# Alternatives to soundex - None seem to be any better
-# Fellegi-Sunter
-# Weighting the weights
-# Whitespace permutations (SORT OF ADDED)
-# Firstname/Surname flip (SORT OF ADDED)
-# Intelligent handling of hyphens (ADDED)
-# split, sort strings, reassemble
-# Error reports (ADDED)
+    if (!is.character(suffixes) || length(suffixes) != 2L ||
+        anyNA(suffixes) || suffixes[1L] == suffixes[2L])
+        stop("`suffixes` must be two different strings.")
+    if (is.null(na_strings)) na_strings <- character()
+    if (!is.character(na_strings) || anyNA(na_strings))
+        stop("`na_strings` must be a character vector without NA.")
 
+    use_block <- !rlang::quo_is_null(quo_block)
+    if (use_block && !is.null(pairs))
+        stop("Give `block` or `pairs`, not both.")
+    if (!use_block && is.null(pairs))
+        stop("`block` is required (or supply `pairs`).")
 
-# Change/Update log
-# All changes/updates go in here
-# Of the same format as the first element in the list
-updates <- list(
-	 "2016-04-27" = c("Example 1."
-					, "Example 2.")
-	,"2016-04-29" = c("Fixed a bug which caused the unique values to overwrite missing values on the output when multiple blocks were used and missingPos was TRUE.")
-	,"2016-06-06" = c("Introduced a changelog that only alerts users of new changes made to rLink since they last used it.")
-	,"2016-06-24" = c("rLink will now identify variable names, as specified in parameters, that are not on the dataset. This is useful for correcting typos.")
-	,"2016-07-14" = c("Performing a split comparison will return the value of the full comparison if it is larger. This is so names like \"VAN DER BEEK\" will match well with \"VANDERBEEK\"."
-					, "When performing linkage or deduplication with multiple blocks, rLink will now report the expected pairs for each block before blocking rather than the expected total number of pairs. This should allow users to diagnose which blocks are problematic."
-					, "The groupID function no longer fails to execute if you already have a variable named \"groupID\" on your input data file.")
-	,"2016-07-27" = c("Data imported from csv is now read in completely verbatim. Previously rLink assessed whether variables should be treated as character, numeric or integer, which impacted on some formatting.")
-	,"2016-10-11" = c("Fixed a bug which allowed record pairs to appear multiple times on the output where they matched under multiple blocking strategies when doing deduplication with identical blocking strategies.")
-	,"2017-01-31" = c("The groupID function now includes an option to identify groups using ID information within and across all pairs. This is relevant for deduplication tasks such as identifying where we will call a single household multiple times (for example).")
-)
+    mask_1 <- as.list(data_1)
+    mask_2 <- as.list(d2)
+    timings$validate <- .bench_now() - t0
 
-# Import rLink user history
-if (exists("SAS")) {
-	if (SAS) {
-		rLinkUserHistory <- read.csv("E:\\SAS\\Surveys\\R\\Programs\\R\\R Linkage\\rLinkUserHistory.txt", header=T)
-	}
-} else {
-	rLinkUserHistory <- read.csv("S:\\Surveys\\R\\Programs\\R\\R Linkage\\rLinkUserHistory.txt", header=T)
+    # --- candidate pairs ---------------------------------------------------
+    labels <- NULL
+    keys_1 <- NULL
+    if (use_block) {
+        t0 <- .bench_now()
+        spec <- .rlink_passes(quo_block, "block")
+        labels <- spec$labels
+        n_pass <- length(spec$passes)
+        spec_2 <- if (rlang::quo_is_null(quo_block_2)) NULL else
+            .rlink_passes(quo_block_2, "block_2")
+        if (!is.null(spec_2)) .rlink_check_block_2(spec, spec_2, n_pass)
+
+        probs <- .rlink_problems()
+        keys_1 <- vector("list", n_pass)
+        keys_2 <- vector("list", n_pass)
+        for (p in seq_len(n_pass)) {
+            terms_1 <- spec$passes[[p]]
+            inherit <- is.null(spec_2) || is.null(spec_2$passes[[p]])
+            terms_2 <- if (inherit) terms_1 else spec_2$passes[[p]]
+            env_2 <- if (is.null(spec_2)) spec$env else spec_2$env
+            arg_2 <- if (inherit) "block" else "block_2"
+            parts_1 <- lapply(seq_along(terms_1), function(k)
+                .rlink_term(terms_1[[k]], mask_1, spec$env, nrow(data_1),
+                            "block", p, k, probs))
+            parts_2 <- lapply(seq_along(terms_2), function(k)
+                .rlink_term(terms_2[[k]], mask_2, env_2, nrow(d2),
+                            arg_2, p, k, probs))
+            if (length(probs$msgs)) next
+            keys_1[[p]] <- .rlink_key(parts_1, p, force_upper_case,
+                                      na_strings, match_missing, nthreads)
+            keys_2[[p]] <- .rlink_key(parts_2, p, force_upper_case,
+                                      na_strings, match_missing, nthreads)
+        }
+        .rlink_stop(probs, data_1)
+        timings$keys <- .bench_now() - t0
+
+        if (verbose) {
+            t0 <- .bench_now()
+            cli::cli_h2("rLink()")
+            cli::cli_alert_info(sprintf(
+                "%s x %s records, %d blocking pass%s.",
+                format(nrow(data_1), big.mark = ","),
+                format(nrow(d2), big.mark = ","),
+                n_pass, if (n_pass == 1L) "" else "es"))
+            for (p in seq_len(n_pass))
+                cli::cli_alert_info(sprintf(
+                    "Pass %d%s: %s expected pairs.", p,
+                    .rlink_label(labels, p),
+                    format(.rlink_expected(keys_1[[p]], keys_2[[p]], dedupe),
+                           big.mark = ",", scientific = FALSE)))
+            timings$estimate <- .bench_now() - t0
+        }
+
+        t0 <- .bench_now()
+        y <- if (dedupe) NULL else keys_2
+        pairs <- if (block_method == "exact")
+            block_pairs(keys_1, y, max_block_size = max_block_size,
+                        nthreads = nthreads)
+        else
+            sorted_neighbourhood(keys_1, y, window = window,
+                                 nthreads = nthreads)
+        timings$pairs <- .bench_now() - t0
+    } else {
+        t0 <- .bench_now()
+        pairs <- .rlink_given_pairs(pairs, nrow(data_1), nrow(d2))
+        timings$pairs <- .bench_now() - t0
+    }
+
+    xi <- pairs$x_index
+    yi <- pairs$y_index
+    n_pairs <- length(xi)
+
+    # --- carried columns ---------------------------------------------------
+    t0 <- .bench_now()
+    avail <- union(names(data_1), names(d2))
+    if (is.null(keep)) {
+        keep_cols <- avail
+    } else {
+        if (!is.character(keep) || anyNA(keep))
+            stop("`keep` must be a character vector without NA.")
+        bad <- setdiff(keep, avail)
+        if (length(bad))
+            stop(sprintf("`keep` names columns that are not there: %s.",
+                         paste0("`", bad, "`", collapse = ", ")))
+        keep_cols <- intersect(avail, keep)
+    }
+    keep_1 <- intersect(names(data_1), keep_cols)
+    keep_2 <- intersect(names(d2), keep_cols)
+
+    out <- list()
+    out[["pair_id"]] <- seq_len(n_pairs)
+    out[[paste0("index", suffixes[1L])]] <- xi
+    out[[paste0("index", suffixes[2L])]] <- yi
+    out[["pass"]] <- pairs$pass
+    if (use_block)
+        out[["block_key"]] <- .rlink_block_key(keys_1, pairs, xi, n_pairs)
+    for (nm in keep_1) out[[paste0(nm, suffixes[1L])]] <- data_1[[nm]][xi]
+    for (nm in keep_2) out[[paste0(nm, suffixes[2L])]] <- d2[[nm]][yi]
+    data.table::setDT(out)
+    timings$attach <- .bench_now() - t0
+
+    # --- comparators -------------------------------------------------------
+    cmp <- .rlink_compare(quo_compare, names(out))
+    info <- vector("list", length(cmp))
+    for (i in seq_along(cmp)) {
+        t0 <- .bench_now()
+        s <- cmp[[i]]
+        probs <- .rlink_problems()
+        a <- .rlink_term(s$expr_1, mask_1, s$env, nrow(data_1),
+                         "compare", i, 1L, probs)
+        b <- .rlink_term(s$expr_2, mask_2, s$env, nrow(d2),
+                         "compare", i, 2L, probs)
+        .rlink_stop(probs, data_1)
+        a <- .rlink_chr(a, force_upper_case, na_strings)[xi]
+        b <- .rlink_chr(b, force_upper_case, na_strings)[yi]
+        orient <- .rlink_orient(s$fn, s$args, normalise, nthreads)
+        score <- .rlink_call(s$fn, a, b, s$args, nthreads)
+        if (!(is.numeric(score) || is.logical(score)) ||
+            length(score) != n_pairs)
+            stop(sprintf(paste0(
+                "The comparator for `%s` returned %s of length %s; it must ",
+                "return one number or logical per pair (%s)."),
+                s$name, class(score)[1L],
+                format(length(score), big.mark = ","),
+                format(n_pairs, big.mark = ",")), call. = FALSE)
+        data.table::set(out, j = s$name, value = orient$convert(score, a, b))
+        info[[i]] <- data.frame(score = s$name, comparator = s$label,
+                                column_1 = s$col_1, column_2 = s$col_2,
+                                scale = orient$kind)
+        timings[[s$name]] <- .bench_now() - t0
+    }
+
+    # --- order and return --------------------------------------------------
+    t0 <- .bench_now()
+    lead <- c("pair_id", paste0("index", suffixes), "pass",
+              if (use_block) "block_key")
+    score_names <- vapply(cmp, `[[`, "", "name")
+    score_on <- vapply(cmp, `[[`, "", "group_on")
+    placed <- unlist(lapply(avail[avail %in% keep_cols], function(nm) c(
+        if (nm %in% keep_1) paste0(nm, suffixes[1L]),
+        if (nm %in% keep_2) paste0(nm, suffixes[2L]),
+        if (score_position == "grouped") score_names[score_on == nm]
+    )), use.names = FALSE)
+    data.table::setcolorder(out, c(lead, placed,
+                                   setdiff(names(out), c(lead, placed))))
+    timings$assemble <- .bench_now() - t0
+
+    total <- .bench_now() - t_all
+    data.table::setattr(out, "timings", data.frame(
+        stage = c(names(timings), "total"),
+        seconds = unlist(c(timings, list(total)), use.names = FALSE)))
+    data.table::setattr(out, "compare",
+                        if (length(info)) do.call(rbind, info) else NULL)
+    if (verbose) {
+        for (x in info)
+            cli::cli_alert_info(sprintf("%s: %s (%s).", x$score,
+                                        x$comparator, x$scale))
+        cli::cli_alert_success(sprintf(
+            "%s pairs, %d score column%s, in %.3fs.",
+            format(n_pairs, big.mark = ","), length(cmp),
+            if (length(cmp) == 1L) "" else "s", total))
+    }
+    out
 }
 
-# Identify when the current user last used rLink if at all
-last <- as.Date(rLinkUserHistory[rLinkUserHistory$login==Sys.info()["login"], "lastUsed"])
 
-# Determine whether the current user has used rLink before
-if (length(last)>0) { 
-	if (!is.na(last)) {
-		# If the current user has used rLink before
-		# Determine whether there are any new updates since the current user last used rLink
-		if (any(as.Date(names(updates)) > last)) {
-			# If there are any new updates since the current user last used rLink
-			# Identify the new updates since the current user last used rLink
-			newUpdates <- updates[as.Date(names(updates)) > last]
-			
-			# Manipulate the updates into a format desired for printing to the screen
-			string <- ""
-			for (i in 1:length(newUpdates)) {
-				string <- paste0(string
-								,names(newUpdates[i]),":\n"
-								,paste(" - ",unlist(newUpdates[i]), collapse="\n"),"\n\n")
-			}
-			
-			# Print the updates to the screen
-			require(tcltk2)
-			win3  <- tktoplevel()
-			tktitle(win3) <- "Changes to rLink since last use"
-			# Scrollbar must be defined first
-			win3$env$scr <- tk2scrollbar(win3, orient = "vertical", command = function(...) tkyview(win3$env$txt, ...))
-			win3$env$txt <- tk2text(win3, bg = "white", font = "Arial", width = 80, height = 10, wrap="word", yscrollcommand = function(...) tkset(win3$env$scr, ...))
-			# Use grid manager, telling to occupy the whole area
-			tkgrid(win3$env$txt, win3$env$scr, sticky = "nsew")
-			# Indicate that win3$env$txt must spread in x and y on window resize
-			tkgrid.rowconfigure(win3, win3$env$txt, weight = 1)
-			tkgrid.columnconfigure(win3, win3$env$txt, weight = 1)
-			# Populate the text area with many lines
-			tkinsert(win3$env$txt, "end", string)
-			tkconfigure(win3$env$txt, state = "disabled")
-			tkfocus(win3$env$txt)
-		}
-		
-		# Update the rLink user history
-		rLinkUserHistory[rLinkUserHistory$login==Sys.info()["login"], "lastUsed"] <- as.character(Sys.Date())
-	}
-} else {
-	# If the current user has not used rLink before
-	# Update the rLink user history
-	rLinkUserHistory <- rbind(rLinkUserHistory,data.frame(login=Sys.info()["login"],lastUsed=as.character(Sys.Date())))
+# --- blocking specification -----------------------------------------------
+
+# Control characters that cannot occur in the data: one joins the terms of a
+# pass into a single key, the other stands for a missing term under
+# match_missing. Both are checked against the data in .rlink_key() rather
+# than assumed, because a silently collided key is a wrong answer. The
+# function this replaces joined terms with "~", which does occur in real
+# names and addresses, so c("A~B", "C") and c("A", "B~C") shared a key.
+.rlink_sep <- "\u001f"
+.rlink_na_key <- "\u0001"
+
+.rlink_is_call_to <- function(e, fns)
+    is.call(e) && is.name(e[[1L]]) && as.character(e[[1L]]) %in% fns
+
+# The grammar: a top-level list() separates passes, and list()/c() inside a
+# pass separates the terms joined into one key. Anything else is one pass. A
+# c() at the top level is one pass of several terms, which is how the
+# blockStrategy1 = c("a", "b") of the earlier function carries over.
+.rlink_passes <- function(quo, arg) {
+    expr <- rlang::quo_get_expr(quo)
+    env <- rlang::quo_get_env(quo)
+    if (.rlink_is_call_to(expr, "list")) {
+        elems <- as.list(expr)[-1L]
+        labels <- names(elems)
+        passes <- lapply(elems, function(e) {
+            if (is.null(e)) return(NULL)
+            if (.rlink_is_call_to(e, c("list", "c"))) as.list(e)[-1L]
+            else list(e)
+        })
+    } else if (.rlink_is_call_to(expr, "c")) {
+        passes <- list(as.list(expr)[-1L])
+        labels <- NULL
+    } else {
+        passes <- list(list(expr))
+        labels <- NULL
+    }
+    if (!length(passes))
+        stop(sprintf("`%s` must name at least one blocking pass.", arg),
+             call. = FALSE)
+    for (p in seq_along(passes))
+        if (!is.null(passes[[p]]) && !length(passes[[p]]))
+            stop(sprintf("Pass %d of `%s` has no terms.", p, arg),
+                 call. = FALSE)
+    list(passes = passes, labels = labels, env = env)
 }
 
-# Write out the updated rLink user history
-if (exists("SAS")) {
-	if (SAS) {
-		write.csv(rLinkUserHistory, "E:\\SAS\\Surveys\\R\\Programs\\R\\R Linkage\\rLinkUserHistory.txt", row.names=F)
-	}
-} else {
-	write.csv(rLinkUserHistory, "S:\\Surveys\\R\\Programs\\R\\R Linkage\\rLinkUserHistory.txt", row.names=F)
+.rlink_check_block_2 <- function(spec, spec_2, n_pass) {
+    n2 <- length(spec_2$passes)
+    if (n2 != n_pass)
+        stop(sprintf(paste0(
+            "`block_2` has %d pass%s but `block` has %d; they are matched up ",
+            "pass by pass."), n2, if (n2 == 1L) "" else "es", n_pass),
+            call. = FALSE)
+    for (p in seq_len(n_pass)) {
+        if (is.null(spec_2$passes[[p]])) next
+        k1 <- length(spec$passes[[p]])
+        k2 <- length(spec_2$passes[[p]])
+        if (k1 != k2)
+            stop(sprintf(paste0(
+                "Pass %d has %d term%s in `block` but %d in `block_2`; keys ",
+                "built from different numbers of terms can never agree."),
+                p, k1, if (k1 == 1L) "" else "s", k2), call. = FALSE)
+    }
+    invisible(NULL)
+}
+
+# Errors are collected rather than raised one at a time. A typo in a blocking
+# variable used to be reported with print() and then carried on into an NA
+# column; reporting every bad name at once is what made that check worth
+# having, so it is kept, as a stop().
+.rlink_problems <- function() {
+    e <- new.env(parent = emptyenv())
+    e$msgs <- character()
+    e
+}
+
+.rlink_note <- function(probs, ...) {
+    probs$msgs <- c(probs$msgs, sprintf(...))
+    NULL
+}
+
+.rlink_stop <- function(probs, data_1) {
+    if (!length(probs$msgs)) return(invisible(NULL))
+    stop(sprintf("%s\nColumns in `data_1`: %s.",
+                 paste(probs$msgs, collapse = "\n"),
+                 paste(names(data_1), collapse = ", ")), call. = FALSE)
+}
+
+# One term of one pass. A length-1 string is a column name; anything else is
+# evaluated with the data in front of the calling environment.
+.rlink_term <- function(e, mask, env, n, arg, pass, slot, probs) {
+    where <- sprintf("%s, pass %d, term %d", arg, pass, slot)
+    if (is.character(e) && length(e) == 1L && !is.na(e)) {
+        if (!e %in% names(mask))
+            return(.rlink_note(probs, "%s: no column named `%s`", where, e))
+        return(mask[[e]])
+    }
+    shown <- paste(deparse(e), collapse = " ")
+    v <- tryCatch(rlang::eval_tidy(rlang::new_quosure(e, env), data = mask),
+                  error = function(cnd)
+                      .rlink_note(probs, "%s: %s - %s", where, shown,
+                                  conditionMessage(cnd)))
+    if (is.null(v)) return(NULL)
+    if (is.data.frame(v) || !is.null(dim(v)))
+        return(.rlink_note(probs, paste0(
+            "%s: %s gave %s, but a term must be a vector. Take one column, ",
+            "e.g. `double_metaphone(surname)$primary`."), where, shown,
+            if (is.data.frame(v)) "a data frame" else "a matrix"))
+    if (!is.atomic(v))
+        return(.rlink_note(probs,
+            "%s: %s gave a %s, but a term must be an atomic vector.",
+            where, shown, class(v)[1L]))
+    if (length(v) == 1L) v <- rep(v, n)
+    if (length(v) != n)
+        return(.rlink_note(probs,
+            "%s: %s gave %d values, but the data has %d rows.",
+            where, shown, length(v), n))
+    v
+}
+
+# One blocking key per pass. A lone term keeps its own type, so numbers and
+# dates still sort as numbers and dates under the sorted neighbourhood.
+.rlink_key <- function(parts, pass, upper, na_strings, match_missing,
+                       nthreads) {
+    multi <- length(parts) > 1L
+    # Only the characters actually used to build this key are rejected: the
+    # separator when there is more than one term to join, the placeholder
+    # when missings are being matched.
+    guard <- c(if (multi) .rlink_sep, if (match_missing) .rlink_na_key)
+    parts <- lapply(parts, .rlink_key_part, force_chr = multi, upper = upper,
+                    na_strings = na_strings, match_missing = match_missing,
+                    pass = pass, guard = guard, nthreads = nthreads)
+    if (!multi) return(parts[[1L]])
+    key <- do.call(paste, c(parts, list(sep = .rlink_sep)))
+    if (!match_missing)
+        key[Reduce(`|`, lapply(parts, is.na))] <- NA_character_
+    key
+}
+
+.rlink_check_sep <- function(v, pass, guard, nthreads) {
+    for (ch in guard)
+        if (any(fgrepl(ch, v, fixed = TRUE, nthreads = nthreads),
+                na.rm = TRUE))
+            stop(sprintf(paste0(
+                "Blocking values in pass %d contain a control character ",
+                "(U+%04X) that is used to build the key for a pass."),
+                pass, utf8ToInt(ch)), call. = FALSE)
+    invisible(NULL)
+}
+
+.rlink_key_part <- function(v, force_chr, upper, na_strings, match_missing,
+                            pass, guard, nthreads) {
+    if (is.factor(v)) v <- as.character(v)
+    if (force_chr || upper || length(na_strings) || match_missing)
+        v <- as.character(v)
+    if (is.character(v)) {
+        if (length(na_strings)) v[v %in% na_strings] <- NA_character_
+        if (upper) v <- toupper(v)
+        # Before the placeholder goes in, or it would flag itself.
+        if (length(guard)) .rlink_check_sep(v, pass, guard, nthreads)
+    }
+    if (match_missing) v[is.na(v)] <- .rlink_na_key
+    v
+}
+
+# A readable rendering of the key that paired each record, which was the most
+# used diagnostic of the earlier function. Display only: the control
+# characters are swapped for text.
+.rlink_block_key <- function(keys_1, pairs, xi, n_pairs) {
+    out <- rep(NA_character_, n_pairs)
+    for (p in unique(pairs$pass[!is.na(pairs$pass)])) {
+        hit <- which(pairs$pass == p)
+        k <- as.character(keys_1[[p]][xi[hit]])
+        k <- gsub(.rlink_na_key, "<NA>", k, fixed = TRUE)
+        out[hit] <- gsub(.rlink_sep, "|", k, fixed = TRUE)
+    }
+    out
+}
+
+.rlink_label <- function(labels, p) {
+    if (is.null(labels) || is.na(labels[p]) || !nzchar(labels[p])) ""
+    else sprintf(" (%s)", labels[p])
+}
+
+# The pre-flight estimate the earlier function printed per block, which is how
+# you find the pass that is about to explode. as.numeric() matters: that
+# function multiplied integer frequencies and overflowed to NA on exactly the
+# large blocks the warning exists for.
+.rlink_expected <- function(k1, k2, dedupe) {
+    t1 <- table(k1)
+    if (dedupe) {
+        n <- as.numeric(t1)
+        return(sum(n * (n - 1) / 2))
+    }
+    t2 <- table(k2)
+    shared <- intersect(names(t1), names(t2))
+    if (!length(shared)) return(0)
+    sum(as.numeric(t1[shared]) * as.numeric(t2[shared]))
+}
+
+.rlink_given_pairs <- function(pairs, n_1, n_2) {
+    if (!is.data.frame(pairs) ||
+        !all(c("x_index", "y_index") %in% names(pairs)))
+        stop("`pairs` must be a data frame with `x_index` and `y_index`.",
+             call. = FALSE)
+    out <- data.frame(
+        x_index = as.integer(pairs$x_index),
+        y_index = as.integer(pairs$y_index),
+        pass = if ("pass" %in% names(pairs)) as.integer(pairs$pass)
+               else rep(NA_integer_, nrow(pairs)))
+    if (nrow(out) &&
+        (anyNA(out$x_index) || anyNA(out$y_index) ||
+         min(out$x_index) < 1L || min(out$y_index) < 1L ||
+         max(out$x_index) > n_1 || max(out$y_index) > n_2))
+        stop("`pairs` holds indices outside `data_1` or `data_2`.",
+             call. = FALSE)
+    out
 }
 
 
+# --- comparators -----------------------------------------------------------
 
-## INPUT
-# data1 = First dataset. Can be csv file location or already imported data.frame object. No default, input required.
-# data2 = Optional second dataset. Can be csv file location or already imported data.frame object or empty (FALSE). Default is FALSE.
-# blockStrategy1 = Vector (or list of vectors) of blocking variables from data1, listed in the same order as blockStrategy2. Can be character (variable name) or numeric (column number) or a list of these. Default is empty.
-# blockStrategy2 = Vector (or list of vectors) of blocking variables from data2, listed in the same order as blockStrategy1. Can be character (variable name) or numeric (column number) or a list of these or empty. If empty blockStrategy2=blockStrategy1. Default is empty.
-# soundexPos = Vector (or list of vectors) containing the position of the soundex variables in the blocking vector. Can be character (variable name) or numeric (vector index). Default is empty.
-# missingPos = Boolean or vector (or list of vectors) containing the position of the variables in the blocking vector to be made unique. Can be boolean (TRUE or FALSE), character (variable name) or numeric (vector index). Default is FALSE.
-# winkler1 = Vector of variables to be compared using Jaro-Winkler from data1, listed in the same order as winkler2. Must be character (variable name). Default is empty.
-# winkler2 = Vector of variables to be compared using Jaro-Winkler from data2, listed in the same order as winkler1. Must be character (variable name) or empty. If empty winkler2=winkler1. Default is empty.
-# winklerSplitVec1 = Vector of regular expressions used to split associated winkler1 variables. Specifying regular expressions will cause the function to compare each part of the winkler1 variable and return the maximum score. Default is empty.
-# winklerSplitVec2 = Vector of regular expressions used to split associated winkler2 variables. Specifying regular expressions will cause the function to compare each part of the winkler2 variable and return the maximum score. Default is empty.
-# damLev1 = Vector of variables to be compared using Damerau-Levenshtein Edit Distance from data1, listed in the same order as damLev2. Must be character (variable name). Default is empty.
-# damLev2 = Vector of variables to be compared using Damerau-Levenshtein Edit Distance from data2, listed in the same order as damLev1. Must be character (variable name) or empty. If empty damLev2=damLev1. Default is empty.
-# damLevSplitVec1 = Vector of regular expressions used to split associated damLev1 variables. Specifying regular expressions will cause the function to compare each part of the damLev1 variable and return the maximum score. Default is empty.
-# damLevSplitVec2 = Vector of regular expressions used to split associated damLev2 variables. Specifying regular expressions will cause the function to compare each part of the damLev2 variable and return the maximum score. Default is empty.
-# output = Optional destination for outputting results to csv. Must be a string for it to attempt to write. Must use "/" in place of "\". Default is FALSE.
-# efficient = A toggle for taking extra steps to more efficiently manage memory by retaining only the final dataset. Must be boolean (TRUE or FALSE). Default is TRUE.
-# forceUpperCase = A toggle for forcing blocking and comparison variables on both datasets to be upper case. Must be boolean (TRUE or FALSE). Default is TRUE.
-# addPrefix = A toggle for adding a prefix to each variable name indicating which dataset the variable came from. Must be boolean (TRUE or FALSE). Default is TRUE.
-# diagnostics = Allows you to specify how verbose you want the function to be. Can take the value 0 or 'quiet' for no print out, 1 or 'default' for a print of the first and last 5 rows of input, or 2 or 'verbose' for a full diagnostic of the import stage as well. Default is 'default'.
+# compare = list(jaro_winkler(surname), sn = jaccard_index(surname, q = 3))
+# The call's first argument is the column expression; `a | b` takes the left
+# from data_1 and the right from data_2. The rest are the comparator's own
+# options. This one spec replaces the winkler1/winkler2/damLev1/damLev2 and
+# winklerSplitVec1/2/damLevSplitVec1/2 arguments it was built from.
+.rlink_compare <- function(quo, taken) {
+    if (rlang::quo_is_null(quo)) return(list())
+    expr <- rlang::quo_get_expr(quo)
+    env <- rlang::quo_get_env(quo)
+    elems <- if (.rlink_is_call_to(expr, "list")) as.list(expr)[-1L]
+             else list(expr)
+    nms <- names(elems)
+    out <- vector("list", length(elems))
+    for (i in seq_along(elems)) {
+        e <- elems[[i]]
+        if (!is.call(e) || length(e) < 2L)
+            stop(sprintf(paste0(
+                "Element %d of `compare` must be a comparator call such as ",
+                "`jaro_winkler(surname)`."), i), call. = FALSE)
+        # A bare `function(a, b) ...` names no column to compare, and its
+        # second element is the formals rather than an expression, so it
+        # would otherwise be read as one.
+        if (.rlink_is_call_to(e, "function"))
+            stop(sprintf(paste0(
+                "Element %d of `compare` is a function on its own, so it ",
+                "does not say which column to compare. Apply it to one, ",
+                "e.g. `list(my_score = (function(a, b) a == b)(postcode))`."),
+                i), call. = FALSE)
+        fn_expr <- e[[1L]]
+        fn <- tryCatch(eval(fn_expr, env), error = function(cnd) NULL)
+        if (!is.function(fn))
+            stop(sprintf("Element %d of `compare` does not name a function.",
+                         i), call. = FALSE)
+        label <- if (is.name(fn_expr)) as.character(fn_expr)
+                 else if (.rlink_is_call_to(fn_expr, c("::", ":::")))
+                     as.character(fn_expr[[3L]])
+                 else NA_character_
 
-## OUTPUT
-# blockPairs = Dataset containing:
-#			   - All pairs identified through blocking; 
-#			   - All variables from data1 and data2;
-#			   - All Soundex, Jaro-Winkler and Damerau-Levenshtein Edit Distance results; and
-#			   - A group ID similar to descriptions of the one in NLS
+        col <- e[[2L]]
+        if (.rlink_is_call_to(col, "|")) {
+            expr_1 <- col[[2L]]
+            expr_2 <- col[[3L]]
+        } else {
+            expr_1 <- expr_2 <- col
+        }
+        rest <- as.list(e)[-(1:2)]
+        args <- lapply(rest, function(a) eval(a, env))
+        names(args) <- names(rest)
 
+        col_1 <- .rlink_col_name(expr_1)
+        col_2 <- .rlink_col_name(expr_2)
+        plain <- !is.na(col_1) && identical(expr_1, expr_2)
+        named <- !is.null(nms) && !is.na(nms[i]) && nzchar(nms[i])
+        nm <- if (named) nms[i]
+              else if (plain && !is.na(label)) paste0(col_1, "_", label)
+              else NA_character_
+        if (is.na(nm))
+            stop(sprintf(paste0(
+                "Element %d of `compare` needs a name for its score column, ",
+                "because %s. Give it one, e.g. `list(my_score = %s)`."), i,
+                if (is.na(label)) "its comparator is anonymous"
+                else "it does not compare one plain column on both sides",
+                paste(deparse(e), collapse = " ")), call. = FALSE)
 
-
-link <- function(data1, data2=FALSE, blockStrategy1=c(), blockStrategy2=c(), soundexPos=c(), missingPos=FALSE, winkler1=c(), winkler2=c(), winklerSplitVec1=c(), winklerSplitVec2=c(), damLev1=c(), damLev2=c(), damLevSplitVec1=c(), damLevSplitVec2=c(), output=FALSE, efficient=TRUE, forceUpperCase=TRUE, addPrefix=TRUE, diagnostics="default") {
-	
-	dummyBlock=blockKey=rown=pair=rown.data1=rown.data2=rowmin=rowmax=pairID=.=damLev=i.rown=blockNo=NULL
-	
-	# By default turn deduplication mode off
-	dedup <- FALSE
-	# By default assume one blocking strategy
-	multB <- FALSE
-	# Check for where blockPairs already exists and remove it ### THIS MAY NOT WORK
-	if (exists("blockPairs", envir=currentEnvir)) rm(blockPairs, envir=currentEnvir)
-	
-	### DATA
-	# Import/Assign the datasets
-	# If data is a string assume that it is a file path and import using read.csv
-	if (class(data1)=="character") {
-		if (diagnostics %in% c(2,"verbose")) fd1 <- fread(data1, stringsAsFactors=F, verbose=T, colClasses="character")
-		else fd1 <- fread(data1, stringsAsFactors=F, colClasses="character")
-		if (!(diagnostics %in% c(0,"quiet"))) {
-			cat("\ndata1\n")
-			print(fd1)
-		}
-	# If data is a data frame just relabel it
-	} else if ("data.frame" %in% class(data1)) {  
-		fd1<-data.table(data1)
-		if (!(diagnostics %in% c(0,"quiet"))) {
-			cat("\ndata1\n")
-			print(fd1)
-		}
-		# # # If efficiency is a concern then remove the original data
-		# # if (efficient) rm(data1)
-	# If neither of the above then print error
-	} else stop("data1 missing/unexpected format")
-	# If data is a string assume that it is a file path and import using read.csv
-	if (class(data2)=="character") {
-		if (diagnostics %in% c(2,"verbose")) fd2 <- fread(data2, stringsAsFactors=F, verbose=T, colClasses="character")
-		else fd2 <- fread(data2, stringsAsFactors=F, colClasses="character")
-		if (!(diagnostics %in% c(0,"quiet"))) {
-			cat("\ndata2\n")
-			print(fd2)
-		}
-	# If data is a data frame just relabel it
-	} else if ("data.frame" %in% class(data2)) {  
-		fd2<-data.table(data2)
-		if (!(diagnostics %in% c(0,"quiet"))) {
-			cat("\ndata2\n")
-			print(fd2)
-		}
-		# # # If efficiency is a concern then remove the original data
-		# # if (efficient) rm(data2)
-	# If input is FALSE then convert to deduplication mode
-	} else if (class(data2)=="logical") {
-		dedup <- TRUE
-	# If neither of the above then print error
-	} else stop("data2 unexpected format")
-	
-	
-	
-	### INDEX
-	# Blocking
-	# Detect whether input is of the correct format
-	# If the input is a list then we know we are doing multiple blocking
-	if (class(blockStrategy1)=="list") {
-		multB <- TRUE
-		# If the input is not character or numeric, print error
-		if (sum(!(sapply(blockStrategy1,class) %in% c("character","numeric")))>0) stop("blockStrategy1 unexpected format")
-		# If the input is character, take it as is
-		block1 <- blockStrategy1
-		# If the input is numeric, assume that it is the column position and convert it to variable name
-		if (sum(sapply(blockStrategy1,class)==c("numeric")) > 0) block1[sapply(blockStrategy1,class)=="numeric"] <- lapply(blockStrategy1[sapply(blockStrategy1,class)=="numeric"], function(x) names(fd1)[x])
-	# If the input is just a vector
-	# If the input is character, take it as is
-	} else if (class(blockStrategy1)=="character") {
-		block1 <- blockStrategy1
-	# If the input is numeric, assume that it is the column position and convert it to variable name
-	} else if (class(blockStrategy1)=="numeric") {
-		block1 <- names(fd1)[blockStrategy1]
-	# Sometimes we want to pair everything together in the same block
-	} else if (class(blockStrategy1)=="NULL") {
-		block1 <- "dummyBlock"
-		fd1[,dummyBlock:="1"]
-	# If not character then print error
-	} else {
-		stop("blockStrategy1 unexpected format")
-	}
-	# If there is a second dataset then we are doing linkage and not deduplication
-	if (!dedup) {
-		# If the input is a list then we know we are doing multiple blocking
-		if (class(blockStrategy2)=="list" & multB) {
-			# If the input is not character or numeric, print error
-			if (sum(!(sapply(blockStrategy2,class) %in% c("character","numeric")))>0) stop("blockStrategy2 unexpected format")
-			# If the input is character, take it as is
-			block2 <- blockStrategy2
-			# If the input is numeric, assume that it is the column position and convert it to variable name
-			if (sum(sapply(blockStrategy2,class)==c("numeric"))>0) block2[sapply(blockStrategy2,class)=="numeric"] <- lapply(blockStrategy2[sapply(blockStrategy2,class)=="numeric"], function(x) names(fd2)[x])
-		# If the input is just a vector
-		# If the input is character, take it as is
-		} else if (class(blockStrategy2)=="character") {
-			block2 <- blockStrategy2
-		# If the input is numeric, assume that it is the column position and convert it to variable name
-		} else if (class(blockStrategy2)=="numeric") {
-			block2 <- names(fd2)[blockStrategy2]
-		# If the input is empty then assume the names of the blocking variables are the same as the first dataset
-		# For multiple blocking
-		} else if (multB & class(blockStrategy2)=="NULL") {
-			# for (i in 1:length(blockStrategy1)) {
-				# assign(paste("block2",i,sep=".",eval(parse(text=paste("block1",i,sep="")))))
-			# } # NO IDEA WHAT I WAS DOING HERE
-			block2 <- block1
-		# For single blocking
-		} else if (class(blockStrategy2)=="NULL") {
-			block2 <- block1
-			if (all(block2=="dummyBlock")) fd2[,dummyBlock:="1"]
-		# If not character then print error
-		} else {
-			stop("blockStrategy2 unexpected format")
-		}
-	}
-	# If there is not a second dataset then we are doing deduplication
-	if (dedup) {
-		# If the input is a list then we know we are doing multiple blocking
-		if (class(blockStrategy2)=="list" & multB) {
-			# If the input is not character or numeric, print error
-			if (sum(!(sapply(blockStrategy2,class) %in% c("character","numeric")))>0) stop("blockStrategy2 unexpected format")
-			# If the input is character, take it as is
-			block2 <- blockStrategy2
-			# If the input is numeric, assume that it is the column position and convert it to variable name
-			if (sum(sapply(blockStrategy2,class)==c("numeric"))>0) block2[sapply(blockStrategy2,class)=="numeric"] <- lapply(blockStrategy2[sapply(blockStrategy2,class)=="numeric"], function(x) names(fd1)[x])
-		# If the input is just a vector
-		# If the input is character, take it as is
-		} else if (class(blockStrategy2)=="character") {
-			block2 <- blockStrategy2
-		# If the input is numeric, assume that it is the column position and convert it to variable name
-		} else if (class(blockStrategy2)=="numeric") {
-			block2 <- names(fd1)[blockStrategy2]
-		# If the input is empty then assume the names of the blocking variables are the same as the first dataset
-		# For multiple blocking
-		} else if (multB & class(blockStrategy2)=="NULL") {
-			# for (i in 1:length(blockStrategy1)) {
-				# assign(paste("block2",i,sep=".",eval(parse(text=paste("block1",i,sep="")))))
-			# } # NO IDEA WHAT I WAS DOING HERE
-			block2 <- block1
-		# For single blocking
-		} else if (class(blockStrategy2)=="NULL") {
-			block2 <- block1
-		# If not character then print error
-		} else {
-			stop("blockStrategy2 unexpected format")
-		}
-	}
-	
-	# browser();stop()
-	# Check whether the user has selected blocking/comparison variables that exist on the datasets
-	# It's easy for users to misspell or write them in the wrong case
-	error <- FALSE
-	# Linkage (single and multi blocking)
-	if (!dedup) {
-		# blocking
-		tmp <- unique(unlist(block1))
-		if (any(!tmp %in% names(fd1))) {
-			incorrectVars <- tmp[!tmp %in% names(fd1)]
-			cat(paste0("\nERROR: The following blockStrategy1 variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-		tmp <- unique(unlist(block2))
-		if (any(!tmp %in% names(fd2))) {
-			incorrectVars <- tmp[!tmp %in% names(fd2)]
-			cat(paste0("\nERROR: The following blockStrategy2 variables do not appear on data2:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-		# soundex
-		tmp <- unique(unlist(soundexPos)[!grepl("^[0-9]+$",unlist(soundexPos))])
-		if (any(!tmp %in% names(fd1))) {
-			incorrectVars <- tmp[!tmp %in% names(fd1)]
-			cat(paste0("\nERROR: The following soundexPos variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-		# missingPos
-		if (class(missingPos)!="logical") {
-			tmp <- unique(unlist(missingPos)[!grepl("^[0-9]+$",unlist(missingPos))])
-			if (any(!tmp %in% names(fd1))) {
-				incorrectVars <- tmp[!tmp %in% names(fd1)]
-				cat(paste0("\nERROR: The following missingPos variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-				error <- TRUE
-			}
-		}
-		# winkler
-		tmp <- unique(winkler1)
-		if (any(!tmp %in% names(fd1))) {
-			incorrectVars <- tmp[!tmp %in% names(fd1)]
-			cat(paste0("\nERROR: The following winkler1 variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-		tmp <- unique(winkler2)
-		if (any(!tmp %in% names(fd2))) {
-			incorrectVars <- tmp[!tmp %in% names(fd2)]
-			cat(paste0("\nERROR: The following winkler2 variables do not appear on data2:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-		# damLev
-		tmp <- unique(damLev1)
-		if (any(!tmp %in% names(fd1))) {
-			incorrectVars <- tmp[!tmp %in% names(fd1)]
-			cat(paste0("\nERROR: The following damLev1 variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-		tmp <- unique(damLev2)
-		if (any(!tmp %in% names(fd2))) {
-			incorrectVars <- tmp[!tmp %in% names(fd2)]
-			cat(paste0("\nERROR: The following damLev2 variables do not appear on data2:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-	# Deduplication
-	} else {
-		# blocking
-		tmp <- unique(c(unlist(block1),unlist(block2)))
-		if (any(!tmp %in% names(fd1))) {
-			incorrectVars <- tmp[!tmp %in% names(fd1)]
-			cat(paste0("\nERROR: The following blocking variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-		# soundex
-		tmp <- unique(unlist(soundexPos)[!grepl("^[0-9]+$",unlist(soundexPos))])
-		if (any(!tmp %in% names(fd1))) {
-			incorrectVars <- tmp[!tmp %in% names(fd1)]
-			cat(paste0("\nERROR: The following soundexPos variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-		# missingPos
-		if (class(missingPos)!="logical") {
-			tmp <- unique(unlist(missingPos)[!grepl("^[0-9]+$",unlist(missingPos))])
-			if (any(!tmp %in% names(fd1))) {
-				incorrectVars <- tmp[!tmp %in% names(fd1)]
-				cat(paste0("\nERROR: The following missingPos variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-				error <- TRUE
-			}
-		}
-		# winkler
-		tmp <- unique(c(winkler1,winkler2))
-		if (any(!tmp %in% names(fd1))) {
-			incorrectVars <- tmp[!tmp %in% names(fd1)]
-			cat(paste0("\nERROR: The following winkler variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-		# damLev
-		tmp <- unique(c(damLev1,damLev2))
-		if (any(!tmp %in% names(fd1))) {
-			incorrectVars <- tmp[!tmp %in% names(fd1)]
-			cat(paste0("\nERROR: The following damLev variables do not appear on data1:\n",paste(incorrectVars,collapse="\n"),"\n"))
-			error <- TRUE
-		}
-	}
-	# If any of the variables specified in the parameters were incorrect exit the function
-	if (error) return(cat("\nPlease review your parameters\n"))
-
-	
-	# If addPrefix option is toggled on then add a meaningful prefix to the variable names
-	if (addPrefix & !dedup) {
-		# Datasets
-		setnames(fd1,names(fd1),paste("d1",names(fd1),sep="."))
-		setnames(fd2,names(fd2),paste("d2",names(fd2),sep="."))
-		# Blocking lists or vectors
-		if (multB) {
-			block1 <- lapply(block1, function(x) paste("d1",x,sep="."))
-			block2 <- lapply(block2, function(x) paste("d2",x,sep="."))
-		} else {
-			block1 <- paste("d1",block1,sep=".")
-			block2 <- paste("d2",block2,sep=".")
-		}
-		# Soundex
-		if (sum(sapply(soundexPos,class)==c("character"))>0) soundexPos <- paste("d1",soundexPos,sep=".")
-		# Winkler
-		if (length(winkler1)>0) winkler1 <- paste("d1",winkler1,sep=".")
-		if (length(winkler2)>0) winkler2 <- paste("d2",winkler2,sep=".")
-		# damLev
-		if (length(damLev1)>0) damLev1 <- paste("d1",damLev1,sep=".")
-		if (length(damLev2)>0) damLev2 <- paste("d2",damLev2,sep=".")
-	}
-	
-	# Ensure all blocking variables are character
-	if (!dedup) {
-		blockAll1 <- unique(unlist(block1))
-		fd1[,(blockAll1):=lapply(.SD, as.character), .SDcols=blockAll1]
-		blockAll2 <- unique(unlist(block2))
-		fd2[,(blockAll2):=lapply(.SD, as.character), .SDcols=blockAll2]
-	} else {
-		blockAll1 <- unique(c(unlist(block1),unlist(block2)))
-		fd1[,(blockAll1):=lapply(.SD, as.character), .SDcols=blockAll1]
-	}
-	
-	# If force upper case option toggled on then make sure all blocking and comparison variables are upper case
-	if (forceUpperCase) {
-		if (!dedup) {
-			vars1 <- unique(c(unlist(block1),winkler1,damLev1))
-			fd1[,(vars1):=lapply(.SD, toupper), .SDcols=vars1]
-			vars2 <- unique(c(unlist(block2),winkler2,damLev2))
-			fd2[,(vars2):=lapply(.SD, toupper), .SDcols=vars2]
-		} else {
-			vars1 <- unique(c(unlist(block1),unlist(block2),winkler1,damLev1))
-			fd1[,(vars1):=lapply(.SD, toupper), .SDcols=vars1]
-		}
-	}
-	
-	# Soundex
-	# Check if any variables are to be blocked using soundex (Are we doing soundex?)
-	if (class(soundexPos)=="list" & multB) {
-		# If the input is not character or numeric, print error
-		if (sum(!(sapply(soundexPos,class) %in% c("character","numeric","NULL")))>0) stop("soundexPos unexpected format")
-		# If the input is numeric, take it as is
-		soundexList <- soundexPos
-		# If the input is character, convert it to the position relative to the blocking list (Must assume that the names relate to the first dataset)
-		if (sum(sapply(soundexPos,class)==c("character"))>0) soundexList[sapply(soundexPos,class)=="character"] <- mapply(match,soundexPos[sapply(soundexPos,class)=="character"],block1[sapply(soundexPos,class)=="character"],SIMPLIFY=F)
-		
-		# Select the blocking vars to apply soundex to
-		soundexList1 <- mapply("[",block1,soundexList,SIMPLIFY=F)
-		soundexList2 <- mapply("[",block2,soundexList,SIMPLIFY=F)
-		# Create a unique vector containing the vars to apply soundex to
-		soundexVec1 <- unique(unlist(soundexList1))
-		soundexVec2 <- unique(unlist(soundexList2))
-		if (dedup) soundexVec1 <- unique(c(soundexVec1,soundexVec2))
-		# Create a vector containing the new variable names
-		soundexVec1New <- paste(soundexVec1,"soundex",sep=".")
-		soundexVec2New <- paste(soundexVec2,"soundex",sep=".")
-		if (dedup) soundexVec1New <- unique(c(soundexVec1New,soundexVec2New))
-		
-		# Apply soundex to the first dataset and update the blocking vector
-		# Calculate the soundex for each variable
-		fd1[,(soundexVec1New):=lapply(.SD, soundex),.SDcols=soundexVec1]
-		if (!dedup) fd2[,(soundexVec2New):=lapply(.SD, soundex),.SDcols=soundexVec2] ##### SLOW
-		# Update the blocking vector with the names of the soundex variables
-		for (i in 1:length(soundexList)) {
-			block1[[i]][soundexList[[i]]] <- paste(block1[[i]][soundexList[[i]]],"soundex",sep=".")
-			block2[[i]][soundexList[[i]]] <- paste(block2[[i]][soundexList[[i]]],"soundex",sep=".")
-		}
-	
-	# If we don't have a list do we have a vector?
-	} else if (length(soundexPos)>0 & !multB) {
-		# If the vector is numeric assume vector position has been specified
-		if (class(soundexPos)=="numeric") soundexVec <- soundexPos
-		# If the vector is character assume variable names have been specified, are the same on each dataset and convert them to vector position
-		else if (class(soundexPos)=="character") soundexVec <- which(block1 %in% soundexPos[[i]])
-		# If neither of the above then print error
-		else stop("soundexPos unexpected format")
-		# Select the blocking vars to apply soundex to
-		soundexVec1 <- block1[soundexVec]
-		soundexVec2 <- block2[soundexVec]
-		if (dedup) soundexVec1 <- unique(c(soundexVec1,soundexVec2))
-		# Create a vector containing the new variable names
-		soundexVec1New <- paste(soundexVec1,"soundex",sep=".")
-		soundexVec2New <- paste(soundexVec2,"soundex",sep=".")
-		if (dedup) soundexVec1New <- unique(c(soundexVec1New,soundexVec2New))
-		
-		# Apply soundex to the first dataset and update the blocking vector
-		# Calculate the soundex for each variable
-		fd1[,(soundexVec1New):=lapply(.SD, soundex),.SDcols=soundexVec1]
-		
-		# If there is a second dataset then we are doing linkage and not deduplication
-		if (!dedup) {
-			# Apply soundex to the second dataset and update the blocking vector
-			# Calculate the soundex for each variable
-			fd2[,(soundexVec2New):=lapply(.SD, soundex),.SDcols=soundexVec2]
-		}
-		
-		# Update the blocking vector with the names of the soundex variables
-		block1[soundexVec] <- soundexVec1New
-		block2[soundexVec] <- soundexVec2New
-		
-	} else if (class(soundexPos)!="NULL") stop("soundexPos unexpected format")
-	
-	
-	# Convert all missing to "" for consistency and to speed up the merge (probably)
-	# Define a function to convert all missing to ""
-	missing2blank <- function(x) {
-		x[is.na(x)] <- ""
-		x
-	}
-	# Run that function over all of the blocking variables on both datasets
-	if (!dedup) {
-		blockAll1 <- unique(unlist(block1))
-		fd1[,(blockAll1):=lapply(.SD, missing2blank), .SDcols=blockAll1]
-		blockAll2 <- unique(unlist(block2))
-		fd2[,(blockAll2):=lapply(.SD, missing2blank), .SDcols=blockAll2]
-	} else {
-		blockAll1 <- unique(c(unlist(block1),unlist(block2)))
-		fd1[,(blockAll1):=lapply(.SD, missing2blank), .SDcols=blockAll1]
-	}
-	
-	
-	# If missingPos has been specified then replace missings with unique values
-	# For all blocking variables
-	if (ifelse(class(missingPos)=="logical",ifelse(missingPos,TRUE,FALSE),FALSE)) {
-		for (i in blockAll1) {
-			setkeyv(fd1,i)
-			fd1[.(""), (i):=paste0("1",i,1:nrow(fd1[.(""), (i), with=F])), with=F]
-		}
-		if (!dedup) {
-			for (i in blockAll2) {
-				setkeyv(fd2,i)
-				fd2[.(""), (i):=paste0("2",i,1:nrow(fd2[.(""), (i), with=F])), with=F]
-			}
-		}
-	# For some blocking variables (single block)
-	} else if (!multB & ifelse(class(missingPos) %in% c("numeric","character"),TRUE,FALSE)) {
-		# If the vector is numeric assume vector position has been specified
-		if (class(missingPos)=="numeric") missingVec <- missingPos
-		# If the vector is character assume variable names have been specified, are the same on each dataset and convert them to vector position
-		else if (class(missingPos)=="character") missingVec <- which(block1 %in% missingPos[[i]])
-		# If neither of the above then print error
-		else stop("missingPos unexpected format")
-		# Select the blocking vars to apply uniqueness to
-		missingVec1 <- block1[missingVec]
-		missingVec2 <- block2[missingVec]
-		if (dedup) missingVec1 <- unique(c(missingVec1,missingVec2))
-		# Apply uniqueness
-		for (i in missingVec1) {
-			setkeyv(fd1,i)
-			fd1[.(""), (i):=paste0("1",i,1:nrow(fd1[.(""), (i), with=F])), with=F]
-		}
-		if (!dedup) {
-			for (i in missingVec2) {
-				setkeyv(fd2,i)
-				fd2[.(""), (i):=paste0("2",i,1:nrow(fd2[.(""), (i), with=F])), with=F]
-			}
-		}
-	# For some blocking variables (multiple blocks)
-	} else if (multB & ifelse(class(missingPos) %in% c("list"),TRUE,FALSE)) {
-		# If the input is not character or numeric, print error
-		if (sum(!(sapply(missingPos,class) %in% c("character","numeric","NULL")))>0) stop("missingPos unexpected format")
-		# If the input is numeric, take it as is
-		missingList <- missingPos
-		# If the input is character, convert it to the position relative to the blocking list (Must assume that the names relate to the first dataset)
-		if (sum(sapply(missingPos,class)==c("character"))>0) missingList[sapply(missingPos,class)=="character"] <- mapply(match,missingPos[sapply(missingPos,class)=="character"],block1[sapply(missingPos,class)=="character"],SIMPLIFY=F)
-		# Select the blocking vars to apply uniqueness to
-		missingList1 <- mapply("[",block1,missingList,SIMPLIFY=F)
-		missingList2 <- mapply("[",block2,missingList,SIMPLIFY=F)
-		# Create a unique vector containing the vars to apply uniqueness to
-		missingVec1 <- unique(unlist(missingList1))
-		missingVec2 <- unique(unlist(missingList2))
-		if (dedup) missingVec1 <- unique(c(missingVec1,missingVec2))
-		# Apply uniqueness
-		for (i in missingVec1) {
-			setkeyv(fd1,i)
-			fd1[.(""), (i):=paste0("1",i,1:nrow(fd1[.(""), (i), with=F])), with=F]
-		}
-		if (!dedup) {
-			for (i in missingVec2) {
-				setkeyv(fd2,i)
-				fd2[.(""), (i):=paste0("2",i,1:nrow(fd2[.(""), (i), with=F])), with=F]
-			}
-		}
-	# Else if anything is specified than it is in error
-	} else if (ifelse(class(c)=="logical",ifelse(c,TRUE,FALSE),ifelse(class(c) %in% c("list","numeric","character"),TRUE,FALSE))) {
-		stop("missingPos unexpected format")
-	}
-	# Else it's fine to match missings
-	
-	
-	# For deduplication where the blocking variables (name and order) are not exactly the same across block1 and block2, create a second file as the index may differ
-	if (dedup & !identical(block1,block2)) fd2 <- copy(fd1)
-	
-	
-	# Create block key/s (what we will merge on) ##### Is this necessary? Can I use setkeyv() instead of creating blockKeys? Would that be faster? I think it would cause complications that aren't worth introducing
-	if (multB) {
-		for (i in 1:length(block1)) {
-			fd1[,paste("blockKey",i,sep="."):=do.call(paste, c(fd1[,.SD,.SDcols=block1[[i]]], sep = "~"))]
-			if (!dedup | !identical(block1,block2)) fd2[,paste("blockKey",i,sep="."):=do.call(paste, c(fd2[,.SD,.SDcols=block2[[i]]], sep = "~"))]
-		}
-	} else {
-		fd1[,blockKey:=do.call(paste, c(fd1[,.SD,.SDcols=block1], sep = "~"))]
-		if (!dedup | !identical(block1,block2)) fd2[,blockKey:=do.call(paste, c(fd2[,.SD,.SDcols=block2], sep = "~"))]
-	}
-	
-	# browser();stop()
-	
-	# It's useful to know how many pairs one can expect given the blocking strategy
-	# It's also important to break this up blocks if there are multiple blocks
-	# That way if it falls over the user has some idea of why
-	if (multB) {
-		cat("\n")
-		if (!dedup) {
-			for (i in 1:length(block1)) {
-				tmpFreqs <- merge(data.frame(table(fd1[,paste("blockKey",i,sep="."),with=F])),data.frame(table(fd2[,paste("blockKey",i,sep="."),with=F])),"Var1")
-				cat(paste("A total of",sum(tmpFreqs$Freq.x*tmpFreqs$Freq.y),"pairs were found with block",i,"\n"))
-				if (i==1) blockKeyFreqs <- tmpFreqs
-				else blockKeyFreqs <- rbind(blockKeyFreqs,tmpFreqs)
-			}
-			expectedPairs <- sum(as.numeric(blockKeyFreqs$Freq.x*blockKeyFreqs$Freq.y))
-		} else {
-			for (i in 1:length(block1)) {
-				if (identical(block1[[i]],block2[[i]])) {
-					tmpFreqs <- data.frame(table(fd1[,paste("blockKey",i,sep="."),with=F]))
-					# cat(paste("A total of",sum(factorial(tmpFreqs$Freq[tmpFreqs$Freq>1])/(factorial(2)*factorial(tmpFreqs$Freq[tmpFreqs$Freq>1]-2))),"pairs were found with block",i,"\n"))
-					cat(paste("A total of",sum(as.numeric(tmpFreqs$Freq*(tmpFreqs$Freq-1)/2)),"pairs were found with block",i,"\n"))
-					if (!exists("blockKeyFreqs1")) blockKeyFreqs1 <- tmpFreqs
-					else blockKeyFreqs1 <- rbind(blockKeyFreqs1,tmpFreqs)
-				} else {
-					tmpFreqs <- merge(data.frame(table(fd1[,paste("blockKey",i,sep="."),with=F])),data.frame(table(fd2[,paste("blockKey",i,sep="."),with=F])),"Var1")
-					cat(paste("A total of",sum(tmpFreqs$Freq.x*tmpFreqs$Freq.y),"pairs were found with block",i,"\n"))
-					if (!exists("blockKeyFreqs2")) blockKeyFreqs2 <- tmpFreqs
-					else blockKeyFreqs2 <- rbind(blockKeyFreqs2,tmpFreqs)
-				}
-			}
-			if (exists("blockKeyFreqs1")) {
-				blockKeyFreqs1 <- blockKeyFreqs1[blockKeyFreqs1$Freq>1,]
-				# expectedPairs1 <- sum(factorial(blockKeyFreqs1$Freq)/(factorial(2)*factorial(blockKeyFreqs1$Freq-2)))
-				expectedPairs1 <- sum(as.numeric(blockKeyFreqs1$Freq*(blockKeyFreqs1$Freq-1)/2))
-			} else {
-				expectedPairs1 <- 0
-			}
-			if (exists("blockKeyFreqs2")) {
-				expectedPairs2 <- sum(blockKeyFreqs2$Freq.x*blockKeyFreqs2$Freq.y)
-			} else {
-				expectedPairs2 <- 0
-			}
-			expectedPairs = expectedPairs1 + expectedPairs2
-		}
-		if (expectedPairs==0) return(cat("\nNo pairs were found with this blocking strategy\n"))
-		else cat(paste("Note: The total number of pairs may be reduced when duplicate pairs are removed\n"))
-	} else {
-		if (!dedup | !identical(block1,block2)) {
-			blockKeyFreqs <- merge(data.frame(table(fd1[,"blockKey",with=F])),data.frame(table(fd2[,"blockKey",with=F])),"Var1")
-			expectedPairs <- sum(as.numeric(blockKeyFreqs$Freq.x*blockKeyFreqs$Freq.y))
-		} else {
-			blockKeyFreqs <- data.frame(table(fd1[,"blockKey",with=F]))
-			blockKeyFreqs <- blockKeyFreqs[blockKeyFreqs$Freq>1,]
-			# expectedPairs <- sum(as.numeric(factorial(blockKeyFreqs$Freq)/(factorial(2)*factorial(blockKeyFreqs$Freq-2))))
-			expectedPairs <- sum(as.numeric(blockKeyFreqs$Freq*(blockKeyFreqs$Freq-1)/2))
-		}
-		if (expectedPairs==0) return(cat("\nNo pairs were found with this blocking strategy\n"))
-		else cat(paste("\nA total of",expectedPairs,"pairs were found with this blocking strategy\n"))
-	}
-	
-	
-	# I'm not sure if this is worth doing. The analyst probably prefers it, but it is possibly additional calculations that don't need to be forced upon them
-	# Convert all "" to missing
-	# blank2missing <- function(x) {
-		# x[x==""] <- NA
-		# x
-	# }
-	# fd1[,(block1):=lapply(.SD, blank2missing), .SDcols=block1]
-	# if (!dedup) fd2[,(block2):=lapply(.SD, blank2missing), .SDcols=block2]
-	
-	# browser()
-	# stop()
-	
-	
-	# browser();stop()
-	
-	# Merge the two files by the block key/s
-	if (multB) {
-		fd1[,rown:=1:nrow(fd1)]
-		if (!dedup | !identical(block1,block2)) fd2[,rown:=1:nrow(fd2)]
-		for (i in 1:length(block1)) {
-			# Linkage
-			if (!dedup) {
-				tmp <- fd1[fd2,on=paste0("blockKey.",i), allow.cartesian=T, nomatch=0]
-				tmp[,pair:=paste(rown,i.rown,sep="~")] ##### SLOW
-				tmp[,blockNo:=i]
-				
-				setnames(tmp, paste0("blockKey.",i), "blockKey")
-				setcolorder(tmp, c("blockKey",setdiff(names(tmp), "blockKey")))
-				
-				if (i==1) {
-					blockPairs <- tmp
-				} else {
-					setkey(tmp, pair)
-					blockPairs <- rbindlist(list(blockPairs,tmp[!.(blockPairs[,pair])]))
-				}
-			# Deduplication
-			} else if (identical(block1,block2)) {
-				tmp <- fd1[fd1, on=paste0("blockKey.",i), allow.cartesian=T, nomatch=0]
-				tmp[,blockNo:=i]
-				
-				tmp[,rowmin:=pmin(rown, i.rown)]
-				tmp[,rowmax:=pmax(rown, i.rown)]
-				tmp <- tmp[!duplicated(tmp[,list(rowmin,rowmax)]) & tmp[,rowmin]!=tmp[,rowmax]]
-				
-				if (i==1) {
-					blockPairs <- tmp
-				} else blockPairs <- rbindlist(list(blockPairs,tmp[!(paste(tmp$rowmin,tmp$rowmax,sep="~") %in% paste(blockPairs$rowmin,blockPairs$rowmax,sep="~")),]))
-				
-			} else {
-				tmp <- fd1[fd2,on=paste0("blockKey.",i), allow.cartesian=T, nomatch=0]
-				tmp[,blockNo:=i]
-				
-				tmp[,rowmin:=pmin(rown, i.rown)]
-				tmp[,rowmax:=pmax(rown, i.rown)]
-				tmp <- tmp[!duplicated(tmp[,list(rowmin,rowmax)]) & tmp[,rowmin]!=tmp[,rowmax]]
-				
-				if (i==1) {
-					blockPairs <- tmp
-				# Not sure which is faster
-				} else {
-					blockPairs <- rbindlist(list(blockPairs,tmp[!(paste(tmp$rowmin,tmp$rowmax,sep="~") %in% paste(blockPairs$rowmin,blockPairs$rowmax,sep="~")),]))
-				}
-			}
-			rm(tmp)
-		}
-	} else {
-		# Linkage
-		if (!dedup) {
-			blockPairs <- fd1[fd2,on="blockKey", allow.cartesian=T, nomatch=0]
-		# Deduplication
-		} else if (identical(block1,block2)) {
-			fd1[,rown:=1:nrow(fd1)]
-			blockPairs <- fd1[fd1,on="blockKey", allow.cartesian=T, nomatch=0]
-			
-			blockPairs[,rowmin:=pmin(rown, i.rown)]
-			blockPairs[,rowmax:=pmax(rown, i.rown)]
-			blockPairs <- blockPairs[!duplicated(blockPairs[,list(rowmin,rowmax)]) & blockPairs[,rowmin]!=blockPairs[,rowmax]]
-
-		} else {
-			fd1[,rown:=1:nrow(fd1)]
-			fd2[,rown:=1:nrow(fd2)]
-			blockPairs <- fd1[fd2,on="blockKey", allow.cartesian=T, nomatch=0]
-			
-			blockPairs[,rowmin:=pmin(rown, i.rown)]
-			blockPairs[,rowmax:=pmax(rown, i.rown)]
-			blockPairs <- blockPairs[!duplicated(blockPairs[,list(rowmin,rowmax)]) & blockPairs[,rowmin]!=blockPairs[,rowmax]]
-
-		}
-	}
-	
-	# Store the names from the original datasets to check for commonality later
-	n1 <- names(fd1)
-	if (!dedup | !identical(block1,block2)) n2 <- names(fd2)
-	else n2 <- n1
-	# If efficiency is a concern then remove the original data
-	if (efficient) {
-		rm(fd1)
-		if (!dedup | !identical(block1,block2)) rm(fd2)
-	}
-	
-	
-	# If didn't allow missings then replace the unique values created earlier with blanks
-	# browser();stop()
-	# All
-	if (ifelse(class(missingPos)=="logical",ifelse(missingPos,TRUE,FALSE),FALSE)) {
-		block1u <- block1
-		block2u <- block2
-		same1 <- block1u %in% n2
-		same2 <- block2u %in% n1
-		# # block1u[same1] <- paste(block1u[same1],".data1",sep="")
-		# # block2u[same2] <- paste(block2u[same2],".data2",sep="")
-		block2u[same2] <- paste0("i.",block2u[same2])
-		
-		if (!dedup) {
-			blockAll1 <- unique(unlist(block1u))
-			blockAll2 <- unique(unlist(block2u))
-		} else {
-			blockAll1 <- unique(c(unlist(block1u),unlist(block2u)))
-		}
-		
-		
-		for (i in blockAll1) {
-			blockPairs[grepl(paste0("^1",i),blockPairs[[i]]), (i):="", with=F]
-		}
-		if (!dedup) {
-			for (i in blockAll2) {
-				blockPairs[grepl(paste0("^2",gsub("i[.]","",i)),blockPairs[[i]]), (i):="", with=F]
-			}
-		}
-	# Some
-	} else if (ifelse(class(missingPos) %in% c("list","numeric","character"),TRUE,FALSE)) {
-		same1 <- missingVec1 %in% n2
-		same2 <- missingVec2 %in% n1
-		# Update the winkler vectors where appropriate
-		# # missingVec1[same1] <- paste(missingVec1[same1],".data1",sep="")
-		# # missingVec2[same2] <- paste(missingVec2[same2],".data2",sep="")
-		missingVec2[same2] <- paste0("i.",missingVec2[same2])
-		for (i in missingVec1) {
-			# blockPairs[grepl(paste0("^1",gsub("[.]data[12]","",i)),blockPairs[[i]]), (i):="", with=F]
-			blockPairs[grepl(paste0("^1",i),blockPairs[[i]]), (i):="", with=F]
-		}
-		if (!dedup) {
-			for (i in missingVec2) {
-				# blockPairs[grepl(paste0("^2",gsub("[.]data[12]","",i)),blockPairs[[i]]), (i):="", with=F]
-				blockPairs[grepl(paste0("^2",gsub("i[.]","",i)),blockPairs[[i]]), (i):="", with=F]
-			}
-		}
-	# Else none to change
-	}
-	
-	
-	# browser();stop()
-	# For deduplication, if the addPrefix thing is toggled, change the variable names
-	if (addPrefix & dedup) {
-		# blockPairs
-		# setnames(blockPairs,grep("^i[.]",names(blockPairs)),paste0("d1.",gsub("^i[.]","",names(blockPairs)[grepl("^i[.]",names(blockPairs))])))
-		setnames(blockPairs,grep("^i[.]",names(blockPairs)),paste0("d2.",gsub("^i[.]","",names(blockPairs)[grepl("^i[.]",names(blockPairs))])))
-		setnames(blockPairs,
-			names(blockPairs)[names(blockPairs) %in% gsub("^d2[.]","",names(blockPairs)[grepl("^d2[.]",names(blockPairs))])],
-			paste0("d1.",names(blockPairs)[names(blockPairs) %in% gsub("^d2[.]","",names(blockPairs)[grepl("^d2[.]",names(blockPairs))])]))
-		# Blocking lists or vectors
-		if (multB) {
-			block1 <- lapply(block1, function(x) paste("d1",x,sep="."))
-			block2 <- lapply(block2, function(x) paste("d2",x,sep="."))
-		} else {
-			block1 <- paste("d1",block1,sep=".")
-			block2 <- paste("d2",block2,sep=".")
-		}
-		# Soundex
-		if (sum(sapply(soundexPos,class)==c("character"))>0) soundexPos <- paste("d1",soundexPos,sep=".")
-		# Winkler
-		if (length(winkler1)>0) winkler1 <- paste("d1",winkler1,sep=".")
-		if (length(winkler2)>0) winkler2 <- paste("d2",winkler2,sep=".")
-		# damLev
-		if (length(damLev1)>0) damLev1 <- paste("d1",damLev1,sep=".")
-		if (length(damLev2)>0) damLev2 <- paste("d2",damLev2,sep=".")
-	}
-	
-	
-	
-	
-	
-	# If no pairs were found given the blocking strategy, report this and exit the function
-	# if (nrow(blockPairs)==0) {
-		# return("No pairs were found with this blocking strategy")
-	# }
-	
-	# browser();stop();
-	
-	### COMPARE
-	# Jaro-Winkler
-	if (length(winkler1)>0) {
-		# Detect whether input is of the correct format
-		if (class(winkler1)=="character") {
-			winklerVec1 <- winkler1
-		# If not character then print error
-		} else {
-			stop("winkler1 unexpected format")
-		}
-		# Detect whether input is of the correct format
-		if (class(winkler2)=="character") {
-			winklerVec2 <- winkler2
-		# If the input is empty then assume the names of the winkler variables are the same as the first dataset
-		} else if (class(winkler2)=="NULL") {
-			winklerVec2 <- gsub("^d1[.]","d2.",winklerVec1)
-		# If not character then print error
-		} else {
-			stop("winkler2 unexpected format")
-		}
-		
-		if (class(winklerSplitVec1)!="NULL" & class(winklerSplitVec2)=="NULL") {
-			winklerSplitVec2 <- rep(NA,length(winklerSplitVec1))
-		}
-		if (class(winklerSplitVec2)!="NULL" & class(winklerSplitVec1)=="NULL") {
-			winklerSplitVec1 <- rep(NA,length(winklerSplitVec2))
-		}
-		
-		# Check that the user has referred to the correct variable names
-		if (addPrefix) {
-			if (sum(!(winklerVec1 %in% names(blockPairs)))>0) {
-				print("ERROR: There is an inconsistency between the user specified variables in the parameter 'winkler1' and the variable names that result from importing")
-				print("The variable names that result from importing are:")
-				print(n1)
-			}
-			if (sum(!(winklerVec2 %in% names(blockPairs)))>0) {
-				print("ERROR: There is an inconsistency between the user specified variables in the parameter 'winkler2' and the variable names that result from importing")
-				print("The variable names that result from importing are:")
-				print(n1)
-			}
-		} else {
-			if (sum(!(winklerVec1 %in% n1))>0) {
-				print("ERROR: There is an inconsistency between the user specified variables in the parameter 'winkler1' and the variable names that result from importing")
-				print("The variable names that result from importing are:")
-				print(n1)
-			}
-			if (sum(!(winklerVec2 %in% n2))>0) {
-				print("ERROR: There is an inconsistency between the user specified variables in the parameter 'winkler2' and the variable names that result from importing")
-				print("The variable names that result from importing are:")
-				print(n2)
-			}
-		}
-		
-		# If a variable name was common across datasets then it would have received a suffix in the merge
-		# Check the winkler variables for commonality across datasets
-		same1 <- winklerVec1 %in% n2
-		same2 <- winklerVec2 %in% n1
-		# Update the winkler vectors where appropriate
-		# # winklerVec1[same1] <- paste(winklerVec1[same1],".data1",sep="")
-		# # winklerVec2[same2] <- paste(winklerVec2[same2],".data2",sep="")
-		winklerVec2[same2] <- paste0("i.",winklerVec2[same2])
-		# Ensure all winkler variables are character
-		blockPairs[,(unique(c(winklerVec1,winklerVec2))):=lapply(.SD, as.character), .SDcols=unique(c(winklerVec1,winklerVec2))]
-		
-		# Convert all "" to missing for consistency and maybe speed
-		# Define a function to convert all "" to missing
-		blank2missing <- function(x) {
-			x[x==""] <- NA
-			x
-		}
-		# Run that function over all of the blocking variables on both datasets
-		blockPairs[,(unique(c(winklerVec1,winklerVec2))):=lapply(.SD, blank2missing), .SDcols=unique(c(winklerVec1,winklerVec2))]
-		
-		# Perform the comparison
-		# Loop through each of the comparison variables in the the winkler vector
-		for (i in 1:length(winklerVec1)) {
-			# Perform a jarowinkler comparison of the full strings
-			# As split comparisons also include a full comparison this is not inefficient
-			fc <- jarowinkler(blockPairs[[winklerVec1[i]]],blockPairs[[winklerVec2[i]]])
-			# Determine whether there are any partial comparisons
-			if (length(winklerSplitVec1)>0 | length(winklerSplitVec2)>0) {
-				# Determine whether we will be doing partial comparisons on the given comparison variables
-				if (is.na(winklerSplitVec1[i]) & is.na(winklerSplitVec2[i])) {
-					# No partial comparison on the given comparison variables
-					# Store the full comparison under a variable of the format "winkler.varNameData1.varNameData2"
-					blockPairs[,(paste("winkler",winklerVec1[i],winklerVec2[i],sep=".")):=fc]
-				} else {
-					# Partial comparison on the given comparison variables
-					# If we are splitting the comparison variable from data1...
-					if (!is.na(winklerSplitVec1[i])) {
-						# Store the split up components of the string
-						split1 <- strsplit(blockPairs[[winklerVec1[i]]],winklerSplitVec1[i])
-					# If we are not splitting the comparison variable from data1...
-					} else {
-						# Store the full string
-						split1 <- blockPairs[[winklerVec1[i]]]
-					}
-					# If we are splitting the comparison variable from data2...
-					if (!is.na(winklerSplitVec2[i])) {
-						# Store the split up components of the string
-						split2 <- strsplit(blockPairs[[winklerVec2[i]]],winklerSplitVec2[i])
-					# If we are not splitting the comparison variable from data1...
-					} else {
-						# Store the full string
-						split2 <- blockPairs[[winklerVec2[i]]]
-					}
-					# Perform jarowinkler comparisons on each combination of components of each string
-					pc <- mapply(function(x,y) max(outer(x,y,jarowinkler)), split1, split2)
-					# Store the max of the full and partial comparisons under a variable of the format "winkler.varNameData1.varNameData2"
-					blockPairs[,(paste("winkler",winklerVec1[i],winklerVec2[i],sep=".")):=mapply(function(x,y) max(x,y), fc, pc)]
-				}
-			} else {
-				# All full comparisons
-				# Store the full comparison under a variable of the format "winkler.varNameData1.varNameData2"
-				blockPairs[,(paste("winkler",winklerVec1[i],winklerVec2[i],sep=".")):=fc]
-			}
-		}
-	}
-	
-	# Damerau-Levenshtein Edit Distance
-	if (length(damLev1)>0) {
-		# Detect whether input is of the correct format
-		if (class(damLev1)=="character") {
-			damLevVec1 <- damLev1
-		# If not character then print error
-		} else {
-			stop("damLev1 unexpected format")
-		}
-		# Detect whether input is of the correct format
-		if (class(damLev2)=="character") {
-			damLevVec2 <- damLev2
-		# If the input is empty then assume the names of the damLev variables are the same as the first dataset
-		} else if (class(winkler2)=="NULL") {
-			damLevVec2 <- gsub("^d1[.]","d2.",damLevVec1)
-		# If not character then print error
-		} else {
-			stop("damLev2 unexpected format")
-		}
-		
-		if (class(damLevSplitVec1)!="NULL" & class(damLevSplitVec2)=="NULL") {
-			damLevSplitVec2 <- rep(NA,length(damLevSplitVec1))
-		}
-		if (class(damLevSplitVec2)!="NULL" & class(damLevSplitVec1)=="NULL") {
-			damLevSplitVec1 <- rep(NA,length(damLevSplitVec2))
-		}
-		
-		# Check that the user has referred to the correct variable names
-		if (addPrefix) {
-			if (sum(!(damLevVec1 %in% names(blockPairs)))>0) {
-				print("ERROR: There is an inconsistency between the user specified variables in the parameter 'damLev1' and the variable names that result from importing")
-				print("The variable names that result from importing are:")
-				print(n1)
-			}
-			if (sum(!(damLevVec2 %in% names(blockPairs)))>0) {
-				print("ERROR: There is an inconsistency between the user specified variables in the parameter 'damLev2' and the variable names that result from importing")
-				print("The variable names that result from importing are:")
-				print(n1)
-			}
-		} else {
-			if (sum(!(damLevVec1 %in% n1))>0) {
-				print("ERROR: There is an inconsistency between the user specified variables in the parameter 'damLev1' and the variable names that result from importing")
-				print("The variable names that result from importing are:")
-				print(n1)
-			}
-			if (sum(!(damLevVec2 %in% n2))>0) {
-				print("ERROR: There is an inconsistency between the user specified variables in the parameter 'damLev2' and the variable names that result from importing")
-				print("The variable names that result from importing are:")
-				print(n2)
-			}
-		}
-		
-		# If a variable name was common across datasets then it would have received a suffix in the merge
-		# Check the damLev variables for commonality across datasets
-		same1 <- damLevVec1 %in% n2
-		same2 <- damLevVec2 %in% n1
-		# Update the damLev vectors where appropriate
-		# # damLevVec1[same1] <- paste(damLevVec1[same1],".data1",sep="")
-		# # damLevVec2[same2] <- paste(damLevVec2[same2],".data2",sep="")
-		damLevVec2[same2] <- paste0("i.",damLevVec2[same2])
-		
-		# Ensure all damLev variables are character
-		blockPairs[,(unique(c(damLevVec1,damLevVec2))):=lapply(.SD, as.character), .SDcols=unique(c(damLevVec1,damLevVec2))]
-		
-		# Convert all "" to missing for consistency and maybe speed
-		# Define a function to convert all "" to missing
-		blank2missing <- function(x) {
-			x[x==""] <- NA
-			x
-		}
-		# Run that function over all of the blocking variables on both datasets
-		blockPairs[,(unique(c(damLevVec1,damLevVec2))):=lapply(.SD, blank2missing), .SDcols=unique(c(damLevVec1,damLevVec2))]
-		
-		# Define the Damerau-Levenshtein edit distance measure
-		damLev <- function(m,n) 1-stringdist(m,n,"dl")/max(nchar(c(m,n)))
-		
-		# Perform the comparison
-		# Loop through each of the comparison variables in the the damLeV vector
-		for (i in 1:length(damLevVec1)) {
-			# Perform the damLev comparison of the full strings
-			# As split comparisons also include a full comparison this is not inefficient
-			fc <- damLev(blockPairs[[damLevVec1[i]]],blockPairs[[damLevVec2[i]]])
-			# Determine whether there are any partial comparisons
-			if (length(damLevSplitVec1)>0 | length(damLevSplitVec2)>0) {
-				# Determine whether we will be doing partial comparisons on the given comparison variables
-				if (is.na(damLevSplitVec1[i]) & is.na(damLevSplitVec2[i])) {
-					# No partial comparison on the given comparison variables
-					# Store the full comparison under a variable of the format "damLev.varNameData1.varNameData2"
-					blockPairs[,(paste("damLev",damLevVec1[i],damLevVec2[i],sep=".")):=fc]
-				} else {
-					# Partial comparison on the given comparison variables
-					# If we are splitting the comparison variable from data1...
-					if (!is.na(damLevSplitVec1[i])) {
-						# Store the split up components of the string
-						split1 <- strsplit(blockPairs[[damLevVec1[i]]],damLevSplitVec1[i])
-					# If we are not splitting the comparison variable from data1...
-					} else {
-						# Store the full string
-						split1 <- blockPairs[[damLevVec1[i]]]
-					}
-					# If we are splitting the comparison variable from data2...
-					if (!is.na(damLevSplitVec2[i])) {
-						# Store the split up components of the string
-						split2 <- strsplit(blockPairs[[damLevVec2[i]]],damLevSplitVec2[i])
-					# If we are not splitting the comparison variable from data1...
-					} else {
-						# Store the full string
-						split2 <- blockPairs[[damLevVec2[i]]]
-					}
-					# Perform damLev comparisons on each combination of components of each string
-					pc <- mapply(function(x,y) max(outer(x,y,function(a,b) 1-stringdist(a,b,"dl")/max(nchar(c(a,b))))), split1, split2)
-					# Store the max of the full and partial comparisons under a variable of the format "damLev.varNameData1.varNameData2"
-					blockPairs[,(paste("damLev",damLevVec1[i],damLevVec2[i],sep=".")):=mapply(function(x,y) max(x,y), fc, pc)]
-				}
-			} else {
-				# All full comparisons
-				# Store the full comparison under a variable of the format "damLev.varNameData1.varNameData2"
-				blockPairs[,(paste("damLev",damLevVec1[i],damLevVec2[i],sep=".")):=fc]
-			}
-		}
-	}
-	
-	# Create a pairID variable
-	blockPairs[,pairID:=1:nrow(blockPairs)]
-	# Move it to the front
-	setcolorder(blockPairs, c("pairID",setdiff(names(blockPairs), "pairID")))
-	
-	### RESULT
-	# Make the result globally accessible
-	assign("blockPairs", blockPairs, envir=currentEnvir)
-	
-	# If a destination has been specified for the output, export blockPairs as a csv
-	if (class(output)=="character") {
-		# Assume that the reason it is being exported is so that it can be read into SAS
-		# therefore it is necessary to replace "." with "_" in variable names
-		setnames(blockPairs,names(blockPairs),gsub("[.]","_",names(blockPairs)))
-		# SAS also truncates long variable names (horrible program) so let's try make some of them shorter
-		setnames(blockPairs,names(blockPairs),gsub("winkler","wink",names(blockPairs)))
-		setnames(blockPairs,names(blockPairs),gsub("damLev","dl",names(blockPairs)))
-		# Assuming that the other software doesn't interpret NAs, change them to blanks
-		# write.csv(blockPairs, output, na="", row.names=F)
-		fwrite(blockPairs, output, na="")
-	}
-	
-	# Report the resulting number of pairs
-	if (multB) return(cat(paste("\nA total of",nrow(blockPairs),"unique pairs were found with this blocking strategy\n")))
+        out[[i]] <- list(
+            name = nm,
+            label = if (is.na(label)) "<anonymous>" else label,
+            fn = fn, args = args, env = env,
+            expr_1 = expr_1, expr_2 = expr_2,
+            col_1 = if (is.na(col_1))
+                paste(deparse(expr_1), collapse = " ") else col_1,
+            col_2 = if (is.na(col_2))
+                paste(deparse(expr_2), collapse = " ") else col_2,
+            # Only a plain column compared on both sides has a home beside
+            # its own pair of output columns.
+            group_on = if (plain) col_1 else "")
+    }
+    names(out) <- NULL
+    used <- vapply(out, `[[`, "", "name")
+    dup <- used[duplicated(used)]
+    if (length(dup))
+        stop(sprintf(paste0(
+            "Two comparators would both produce the column `%s`. Name them, ",
+            "e.g. `list(%s_a = ..., %s_b = ...)`."),
+            dup[1L], dup[1L], dup[1L]), call. = FALSE)
+    clash <- intersect(used, taken)
+    if (length(clash))
+        stop(sprintf(paste0(
+            "The score column `%s` would overwrite a column already on the ",
+            "output. Give that comparator another name."), clash[1L]),
+            call. = FALSE)
+    out
 }
 
-# Store the current environment of the workspace
-currentEnvir <- environment()
-# Load required packages if they have not already been loaded
-require(RecordLinkage, quietly=TRUE)
-require(data.table, quietly=TRUE)
-require(stringdist, quietly=TRUE)
-require(bit64, quietly=TRUE)
-# require(plyr, quietly=TRUE)
-# Compile the code
-require(compiler, quietly=TRUE)
-rLink <- cmpfun(link)
+.rlink_col_name <- function(e) {
+    if (is.name(e)) return(as.character(e))
+    if (is.character(e) && length(e) == 1L && !is.na(e)) return(e)
+    NA_character_
+}
 
+.rlink_chr <- function(v, upper, na_strings) {
+    if (is.factor(v)) v <- as.character(v)
+    if (!is.character(v)) v <- as.character(v)
+    if (length(na_strings)) v[v %in% na_strings] <- NA_character_
+    if (upper) v <- toupper(v)
+    v
+}
+
+.rlink_call <- function(fn, a, b, args, nthreads) {
+    call_args <- c(list(a, b), args)
+    # Only where the comparator declares it: a plain function(a, b) supplied
+    # by the caller would otherwise be handed an argument it cannot take.
+    if ("nthreads" %in% names(formals(fn)) &&
+        !"nthreads" %in% names(call_args))
+        call_args$nthreads <- nthreads
+    do.call(fn, call_args)
+}
+
+# Comparators disagree about which end of their scale is an exact match, so
+# each is probed once on a calibration pair: one identical, one sharing no
+# characters. Reading the identical score against the disjoint one gives both
+# the orientation and the scale.
+#
+#   identical > disjoint, identical == 1  -> similarity on 0-1    (as is)
+#   identical > disjoint, identical >  1  -> similarity to a max  (/ max)
+#   identical < disjoint, disjoint  <= 1  -> distance on 0-1      (1 - d)
+#   identical < disjoint, disjoint  >  1  -> edit distance    (1 - d / len)
+#
+# An unbounded edit distance is normalised pairwise by the longer of the two
+# strings. The earlier function did this with max(nchar(c(m, n))), which is
+# the maximum over both whole vectors, so every score was divided by the
+# longest string anywhere in the data rather than in the pair.
+.rlink_probe_a <- c("ABCDEFGHIJKL", "ABCDEFGHIJKL")
+.rlink_probe_b <- c("ABCDEFGHIJKL", "MNOPQRSTUVWX")
+
+.rlink_orient <- function(fn, args, normalise, nthreads) {
+    keep <- function(kind) list(kind = kind, convert = function(s, a, b) s)
+    if (!normalise) return(keep("as is"))
+    p <- tryCatch(
+        .rlink_call(fn, .rlink_probe_a, .rlink_probe_b, args, nthreads),
+        error = function(cnd) NULL, warning = function(w) NULL)
+    if (is.null(p) || length(p) != 2L ||
+        !(is.numeric(p) || is.logical(p)) || anyNA(p))
+        return(keep("not detected"))
+    hi <- as.numeric(p[[1L]])
+    lo <- as.numeric(p[[2L]])
+    if (!is.finite(hi) || !is.finite(lo) || isTRUE(all.equal(hi, lo)))
+        return(keep("not detected"))
+    if (hi > lo) {
+        if (isTRUE(all.equal(hi, 1))) return(keep("similarity"))
+        return(list(kind = sprintf("similarity/%g", hi),
+                    convert = function(s, a, b) s / hi))
+    }
+    if (lo <= 1.5)
+        return(list(kind = "distance", convert = function(s, a, b) 1 - s))
+    list(kind = "edit distance", convert = function(s, a, b) {
+        n <- pmax(nchar(a), nchar(b))
+        v <- ifelse(n > 0, 1 - s / n, 1)
+        pmin(pmax(v, 0), 1)
+    })
+}
+
+.rlink_check_names <- function(d, arg) {
+    nm <- names(d)
+    if (is.null(nm) || anyNA(nm) || !all(nzchar(nm)))
+        stop(sprintf("Every column of `%s` must have a name.", arg))
+    if (anyDuplicated(nm))
+        stop(sprintf("`%s` has duplicate column names: %s.", arg,
+                     paste0("`", unique(nm[duplicated(nm)]), "`",
+                            collapse = ", ")))
+    invisible(NULL)
+}

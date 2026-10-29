@@ -103,6 +103,7 @@ export(postfix_distance)
 export(postfix_similarity)
 export(prefix_distance)
 export(prefix_similarity)
+export(rLink)
 export(refined_soundex)
 export(roger_root)
 export(run_benchmark_example)
@@ -121,7 +122,16 @@ export(tversky_matrix)
 export(url_decode)
 export(url_encode)
 export(valid_id)
+import(data.table)
 importFrom(Rcpp,evalCpp)
 importFrom(RcppParallel,RcppParallelLibs)
-importFrom(rlang,inform)
+importFrom(rlang,
+  enquo,
+  eval_tidy,
+  inform,
+  new_quosure,
+  quo_get_env,
+  quo_get_expr,
+  quo_is_null
+)
 useDynLib(fast.string, .registration = TRUE)

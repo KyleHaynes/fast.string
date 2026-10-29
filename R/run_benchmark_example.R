@@ -34,11 +34,6 @@
 
 .bench_pkg <- function(pkg) requireNamespace(pkg, quietly = TRUE)
 
-# Wall-clock seconds. proc.time()'s elapsed counter only advances every
-# 10-20 ms on Windows, which rounds most fast.string calls to zero or one
-# tick; Sys.time() resolves microseconds.
-.bench_now <- function() as.numeric(Sys.time())
-
 # One call, capturing both its elapsed time and its return value (needed for
 # the correctness check afterwards) — system.time() alone discards the value.
 # Errors are caught rather than propagated, since baselines call into

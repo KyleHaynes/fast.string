@@ -2,6 +2,9 @@
 #' @importFrom Rcpp evalCpp
 #' @importFrom RcppParallel RcppParallelLibs
 #' @importFrom rlang inform
+#' @importFrom rlang enquo eval_tidy new_quosure quo_get_env quo_get_expr
+#' @importFrom rlang quo_is_null
+#' @import data.table
 NULL
 # rlang is imported because cli::cli_inform(), used for the reminders, is a
 # wrapper around rlang::inform() and cli itself only suggests rlang.
@@ -16,6 +19,12 @@ NULL
     }
     as.integer(nthreads)
 }
+
+# Wall-clock seconds. proc.time()'s elapsed counter only advances every
+# 10-20 ms on Windows, which rounds most fast.string calls to zero or one
+# tick; Sys.time() resolves microseconds. Shared by run_benchmark_example()
+# and rLink()'s verbose timings.
+.bench_now <- function() as.numeric(Sys.time())
 
 .onAttach <- function(libname, pkgname) {
     if (isTRUE(getOption("fast.string.verbose", TRUE))) {

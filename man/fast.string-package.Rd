@@ -224,6 +224,7 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=block_pairs]{block_pairs()}} - pairs that share any key
 \item \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}} - pairs with nearby sorted keys
 \item \code{\link[=cluster_pairs]{cluster_pairs()}} - entity IDs from matched pairs
+\item \code{\link[=rLink]{rLink()}} - block, compare and score pairs
 }
 \item \strong{Benchmarking}
 \itemize{
