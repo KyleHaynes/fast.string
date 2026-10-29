@@ -301,3 +301,114 @@ test_that("date functions take an nthreads cap", {
     expect_error(fast.string::fas.Date("2024-01-01", nthreads = 0),
                  "positive integer")
 })
+
+# ---- Partial layouts: "y", "m", "d", "y-m", "m-d" --------------------------
+
+test_that("format_date emits the partial layouts, zero-padded", {
+    d <- as.Date(c("2024-06-18", "1999-12-31", "2008-03-01", NA))
+    expect_identical(fast.string::format_date(d, "y"), format(d, "%Y"))
+    expect_identical(fast.string::format_date(d, "m"), format(d, "%m"))
+    expect_identical(fast.string::format_date(d, "d"), format(d, "%d"))
+    expect_identical(fast.string::format_date(d, "y-m"), format(d, "%Y-%m"))
+    expect_identical(fast.string::format_date(d, "m-d"), format(d, "%m-%d"))
+})
+
+test_that("fas.Date parses the partial layouts, filling from 1970-01-01", {
+    expect_identical(fast.string::fas.Date("2008", "y"), as.Date("2008-01-01"))
+    expect_identical(fast.string::fas.Date("03", "m"), as.Date("1970-03-01"))
+    expect_identical(fast.string::fas.Date("01", "d"), as.Date("1970-01-01"))
+    expect_identical(fast.string::fas.Date("15", "d"), as.Date("1970-01-15"))
+    expect_identical(fast.string::fas.Date("2008-03", "y-m"),
+                     as.Date("2008-03-01"))
+    expect_identical(fast.string::fas.Date("03-01", "m-d"),
+                     as.Date("1970-03-01"))
+    expect_identical(fast.string::fas.Date(c("12-31", "06-18"), "m-d"),
+                     as.Date(c("1970-12-31", "1970-06-18")))
+})
+
+test_that("fas.Date partial layouts keep the fixed width and calendar checks", {
+    expect_true(is.na(fast.string::fas.Date("3", "m")))       # not zero-padded
+    expect_true(is.na(fast.string::fas.Date("2008", "m")))    # wrong width
+    expect_true(is.na(fast.string::fas.Date("13", "m")))      # month 13
+    expect_true(is.na(fast.string::fas.Date("00", "m")))      # month 0
+    expect_true(is.na(fast.string::fas.Date("32", "d")))      # day 32
+    expect_true(is.na(fast.string::fas.Date("00", "d")))      # day 0
+    expect_true(is.na(fast.string::fas.Date("208", "y")))     # wrong width
+    expect_true(is.na(fast.string::fas.Date("2008-13", "y-m")))
+    expect_true(is.na(fast.string::fas.Date("2008/03", "y-m")))  # separator
+    expect_true(is.na(fast.string::fas.Date("0301", "m-d")))     # separator
+    expect_true(is.na(fast.string::fas.Date("02-30", "m-d")))
+    expect_identical(fast.string::fas.Date(c(NA, "03"), "m"),
+                     as.Date(c(NA, "1970-03-01")))
+})
+
+test_that("fas.Date m-d rejects 29 February, since the filled-in year is 1970", {
+    # Documented consequence of anchoring year-less layouts to 1970.
+    expect_true(is.na(fast.string::fas.Date("02-29", "m-d")))
+    expect_identical(fast.string::fas.Date("2000-02", "y-m"),
+                     as.Date("2000-02-01"))
+})
+
+test_that("fas.Date round-trips format_date for the partial layouts", {
+    d <- as.Date(c("1970-01-01", "2024-06-18", "1999-12-31"))
+    expected <- list(
+        y     = as.Date(c("1970-01-01", "2024-01-01", "1999-01-01")),
+        m     = as.Date(c("1970-01-01", "1970-06-01", "1970-12-01")),
+        d     = as.Date(c("1970-01-01", "1970-01-18", "1970-01-31")),
+        "y-m" = as.Date(c("1970-01-01", "2024-06-01", "1999-12-01")),
+        "m-d" = as.Date(c("1970-01-01", "1970-06-18", "1970-12-31"))
+    )
+    for (fmt in names(expected)) {
+        strs <- fast.string::format_date(d, fmt)
+        expect_identical(fast.string::fas.Date(strs, fmt), expected[[fmt]])
+    }
+})
+
+test_that("format_date_parts writes the partial layouts from their own fields", {
+    expect_identical(
+        fast.string::format_date_parts(month = c(6, 12), day = c(18, 31),
+                                       format = "m-d"),
+        c("06-18", "12-31")
+    )
+    expect_identical(
+        fast.string::format_date_parts(year = 2008, month = 3, format = "y-m"),
+        "2008-03"
+    )
+    expect_identical(fast.string::format_date_parts(year = 2008, format = "y"),
+                     "2008")
+    expect_identical(fast.string::format_date_parts(month = 3, format = "m"),
+                     "03")
+    expect_identical(fast.string::format_date_parts(day = 7, format = "d"),
+                     "07")
+})
+
+test_that("format_date_parts only reads the fields its format writes", {
+    # month is out of field width but "y" never writes it.
+    expect_identical(
+        fast.string::format_date_parts(year = 2024, month = 999, format = "y"),
+        "2024"
+    )
+    expect_identical(
+        fast.string::format_date_parts(year = NA_real_, month = 6, day = 18,
+                                       format = "m-d"),
+        "06-18"
+    )
+    # Recycling length comes from the written fields only.
+    expect_identical(
+        fast.string::format_date_parts(month = c(1, 2, 3), format = "m"),
+        c("01", "02", "03")
+    )
+    expect_identical(
+        fast.string::format_date_parts(month = numeric(0), format = "m"),
+        character(0)
+    )
+})
+
+test_that("format_date_parts requires the fields its format writes", {
+    expect_error(fast.string::format_date_parts(2024, 6, format = "iso"),
+                 "needs `day`")
+    expect_error(fast.string::format_date_parts(format = "m-d"),
+                 "needs `month`, `day`")
+    expect_error(fast.string::format_date_parts(month = 3, format = "m-d"),
+                 "needs `day`")
+})

@@ -6,7 +6,7 @@
 \usage{
 format_date(
   x,
-  format = c("iso", "compact", "dmy", "ymd_slash"),
+  format = c("iso", "compact", "dmy", "ymd_slash", "y", "m", "d", "y-m", "m-d"),
   nthreads = NULL
 )
 }
@@ -14,8 +14,11 @@ format_date(
 \item{x}{A \code{Date} object, a \code{POSIXct}/\code{POSIXlt} date-time (converted with
 \code{\link[base:as.Date]{base::as.Date()}}), or a numeric vector of days since 1970-01-01.}
 
-\item{format}{One of \code{"iso"} (YYYY-MM-DD), \code{"compact"} (YYYYMMDD),
-\code{"dmy"} (DD/MM/YYYY), or \code{"ymd_slash"} (YYYY/MM/DD).}
+\item{format}{One of nine fixed layouts: the full dates \code{"iso"}
+(YYYY-MM-DD), \code{"compact"} (YYYYMMDD), \code{"dmy"} (DD/MM/YYYY) and
+\code{"ymd_slash"} (YYYY/MM/DD), or the partial \code{"y"} (YYYY), \code{"m"} (MM),
+\code{"d"} (DD), \code{"y-m"} (YYYY-MM) and \code{"m-d"} (MM-DD). Every field is
+zero-padded to a fixed width, so March is always \code{"03"}.}
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
@@ -24,7 +27,7 @@ RcppParallel default. \code{1} forces serial execution.}
 Character vector the same length as \code{x}, with \code{names(x)} preserved.
 }
 \description{
-Converts days since 1970-01-01 to one of four fixed layouts using pure
+Converts days since 1970-01-01 to one of nine fixed layouts using pure
 integer calendar arithmetic, so it is faster than \code{\link[base:format]{base::format()}} on a
 \code{Date} but does not honour the locale or accept arbitrary formats.
 Fractional days are floored; \code{NA}, \code{NaN} and infinite values give \code{NA}.
@@ -34,6 +37,11 @@ d <- as.Date(c("2024-06-18", "1999-12-31", NA))
 format_date(d)
 format_date(d, "dmy")
 format_date(d, "compact")
+
+# Partial layouts are cheap blocking keys: year-month, month-day, year.
+format_date(d, "y-m")
+format_date(d, "m-d")
+format_date(d, "y")
 }
 \seealso{
 \code{\link[=fas.Date]{fas.Date()}} for the reverse direction.

@@ -6,7 +6,7 @@
 \usage{
 fas.Date(
   x,
-  format = c("iso", "compact", "dmy", "ymd_slash"),
+  format = c("iso", "compact", "dmy", "ymd_slash", "y", "m", "d", "y-m", "m-d"),
   origin = "unix",
   nthreads = NULL
 )
@@ -19,9 +19,11 @@ real calendar date, become \code{NA}. Numeric \code{NA}, \code{NaN} and infinite
 values become \code{NA}. A \code{Date} is returned as is, and a \code{POSIXct} or
 \code{POSIXlt} date-time is converted with \code{\link[base:as.Date]{base::as.Date()}}.}
 
-\item{format}{For character \code{x}: one of \code{"iso"} (YYYY-MM-DD),
-\code{"compact"} (YYYYMMDD), \code{"dmy"} (DD/MM/YYYY), or \code{"ymd_slash"}
-(YYYY/MM/DD).}
+\item{format}{For character \code{x}: one of the full dates \code{"iso"}
+(YYYY-MM-DD), \code{"compact"} (YYYYMMDD), \code{"dmy"} (DD/MM/YYYY) and
+\code{"ymd_slash"} (YYYY/MM/DD), or one of the partial \code{"y"} (YYYY), \code{"m"}
+(MM), \code{"d"} (DD), \code{"y-m"} (YYYY-MM) and \code{"m-d"} (MM-DD) described
+under \strong{Partial formats}.}
 
 \item{origin}{For numeric \code{x}: a named epoch from the table under
 \strong{Epochs} (case-insensitive), or any other day 0 as a \code{Date} or a
@@ -37,12 +39,22 @@ A \code{Date} vector with the same length and names as \code{x}.
 For a character vector, parses dates much faster than \code{\link[base:as.Date]{base::as.Date()}}
 by skipping locale handling, \code{\link[=strptime]{strptime()}}, and multi-format
 auto-detection entirely. In exchange, \code{x} must be in exactly one fixed
-\code{format} (the same four \code{\link[=format_date]{format_date()}} produces, so the two are natural
+\code{format} (the same nine \code{\link[=format_date]{format_date()}} produces, so the two are natural
 round-trip partners). Every value is checked: the length, the digit and
 separator positions, and the calendar (month lengths and leap years), so
 an impossible date such as \code{"2023-02-29"} becomes \code{NA}.
 }
-\details{
+\section{Partial formats}{
+
+The \code{"y"}, \code{"m"}, \code{"d"}, \code{"y-m"} and \code{"m-d"} layouts carry only part of a
+date, so the fields they leave out are filled from 1970-01-01: \code{"2008"}
+parses as 2008-01-01, \code{"03"} as 1970-03-01 under \code{"m"} and as 1970-01-03
+under \code{"d"}, \code{"2008-03"} as 2008-03-01, and \code{"03-01"} as 1970-03-01.
+Fields are still fixed-width and zero-padded, so \code{"3"} is \code{NA} under
+\code{"m"}, and the calendar check still applies against the filled-in year:
+1970 is not a leap year, so \code{"02-29"} is \code{NA} under \code{"m-d"}. A leap day
+therefore needs a format that carries its own year.
+
 For a numeric vector, converts counts from a standard epoch (spreadsheet
 serials, SAS/Stata/SPSS dates, MATLAB datenums, Julian days, ...) to
 dates in one pass, with no origin string to parse. It replaces
@@ -50,6 +62,7 @@ dates in one pass, with no origin string to parse. It replaces
 phantom 1900-02-29, which \code{as.Date(x, origin = "1899-12-30")} gets wrong
 for serials below 61.
 }
+
 \section{Epochs}{
 \tabular{lll}{
    \code{origin} \tab Counts \tab Day 0 (or 1) \cr
@@ -82,6 +95,12 @@ zero-offset epoch such as \code{"unix"} keeps integer storage, as
 \examples{
 fas.Date(c("2024-06-18", "not a date", "2023-02-29", NA))   # bad input is NA
 fas.Date("18/06/2024", format = "dmy")
+
+# Partial formats fill the missing fields from 1970-01-01
+fas.Date("2008", format = "y")        # 2008-01-01
+fas.Date("2008-03", format = "y-m")   # 2008-03-01
+fas.Date("03-01", format = "m-d")     # 1970-03-01
+fas.Date(c("03", "13"), format = "m") # 1970-03-01, then NA
 
 # Day counts from standard epochs
 fas.Date(c(1, 59, 60, 61, 45000.75), origin = "excel")

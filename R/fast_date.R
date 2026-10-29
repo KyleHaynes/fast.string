@@ -1,14 +1,17 @@
 #' Format a Date vector as strings without locale or timezone overhead.
 #'
-#' Converts days since 1970-01-01 to one of four fixed layouts using pure
+#' Converts days since 1970-01-01 to one of nine fixed layouts using pure
 #' integer calendar arithmetic, so it is faster than [base::format()] on a
 #' `Date` but does not honour the locale or accept arbitrary formats.
 #' Fractional days are floored; `NA`, `NaN` and infinite values give `NA`.
 #'
 #' @param x A `Date` object, a `POSIXct`/`POSIXlt` date-time (converted with
 #'   [base::as.Date()]), or a numeric vector of days since 1970-01-01.
-#' @param format One of `"iso"` (YYYY-MM-DD), `"compact"` (YYYYMMDD),
-#'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
+#' @param format One of nine fixed layouts: the full dates `"iso"`
+#'   (YYYY-MM-DD), `"compact"` (YYYYMMDD), `"dmy"` (DD/MM/YYYY) and
+#'   `"ymd_slash"` (YYYY/MM/DD), or the partial `"y"` (YYYY), `"m"` (MM),
+#'   `"d"` (DD), `"y-m"` (YYYY-MM) and `"m-d"` (MM-DD). Every field is
+#'   zero-padded to a fixed width, so March is always `"03"`.
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector the same length as `x`, with `names(x)` preserved.
@@ -19,13 +22,18 @@
 #' format_date(d)
 #' format_date(d, "dmy")
 #' format_date(d, "compact")
+#'
+#' # Partial layouts are cheap blocking keys: year-month, month-day, year.
+#' format_date(d, "y-m")
+#' format_date(d, "m-d")
+#' format_date(d, "y")
 #' @export
-format_date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
+format_date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash",
+                                     "y", "m", "d", "y-m", "m-d"),
                         nthreads = NULL) {
     format <- match.arg(format)
     x <- .as_day_count(x)
-    code <- switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L)
-    .copy_names(fast_format_date_impl(as.double(x), code,
+    .copy_names(fast_format_date_impl(as.double(x), .date_format_code(format),
                                       .as_nthreads(nthreads)), x)
 }
 
@@ -41,34 +49,42 @@ format_date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
 #'   `NA`, non-integer-coercible, or out-of-width values (year outside
 #'   0-9999, or month/day outside 0-99) produce `NA` for that element.
 #'   There is no calendar validation — `month = 13` or `day = 99` are
-#'   formatted as given, as long as they fit the field width.
-#' @param format One of `"iso"` (YYYY-MM-DD), `"compact"` (YYYYMMDD),
-#'   `"dmy"` (DD/MM/YYYY), or `"ymd_slash"` (YYYY/MM/DD).
-#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
-#'   RcppParallel default. `1` forces serial execution.
-#' @return Character vector recycled to the common length of `year`,
-#'   `month`, and `day`.
+#'   formatted as given, as long as they fit the field width. A partial
+#'   `format` only reads, recycles and checks the fields it writes, so
+#'   those are the only ones that have to be supplied.
+#' @inheritParams format_date
+#' @return Character vector recycled to the common length of the fields
+#'   `format` writes.
 #' @seealso [date_parts()] for the reverse direction.
 #' @family date and timestamp functions
 #' @examples
 #' format_date_parts(c(2024, 1999), c(6, 12), c(18, 31))
 #' format_date_parts(2024, 6, 18, format = "dmy")
+#'
+#' # A partial layout needs only its own fields.
+#' format_date_parts(month = c(6, 12), day = c(18, 31), format = "m-d")
 #' @export
-format_date_parts <-function(year, month, day,
-                              format = c("iso", "compact", "dmy", "ymd_slash"),
+format_date_parts <-function(year = 1970L, month = 1L, day = 1L,
+                              format = c("iso", "compact", "dmy", "ymd_slash",
+                                         "y", "m", "d", "y-m", "m-d"),
                               nthreads = NULL) {
+    format <- match.arg(format)
+    fields <- .date_format_fields[[format]]
+    absent <- c(year = missing(year), month = missing(month),
+                day = missing(day))[fields]
+    if (any(absent))
+        stop("`format = \"", format, "\"` needs `",
+             paste(fields[absent], collapse = "`, `"), "`.")
     if (!is.numeric(year) || !is.numeric(month) || !is.numeric(day))
         stop("`year`, `month`, and `day` must be numeric vectors.")
-    format <- match.arg(format)
-    n <- max(length(year), length(month), length(day))
-    if (n > 0L) {
-        year  <- rep_len(year,  n)
-        month <- rep_len(month, n)
-        day   <- rep_len(day,   n)
-    }
-    code <- switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L)
+    n <- max(c(year = length(year), month = length(month),
+               day = length(day))[fields])
+    year  <- rep_len(year,  n)
+    month <- rep_len(month, n)
+    day   <- rep_len(day,   n)
     fast_format_date_parts_impl(as.integer(year), as.integer(month),
-                                as.integer(day), code, .as_nthreads(nthreads))
+                                as.integer(day), .date_format_code(format),
+                                .as_nthreads(nthreads))
 }
 
 #' Decompose a Date vector into year, month, day integer columns.
@@ -89,6 +105,25 @@ date_parts <-function(x, nthreads = NULL) {
     fast_date_parts_impl(as.double(x), .as_nthreads(nthreads))
 }
 
+# The format code every date kernel takes, and the year/month/day fields each
+# layout actually writes (the C++ side fills in the rest from 1970-01-01).
+.date_format_code <- function(format) {
+    switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L,
+           y = 4L, m = 5L, d = 6L, "y-m" = 7L, "m-d" = 8L)
+}
+
+.date_format_fields <- list(
+    iso       = c("year", "month", "day"),
+    compact   = c("year", "month", "day"),
+    dmy       = c("year", "month", "day"),
+    ymd_slash = c("year", "month", "day"),
+    y         = "year",
+    m         = "month",
+    d         = "day",
+    "y-m"     = c("year", "month"),
+    "m-d"     = c("month", "day")
+)
+
 # Days since 1970-01-01 from a Date, a date-time (via base::as.Date(), so its
 # time-zone rules apply) or a plain number.
 .as_day_count <- function(x) {
@@ -104,10 +139,20 @@ date_parts <-function(x, nthreads = NULL) {
 #' For a character vector, parses dates much faster than [base::as.Date()]
 #' by skipping locale handling, [strptime()], and multi-format
 #' auto-detection entirely. In exchange, `x` must be in exactly one fixed
-#' `format` (the same four [format_date()] produces, so the two are natural
+#' `format` (the same nine [format_date()] produces, so the two are natural
 #' round-trip partners). Every value is checked: the length, the digit and
 #' separator positions, and the calendar (month lengths and leap years), so
 #' an impossible date such as `"2023-02-29"` becomes `NA`.
+#'
+#' @section Partial formats:
+#' The `"y"`, `"m"`, `"d"`, `"y-m"` and `"m-d"` layouts carry only part of a
+#' date, so the fields they leave out are filled from 1970-01-01: `"2008"`
+#' parses as 2008-01-01, `"03"` as 1970-03-01 under `"m"` and as 1970-01-03
+#' under `"d"`, `"2008-03"` as 2008-03-01, and `"03-01"` as 1970-03-01.
+#' Fields are still fixed-width and zero-padded, so `"3"` is `NA` under
+#' `"m"`, and the calendar check still applies against the filled-in year:
+#' 1970 is not a leap year, so `"02-29"` is `NA` under `"m-d"`. A leap day
+#' therefore needs a format that carries its own year.
 #'
 #' For a numeric vector, converts counts from a standard epoch (spreadsheet
 #' serials, SAS/Stata/SPSS dates, MATLAB datenums, Julian days, ...) to
@@ -148,9 +193,11 @@ date_parts <-function(x, nthreads = NULL) {
 #'   real calendar date, become `NA`. Numeric `NA`, `NaN` and infinite
 #'   values become `NA`. A `Date` is returned as is, and a `POSIXct` or
 #'   `POSIXlt` date-time is converted with [base::as.Date()].
-#' @param format For character `x`: one of `"iso"` (YYYY-MM-DD),
-#'   `"compact"` (YYYYMMDD), `"dmy"` (DD/MM/YYYY), or `"ymd_slash"`
-#'   (YYYY/MM/DD).
+#' @param format For character `x`: one of the full dates `"iso"`
+#'   (YYYY-MM-DD), `"compact"` (YYYYMMDD), `"dmy"` (DD/MM/YYYY) and
+#'   `"ymd_slash"` (YYYY/MM/DD), or one of the partial `"y"` (YYYY), `"m"`
+#'   (MM), `"d"` (DD), `"y-m"` (YYYY-MM) and `"m-d"` (MM-DD) described
+#'   under **Partial formats**.
 #' @param origin For numeric `x`: a named epoch from the table under
 #'   **Epochs** (case-insensitive), or any other day 0 as a `Date` or a
 #'   `"YYYY-MM-DD"` string.
@@ -163,13 +210,20 @@ date_parts <-function(x, nthreads = NULL) {
 #' fas.Date(c("2024-06-18", "not a date", "2023-02-29", NA))   # bad input is NA
 #' fas.Date("18/06/2024", format = "dmy")
 #'
+#' # Partial formats fill the missing fields from 1970-01-01
+#' fas.Date("2008", format = "y")        # 2008-01-01
+#' fas.Date("2008-03", format = "y-m")   # 2008-03-01
+#' fas.Date("03-01", format = "m-d")     # 1970-03-01
+#' fas.Date(c("03", "13"), format = "m") # 1970-03-01, then NA
+#'
 #' # Day counts from standard epochs
 #' fas.Date(c(1, 59, 60, 61, 45000.75), origin = "excel")
 #' fas.Date(23000L, origin = "sas")
 #' fas.Date(2460000.5, origin = "julian_day")
 #' fas.Date(100, origin = "2000-01-01")
 #' @export
-fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
+fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash",
+                                  "y", "m", "d", "y-m", "m-d"),
                     origin = "unix", nthreads = NULL) {
     if (inherits(x, "Date")) return(x)
     if (inherits(x, c("POSIXct", "POSIXlt"))) return(base::as.Date(x))
@@ -190,8 +244,9 @@ fas.Date <-function(x, format = c("iso", "compact", "dmy", "ymd_slash"),
         stop("`origin` applies to numeric `x`; character `x` is read with `format`.")
     }
     format <- match.arg(format)
-    code <- switch(format, iso = 0L, compact = 1L, dmy = 2L, ymd_slash = 3L)
-    result <- .copy_names(fast_parse_date_impl(x, code, threads), x)
+    result <- .copy_names(
+        fast_parse_date_impl(x, .date_format_code(format), threads), x
+    )
     class(result) <- "Date"
     result
 }
