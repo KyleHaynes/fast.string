@@ -69,15 +69,23 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=fnchar]{fnchar()}} - nchar() equivalent
 \item \code{\link[=fchartr]{fchartr()}} - chartr() equivalent
 \item \code{\link[=fsquish]{fsquish()}} - trim and collapse inner whitespace
+\item \code{\link[=fstrsplit]{fstrsplit()}} - strsplit() equivalent
 \item \code{\link[=fsplit_field]{fsplit_field()}} - one field of delimited text
 \item \code{\link[=ascii_fold]{ascii_fold()}} - accents and symbols to ASCII
 \item \code{\link[=fpad]{fpad()}} - pad to a width, e.g. zero-pad
 \item \code{\link[=freplace_tokens]{freplace_tokens()}} - replace whole words from a dictionary
+\item \emph{Case}
+\itemize{
+\item \code{\link[=fupper]{fupper()}} - toupper(), parallel and Unicode
+\item \code{\link[=flower]{flower()}} - tolower(), parallel and Unicode
+\item \code{\link[=ftitle_case]{ftitle_case()}} - one capital per word, for names
+}
 \item \emph{Web text}
 \itemize{
 \item \code{\link[=url_encode]{url_encode()}} - URLencode() equivalent
 \item \code{\link[=url_decode]{url_decode()}} - URLdecode() equivalent
 \item \code{\link[=html_unescape]{html_unescape()}} - decode HTML character references
+\item \code{\link[=html_escape]{html_escape()}} - encode HTML character references
 }
 }
 \item \strong{Tokens & affixes}
@@ -135,6 +143,7 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=phonex]{phonex()}} - Phonex (Soundex plus Phonix)
 \item \code{\link[=roger_root]{roger_root()}} - Roger Root name code
 \item \code{\link[=onca]{onca()}} - ONCA (NYSIIS, then Soundex)
+\item \code{\link[=daitch_mokotoff]{daitch_mokotoff()}} - Daitch-Mokotoff (Eastern Europe)
 }
 \item \strong{String similarity}
 \itemize{
@@ -297,7 +306,7 @@ Other contributors:
   \item Max Bachmann (Author of RapidFuzz, whose scorers src/rapidfuzz_core.h ports) [contributor, copyright holder]
   \item Adam Cohen (Author of fuzzywuzzy, on which RapidFuzz's fuzz module builds) [copyright holder]
   \item James P. Howard (Author of phonics, whose Statistics Canada, Lein, Phonex and Roger Root rules are reproduced) [copyright holder]
-  \item The Apache Software Foundation (Apache Commons Codec, whose Metaphone is ported) [copyright holder]
+  \item The Apache Software Foundation (Apache Commons Codec, whose Metaphone is ported and whose Daitch-Mokotoff Soundex rules are read by tools/gen_dm_table.py) [copyright holder]
   \item OpenRefine contributors (Fingerprint keyers followed by fingerprint() and src/fingerprint_table.h) [copyright holder]
   \item Unicode, Inc. (CLDR Latin-ASCII data in src/ascii_fold_table.h and Unicode Character Database categories in src/shape_table.h) [copyright holder]
   \item WHATWG (HTML named character references in src/html_entities.h (CC BY 4.0)) [copyright holder]

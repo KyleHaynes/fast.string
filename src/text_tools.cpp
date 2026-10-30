@@ -2,6 +2,7 @@
 #include <Rcpp.h>
 #include <RcppParallel.h>
 
+#include "case_table.h"
 #include "html_entities.h"
 #include "parallel_dispatch.h"
 #include "shape_table.h"
@@ -20,9 +21,10 @@
 using namespace Rcpp;
 using namespace RcppParallel;
 
-// freplace_tokens(), fpad(), string_shape(), url_encode(), url_decode() and
-// html_unescape(). As in fold_text.cpp, each string is rewritten into a
-// per-worker buffer and strings that come out unchanged keep their CHARSXP.
+// freplace_tokens(), fpad(), string_shape(), url_encode(), url_decode(),
+// html_unescape(), html_escape(), fupper(), flower() and ftitle_case().
+// As in fold_text.cpp, each string is rewritten into a per-worker buffer and
+// strings that come out unchanged keep their CHARSXP.
 
 namespace {
 
@@ -364,6 +366,355 @@ std::uint8_t shape_class(std::uint32_t point) {
     }
     return lo < SHAPE_RUN_COUNT && SHAPE_RUNS[lo].first <= point
         ? SHAPE_RUNS[lo].kind : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Case conversion (case_table.h): fupper(), flower() and ftitle_case().
+// ---------------------------------------------------------------------------
+
+// Which case each mapping in a CaseEntry is.
+enum class CaseForm { upper, lower, title };
+
+const CaseEntry* case_lookup(std::uint32_t point) {
+    std::size_t lo = 0, hi = CASE_ENTRY_COUNT;
+    while (lo < hi) {
+        const std::size_t mid = lo + (hi - lo) / 2;
+        if (CASE_ENTRIES[mid].codepoint < point) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo < CASE_ENTRY_COUNT && CASE_ENTRIES[lo].codepoint == point
+        ? &CASE_ENTRIES[lo] : nullptr;
+}
+
+inline unsigned char ascii_upper(unsigned char c) {
+    return c >= 'a' && c <= 'z' ? static_cast<unsigned char>(c - 32) : c;
+}
+
+// shape_table.h covers U+0080 and up, so ASCII is classified here: 1 upper
+// case, 2 lower case, 4 digit, as in string_shape().
+inline std::uint8_t char_class(std::uint32_t point) {
+    if (point < 0x80) {
+        if (point >= 'A' && point <= 'Z') return 1;
+        if (point >= 'a' && point <= 'z') return 2;
+        if (point >= '0' && point <= '9') return 4;
+        return 0;
+    }
+    return shape_class(point);
+}
+
+inline bool is_cased(std::uint32_t point) {
+    const std::uint8_t cls = char_class(point);
+    return cls == 1 || cls == 2;
+}
+
+// Part of a word, for ftitle_case(): letters, digits and the combining marks
+// that belong to the letter before them.
+inline bool is_word_char(std::uint32_t point) {
+    const std::uint8_t cls = char_class(point);
+    return cls >= 1 && cls <= 5;
+}
+
+inline bool is_apostrophe(std::uint32_t point) {
+    return point == '\'' || point == 0x2019;
+}
+
+// Characters Unicode's case conversion looks through, enough of
+// Case_Ignorable for the Final_Sigma rule: combining marks, apostrophes and
+// the soft hyphen.
+inline bool is_case_ignorable(std::uint32_t point) {
+    return char_class(point) == 5 || is_apostrophe(point) || point == 0x00AD;
+}
+
+// Appends the `form` mapping of `point`, or its own bytes when it has none.
+void append_cased(std::string& out, std::uint32_t point,
+                  const unsigned char* bytes, std::size_t width,
+                  CaseForm form) {
+    if (point < 0x80) {
+        // ASCII is not in the table; its title case is its upper case.
+        const unsigned char c = static_cast<unsigned char>(point);
+        out.push_back(static_cast<char>(
+            form == CaseForm::lower ? ascii_lower(c) : ascii_upper(c)));
+        return;
+    }
+    const CaseEntry* entry = case_lookup(point);
+    if (entry == nullptr) {
+        out.append(reinterpret_cast<const char*>(bytes), width);
+        return;
+    }
+    std::uint16_t offset = entry->upper_offset;
+    std::uint8_t length = entry->upper_length;
+    if (form == CaseForm::lower) {
+        offset = entry->lower_offset;
+        length = entry->lower_length;
+    } else if (form == CaseForm::title) {
+        offset = entry->title_offset;
+        length = entry->title_length;
+    }
+    out.append(reinterpret_cast<const char*>(CASE_POOL) + offset, length);
+}
+
+// Unicode's Final_Sigma: a capital sigma lower-cases to the final form when
+// a cased character precedes it and none follows, so "ΟΔΟΣ" gives "οδος".
+bool final_sigma(const unsigned char* s, std::size_t n, std::size_t next,
+                 bool prev_cased) {
+    if (!prev_cased) return false;
+    std::size_t i = next;
+    while (i < n) {
+        std::uint32_t point;
+        const std::size_t width = utf8_decode(s, n, i, point);
+        if (width == 0) return true;
+        if (is_case_ignorable(point)) {
+            i += width;
+            continue;
+        }
+        return !is_cased(point);
+    }
+    return true;
+}
+
+// Writes `value` entirely in one case. ASCII runs are mapped a byte at a
+// time; everything else goes through the table, which can make a string
+// longer ("ß" to "SS").
+void case_string(const StringView& value, std::string& out, bool upper) {
+    const unsigned char* s = reinterpret_cast<const unsigned char*>(value.data);
+    const std::size_t n = value.size;
+    const CaseForm form = upper ? CaseForm::upper : CaseForm::lower;
+    out.clear();
+    out.reserve(n);
+    bool prev_cased = false;
+    std::size_t i = 0;
+    while (i < n) {
+        if (s[i] < 0x80) {
+            const unsigned char c = s[i];
+            out.push_back(static_cast<char>(upper ? ascii_upper(c)
+                                                  : ascii_lower(c)));
+            prev_cased = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+            ++i;
+            continue;
+        }
+        std::uint32_t point;
+        const std::size_t width = utf8_decode(s, n, i, point);
+        if (width == 0) {
+            out.push_back(static_cast<char>(s[i]));
+            prev_cased = false;
+            ++i;
+            continue;
+        }
+        if (!upper && point == 0x03A3 &&
+            final_sigma(s, n, i + width, prev_cased)) {
+            utf8_append(out, 0x03C2);
+        } else {
+            append_cased(out, point, s + i, width, form);
+        }
+        prev_cased = is_cased(point);
+        i += width;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ftitle_case(): one word at a time, so the name rules can see whole words.
+// ---------------------------------------------------------------------------
+
+// Generational suffixes written in Roman numerals. Only forms no name or
+// word is spelled like are listed: "II" and "III" are safe, while "DIX",
+// "MIX" and "LID" are valid numerals and also surnames or words.
+const char* const ROMAN_SUFFIXES[] = {
+    "ii", "iii", "iv", "vi", "vii", "viii", "ix", "xi", "xii", "xiii"
+};
+const std::size_t ROMAN_SUFFIX_COUNT =
+    sizeof(ROMAN_SUFFIXES) / sizeof(ROMAN_SUFFIXES[0]);
+
+// Splits `value` into words. A word is a run of letters, digits and marks;
+// an apostrophe inside one ("O'Brien", "don't") belongs to it, so the rules
+// below can see the whole name, but a hyphen separates words so that
+// "mary-jane" titles as "Mary-Jane".
+void split_words(const unsigned char* s, std::size_t n,
+                 std::vector<Span>& words) {
+    words.clear();
+    std::size_t i = 0;
+    while (i < n) {
+        std::uint32_t point;
+        std::size_t width = utf8_decode(s, n, i, point);
+        if (width == 0) {
+            // A byte that is not valid UTF-8 separates words.
+            width = 1;
+            point = 0;
+        }
+        if (!is_word_char(point)) {
+            i += width;
+            continue;
+        }
+        const std::size_t start = i;
+        i += width;
+        while (i < n) {
+            std::uint32_t next;
+            std::size_t next_width = utf8_decode(s, n, i, next);
+            if (next_width == 0) break;
+            if (is_word_char(next)) {
+                i += next_width;
+                continue;
+            }
+            if (!is_apostrophe(next)) break;
+            // Keep the apostrophe only when a letter follows it.
+            std::uint32_t after;
+            const std::size_t after_at = i + next_width;
+            const std::size_t after_width =
+                utf8_decode(s, n, after_at, after);
+            if (after_width == 0 || !is_word_char(after)) break;
+            i = after_at + after_width;
+        }
+        words.push_back(Span{start, i - start});
+    }
+}
+
+// The ASCII letters of a word, lower-cased, for comparing against the
+// particle and Roman-numeral lists. Empty when the word is not all ASCII.
+bool ascii_word(const unsigned char* s, const Span& word, std::string& out) {
+    out.clear();
+    for (std::size_t k = 0; k < word.size; ++k) {
+        const unsigned char c = s[word.start + k];
+        if (c >= 0x80) return false;
+        out.push_back(static_cast<char>(ascii_lower(c)));
+    }
+    return true;
+}
+
+bool in_sorted_list(const std::vector<std::string>& list,
+                    const std::string& value) {
+    return std::binary_search(list.begin(), list.end(), value);
+}
+
+bool is_roman_suffix(const std::string& word) {
+    for (std::size_t k = 0; k < ROMAN_SUFFIX_COUNT; ++k) {
+        if (word == ROMAN_SUFFIXES[k]) return true;
+    }
+    return false;
+}
+
+// Titles one word: its first cased character takes the title mapping and
+// the rest lower-case. With `name_rules`, a letter straight after "Mc" or
+// after a one-letter prefix and an apostrophe ("O'Brien", "d'Arcy") is
+// capitalised too.
+void title_word(const unsigned char* s, const Span& word, bool name_rules,
+                std::string& out) {
+    std::size_t i = word.start;
+    const std::size_t end = word.start + word.size;
+    // Position (in characters) within the word, and where a capital is
+    // forced by the "Mc"/"O'" rules.
+    std::size_t index = 0;
+    std::size_t force_at = 0;
+    bool forced = false;
+    if (name_rules && word.size >= 3 && s[word.start] < 0x80) {
+        // "Mc" before a letter, or a one-letter prefix and an apostrophe.
+        const unsigned char a = ascii_lower(s[word.start]);
+        std::uint32_t second;
+        const std::size_t second_width =
+            utf8_decode(s, end, word.start + 1, second);
+        if (second_width != 0 &&
+            (is_apostrophe(second) ||
+             (a == 'm' && second < 0x80 &&
+              ascii_lower(static_cast<unsigned char>(second)) == 'c'))) {
+            force_at = 2;
+            forced = true;
+        }
+    }
+    bool prev_cased = false;
+    while (i < end) {
+        std::uint32_t point;
+        std::size_t width = utf8_decode(s, end, i, point);
+        if (width == 0) {
+            out.push_back(static_cast<char>(s[i]));
+            prev_cased = false;
+            ++i;
+            ++index;
+            continue;
+        }
+        // The capital comes from the first character of the word, so a word
+        // that starts with a digit keeps its letters lower case ("3rd").
+        const bool capital = (index == 0 && is_cased(point)) ||
+            (forced && index == force_at);
+        if (capital) {
+            append_cased(out, point, s + i, width, CaseForm::title);
+        } else if (point == 0x03A3 &&
+                   final_sigma(s, end, i + width, prev_cased)) {
+            utf8_append(out, 0x03C2);
+        } else {
+            append_cased(out, point, s + i, width, CaseForm::lower);
+        }
+        prev_cased = is_cased(point);
+        i += width;
+        ++index;
+    }
+}
+
+void upper_word(const unsigned char* s, const Span& word, std::string& out) {
+    const std::size_t end = word.start + word.size;
+    std::size_t i = word.start;
+    while (i < end) {
+        std::uint32_t point;
+        std::size_t width = utf8_decode(s, end, i, point);
+        if (width == 0) {
+            out.push_back(static_cast<char>(s[i]));
+            ++i;
+            continue;
+        }
+        append_cased(out, point, s + i, width, CaseForm::upper);
+        i += width;
+    }
+}
+
+void lower_word(const unsigned char* s, const Span& word, std::string& out) {
+    const std::size_t end = word.start + word.size;
+    std::size_t i = word.start;
+    bool prev_cased = false;
+    while (i < end) {
+        std::uint32_t point;
+        std::size_t width = utf8_decode(s, end, i, point);
+        if (width == 0) {
+            out.push_back(static_cast<char>(s[i]));
+            prev_cased = false;
+            ++i;
+            continue;
+        }
+        if (point == 0x03A3 && final_sigma(s, end, i + width, prev_cased)) {
+            utf8_append(out, 0x03C2);
+        } else {
+            append_cased(out, point, s + i, width, CaseForm::lower);
+        }
+        prev_cased = is_cased(point);
+        i += width;
+    }
+}
+
+void title_case_string(const StringView& value,
+                       const std::vector<std::string>& particles,
+                       bool name_rules, std::vector<Span>& words,
+                       std::string& out) {
+    const unsigned char* s = reinterpret_cast<const unsigned char*>(value.data);
+    const std::size_t n = value.size;
+    split_words(s, n, words);
+    out.clear();
+    out.reserve(n);
+    std::string folded;
+    std::size_t at = 0;
+    for (std::size_t w = 0; w < words.size(); ++w) {
+        const Span& word = words[w];
+        // Separators between words are copied unchanged.
+        out.append(value.data + at, word.start - at);
+        at = word.start + word.size;
+        const bool interior = w != 0 && w + 1 != words.size();
+        const bool ascii = ascii_word(s, word, folded);
+        if (name_rules && ascii && w != 0 && words.size() > 1 &&
+            is_roman_suffix(folded)) {
+            upper_word(s, word, out);
+        } else if (name_rules && ascii && interior &&
+                   in_sorted_list(particles, folded)) {
+            lower_word(s, word, out);
+        } else {
+            title_word(s, word, name_rules, out);
+        }
+    }
+    out.append(value.data + at, n - at);
 }
 
 // ---------------------------------------------------------------------------
@@ -1039,4 +1390,66 @@ IntegerVector fast_longest_affix_impl(const StringVector& x,
     dispatch_for(0, snapshot.size(), worker, text_work(snapshot),
                  TEXT_PARALLEL_THRESHOLD, nthreads, 2048);
     return result;
+}
+
+// [[Rcpp::export]]
+CharacterVector fast_html_escape_impl(const StringVector& x, bool attribute,
+                                      int nthreads) {
+    StringSnapshot snapshot(x, SnapshotText::utf8);
+    // As htmltools::htmlEscape() does: "&", "<" and ">" always, and in an
+    // attribute value the quotes and the line breaks as well.
+    const char* table[256] = {nullptr};
+    table[static_cast<unsigned char>('&')] = "&amp;";
+    table[static_cast<unsigned char>('<')] = "&lt;";
+    table[static_cast<unsigned char>('>')] = "&gt;";
+    if (attribute) {
+        table[static_cast<unsigned char>('"')] = "&quot;";
+        table[static_cast<unsigned char>('\'')] = "&#39;";
+        table[static_cast<unsigned char>('\r')] = "&#13;";
+        table[static_cast<unsigned char>('\n')] = "&#10;";
+    }
+    auto body = [&table](const StringView& value, std::string& out,
+                         std::vector<Span>&) {
+        const unsigned char* s =
+            reinterpret_cast<const unsigned char*>(value.data);
+        std::size_t i = 0;
+        while (i < value.size && table[s[i]] == nullptr) ++i;
+        if (i == value.size) return false;
+        out.assign(value.data, i);
+        for (; i < value.size; ++i) {
+            const char* replacement = table[s[i]];
+            if (replacement != nullptr) out.append(replacement);
+            else out.push_back(value.data[i]);
+        }
+        return true;
+    };
+    return run_text(snapshot, nthreads, body);
+}
+
+// [[Rcpp::export]]
+CharacterVector fast_case_impl(const StringVector& x, bool upper,
+                               int nthreads) {
+    StringSnapshot snapshot(x, SnapshotText::utf8);
+    auto body = [upper](const StringView& value, std::string& out,
+                        std::vector<Span>&) {
+        case_string(value, out, upper);
+        return true;
+    };
+    return run_text(snapshot, nthreads, body);
+}
+
+// [[Rcpp::export]]
+CharacterVector fast_title_case_impl(const StringVector& x,
+                                     const std::vector<std::string>& particles,
+                                     bool name_rules, int nthreads) {
+    StringSnapshot snapshot(x, SnapshotText::utf8);
+    std::vector<std::string> sorted(particles);
+    std::sort(sorted.begin(), sorted.end());
+    auto body = [&sorted, name_rules](const StringView& value,
+                                      std::string& out,
+                                      std::vector<Span>& words) {
+        title_case_string(value, sorted, name_rules, words, out);
+        return true;
+    };
+    return run_text(snapshot, nthreads, body);
 }

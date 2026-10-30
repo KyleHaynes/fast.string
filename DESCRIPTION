@@ -11,7 +11,8 @@ Authors@R: c(
     person("James P.", "Howard", role = "cph",
            comment = "Author of phonics, whose Statistics Canada, Lein, Phonex and Roger Root rules are reproduced"),
     person("The Apache Software Foundation", role = "cph",
-           comment = "Apache Commons Codec, whose Metaphone is ported"),
+           comment = "Apache Commons Codec, whose Metaphone is ported and whose
+           Daitch-Mokotoff Soundex rules are read by tools/gen_dm_table.py"),
     person("OpenRefine contributors", role = "cph",
            comment = "Fingerprint keyers followed by fingerprint() and src/fingerprint_table.h"),
     person("Unicode, Inc.", role = "cph",
@@ -25,9 +26,10 @@ Description: Fast equivalents of grepl(), grep(), sub(), gsub() and agrepl()
     that use PCRE2 for regular expressions, prepared literal search and
     Aho-Corasick automata for fixed strings, and Myers' bit-parallel
     algorithm for approximate matching, parallelised across CPU cores via
-    Intel TBB through RcppParallel. Also provides match extraction, field
+    Intel TBB through RcppParallel. Also provides match extraction, string
     splitting, whitespace squishing, padding, whole-token dictionary
-    replacement, ASCII folding, URL and HTML entity decoding and
+    replacement, Unicode case conversion and title case for names, ASCII
+    folding, URL and HTML entity encoding and decoding and
     'OpenRefine' clustering keys; parsing numbers from messy text,
     character-class shapes for profiling formats, check-digit validation of
     identifiers (Luhn, ABN, ACN, TFN, Medicare, ISBN, EAN, IBAN) and keyed
@@ -39,8 +41,8 @@ Description: Fast equivalents of grepl(), grep(), sub(), gsub() and agrepl()
     fuzzy-matching scorers and search functions
     <https://github.com/rapidfuzz/RapidFuzz>; phonetic blocking keys
     (Soundex, Refined Soundex, NYSIIS, Cologne, Metaphone, Double Metaphone,
-    Caverphone, Match Rating Approach, Statistics Canada, Lein, Phonex,
-    Roger Root and ONCA); fixed-format date and timestamp parsing; and
+    Daitch-Mokotoff, Caverphone, Match Rating Approach, Statistics Canada,
+    Lein, Phonex, Roger Root and ONCA); fixed-format date and timestamp parsing; and
     candidate search for record linkage without a full comparison matrix
     (top-N lookup, symmetric-delete search within k edits, TF-IDF n-gram
     cosine matching and MinHash locality-sensitive hashing), multi-pass

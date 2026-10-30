@@ -30,6 +30,7 @@ book:
         - uc-extract.qmd
         - uc-profile.qmd
         - uc-link.qmd
+        - uc-metrics.qmd
         - uc-privacy.qmd
     - part: "Under the hood"
       chapters:

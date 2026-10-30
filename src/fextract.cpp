@@ -19,8 +19,8 @@
 using namespace Rcpp;
 using namespace RcppParallel;
 
-// fextract(), fextract_all(), fsplit_field() and fsquish(). The first three
-// return pieces of their input, so workers record byte offsets only and the
+// fextract(), fextract_all(), fstrsplit(), fsplit_field() and fsquish(). All
+// but the last return pieces of their input, so workers record byte offsets only and the
 // main thread creates the R strings; fsquish() writes changed strings to
 // per-chunk arenas like fgsub().
 
@@ -313,6 +313,167 @@ List spans_to_list(const StringSnapshot& snapshot,
 // ---------------------------------------------------------------------------
 // fsplit_field(): one field of each string split at a separator. Fields are
 // numbered from 1, or from -1 for the last; empty fields count.
+// ---------------------------------------------------------------------------
+// fstrsplit(): every field of each string, cut as base::strsplit() cuts them.
+// A trailing empty field is dropped, a leading one is kept, and an empty
+// `split` cuts between characters.
+// ---------------------------------------------------------------------------
+
+struct SplitAllWorker : public Worker {
+    const StringView* strings;
+    const std::vector<TextWorkChunk>& chunks;
+    const PreparedFixedSearch* search;  // fixed separator, or
+    pcre2_code* code;                   // a regex that cannot match "", or
+    bool characters;                    // split = "": one piece per character
+    bool utf8;
+    std::vector<std::vector<Span>>& spans;
+    std::vector<std::size_t>& first;
+    std::vector<std::size_t>& count;
+    std::vector<int>& errors;
+
+    SplitAllWorker(const StringView* strings_,
+                   const std::vector<TextWorkChunk>& chunks_,
+                   const PreparedFixedSearch* search_, pcre2_code* code_,
+                   bool characters_, bool utf8_,
+                   std::vector<std::vector<Span>>& spans_,
+                   std::vector<std::size_t>& first_,
+                   std::vector<std::size_t>& count_,
+                   std::vector<int>& errors_)
+        : strings(strings_), chunks(chunks_), search(search_), code(code_),
+          characters(characters_), utf8(utf8_), spans(spans_), first(first_),
+          count(count_), errors(errors_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        pcre2_match_data* match_data = nullptr;
+        if (code) {
+            match_data = pcre2_match_data_create_from_pattern(code, NULL);
+            if (!match_data) {
+                for (std::size_t chunk = begin; chunk < end; ++chunk) {
+                    for (std::size_t i = chunks[chunk].begin;
+                         i < chunks[chunk].end; ++i)
+                        errors[i] = PCRE2_ERROR_NOMEMORY;
+                }
+                return;
+            }
+        }
+        for (std::size_t chunk = begin; chunk < end; ++chunk) {
+            std::vector<Span>& out = spans[chunk];
+            for (std::size_t i = chunks[chunk].begin; i < chunks[chunk].end;
+                 ++i) {
+                const StringView& value = strings[i];
+                first[i] = out.size();
+                count[i] = 0;
+                if (value.is_na()) continue;
+                if (characters) {
+                    split_characters(value, out);
+                } else if (!split_separators(value, match_data, out,
+                                             errors[i])) {
+                    out.resize(first[i]);
+                    continue;
+                }
+                count[i] = out.size() - first[i];
+            }
+        }
+        if (match_data) pcre2_match_data_free(match_data);
+    }
+
+    void split_characters(const StringView& value,
+                          std::vector<Span>& out) const {
+        const unsigned char* s =
+            reinterpret_cast<const unsigned char*>(value.data);
+        std::size_t k = 0;
+        while (k < value.size) {
+            std::size_t width = 1;
+            if (utf8 && s[k] >= 0x80) {
+                std::uint32_t point;
+                const std::size_t decoded =
+                    utf8_decode(s, value.size, k, point);
+                if (decoded != 0) width = decoded;
+            }
+            out.push_back(Span{k, width});
+            k += width;
+        }
+    }
+
+    // Records one span per field. Returns false on a PCRE2 error.
+    bool split_separators(const StringView& value,
+                          pcre2_match_data* match_data,
+                          std::vector<Span>& out, int& error) const {
+        std::size_t start = 0;
+        std::size_t offset = 0;
+        while (offset <= value.size) {
+            std::size_t found = 0;
+            std::size_t separator = 0;
+            if (search) {
+                found = search->find(value.data, value.size, offset);
+                if (found == std::string::npos) break;
+                separator = search->size();
+            } else {
+                const int rc = pcre2_match(
+                    code, reinterpret_cast<PCRE2_SPTR8>(value.data),
+                    static_cast<PCRE2_SIZE>(value.size),
+                    static_cast<PCRE2_SIZE>(offset), 0, match_data, NULL
+                );
+                if (rc == PCRE2_ERROR_NOMATCH) break;
+                if (rc < 0) {
+                    error = rc;
+                    return false;
+                }
+                const PCRE2_SIZE* ovector =
+                    pcre2_get_ovector_pointer(match_data);
+                found = ovector[0];
+                separator = ovector[1] - ovector[0];
+            }
+            out.push_back(Span{start, found - start});
+            start = found + separator;
+            offset = start;
+        }
+        // The field after the last separator, unless it is empty: base R
+        // drops a trailing empty field but keeps a leading one.
+        if (start < value.size)
+            out.push_back(Span{start, value.size - start});
+        return true;
+    }
+};
+
+// One row per string and one column per field, short rows padded with NA.
+SEXP spans_to_matrix(const StringSnapshot& snapshot,
+                     const std::vector<TextWorkChunk>& chunks,
+                     const std::vector<std::vector<Span>>& spans,
+                     const std::vector<std::size_t>& first,
+                     const std::vector<std::size_t>& count) {
+    const std::size_t n = snapshot.size();
+    std::size_t columns = 0;
+    for (std::size_t i = 0; i < n; ++i) columns = (std::max)(columns, count[i]);
+    const std::size_t limit =
+        static_cast<std::size_t>((std::numeric_limits<R_xlen_t>::max)());
+    if (columns != 0 && n > limit / columns)
+        stop("The split result is too large for a matrix.");
+    CharacterVector output(static_cast<R_xlen_t>(n * columns));
+    for (R_xlen_t k = 0; k < output.size(); ++k)
+        SET_STRING_ELT(output, k, NA_STRING);
+    for (std::size_t chunk = 0; chunk < chunks.size(); ++chunk) {
+        const std::vector<Span>& chunk_spans = spans[chunk];
+        for (std::size_t i = chunks[chunk].begin; i < chunks[chunk].end; ++i) {
+            const StringView& value = snapshot[i];
+            if (value.is_na()) continue;
+            const cetype_t encoding = snapshot.translated(i)
+                ? CE_UTF8
+                : Rf_getCharCE(snapshot.charsxp(i));
+            for (std::size_t k = 0; k < count[i]; ++k) {
+                const Span& span = chunk_spans[first[i] + k];
+                SET_STRING_ELT(
+                    output, static_cast<R_xlen_t>(i + k * n),
+                    make_text_charsxp(value.data + span.offset, span.length,
+                                      encoding)
+                );
+            }
+        }
+    }
+    output.attr("dim") = Dimension(n, columns);
+    return output;
+}
+
 // ---------------------------------------------------------------------------
 
 struct SplitFieldWorker : public Worker {
@@ -619,4 +780,48 @@ CharacterVector fast_squish_impl(const StringVector& x, int nthreads) {
     dispatch_for(0, plan.chunks.size(), worker, work, threshold,
                  plan.dispatch_threads, plan.grain_size);
     return finalize_text_results(snapshot, results, arenas, byte_mode);
+}
+
+// [[Rcpp::export]]
+SEXP fast_strsplit_impl(const std::string& split, const StringVector& x,
+                        bool ignore_case, int syntax, bool fixed,
+                        bool use_bytes, bool simplify, int nthreads) {
+    StringSnapshot snapshot(x, snapshot_text(use_bytes));
+    const std::size_t n = snapshot.size();
+    const std::size_t work = estimated_string_work(snapshot, 16);
+    const std::size_t threshold = 250000;
+    const TextWorkPlan plan_chunks =
+        make_text_work_plan(snapshot, work, threshold, nthreads, 16);
+    const std::vector<TextWorkChunk>& chunks = plan_chunks.chunks;
+    std::vector<std::vector<Span>> spans(chunks.size());
+    std::vector<std::size_t> first(n, 0), count(n, 0);
+    std::vector<int> errors(n, 0);
+    const bool characters = split.empty();
+    const bool utf8 = !use_bytes && !snapshot.any_bytes();
+
+    RegexPlan plan;
+    PreparedFixedSearch search(characters ? std::string(" ") : split,
+                               ignore_case);
+    const PreparedFixedSearch* search_ptr = nullptr;
+    pcre2_code* code = nullptr;
+    if (!characters) {
+        if (fixed) {
+            search_ptr = &search;
+        } else {
+            prepare_regex(plan, split, ignore_case, syntax, use_bytes,
+                          snapshot);
+            std::uint32_t match_empty = 0;
+            pcre2_pattern_info(plan.code, PCRE2_INFO_MATCHEMPTY, &match_empty);
+            if (match_empty) stop("`split` must not match the empty string.");
+            code = plan.code;
+        }
+    }
+    SplitAllWorker worker(snapshot.data(), chunks, search_ptr, code,
+                          characters, utf8, spans, first, count, errors);
+    dispatch_for(0, chunks.size(), worker, work, threshold,
+                 plan_chunks.dispatch_threads, plan_chunks.grain_size);
+    if (code) report_pcre2_errors(errors, "matching");
+    return simplify
+        ? spans_to_matrix(snapshot, chunks, spans, first, count)
+        : Rcpp::wrap(spans_to_list(snapshot, chunks, spans, first, count));
 }

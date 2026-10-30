@@ -2,15 +2,21 @@
 % Please edit documentation in R/text_tools.R
 \name{html_unescape}
 \alias{html_unescape}
-\title{Fast HTML entity decoding}
+\alias{html_escape}
+\title{Fast HTML entity decoding and escaping}
 \usage{
 html_unescape(x, nthreads = NULL)
+
+html_escape(x, attribute = FALSE, nthreads = NULL)
 }
 \arguments{
 \item{x}{Character vector. \code{NA} elements return \code{NA}.}
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
+
+\item{attribute}{Logical. Escape the quotes and the line breaks too, for
+a value that goes inside an HTML attribute.}
 }
 \value{
 Character vector the same length as \code{x}, with \code{names(x)} kept.
@@ -35,10 +41,23 @@ Windows-1252 characters browsers show for them (\verb{&#150;} is an en dash),
 and a few other code points (most control characters, non-characters)
 are dropped. Anything that is not a reference is left alone. The result
 is UTF-8.
+
+\code{html_escape()} is the other direction, for putting a value R produced
+into an HTML page: \code{&}, \code{<} and \code{>} become \verb{&amp;}, \verb{&lt;} and \verb{&gt;}.
+With \code{attribute = TRUE} the quotes and the line breaks are escaped as
+well (\verb{&quot;}, \verb{&#39;}, \verb{&#13;}, \verb{&#10;}), which is what a value placed
+inside an HTML attribute needs. It escapes exactly what
+\code{htmltools::htmlEscape()} does, without the dependency, and in parallel.
 }
 \examples{
 html_unescape(c("Fish &amp; Chips", "caf&eacute; &#8211; open",
                 "&lt;b&gt;bold&lt;/b&gt;", "AT&T", NA))
+
+html_escape(c("Fish & Chips", "<b>bold</b>", NA))
+html_escape("say \"hi\"", attribute = TRUE)
+
+# The two are inverses for the characters html_escape() writes.
+html_unescape(html_escape("1 < 2 & 3 > 2"))
 }
 \seealso{
 \code{\link[=url_decode]{url_decode()}}, \code{\link[=ascii_fold]{ascii_fold()}} to transliterate the result.
@@ -52,8 +71,11 @@ Other string utilities:
 \code{\link[=freplace_tokens]{freplace_tokens()}},
 \code{\link[=fsplit_field]{fsplit_field()}},
 \code{\link[=fsquish]{fsquish()}},
+\code{\link[=fstrsplit]{fstrsplit()}},
 \code{\link[=fsubstr]{fsubstr()}},
+\code{\link[=ftitle_case]{ftitle_case()}},
 \code{\link[=ftrimws]{ftrimws()}},
+\code{\link[=fupper]{fupper()}},
 \code{\link[=string_shape]{string_shape()}},
 \code{\link[=url_encode]{url_encode()}}
 }

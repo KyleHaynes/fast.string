@@ -144,8 +144,11 @@ reproduce the rules of the R package phonics
 metaphone() ports the Metaphone encoder of Apache Commons Codec
 (https://commons.apache.org/proper/commons-codec/), whose structure
 double_metaphone(), nysiis(), refined_soundex() and caverphone() also
-follow. Commons Codec is licensed under the Apache License, Version 2.0 (a
-copy is in R's share/licenses/Apache-2.0 and at
+follow. daitch_mokotoff() ports its DaitchMokotoffSoundex encoder, and
+src/dm_table.h holds that encoder's coding rules (its dmrules.txt
+resource), read by tools/gen_dm_table.py. Commons Codec is licensed under
+the Apache License, Version 2.0 (a copy is in R's
+share/licenses/Apache-2.0 and at
 https://www.apache.org/licenses/LICENSE-2.0), with this notice:
 
     Apache Commons Codec

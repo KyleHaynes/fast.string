@@ -33,14 +33,21 @@
         fnchar  = "nchar() equivalent",
         fchartr = "chartr() equivalent",
         fsquish      = "trim and collapse inner whitespace",
+        fstrsplit    = "strsplit() equivalent",
         fsplit_field = "one field of delimited text",
         ascii_fold   = "accents and symbols to ASCII",
         fpad            = "pad to a width, e.g. zero-pad",
         freplace_tokens = "replace whole words from a dictionary",
+        "Case" = list(
+            fupper      = "toupper(), parallel and Unicode",
+            flower      = "tolower(), parallel and Unicode",
+            ftitle_case = "one capital per word, for names"
+        ),
         "Web text" = list(
             url_encode    = "URLencode() equivalent",
             url_decode    = "URLdecode() equivalent",
-            html_unescape = "decode HTML character references"
+            html_unescape = "decode HTML character references",
+            html_escape   = "encode HTML character references"
         )
     ),
     "Tokens & affixes" = list(
@@ -89,7 +96,8 @@
         lein             = "Lein name code",
         phonex           = "Phonex (Soundex plus Phonix)",
         roger_root       = "Roger Root name code",
-        onca             = "ONCA (NYSIIS, then Soundex)"
+        onca             = "ONCA (NYSIIS, then Soundex)",
+        daitch_mokotoff  = "Daitch-Mokotoff (Eastern Europe)"
     ),
     "String similarity" = list(
         "Jaro-Winkler" = list(

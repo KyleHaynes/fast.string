@@ -184,7 +184,9 @@ minhash_pairs(descr, threshold = 0.4)
 ## Score with the comparison that fits the field
 
 Jaro-Winkler is the standard for short names, but each kind of field has its
-own kind of difference:
+own kind of difference. @sec-uc-metrics measures every comparator in the
+package against labelled name and address pairs and says which to reach for
+when; the short version is below:
 
 - **Phonetic misspellings** (`PH`/`F`, `C`/`K`) cost less under `editex()`,
   an edit distance whose substitution cost depends on whether the letters

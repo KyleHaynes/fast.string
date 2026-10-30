@@ -28,6 +28,7 @@ cologne(c("Müller-Lüdenscheidt", "Meier", "Meyer"))
 \seealso{
 Other phonetic codes:
 \code{\link[=caverphone]{caverphone()}},
+\code{\link[=daitch_mokotoff]{daitch_mokotoff()}},
 \code{\link[=double_metaphone]{double_metaphone()}},
 \code{\link[=metaphone]{metaphone()}},
 \code{\link[=mra_encode]{mra_encode()}},

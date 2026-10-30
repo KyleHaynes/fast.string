@@ -68,7 +68,8 @@
 #' `fuzz_*` scorers return 100. Each comparator is therefore probed once on a
 #' calibration pair and, where needed, converted so that **1 always means an
 #' exact match** --- an unbounded edit distance by
-#' `1 - distance / max(nchar(a), nchar(b))`, pairwise. `normalise = FALSE`
+#' `1 - distance / max(nchar(a), nchar(b))`, pairwise, with lengths counted
+#' in bytes when the comparator counts edits in bytes. `normalise = FALSE`
 #' leaves every comparator's own scale untouched. What was detected is
 #' recorded in `attr(out, "compare")` and printed when `verbose = TRUE`.
 #'
@@ -83,7 +84,7 @@
 #'   in one and `"DDMMYYYY"` text in the other). Must have as many passes as
 #'   `block`, each with the same number of terms; a pass given as `NULL`
 #'   reuses `block`'s. By default `block`'s own expressions are evaluated
-#'   against `data_2`.
+#'   against `data_2`. An error when deduplicating, as there is no `data_2`.
 #' @param compare A list of comparator calls, as described above. `NULL`
 #'   returns the candidate pairs unscored.
 #' @param pairs Optional candidate pairs to score instead of blocking: any
@@ -107,6 +108,9 @@
 #'   an exact match. See *Comparators*.
 #' @param keep Columns to carry onto the output, or `NULL` (the default) for
 #'   all of them. `character()` carries none.
+#' @param block_key Whether to add the `block_key` column, a readable copy of
+#'   the key that paired each record. It is there for diagnosis only, and
+#'   `FALSE` saves one string per pair. Ignored when `pairs` is given.
 #' @param suffixes Length-2 character vector distinguishing the two sides of
 #'   each pair, `c("_1", "_2")` by default.
 #' @param score_position `"grouped"` (the default) puts each score beside the
@@ -118,9 +122,10 @@
 #'   Timings are returned either way, as `attr(out, "timings")`.
 #' @return A `data.table` with one row per candidate pair: `pair_id`,
 #'   `index_1` and `index_2` (row numbers into `data_1` and `data_2`, suffixed
-#'   as `suffixes` says), `pass`, `block_key`, the carried columns under both
-#'   suffixes, and one column per comparator. Attributes `timings` and
-#'   `compare` describe the run.
+#'   as `suffixes` says), `pass`, `block_key` (when blocking and
+#'   `block_key = TRUE`), the carried columns under both suffixes, and one
+#'   column per comparator. Attributes `timings` and `compare` describe the
+#'   run.
 #' @seealso [block_pairs()] and [sorted_neighbourhood()] for the candidate
 #'   pairs alone, [cluster_pairs()] to turn matched pairs into entity
 #'   identifiers, and [minhash_pairs()], [fuzzy_within()] and [tfidf_top_n()]
@@ -154,8 +159,95 @@
 #'       block   = list(soundex(surname)),
 #'       compare = list(lev = levenshtein(surname)))$lev
 #'
+#' # `normalise = FALSE` keeps the comparator's own scale, here edits
+#' rLink(enrol, claims,
+#'       block     = list(soundex(surname)),
+#'       compare   = list(lev = levenshtein(surname)),
+#'       normalise = FALSE)$lev
+#'
 #' # Two passes: same Soundex of surname, or same date of birth
 #' rLink(enrol, claims, block = list(soundex(surname), dob))$pass
+#'
+#' # --- block_method = "sorted_neighbourhood" ----------------------------
+#' # Blocking on surname exactly only ever finds SMITH = SMITH: the typos
+#' # put every other true match in a block of its own.
+#' rLink(enrol, claims, block = list(surname))[, c("index_1", "index_2")]
+#'
+#' # The sorted neighbourhood slides a window over the keys in sorted order
+#' # instead, so neighbours pair without agreeing: BROWN with BROWNE,
+#' # JONES with JONSE, SMITH with SMYTH.
+#' sn <- rLink(
+#'     enrol, claims,
+#'     block        = list(surname),
+#'     block_method = "sorted_neighbourhood",
+#'     window       = 3,
+#'     compare      = list(jaro_winkler(surname)),
+#'     keep         = "surname"
+#' )
+#' # The window also pairs unrelated neighbours, such as SMITH with JONSE,
+#' # which is what the scores are for.
+#' sn[, c("surname_1", "surname_2", "surname_jaro_winkler")]
+#'
+#' # A wider window reaches further either side, for more pairs to score
+#' nrow(rLink(enrol, claims, block = list(surname),
+#'            block_method = "sorted_neighbourhood", window = 5))
+#'
+#' # --- the rest of the arguments ----------------------------------------
+#' # `keep` carries only the columns asked for, `suffixes` renames the two
+#' # sides, `score_position = "end"` puts the scores after them, and
+#' # `block_key = FALSE` drops the diagnostic key column.
+#' rLink(enrol, claims,
+#'       block          = list(dob),
+#'       compare        = list(jaro_winkler(surname), jaro_winkler(given)),
+#'       keep           = c("surname", "given"),
+#'       suffixes       = c(".x", ".y"),
+#'       score_position = "end",
+#'       block_key      = FALSE)
+#'
+#' # `column_1 | column_2` compares columns named differently in each input
+#' enrol2 <- enrol
+#' names(enrol2)[2] <- "family_name"
+#' rLink(enrol2, claims,
+#'       block   = list(dob),
+#'       compare = list(sn = jaro_winkler(family_name | surname)))$sn
+#'
+#' # `block_2` builds the same key from a column stored differently
+#' claims2 <- claims
+#' claims2$dob <- format(claims2$dob, "%d%m%Y")
+#' rLink(enrol, claims2,
+#'       block   = list(format(dob, "%d%m%Y")),
+#'       block_2 = list(dob),
+#'       compare = list(jaro_winkler(surname)))$block_key
+#'
+#' # `match_missing` decides whether two records missing a key can pair
+#' enrol3 <- enrol
+#' enrol3$surname[4] <- NA
+#' claims3 <- claims
+#' claims3$surname[1] <- NA
+#' nrow(rLink(enrol3, claims3, block = list(surname)))
+#' nrow(rLink(enrol3, claims3, block = list(surname), match_missing = TRUE))
+#'
+#' # `force_upper_case = FALSE` makes keys and scores case-sensitive
+#' enrol4 <- enrol
+#' enrol4$surname <- tolower(enrol4$surname)
+#' nrow(rLink(enrol4, claims, block = list(surname)))
+#' nrow(rLink(enrol4, claims, block = list(surname),
+#'            force_upper_case = FALSE))
+#'
+#' # `max_block_size` skips blocks too big to be worth comparing
+#' nrow(rLink(enrol, claims, block = list(fsubstr(surname, 1, 1)),
+#'            max_block_size = 2))
+#'
+#' # `pairs` scores candidates found some other way instead of blocking
+#' rLink(enrol, claims,
+#'       pairs   = data.frame(x_index = c(1L, 4L), y_index = c(1L, 1L)),
+#'       compare = list(jaro_winkler(surname)),
+#'       keep    = "surname")
+#'
+#' # `verbose = TRUE` reports the pairs expected, the timings and what each
+#' # comparator was found to return
+#' invisible(rLink(enrol, claims, block = list(soundex(surname)),
+#'                 compare = list(jaro_winkler(given)), verbose = TRUE))
 #'
 #' # Deduplicating one file, then turning the matches into entity IDs
 #' dup <- rLink(enrol, block = list(soundex(surname)),
@@ -177,6 +269,7 @@ rLink <- function(data_1,
                   force_upper_case = TRUE,
                   normalise = TRUE,
                   keep = NULL,
+                  block_key = TRUE,
                   suffixes = c("_1", "_2"),
                   score_position = c("grouped", "end"),
                   nthreads = NULL,
@@ -196,6 +289,7 @@ rLink <- function(data_1,
     .check_flag(match_missing, "match_missing")
     .check_flag(force_upper_case, "force_upper_case")
     .check_flag(normalise, "normalise")
+    .check_flag(block_key, "block_key")
     .check_flag(verbose, "verbose")
     # Validated here but deliberately not converted: every function called
     # below runs .as_nthreads() itself, and the -1L that marks "the
@@ -223,6 +317,11 @@ rLink <- function(data_1,
         stop("Give `block` or `pairs`, not both.")
     if (!use_block && is.null(pairs))
         stop("`block` is required (or supply `pairs`).")
+    # It would be evaluated against data_1 and then never used.
+    if (dedupe && !rlang::quo_is_null(quo_block_2))
+        stop(paste0("`block_2` describes `data_2`, but there is none: ",
+                    "deduplicating uses `block` alone."))
+    show_key <- use_block && block_key
 
     mask_1 <- as.list(data_1)
     mask_2 <- as.list(d2)
@@ -252,14 +351,23 @@ rLink <- function(data_1,
             parts_1 <- lapply(seq_along(terms_1), function(k)
                 .rlink_term(terms_1[[k]], mask_1, spec$env, nrow(data_1),
                             "block", p, k, probs))
-            parts_2 <- lapply(seq_along(terms_2), function(k)
+            # Deduplicating, the second side would be the same key built
+            # from the same data a second time.
+            parts_2 <- if (!dedupe) lapply(seq_along(terms_2), function(k)
                 .rlink_term(terms_2[[k]], mask_2, env_2, nrow(d2),
                             arg_2, p, k, probs))
             if (length(probs$msgs)) next
             keys_1[[p]] <- .rlink_key(parts_1, p, force_upper_case,
                                       na_strings, match_missing, nthreads)
-            keys_2[[p]] <- .rlink_key(parts_2, p, force_upper_case,
-                                      na_strings, match_missing, nthreads)
+            keys_2[[p]] <- if (dedupe) keys_1[[p]] else
+                .rlink_key(parts_2, p, force_upper_case, na_strings,
+                           match_missing, nthreads)
+            # A lone term keeps its type, so a Date on one side and text on
+            # the other would never be equal; compare them as text instead.
+            if (!.rlink_same_type(keys_1[[p]], keys_2[[p]])) {
+                keys_1[[p]] <- as.character(keys_1[[p]])
+                keys_2[[p]] <- as.character(keys_2[[p]])
+            }
         }
         .rlink_stop(probs, data_1)
         timings$keys <- .bench_now() - t0
@@ -322,7 +430,7 @@ rLink <- function(data_1,
     out[[paste0("index", suffixes[1L])]] <- xi
     out[[paste0("index", suffixes[2L])]] <- yi
     out[["pass"]] <- pairs$pass
-    if (use_block)
+    if (show_key)
         out[["block_key"]] <- .rlink_block_key(keys_1, pairs, xi, n_pairs)
     for (nm in keep_1) out[[paste0(nm, suffixes[1L])]] <- data_1[[nm]][xi]
     for (nm in keep_2) out[[paste0(nm, suffixes[2L])]] <- d2[[nm]][yi]
@@ -332,17 +440,47 @@ rLink <- function(data_1,
     # --- comparators -------------------------------------------------------
     cmp <- .rlink_compare(quo_compare, names(out))
     info <- vector("list", length(cmp))
+    # Comparators often share a column, as jaro_winkler(surname) and
+    # levenshtein(surname) do, and when deduplicating both sides of one read
+    # the same data. Each column is therefore prepared once per record and
+    # spread to the pairs once, and the pair-level copy is dropped after the
+    # last comparator that reads it.
+    src <- lapply(cmp, function(s) vapply(list(s$expr_1, s$expr_2),
+        function(e) paste(deparse(e), collapse = " "), ""))
+    rec_id <- lapply(src, function(e)
+        paste0(if (dedupe) "" else 1:2, ":", e))
+    pair_id <- lapply(src, function(e) paste0(1:2, ":", e))
+    last_use <- vapply(split(rep(seq_along(cmp), each = 2L),
+                             unlist(pair_id)), max, 0L)
+    rec_cache <- list()
+    pair_cache <- list()
     for (i in seq_along(cmp)) {
         t0 <- .bench_now()
         s <- cmp[[i]]
         probs <- .rlink_problems()
-        a <- .rlink_term(s$expr_1, mask_1, s$env, nrow(data_1),
-                         "compare", i, 1L, probs)
-        b <- .rlink_term(s$expr_2, mask_2, s$env, nrow(d2),
-                         "compare", i, 2L, probs)
+        for (k in 1:2) {
+            if (!is.null(rec_cache[[rec_id[[i]][k]]])) next
+            v <- if (k == 1L)
+                .rlink_term(s$expr_1, mask_1, s$env, nrow(data_1),
+                            "compare", i, 1L, probs)
+            else
+                .rlink_term(s$expr_2, mask_2, s$env, nrow(d2),
+                            "compare", i, 2L, probs)
+            if (!is.null(v))
+                rec_cache[[rec_id[[i]][k]]] <-
+                    .rlink_chr(v, force_upper_case, na_strings)
+        }
         .rlink_stop(probs, data_1)
-        a <- .rlink_chr(a, force_upper_case, na_strings)[xi]
-        b <- .rlink_chr(b, force_upper_case, na_strings)[yi]
+        a0 <- rec_cache[[rec_id[[i]][1L]]]
+        b0 <- rec_cache[[rec_id[[i]][2L]]]
+        if (is.null(pair_cache[[pair_id[[i]][1L]]]))
+            pair_cache[[pair_id[[i]][1L]]] <- a0[xi]
+        if (is.null(pair_cache[[pair_id[[i]][2L]]]))
+            pair_cache[[pair_id[[i]][2L]]] <- b0[yi]
+        a <- pair_cache[[pair_id[[i]][1L]]]
+        b <- pair_cache[[pair_id[[i]][2L]]]
+        for (id in pair_id[[i]])
+            if (last_use[[id]] == i) pair_cache[[id]] <- NULL
         orient <- .rlink_orient(s$fn, s$args, normalise, nthreads)
         score <- .rlink_call(s$fn, a, b, s$args, nthreads)
         if (!(is.numeric(score) || is.logical(score)) ||
@@ -353,7 +491,9 @@ rLink <- function(data_1,
                 s$name, class(score)[1L],
                 format(length(score), big.mark = ","),
                 format(n_pairs, big.mark = ",")), call. = FALSE)
-        data.table::set(out, j = s$name, value = orient$convert(score, a, b))
+        rm(a, b)
+        data.table::set(out, j = s$name,
+                        value = orient$convert(score, a0, b0, xi, yi))
         info[[i]] <- data.frame(score = s$name, comparator = s$label,
                                 column_1 = s$col_1, column_2 = s$col_2,
                                 scale = orient$kind)
@@ -363,7 +503,7 @@ rLink <- function(data_1,
     # --- order and return --------------------------------------------------
     t0 <- .bench_now()
     lead <- c("pair_id", paste0("index", suffixes), "pass",
-              if (use_block) "block_key")
+              if (show_key) "block_key")
     score_names <- vapply(cmp, `[[`, "", "name")
     score_on <- vapply(cmp, `[[`, "", "group_on")
     placed <- unlist(lapply(avail[avail %in% keep_cols], function(nm) c(
@@ -547,11 +687,13 @@ rLink <- function(data_1,
 .rlink_key_part <- function(v, force_chr, upper, na_strings, match_missing,
                             pass, guard, nthreads) {
     if (is.factor(v)) v <- as.character(v)
-    if (force_chr || upper || length(na_strings) || match_missing)
-        v <- as.character(v)
+    # Upper-casing and na_strings are about text, so they never turn a lone
+    # number or date into text: that would sort 10 before 9 under the sorted
+    # neighbourhood.
+    if (force_chr || match_missing) v <- as.character(v)
     if (is.character(v)) {
         if (length(na_strings)) v[v %in% na_strings] <- NA_character_
-        if (upper) v <- toupper(v)
+        if (upper) v <- fupper(v)
         # Before the placeholder goes in, or it would flag itself.
         if (length(guard)) .rlink_check_sep(v, pass, guard, nthreads)
     }
@@ -562,16 +704,25 @@ rLink <- function(data_1,
 # A readable rendering of the key that paired each record, which was the most
 # used diagnostic of the earlier function. Display only: the control
 # characters are swapped for text.
+#
+# Each pass is rendered once per record, and the passes laid end to end, so
+# one index picks every pair's key: as.character() of a Date and gsub() over
+# every pair cost many times what they do over the records.
 .rlink_block_key <- function(keys_1, pairs, xi, n_pairs) {
-    out <- rep(NA_character_, n_pairs)
-    for (p in unique(pairs$pass[!is.na(pairs$pass)])) {
-        hit <- which(pairs$pass == p)
-        k <- as.character(keys_1[[p]][xi[hit]])
+    shown <- lapply(keys_1, function(k) {
+        if (!is.character(k)) return(as.character(k))
         k <- gsub(.rlink_na_key, "<NA>", k, fixed = TRUE)
-        out[hit] <- gsub(.rlink_sep, "|", k, fixed = TRUE)
-    }
-    out
+        gsub(.rlink_sep, "|", k, fixed = TRUE)
+    })
+    if (length(shown) == 1L) return(shown[[1L]][xi])
+    offset <- c(0L, cumsum(lengths(shown)))
+    unlist(shown, use.names = FALSE)[xi + offset[pairs$pass]]
 }
+
+.rlink_same_type <- function(a, b)
+    identical(class(a), class(b)) ||
+        (is.numeric(a) && is.numeric(b) &&
+         is.null(oldClass(a)) && is.null(oldClass(b)))
 
 .rlink_label <- function(labels, p) {
     if (is.null(labels) || is.na(labels[p]) || !nzchar(labels[p])) ""
@@ -583,15 +734,11 @@ rLink <- function(data_1,
 # function multiplied integer frequencies and overflowed to NA on exactly the
 # large blocks the warning exists for.
 .rlink_expected <- function(k1, k2, dedupe) {
-    t1 <- table(k1)
-    if (dedupe) {
-        n <- as.numeric(t1)
-        return(sum(n * (n - 1) / 2))
-    }
-    t2 <- table(k2)
-    shared <- intersect(names(t1), names(t2))
-    if (!length(shared)) return(0)
-    sum(as.numeric(t1[shared]) * as.numeric(t2[shared]))
+    u <- unique(if (dedupe) k1 else c(k1, k2))
+    u <- u[!is.na(u)]
+    n1 <- as.numeric(tabulate(match(k1, u), length(u)))
+    if (dedupe) return(sum(n1 * (n1 - 1) / 2))
+    sum(n1 * tabulate(match(k2, u), length(u)))
 }
 
 .rlink_given_pairs <- function(pairs, n_1, n_2) {
@@ -720,7 +867,7 @@ rLink <- function(data_1,
     if (is.factor(v)) v <- as.character(v)
     if (!is.character(v)) v <- as.character(v)
     if (length(na_strings)) v[v %in% na_strings] <- NA_character_
-    if (upper) v <- toupper(v)
+    if (upper) v <- fupper(v)
     v
 }
 
@@ -751,12 +898,21 @@ rLink <- function(data_1,
 .rlink_probe_a <- c("ABCDEFGHIJKL", "ABCDEFGHIJKL")
 .rlink_probe_b <- c("ABCDEFGHIJKL", "MNOPQRSTUVWX")
 
+#
+# convert() is given the compared values per record (a, b) and the pairs'
+# indices into them, not the values per pair, so lengths are counted once
+# per record.
 .rlink_orient <- function(fn, args, normalise, nthreads) {
-    keep <- function(kind) list(kind = kind, convert = function(s, a, b) s)
+    keep <- function(kind)
+        list(kind = kind, convert = function(s, a, b, xi, yi) s)
     if (!normalise) return(keep("as is"))
+    # A warning is muffled rather than taken as failure: the probe's score
+    # is still good, and the real call warns again if the data merit it.
     p <- tryCatch(
-        .rlink_call(fn, .rlink_probe_a, .rlink_probe_b, args, nthreads),
-        error = function(cnd) NULL, warning = function(w) NULL)
+        withCallingHandlers(
+            .rlink_call(fn, .rlink_probe_a, .rlink_probe_b, args, nthreads),
+            warning = function(w) invokeRestart("muffleWarning")),
+        error = function(cnd) NULL)
     if (is.null(p) || length(p) != 2L ||
         !(is.numeric(p) || is.logical(p)) || anyNA(p))
         return(keep("not detected"))
@@ -767,14 +923,24 @@ rLink <- function(data_1,
     if (hi > lo) {
         if (isTRUE(all.equal(hi, 1))) return(keep("similarity"))
         return(list(kind = sprintf("similarity/%g", hi),
-                    convert = function(s, a, b) s / hi))
+                    convert = function(s, a, b, xi, yi) s / hi))
     }
     if (lo <= 1.5)
-        return(list(kind = "distance", convert = function(s, a, b) 1 - s))
-    list(kind = "edit distance", convert = function(s, a, b) {
-        n <- pmax(nchar(a), nchar(b))
-        v <- ifelse(n > 0, 1 - s / n, 1)
-        pmin(pmax(v, 0), 1)
+        return(list(kind = "distance",
+                    convert = function(s, a, b, xi, yi) 1 - s))
+    # Lengths in the unit the comparator counts edits in: a byte-wise
+    # distance over a character length would charge an accented letter two
+    # edits out of one.
+    ub <- if ("use_bytes" %in% names(args)) args$use_bytes
+          else formals(fn)$use_bytes
+    unit <- if (isTRUE(ub)) "bytes" else "chars"
+    list(kind = "edit distance", convert = function(s, a, b, xi, yi) {
+        n <- pmax(nchar(a, unit)[xi], nchar(b, unit)[yi])
+        v <- 1 - s / n
+        v[which(n == 0L)] <- 1
+        v[which(v < 0)] <- 0
+        v[which(v > 1)] <- 1
+        v
     })
 }
 

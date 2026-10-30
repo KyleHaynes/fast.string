@@ -157,6 +157,24 @@ test_that("block_2 maps columns named differently", {
         "can never agree")
 })
 
+test_that("block_2 is an error when deduplicating", {
+    expect_error(rLink(enrol(), block = list(soundex(surname)),
+                       block_2 = list(soundex(surname))),
+                 "there is none")
+})
+
+test_that("block_key = FALSE leaves out the block_key column", {
+    a <- enrol()
+    b <- claims()
+    with_key <- rLink(a, b, block = list(soundex(surname)))
+    out <- rLink(a, b, block = list(soundex(surname)), block_key = FALSE)
+    expect_false("block_key" %in% names(out))
+    expect_identical(names(out), setdiff(names(with_key), "block_key"))
+    expect_identical(out$index_2, with_key$index_2)
+    expect_error(rLink(a, b, block = list(surname), block_key = NA),
+                 "block_key")
+})
+
 test_that("comparators are resolved and named", {
     a <- enrol()
     b <- claims()
@@ -237,6 +255,35 @@ test_that("an edit distance is normalised pairwise, not by the whole vector", {
     out <- rLink(a, b, block = list(k),
                  compare = list(d = damerau_levenshtein(s)))
     expect_identical(out$d, c(1, 0))
+})
+
+test_that("a comparator that warns is still calibrated", {
+    noisy <- function(a, b) {
+        warning("noisy comparator")
+        levenshtein(a, b)
+    }
+    a <- data.frame(k = c("1", "2"), s = c("ABCDE", "A"),
+                    stringsAsFactors = FALSE)
+    b <- data.frame(k = c("1", "2"), s = c("ABCDE", "B"),
+                    stringsAsFactors = FALSE)
+    # The real call's warning still reaches the caller; the probe's does not.
+    expect_warning(
+        out <- rLink(a, b, block = list(k), compare = list(d = noisy(s))),
+        "noisy comparator")
+    expect_identical(out$d, c(1, 0))
+    expect_identical(attr(out, "compare")$scale, "edit distance")
+})
+
+test_that("an edit distance is normalised in the unit it counts", {
+    # One accented letter is two bytes: two edits out of seven bytes, or one
+    # out of six characters, never two out of six.
+    a <- data.frame(k = 1, s = enc2utf8("MÜLLER"))
+    b <- data.frame(k = 1, s = "MULLER")
+    out <- rLink(a, b, block = list(k),
+                 compare = list(byte = levenshtein(s),
+                                chr = levenshtein(s, use_bytes = FALSE)))
+    expect_equal(out$byte, 1 - 2 / 7)
+    expect_equal(out$chr, 1 - 1 / 6)
 })
 
 test_that("normalise = FALSE leaves the comparator's own scale", {
@@ -385,6 +432,25 @@ test_that("block_method = 'sorted_neighbourhood' widens the candidate set", {
     one <- rLink(a, b, block = list(surname),
                  block_method = "sorted_neighbourhood", window = 1)
     expect_identical(one$index_1, exact$index_1)
+})
+
+test_that("a lone numeric key sorts as a number, not as text", {
+    a <- data.frame(age = c(9, 50))
+    b <- data.frame(age = c(10, 100, 8))
+    out <- rLink(a, b, block = list(age),
+                 block_method = "sorted_neighbourhood", window = 3)
+    ref <- sorted_neighbourhood(a$age, b$age, window = 3)
+    expect_identical(out$index_1, ref$x_index)
+    expect_identical(out$index_2, ref$y_index)
+    expect_identical(out$block_key, c("9", "9", "50", "50"))
+})
+
+test_that("a Date key on one side and text on the other still match", {
+    a <- enrol()
+    b <- claims()
+    b$dob <- format(b$dob)
+    expect_identical(nrow(rLink(a, b, block = list(dob))),
+                     nrow(rLink(a, claims(), block = list(dob))))
 })
 
 test_that("max_block_size warns and skips", {

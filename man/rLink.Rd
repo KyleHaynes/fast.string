@@ -19,6 +19,7 @@ rLink(
   force_upper_case = TRUE,
   normalise = TRUE,
   keep = NULL,
+  block_key = TRUE,
   suffixes = c("_1", "_2"),
   score_position = c("grouped", "end"),
   nthreads = NULL,
@@ -40,7 +41,7 @@ inputs name or store the same information differently (\code{dob} as a \code{Dat
 in one and \code{"DDMMYYYY"} text in the other). Must have as many passes as
 \code{block}, each with the same number of terms; a pass given as \code{NULL}
 reuses \code{block}'s. By default \code{block}'s own expressions are evaluated
-against \code{data_2}.}
+against \code{data_2}. An error when deduplicating, as there is no \code{data_2}.}
 
 \item{compare}{A list of comparator calls, as described above. \code{NULL}
 returns the candidate pairs unscored.}
@@ -75,6 +76,10 @@ an exact match. See \emph{Comparators}.}
 \item{keep}{Columns to carry onto the output, or \code{NULL} (the default) for
 all of them. \code{character()} carries none.}
 
+\item{block_key}{Whether to add the \code{block_key} column, a readable copy of
+the key that paired each record. It is there for diagnosis only, and
+\code{FALSE} saves one string per pair. Ignored when \code{pairs} is given.}
+
 \item{suffixes}{Length-2 character vector distinguishing the two sides of
 each pair, \code{c("_1", "_2")} by default.}
 
@@ -91,9 +96,10 @@ Timings are returned either way, as \code{attr(out, "timings")}.}
 \value{
 A \code{data.table} with one row per candidate pair: \code{pair_id},
 \code{index_1} and \code{index_2} (row numbers into \code{data_1} and \code{data_2}, suffixed
-as \code{suffixes} says), \code{pass}, \code{block_key}, the carried columns under both
-suffixes, and one column per comparator. Attributes \code{timings} and
-\code{compare} describe the run.
+as \code{suffixes} says), \code{pass}, \code{block_key} (when blocking and
+\code{block_key = TRUE}), the carried columns under both suffixes, and one
+column per comparator. Attributes \code{timings} and \code{compare} describe the
+run.
 }
 \description{
 Finds candidate record pairs by blocking, scores each pair with any number
@@ -166,7 +172,8 @@ such as \code{\link[=levenshtein]{levenshtein()}} and \code{\link[=hamming]{hamm
 \verb{fuzz_*} scorers return 100. Each comparator is therefore probed once on a
 calibration pair and, where needed, converted so that \strong{1 always means an
 exact match} --- an unbounded edit distance by
-\code{1 - distance / max(nchar(a), nchar(b))}, pairwise. \code{normalise = FALSE}
+\code{1 - distance / max(nchar(a), nchar(b))}, pairwise, with lengths counted
+in bytes when the comparator counts edits in bytes. \code{normalise = FALSE}
 leaves every comparator's own scale untouched. What was detected is
 recorded in \code{attr(out, "compare")} and printed when \code{verbose = TRUE}.
 }
@@ -199,8 +206,95 @@ rLink(enrol, claims,
       block   = list(soundex(surname)),
       compare = list(lev = levenshtein(surname)))$lev
 
+# `normalise = FALSE` keeps the comparator's own scale, here edits
+rLink(enrol, claims,
+      block     = list(soundex(surname)),
+      compare   = list(lev = levenshtein(surname)),
+      normalise = FALSE)$lev
+
 # Two passes: same Soundex of surname, or same date of birth
 rLink(enrol, claims, block = list(soundex(surname), dob))$pass
+
+# --- block_method = "sorted_neighbourhood" ----------------------------
+# Blocking on surname exactly only ever finds SMITH = SMITH: the typos
+# put every other true match in a block of its own.
+rLink(enrol, claims, block = list(surname))[, c("index_1", "index_2")]
+
+# The sorted neighbourhood slides a window over the keys in sorted order
+# instead, so neighbours pair without agreeing: BROWN with BROWNE,
+# JONES with JONSE, SMITH with SMYTH.
+sn <- rLink(
+    enrol, claims,
+    block        = list(surname),
+    block_method = "sorted_neighbourhood",
+    window       = 3,
+    compare      = list(jaro_winkler(surname)),
+    keep         = "surname"
+)
+# The window also pairs unrelated neighbours, such as SMITH with JONSE,
+# which is what the scores are for.
+sn[, c("surname_1", "surname_2", "surname_jaro_winkler")]
+
+# A wider window reaches further either side, for more pairs to score
+nrow(rLink(enrol, claims, block = list(surname),
+           block_method = "sorted_neighbourhood", window = 5))
+
+# --- the rest of the arguments ----------------------------------------
+# `keep` carries only the columns asked for, `suffixes` renames the two
+# sides, `score_position = "end"` puts the scores after them, and
+# `block_key = FALSE` drops the diagnostic key column.
+rLink(enrol, claims,
+      block          = list(dob),
+      compare        = list(jaro_winkler(surname), jaro_winkler(given)),
+      keep           = c("surname", "given"),
+      suffixes       = c(".x", ".y"),
+      score_position = "end",
+      block_key      = FALSE)
+
+# `column_1 | column_2` compares columns named differently in each input
+enrol2 <- enrol
+names(enrol2)[2] <- "family_name"
+rLink(enrol2, claims,
+      block   = list(dob),
+      compare = list(sn = jaro_winkler(family_name | surname)))$sn
+
+# `block_2` builds the same key from a column stored differently
+claims2 <- claims
+claims2$dob <- format(claims2$dob, "\%d\%m\%Y")
+rLink(enrol, claims2,
+      block   = list(format(dob, "\%d\%m\%Y")),
+      block_2 = list(dob),
+      compare = list(jaro_winkler(surname)))$block_key
+
+# `match_missing` decides whether two records missing a key can pair
+enrol3 <- enrol
+enrol3$surname[4] <- NA
+claims3 <- claims
+claims3$surname[1] <- NA
+nrow(rLink(enrol3, claims3, block = list(surname)))
+nrow(rLink(enrol3, claims3, block = list(surname), match_missing = TRUE))
+
+# `force_upper_case = FALSE` makes keys and scores case-sensitive
+enrol4 <- enrol
+enrol4$surname <- tolower(enrol4$surname)
+nrow(rLink(enrol4, claims, block = list(surname)))
+nrow(rLink(enrol4, claims, block = list(surname),
+           force_upper_case = FALSE))
+
+# `max_block_size` skips blocks too big to be worth comparing
+nrow(rLink(enrol, claims, block = list(fsubstr(surname, 1, 1)),
+           max_block_size = 2))
+
+# `pairs` scores candidates found some other way instead of blocking
+rLink(enrol, claims,
+      pairs   = data.frame(x_index = c(1L, 4L), y_index = c(1L, 1L)),
+      compare = list(jaro_winkler(surname)),
+      keep    = "surname")
+
+# `verbose = TRUE` reports the pairs expected, the timings and what each
+# comparator was found to return
+invisible(rLink(enrol, claims, block = list(soundex(surname)),
+                compare = list(jaro_winkler(given)), verbose = TRUE))
 
 # Deduplicating one file, then turning the matches into entity IDs
 dup <- rLink(enrol, block = list(soundex(surname)),

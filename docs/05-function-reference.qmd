@@ -376,6 +376,66 @@ fsquish(x, nthreads = NULL)
 fsquish(c("  12   Smith\tSt  ", "already clean", NA))
 ```
 
+### `fupper()` / `flower()`
+
+Upper- and lower-case text in parallel, with the full Unicode mappings ICU
+applies in its root locale, so one character can become several
+(`"ß"` to `"SS"`) and a capital sigma lower-cases to the final form at
+the end of a word. `base::toupper()` and `base::tolower()` are
+single-threaded, map one character to exactly one character, and follow the
+session's locale; these do not.
+
+```r
+fupper(x, nthreads = NULL)
+flower(x, nthreads = NULL)
+```
+
+```{r}
+fupper(c("Smith", "o'brien", "straße"))
+flower(c("MACDONALD", "ΟΔΟΣ"))
+toupper("Straße")   # base R leaves the sharp s alone
+```
+
+### `ftitle_case()`
+
+One capital per word, with the rules written names follow: a letter after
+`"Mc"` or after a one-letter prefix and an apostrophe is capitalised,
+nobiliary particles between two words stay in lower case, and an
+unambiguous Roman numeral suffix is upper-cased. `style = "simple"` turns
+all three off. Base R has no title-case function.
+
+```r
+ftitle_case(x, style = c("name", "simple"), particles = NULL, nthreads = NULL)
+```
+
+```{r}
+x <- c("MARY-JANE O'BRIEN", "mcdonald", "vincent van gogh",
+       "van gogh, vincent", "john smith iii", "3rd street")
+data.frame(x, name = ftitle_case(x), simple = ftitle_case(x, "simple"))
+```
+
+### `fstrsplit()`
+
+Every field of each string, cut where `base::strsplit()` cuts them, with
+the separator search parallelised. `simplify = TRUE` gives an `NA`-padded
+character matrix instead of a list, which is what `do.call(rbind, ...)`
+would build but without the copying. The search is the only parallel part,
+so a literal one-character separator (where base R is already at the floor
+of creating the result strings) is no faster here; a regular expression is
+about twice as fast, and `simplify = TRUE` about four times.
+
+```r
+fstrsplit(x, split, simplify = FALSE, fixed = FALSE, perl = FALSE,
+          ignore.case = FALSE, useBytes = FALSE, nthreads = NULL)
+```
+
+```{r}
+x <- c("12 Smith St", "4/7 Bay Rd", NA)
+fstrsplit(x, " ", fixed = TRUE)
+fstrsplit(x, " ", fixed = TRUE, simplify = TRUE)
+fstrsplit("a  b   c", "\\s+")
+```
+
 ### `fsplit_field()`
 
 One field of each string split at `split`, like `stringr::str_split_i()` or
@@ -487,19 +547,24 @@ url_decode(enc)
 url_decode("q=meat+pie%21", plus = TRUE)
 ```
 
-### `html_unescape()`
+### `html_unescape()` / `html_escape()`
 
 Decodes HTML character references exactly as Python's `html.unescape()`:
 all 2,231 named references of the HTML standard (including legacy ones
 without a semicolon) and decimal and hexadecimal numeric references, with
-the standard's rules for invalid numbers.
+the standard's rules for invalid numbers. `html_escape()` is the other
+direction, escaping what `htmltools::htmlEscape()` escapes: `&`, `<` and
+`>`, plus the quotes and line breaks with `attribute = TRUE`.
 
 ```r
 html_unescape(x, nthreads = NULL)
+html_escape(x, attribute = FALSE, nthreads = NULL)
 ```
 
 ```{r}
 html_unescape(c("Fish &amp; Chips", "caf&eacute; &#8211; open", "AT&T"))
+html_escape(c("Fish & Chips", "<b>bold</b>"))
+html_escape('say "hi"', attribute = TRUE)
 ```
 
 ## Clustering keys
@@ -967,6 +1032,27 @@ onca(x, max_length = 4L, nthreads = NULL)
 x <- c("William", "Peter", "Stevenson", "Stephenson")
 data.frame(x, statcan = statcan(x), lein = lein(x), phonex = phonex(x),
            roger_root = roger_root(x), onca = onca(x))
+```
+
+### `daitch_mokotoff()`
+
+The Daitch-Mokotoff Soundex, six digits from whole letter sequences
+(`"SCH"`, `"SZCZ"`, `"RZ"`) rather than single consonants, for the Slavic
+and Germanic spellings American Soundex separates. A spelling that could be
+said more than one way gets a code for each reading, which `simplify =
+TRUE` returns as a matrix: one blocking pass per column. The coding rules
+are Apache Commons Codec's, and the codes match that implementation,
+except that a value with no letter to code is `NA` here rather than
+`000000`.
+
+```r
+daitch_mokotoff(x, simplify = FALSE, nthreads = NULL)
+```
+
+```{r}
+daitch_mokotoff(c("Moskowitz", "Moskovitz"))
+daitch_mokotoff(c("Auerbach", "Ohrbach"))   # two readings of "ch"
+daitch_mokotoff(c("Peters", "Waszkiewicz"), simplify = TRUE)
 ```
 
 ## Fuzzy string similarity

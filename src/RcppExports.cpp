@@ -152,6 +152,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_daitch_mokotoff_impl
+SEXP fast_daitch_mokotoff_impl(const StringVector& x, bool simplify, int nthreads);
+RcppExport SEXP _fast_string_fast_daitch_mokotoff_impl(SEXP xSEXP, SEXP simplifySEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type simplify(simplifySEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_daitch_mokotoff_impl(x, simplify, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_extract_impl
 CharacterVector fast_extract_impl(const std::string& pattern, const StringVector& x, bool ignore_case, int syntax, bool fixed, bool use_bytes, int group, int nthreads);
 RcppExport SEXP _fast_string_fast_extract_impl(SEXP patternSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP syntaxSEXP, SEXP fixedSEXP, SEXP use_bytesSEXP, SEXP groupSEXP, SEXP nthreadsSEXP) {
@@ -215,6 +228,24 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     rcpp_result_gen = Rcpp::wrap(fast_squish_impl(x, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_strsplit_impl
+SEXP fast_strsplit_impl(const std::string& split, const StringVector& x, bool ignore_case, int syntax, bool fixed, bool use_bytes, bool simplify, int nthreads);
+RcppExport SEXP _fast_string_fast_strsplit_impl(SEXP splitSEXP, SEXP xSEXP, SEXP ignore_caseSEXP, SEXP syntaxSEXP, SEXP fixedSEXP, SEXP use_bytesSEXP, SEXP simplifySEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type split(splitSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_case(ignore_caseSEXP);
+    Rcpp::traits::input_parameter< int >::type syntax(syntaxSEXP);
+    Rcpp::traits::input_parameter< bool >::type fixed(fixedSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< bool >::type simplify(simplifySEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_strsplit_impl(split, x, ignore_case, syntax, fixed, use_bytes, simplify, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1398,6 +1429,46 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_html_escape_impl
+CharacterVector fast_html_escape_impl(const StringVector& x, bool attribute, int nthreads);
+RcppExport SEXP _fast_string_fast_html_escape_impl(SEXP xSEXP, SEXP attributeSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type attribute(attributeSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_html_escape_impl(x, attribute, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_case_impl
+CharacterVector fast_case_impl(const StringVector& x, bool upper, int nthreads);
+RcppExport SEXP _fast_string_fast_case_impl(SEXP xSEXP, SEXP upperSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< bool >::type upper(upperSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_case_impl(x, upper, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_title_case_impl
+CharacterVector fast_title_case_impl(const StringVector& x, const std::vector<std::string>& particles, bool name_rules, int nthreads);
+RcppExport SEXP _fast_string_fast_title_case_impl(SEXP xSEXP, SEXP particlesSEXP, SEXP name_rulesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const std::vector<std::string>& >::type particles(particlesSEXP);
+    Rcpp::traits::input_parameter< bool >::type name_rules(name_rulesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_title_case_impl(x, particles, name_rules, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_tfidf_top_n_impl
 List fast_tfidf_top_n_impl(const StringVector& x, const StringVector& table, int top_n, int q, double min_score, bool use_bytes, int nthreads);
 RcppExport SEXP _fast_string_fast_tfidf_top_n_impl(SEXP xSEXP, SEXP tableSEXP, SEXP top_nSEXP, SEXP qSEXP, SEXP min_scoreSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
@@ -1426,10 +1497,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_weighted_levenshtein_impl", (DL_FUNC) &_fast_string_fast_weighted_levenshtein_impl, 6},
     {"_fast_string_fast_weighted_levenshtein_matrix_impl", (DL_FUNC) &_fast_string_fast_weighted_levenshtein_matrix_impl, 5},
     {"_fast_string_fast_edit_ops_impl", (DL_FUNC) &_fast_string_fast_edit_ops_impl, 4},
+    {"_fast_string_fast_daitch_mokotoff_impl", (DL_FUNC) &_fast_string_fast_daitch_mokotoff_impl, 3},
     {"_fast_string_fast_extract_impl", (DL_FUNC) &_fast_string_fast_extract_impl, 8},
     {"_fast_string_fast_extract_all_impl", (DL_FUNC) &_fast_string_fast_extract_all_impl, 8},
     {"_fast_string_fast_split_field_impl", (DL_FUNC) &_fast_string_fast_split_field_impl, 8},
     {"_fast_string_fast_squish_impl", (DL_FUNC) &_fast_string_fast_squish_impl, 2},
+    {"_fast_string_fast_strsplit_impl", (DL_FUNC) &_fast_string_fast_strsplit_impl, 8},
     {"_fast_string_fast_grepl_impl", (DL_FUNC) &_fast_string_fast_grepl_impl, 6},
     {"_fast_string_fast_fixed_impl", (DL_FUNC) &_fast_string_fast_fixed_impl, 5},
     {"_fast_string_fast_regex_count_impl", (DL_FUNC) &_fast_string_fast_regex_count_impl, 6},
@@ -1512,6 +1585,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_reverse_impl", (DL_FUNC) &_fast_string_fast_reverse_impl, 2},
     {"_fast_string_fast_token_counts_impl", (DL_FUNC) &_fast_string_fast_token_counts_impl, 3},
     {"_fast_string_fast_longest_affix_impl", (DL_FUNC) &_fast_string_fast_longest_affix_impl, 5},
+    {"_fast_string_fast_html_escape_impl", (DL_FUNC) &_fast_string_fast_html_escape_impl, 3},
+    {"_fast_string_fast_case_impl", (DL_FUNC) &_fast_string_fast_case_impl, 3},
+    {"_fast_string_fast_title_case_impl", (DL_FUNC) &_fast_string_fast_title_case_impl, 4},
     {"_fast_string_fast_tfidf_top_n_impl", (DL_FUNC) &_fast_string_fast_tfidf_top_n_impl, 7},
     {NULL, NULL, 0}
 };

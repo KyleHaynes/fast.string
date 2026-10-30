@@ -37,6 +37,10 @@ fast_edit_ops_impl <- function(a, b, opcodes, use_bytes) {
     .Call(`_fast_string_fast_edit_ops_impl`, a, b, opcodes, use_bytes)
 }
 
+fast_daitch_mokotoff_impl <- function(x, simplify, nthreads) {
+    .Call(`_fast_string_fast_daitch_mokotoff_impl`, x, simplify, nthreads)
+}
+
 fast_extract_impl <- function(pattern, x, ignore_case, syntax, fixed, use_bytes, group, nthreads) {
     .Call(`_fast_string_fast_extract_impl`, pattern, x, ignore_case, syntax, fixed, use_bytes, group, nthreads)
 }
@@ -51,6 +55,10 @@ fast_split_field_impl <- function(split, x, field, ignore_case, syntax, fixed, u
 
 fast_squish_impl <- function(x, nthreads) {
     .Call(`_fast_string_fast_squish_impl`, x, nthreads)
+}
+
+fast_strsplit_impl <- function(split, x, ignore_case, syntax, fixed, use_bytes, simplify, nthreads) {
+    .Call(`_fast_string_fast_strsplit_impl`, split, x, ignore_case, syntax, fixed, use_bytes, simplify, nthreads)
 }
 
 fast_grepl_impl <- function(pattern, x, ignore_case, syntax, use_bytes, nthreads) {
@@ -379,6 +387,18 @@ fast_token_counts_impl <- function(x, ignore_case, nthreads) {
 
 fast_longest_affix_impl <- function(x, affixes, suffix, ignore_case, nthreads) {
     .Call(`_fast_string_fast_longest_affix_impl`, x, affixes, suffix, ignore_case, nthreads)
+}
+
+fast_html_escape_impl <- function(x, attribute, nthreads) {
+    .Call(`_fast_string_fast_html_escape_impl`, x, attribute, nthreads)
+}
+
+fast_case_impl <- function(x, upper, nthreads) {
+    .Call(`_fast_string_fast_case_impl`, x, upper, nthreads)
+}
+
+fast_title_case_impl <- function(x, particles, name_rules, nthreads) {
+    .Call(`_fast_string_fast_title_case_impl`, x, particles, name_rules, nthreads)
 }
 
 fast_tfidf_top_n_impl <- function(x, table, top_n, q, min_score, use_bytes, nthreads) {

@@ -59,8 +59,11 @@ Other string utilities:
 \code{\link[=freplace_tokens]{freplace_tokens()}},
 \code{\link[=fsplit_field]{fsplit_field()}},
 \code{\link[=fsquish]{fsquish()}},
+\code{\link[=fstrsplit]{fstrsplit()}},
 \code{\link[=fsubstr]{fsubstr()}},
+\code{\link[=ftitle_case]{ftitle_case()}},
 \code{\link[=ftrimws]{ftrimws()}},
+\code{\link[=fupper]{fupper()}},
 \code{\link[=html_unescape]{html_unescape()}},
 \code{\link[=url_encode]{url_encode()}}
 }
