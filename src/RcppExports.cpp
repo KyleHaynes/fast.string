@@ -1028,6 +1028,168 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_seq_metric_impl
+NumericVector fast_seq_metric_impl(const StringVector& a, const StringVector& b, int metric, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_seq_metric_impl(SEXP aSEXP, SEXP bSEXP, SEXP metricSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type metric(metricSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_seq_metric_impl(a, b, metric, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_needleman_wunsch_impl
+NumericVector fast_needleman_wunsch_impl(const StringVector& a, const StringVector& b, double match, double mismatch, double gap, bool normalise, bool use_bytes, int nthreads);
+RcppExport SEXP _fast_string_fast_needleman_wunsch_impl(SEXP aSEXP, SEXP bSEXP, SEXP matchSEXP, SEXP mismatchSEXP, SEXP gapSEXP, SEXP normaliseSEXP, SEXP use_bytesSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< double >::type match(matchSEXP);
+    Rcpp::traits::input_parameter< double >::type mismatch(mismatchSEXP);
+    Rcpp::traits::input_parameter< double >::type gap(gapSEXP);
+    Rcpp::traits::input_parameter< bool >::type normalise(normaliseSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_needleman_wunsch_impl(a, b, match, mismatch, gap, normalise, use_bytes, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_eudex_impl
+StringVector fast_eudex_impl(const StringVector& x, int nthreads);
+RcppExport SEXP _fast_string_fast_eudex_impl(SEXP xSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_eudex_impl(x, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_eudex_distance_impl
+NumericVector fast_eudex_distance_impl(const StringVector& a, const StringVector& b, bool graduated, int nthreads);
+RcppExport SEXP _fast_string_fast_eudex_distance_impl(SEXP aSEXP, SEXP bSEXP, SEXP graduatedSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< bool >::type graduated(graduatedSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_eudex_distance_impl(a, b, graduated, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_geo_distance_impl
+NumericVector fast_geo_distance_impl(NumericVector lat_1, NumericVector lon_1, NumericVector lat_2, NumericVector lon_2, double radius, int nthreads);
+RcppExport SEXP _fast_string_fast_geo_distance_impl(SEXP lat_1SEXP, SEXP lon_1SEXP, SEXP lat_2SEXP, SEXP lon_2SEXP, SEXP radiusSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type lat_1(lat_1SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type lon_1(lon_1SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type lat_2(lat_2SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type lon_2(lon_2SEXP);
+    Rcpp::traits::input_parameter< double >::type radius(radiusSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_geo_distance_impl(lat_1, lon_1, lat_2, lon_2, radius, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_agreement_patterns_impl
+List fast_agreement_patterns_impl(List levels);
+RcppExport SEXP _fast_string_fast_agreement_patterns_impl(SEXP levelsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type levels(levelsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_agreement_patterns_impl(levels));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_em_linkage_impl
+List fast_em_linkage_impl(IntegerMatrix patterns, NumericVector counts, IntegerVector n_levels, NumericVector m_init, NumericVector u_init, double lambda, int max_iter, double tol, double floor_prob);
+RcppExport SEXP _fast_string_fast_em_linkage_impl(SEXP patternsSEXP, SEXP countsSEXP, SEXP n_levelsSEXP, SEXP m_initSEXP, SEXP u_initSEXP, SEXP lambdaSEXP, SEXP max_iterSEXP, SEXP tolSEXP, SEXP floor_probSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerMatrix >::type patterns(patternsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type counts(countsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type n_levels(n_levelsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type m_init(m_initSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type u_init(u_initSEXP);
+    Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< double >::type floor_prob(floor_probSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_em_linkage_impl(patterns, counts, n_levels, m_init, u_init, lambda, max_iter, tol, floor_prob));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_match_weight_impl
+List fast_match_weight_impl(IntegerMatrix patterns, NumericVector m_flat, NumericVector u_flat, IntegerVector n_levels, double lambda);
+RcppExport SEXP _fast_string_fast_match_weight_impl(SEXP patternsSEXP, SEXP m_flatSEXP, SEXP u_flatSEXP, SEXP n_levelsSEXP, SEXP lambdaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerMatrix >::type patterns(patternsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type m_flat(m_flatSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type u_flat(u_flatSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type n_levels(n_levelsSEXP);
+    Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_match_weight_impl(patterns, m_flat, u_flat, n_levels, lambda));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_pair_overlap_impl
+List fast_pair_overlap_impl(IntegerVector i, IntegerVector j, IntegerVector other_i, IntegerVector other_j);
+RcppExport SEXP _fast_string_fast_pair_overlap_impl(SEXP iSEXP, SEXP jSEXP, SEXP other_iSEXP, SEXP other_jSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type i(iSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type j(jSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type other_i(other_iSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type other_j(other_jSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_pair_overlap_impl(i, j, other_i, other_j));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_select_greedy_impl
+LogicalVector fast_select_greedy_impl(IntegerVector i, IntegerVector j, NumericVector weight, int n, int m);
+RcppExport SEXP _fast_string_fast_select_greedy_impl(SEXP iSEXP, SEXP jSEXP, SEXP weightSEXP, SEXP nSEXP, SEXP mSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type i(iSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type j(jSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weight(weightSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type m(mSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_select_greedy_impl(i, j, weight, n, m));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_value_frequency_impl
+List fast_value_frequency_impl(IntegerVector codes_x, IntegerVector codes_y, int n_codes);
+RcppExport SEXP _fast_string_fast_value_frequency_impl(SEXP codes_xSEXP, SEXP codes_ySEXP, SEXP n_codesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type codes_x(codes_xSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type codes_y(codes_ySEXP);
+    Rcpp::traits::input_parameter< int >::type n_codes(n_codesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_value_frequency_impl(codes_x, codes_y, n_codes));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_candidate_pairs_impl
 List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes, const IntegerVector& n_codes, const IntegerVector& half_windows, bool dedupe, double max_block, int nthreads);
 RcppExport SEXP _fast_string_fast_candidate_pairs_impl(SEXP x_codesSEXP, SEXP y_codesSEXP, SEXP n_codesSEXP, SEXP half_windowsSEXP, SEXP dedupeSEXP, SEXP max_blockSEXP, SEXP nthreadsSEXP) {
@@ -1229,6 +1391,36 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
     rcpp_result_gen = Rcpp::wrap(fast_tversky_matrix_impl(a, b, q, alpha, beta, nthreads, use_bytes));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_overlap_coefficient_impl
+NumericVector fast_overlap_coefficient_impl(const StringVector& a, const StringVector& b, int q, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_overlap_coefficient_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_overlap_coefficient_impl(a, b, q, nthreads, use_bytes));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_overlap_coefficient_matrix_impl
+NumericMatrix fast_overlap_coefficient_matrix_impl(const StringVector& a, const StringVector& b, int q, int nthreads, bool use_bytes);
+RcppExport SEXP _fast_string_fast_overlap_coefficient_matrix_impl(SEXP aSEXP, SEXP bSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const StringVector& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const StringVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_bytes(use_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_overlap_coefficient_matrix_impl(a, b, q, nthreads, use_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1558,6 +1750,17 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_hamming_impl", (DL_FUNC) &_fast_string_fast_hamming_impl, 4},
     {"_fast_string_fast_edit_similarity_impl", (DL_FUNC) &_fast_string_fast_edit_similarity_impl, 5},
     {"_fast_string_fast_levenshtein_within_impl", (DL_FUNC) &_fast_string_fast_levenshtein_within_impl, 5},
+    {"_fast_string_fast_seq_metric_impl", (DL_FUNC) &_fast_string_fast_seq_metric_impl, 5},
+    {"_fast_string_fast_needleman_wunsch_impl", (DL_FUNC) &_fast_string_fast_needleman_wunsch_impl, 8},
+    {"_fast_string_fast_eudex_impl", (DL_FUNC) &_fast_string_fast_eudex_impl, 2},
+    {"_fast_string_fast_eudex_distance_impl", (DL_FUNC) &_fast_string_fast_eudex_distance_impl, 4},
+    {"_fast_string_fast_geo_distance_impl", (DL_FUNC) &_fast_string_fast_geo_distance_impl, 6},
+    {"_fast_string_fast_agreement_patterns_impl", (DL_FUNC) &_fast_string_fast_agreement_patterns_impl, 1},
+    {"_fast_string_fast_em_linkage_impl", (DL_FUNC) &_fast_string_fast_em_linkage_impl, 9},
+    {"_fast_string_fast_match_weight_impl", (DL_FUNC) &_fast_string_fast_match_weight_impl, 5},
+    {"_fast_string_fast_pair_overlap_impl", (DL_FUNC) &_fast_string_fast_pair_overlap_impl, 4},
+    {"_fast_string_fast_select_greedy_impl", (DL_FUNC) &_fast_string_fast_select_greedy_impl, 5},
+    {"_fast_string_fast_value_frequency_impl", (DL_FUNC) &_fast_string_fast_value_frequency_impl, 3},
     {"_fast_string_fast_candidate_pairs_impl", (DL_FUNC) &_fast_string_fast_candidate_pairs_impl, 7},
     {"_fast_string_fast_cluster_pairs_impl", (DL_FUNC) &_fast_string_fast_cluster_pairs_impl, 3},
     {"_fast_string_fast_minhash_pairs_impl", (DL_FUNC) &_fast_string_fast_minhash_pairs_impl, 11},
@@ -1571,6 +1774,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_dice_matrix_impl", (DL_FUNC) &_fast_string_fast_dice_matrix_impl, 5},
     {"_fast_string_fast_tversky_impl", (DL_FUNC) &_fast_string_fast_tversky_impl, 7},
     {"_fast_string_fast_tversky_matrix_impl", (DL_FUNC) &_fast_string_fast_tversky_matrix_impl, 7},
+    {"_fast_string_fast_overlap_coefficient_impl", (DL_FUNC) &_fast_string_fast_overlap_coefficient_impl, 5},
+    {"_fast_string_fast_overlap_coefficient_matrix_impl", (DL_FUNC) &_fast_string_fast_overlap_coefficient_matrix_impl, 5},
     {"_fast_string_fast_cosine_impl", (DL_FUNC) &_fast_string_fast_cosine_impl, 5},
     {"_fast_string_fast_cosine_matrix_impl", (DL_FUNC) &_fast_string_fast_cosine_matrix_impl, 5},
     {"_fast_string_fast_fuzzy_within_impl", (DL_FUNC) &_fast_string_fast_fuzzy_within_impl, 7},

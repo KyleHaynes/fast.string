@@ -25,6 +25,9 @@ static double sim_dice(const char* a, int la, const char* b, int lb, const QCtx&
 static double sim_tversky(const char* a, int la, const char* b, int lb, const QCtx& c) {
     return qgram_tversky_sim(a, la, b, lb, c.q, c.alpha, c.beta);
 }
+static double sim_overlap_coefficient(const char* a, int la, const char* b, int lb, const QCtx& c) {
+    return qgram_overlap_coefficient_sim(a, la, b, lb, c.q);
+}
 static double sim_cosine(const char* a, int la, const char* b, int lb, const QCtx& c) {
     return qgram_cosine_sim(a, la, b, lb, c.q);
 }
@@ -192,6 +195,9 @@ static double prepared_jaccard(const QgramOverlap& overlap, const QCtx&) {
 static double prepared_dice(const QgramOverlap& overlap, const QCtx&) {
     return qgram_dice_from_overlap(overlap);
 }
+static double prepared_overlap_coefficient(const QgramOverlap& overlap, const QCtx&) {
+    return qgram_overlap_coefficient_from_overlap(overlap);
+}
 static double prepared_tversky(const QgramOverlap& overlap, const QCtx& ctx) {
     return qgram_tversky_from_overlap(overlap, ctx.alpha, ctx.beta);
 }
@@ -355,7 +361,7 @@ static NumericMatrix run_qgram_cosine_matrix(const StringVector& a,
 // are their code points, keep the byte functions above.
 // ---------------------------------------------------------------------------
 
-enum class QgramKind { jaccard, dice, tversky, cosine };
+enum class QgramKind { jaccard, dice, tversky, overlap_coefficient, cosine };
 
 template <QgramKind Kind>
 static inline double qgram_bytes_score(const StringView& a, const StringView& b,
@@ -366,6 +372,8 @@ static inline double qgram_bytes_score(const StringView& a, const StringView& b,
     case QgramKind::jaccard: return sim_jaccard(a.data, la, b.data, lb, ctx);
     case QgramKind::dice: return sim_dice(a.data, la, b.data, lb, ctx);
     case QgramKind::tversky: return sim_tversky(a.data, la, b.data, lb, ctx);
+    case QgramKind::overlap_coefficient:
+        return sim_overlap_coefficient(a.data, la, b.data, lb, ctx);
     case QgramKind::cosine: return sim_cosine(a.data, la, b.data, lb, ctx);
     }
     return NA_REAL;
@@ -386,6 +394,9 @@ static inline double qgram_codepoint_score(const CodepointView& a,
     case QgramKind::tversky:
         return qgram_tversky_sim_codepoints(a.data, la, b.data, lb, ctx.q,
                                             ctx.alpha, ctx.beta, scratch);
+    case QgramKind::overlap_coefficient:
+        return qgram_overlap_coefficient_sim_codepoints(a.data, la, b.data, lb,
+                                                        ctx.q, scratch);
     case QgramKind::cosine:
         return qgram_cosine_sim_codepoints(a.data, la, b.data, lb, ctx.q, scratch);
     }
@@ -555,6 +566,31 @@ NumericMatrix fast_tversky_matrix_impl(const StringVector& a, const StringVector
     return run_qgram_matrix<sim_tversky, prepared_tversky>(
         a, b, ctx, nthreads, false
     );
+}
+
+// [[Rcpp::export]]
+NumericVector fast_overlap_coefficient_impl(const StringVector& a,
+                                            const StringVector& b, int q,
+                                            int nthreads, bool use_bytes) {
+    if (q < 1) stop("`q` must be >= 1.");
+    const QCtx ctx{q, 0.0, 0.0};
+    if (!use_bytes)
+        return run_codepoint_qgram<QgramKind::overlap_coefficient>(a, b, ctx, nthreads);
+    return run_pairwise<QCtx, sim_overlap_coefficient>(a, b, ctx, nthreads);
+}
+
+// [[Rcpp::export]]
+NumericMatrix fast_overlap_coefficient_matrix_impl(const StringVector& a,
+                                                   const StringVector& b, int q,
+                                                   int nthreads,
+                                                   bool use_bytes) {
+    if (q < 1) stop("`q` must be >= 1.");
+    const QCtx ctx{q, 0.0, 0.0};
+    if (!use_bytes)
+        return run_codepoint_qgram_matrix<QgramKind::overlap_coefficient>(
+            a, b, ctx, nthreads);
+    return run_qgram_matrix<sim_overlap_coefficient, prepared_overlap_coefficient>(
+        a, b, ctx, nthreads);
 }
 
 // [[Rcpp::export]]

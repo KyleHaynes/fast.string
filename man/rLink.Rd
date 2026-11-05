@@ -311,6 +311,7 @@ for similarity-based candidates to pass as \code{pairs}.
 Other record linkage pair functions:
 \code{\link[=block_pairs]{block_pairs()}},
 \code{\link[=cluster_pairs]{cluster_pairs()}},
+\code{\link[=select_greedy]{select_greedy()}},
 \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}}
 }
 \concept{record linkage pair functions}

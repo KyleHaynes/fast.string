@@ -6,6 +6,8 @@
 ^docs/.*\.html$
 ^docs/search\.json$
 ^\.codex-verify-lib$
+^\.baselib$
+^\.devlib$
 ^\.test-lib$
 ^fast\.string\.Rcheck$
 ^fast\.string_[0-9.]+\.tar\.gz$

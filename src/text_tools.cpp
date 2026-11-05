@@ -1426,7 +1426,6 @@ CharacterVector fast_html_escape_impl(const StringVector& x, bool attribute,
     return run_text(snapshot, nthreads, body);
 }
 
-// [[Rcpp::export]]
 // True when `value` is ASCII and already entirely in the target case, so
 // case_string() would reproduce it byte for byte. Record-linkage fields are
 // routinely upper-cased again and again -- and every phonetic code and

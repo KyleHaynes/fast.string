@@ -144,6 +144,8 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=roger_root]{roger_root()}} - Roger Root name code
 \item \code{\link[=onca]{onca()}} - ONCA (NYSIIS, then Soundex)
 \item \code{\link[=daitch_mokotoff]{daitch_mokotoff()}} - Daitch-Mokotoff (Eastern Europe)
+\item \code{\link[=eudex]{eudex()}} - Eudex sound-alike bit hash
+\item \code{\link[=eudex_distance]{eudex_distance()}} - weighted difference of two hashes
 }
 \item \strong{String similarity}
 \itemize{
@@ -187,6 +189,12 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=lcs_str_similarity]{lcs_str_similarity()}} - its length over the longer length
 \item \code{\link[=smith_waterman]{smith_waterman()}} - local alignment, affine gaps
 \item \code{\link[=monge_elkan]{monge_elkan()}} - mean best word-to-word similarity
+\item \code{\link[=needleman_wunsch]{needleman_wunsch()}} - global alignment score
+\item \code{\link[=needleman_wunsch_similarity]{needleman_wunsch_similarity()}} - normalised 0-1 similarity
+\item \code{\link[=ratcliff_obershelp]{ratcliff_obershelp()}} - gestalt pattern matching
+\item \code{\link[=ratcliff_obershelp_distance]{ratcliff_obershelp_distance()}} - 1 minus the similarity
+\item \code{\link[=bag_distance]{bag_distance()}} - character multiset difference
+\item \code{\link[=bag_similarity]{bag_similarity()}} - normalised 0-1 similarity
 }
 \item \emph{Q-gram overlap}
 \itemize{
@@ -196,6 +204,8 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=dice_matrix]{dice_matrix()}} - all-pairs matrix
 \item \code{\link[=tversky_index]{tversky_index()}} - asymmetric set overlap
 \item \code{\link[=tversky_matrix]{tversky_matrix()}} - all-pairs matrix
+\item \code{\link[=overlap_coefficient]{overlap_coefficient()}} - shared over the smaller set
+\item \code{\link[=overlap_matrix]{overlap_matrix()}} - all-pairs matrix
 \item \code{\link[=cosine_similarity]{cosine_similarity()}} - frequency-weighted overlap
 \item \code{\link[=cosine_matrix]{cosine_matrix()}} - all-pairs matrix
 }
@@ -228,12 +238,36 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=tfidf_match]{tfidf_match()}} - best match by TF-IDF cosine
 \item \code{\link[=minhash_pairs]{minhash_pairs()}} - MinHash LSH candidate pairs
 }
-\item \strong{Blocking & clustering}
+\item \strong{Record linkage}
+\itemize{
+\item \code{\link[=rLink]{rLink()}} - block, compare and score pairs
+\item \emph{Candidate pairs}
 \itemize{
 \item \code{\link[=block_pairs]{block_pairs()}} - pairs that share any key
 \item \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}} - pairs with nearby sorted keys
+}
+\item \emph{Field comparators}
+\itemize{
+\item \code{\link[=numeric_compare]{numeric_compare()}} - 0-1 score from a difference
+\item \code{\link[=date_compare]{date_compare()}} - dates, allowing day/month swaps
+\item \code{\link[=geo_distance]{geo_distance()}} - great-circle km between coordinates
+}
+\item \emph{Probabilistic model}
+\itemize{
+\item \code{\link[=compare_levels]{compare_levels()}} - cut a score into agreement levels
+\item \code{\link[=agreement_patterns]{agreement_patterns()}} - distinct patterns and their counts
+\item \code{\link[=em_linkage]{em_linkage()}} - fit Fellegi-Sunter weights by EM
+\item \code{\link[=match_weights]{match_weights()}} - weight and probability per pair
+\item \code{\link[=value_frequency]{value_frequency()}} - relative frequency of each value
+\item \code{\link[=tf_adjust]{tf_adjust()}} - weight a rare value more heavily
+}
+\item \emph{Resolve & assess}
+\itemize{
+\item \code{\link[=select_greedy]{select_greedy()}} - one-to-one links, best weight first
 \item \code{\link[=cluster_pairs]{cluster_pairs()}} - entity IDs from matched pairs
-\item \code{\link[=rLink]{rLink()}} - block, compare and score pairs
+\item \code{\link[=linkage_eval]{linkage_eval()}} - precision, recall and F-measure
+\item \code{\link[=blocking_eval]{blocking_eval()}} - reduction ratio, pairs completeness
+}
 }
 \item \strong{Benchmarking}
 \itemize{

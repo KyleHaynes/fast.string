@@ -266,6 +266,13 @@ static inline double qgram_dice_from_overlap(const QgramOverlap& o) {
     return denom == 0 ? 0.0 : (2.0 * (double)o.inter) / (double)denom;
 }
 
+// Overlap (Szymkiewicz-Simpson) coefficient: the shared q-grams over the
+// smaller of the two sets, so a short string contained in a long one scores 1.
+static inline double qgram_overlap_coefficient_from_overlap(const QgramOverlap& o) {
+    const std::size_t smaller = o.size_a < o.size_b ? o.size_a : o.size_b;
+    return smaller == 0 ? 0.0 : (double)o.inter / (double)smaller;
+}
+
 static inline double qgram_tversky_from_overlap(const QgramOverlap& o,
                                                  double alpha, double beta) {
     // A zero denominator means no shared q-grams (and alpha = beta = 0).
@@ -316,6 +323,14 @@ static inline double qgram_tversky_sim(const char* s1, int l1, const char* s2, i
     if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
     return qgram_tversky_from_overlap(
         qgram_overlap(s1, l1, s2, l2, q), alpha, beta
+    );
+}
+
+static inline double qgram_overlap_coefficient_sim(const char* s1, int l1,
+                                                   const char* s2, int l2, int q) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
+    return qgram_overlap_coefficient_from_overlap(
+        qgram_overlap(s1, l1, s2, l2, q)
     );
 }
 
@@ -405,6 +420,16 @@ static inline double qgram_tversky_sim_codepoints(
     if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
     return qgram_tversky_from_overlap(
         qgram_overlap_codepoints(s1, l1, s2, l2, q, scratch), alpha, beta
+    );
+}
+
+static inline double qgram_overlap_coefficient_sim_codepoints(
+        const std::uint32_t* s1, int l1,
+        const std::uint32_t* s2, int l2, int q,
+        CodepointQgramScratch& scratch) {
+    if (qgram_sequences_equal(s1, l1, s2, l2)) return 1.0;
+    return qgram_overlap_coefficient_from_overlap(
+        qgram_overlap_codepoints(s1, l1, s2, l2, q, scratch)
     );
 }
 
