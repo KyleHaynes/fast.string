@@ -1309,7 +1309,7 @@ rLink(data_1, data_2 = NULL, block = NULL, block_2 = NULL, compare = NULL,
       pairs = NULL, block_method = c("exact", "sorted_neighbourhood"),
       window = 3L, max_block_size = Inf, match_missing = FALSE,
       na_strings = "", force_upper_case = TRUE, normalise = TRUE,
-      keep = NULL, suffixes = c("_1", "_2"),
+      keep = NULL, block_key = TRUE, suffixes = c("_1", "_2"),
       score_position = c("grouped", "end"), nthreads = NULL,
       verbose = FALSE)
 ```
@@ -1326,8 +1326,9 @@ rLink(data_1, data_2 = NULL, block = NULL, block_2 = NULL, compare = NULL,
 | `match_missing`, `na_strings` | Whether records missing a key term pair with each other, and what counts as missing. |
 | `force_upper_case` | Upper-case keys and comparison values. Affects the scores, never the columns returned. |
 | `normalise` | Convert each comparator's score so that 1 means an exact match. |
-| `keep`, `suffixes`, `score_position` | Which columns to carry, how to distinguish the two sides, and where the scores sit. |
-| `verbose` | Print per-stage timings. They are returned as `attr(out, "timings")` either way. |
+| `keep`, `suffixes`, `score_position` | Which columns to carry (`character()` for none), how to distinguish the two sides, and where the scores sit. A column only one input has still takes its side's suffix. |
+| `block_key` | Add the readable `block_key` column, a copy of the key that paired each record. Diagnostic only; `FALSE` saves one string per pair. |
+| `verbose` | Print per-stage timings. They are returned as `attr(out, "timings")` either way, alongside `attr(out, "compare")`, which records what each comparator was found to return. |
 
 ```{r}
 enrol <- data.frame(
@@ -1356,6 +1357,13 @@ each is probed once and converted where needed: `jaro_winkler()` already
 returns 1, the edit distances return 0, and the `fuzz_*` scorers return 100.
 With `normalise = TRUE` (the default) 1 always means an exact match, and an
 unbounded edit distance is divided pairwise by the longer of the two strings.
+A comparator the probe cannot read is listed as `not detected` and passed
+through untouched.
+
+Comparison values reach a comparator as text, so a `Date` arrives as
+`"YYYY-MM-DD"`: exact agreement works as written, and a tolerance needs
+`fas.Date()` to read it back. @sec-uc-link is a full tour of the function,
+and @sec-workflow runs it over two messy files of people end to end.
 
 ```{r}
 rLink(enrol, claims, block = list(soundex(surname)),

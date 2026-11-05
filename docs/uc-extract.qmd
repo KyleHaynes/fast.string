@@ -163,10 +163,15 @@ the first number in each string and ignores the rest:
 #| label: parse-number
 prices <- c("$1,234.50", "AUD 99", "12.5%", "approx. 3,000 kg", "-$45.10",
             "(1,200)", "N/A", "Free")
-data.frame(prices,
-           fparse_number = fparse_number(prices),
-           readr = suppressWarnings(readr::parse_number(prices)),
-           gsub  = suppressWarnings(as.numeric(gsub("[^0-9.-]", "", prices))))
+out <- data.frame(
+    prices,
+    fparse_number = fparse_number(prices),
+    gsub = suppressWarnings(as.numeric(gsub("[^0-9.-]", "", prices))))
+# readr is not a dependency of this package; compare against it when it
+# happens to be installed.
+if (requireNamespace("readr", quietly = TRUE))
+    out$readr <- suppressWarnings(readr::parse_number(prices))
+out
 ```
 
 The common shortcut of deleting everything but digits fails as soon as the

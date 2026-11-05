@@ -591,16 +591,17 @@ struct CaverphoneWorker : public Worker {
         : strings(strings_), bytes(bytes_), lengths(lengths_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
-        std::string scratch;
+        // Three buffers held across the whole range: the fold, the code
+        // being built, and the rule chain's working copy. caverphone2_code()
+        // does no allocation of its own once these have grown.
+        std::string scratch, code, work;
         for (std::size_t i = begin; i < end; ++i) {
             if (strings[i].is_na()) {
                 lengths[i] = PHONETIC_NA_LENGTH;
                 continue;
             }
             const StringView value = fold_for_phonetics(strings[i], scratch);
-            const std::string code = caverphone2_code(
-                std::string(value.data, value.size)
-            );
+            caverphone2_code(value.data, value.size, code, work);
             lengths[i] = static_cast<std::uint8_t>(code.size());
             std::memcpy(bytes + i * 10u, code.data(), code.size());
         }
@@ -1097,80 +1098,148 @@ struct PhonexEncoder {
 };
 
 // --- Roger Root name coding (Root 1975; phonics::rogerroot) ----------------
-
+//
+// One left-to-right pass: at each position the longest rule that starts
+// there wins (the order of phonics' tables, where multi-letter rules come
+// first), its digits are appended unless they repeat the digit just
+// written, and a letter no rule covers (a vowel, H, W or Y past the start)
+// is skipped and breaks the run. The first position has its own table,
+// whose codes are two digits wide. Rules are reached through a switch on
+// the letter rather than by walking the whole table, so the cost is a
+// handful of comparisons per letter instead of a rewrite of the whole name
+// per rule.
 struct RogerRootEncoder {
     std::size_t max_length;
 
-    static void replace_all(std::string& s, const char* from, const char* to) {
-        const std::size_t n = std::strlen(from);
-        std::string out;
-        std::size_t i = 0;
-        while (i < s.size()) {
-            if (s.compare(i, n, from) == 0) {
-                out += to;
-                i += n;
-            } else {
-                out.push_back(s[i++]);
+    // Rule for the start of the name: digits written, and letters consumed.
+    static void first_rule(const char* w, std::size_t n, const char*& code,
+                           std::size_t& used) {
+        used = 1;
+        const bool two = n >= 2;
+        const char b = two ? w[1] : '\0';
+        switch (w[0]) {
+        case 'T':
+            if (n >= 4 && w[1] == 'S' && w[2] == 'C' && w[3] == 'H') {
+                code = "06"; used = 4; return;
             }
+            if (n >= 3 && b == 'S' && w[2] == 'H') { code = "06"; used = 3; return; }
+            if (b == 'S') { code = "00"; used = 2; return; }
+            code = "01"; return;
+        case 'S':
+            if (n >= 3 && b == 'C' && w[2] == 'H') { code = "06"; used = 3; return; }
+            if (b == 'H') { code = "06"; used = 2; return; }
+            code = "00"; return;
+        case 'C':
+            if (b == 'E' || b == 'I' || b == 'Y') { code = "00"; used = 2; return; }
+            if (b == 'H') { code = "06"; used = 2; return; }
+            code = "07"; return;
+        case 'D':
+            if (b == 'C') { code = "07"; used = 2; return; }
+            code = "01"; return;
+        case 'G':
+            if (b == 'F') { code = "08"; used = 2; return; }
+            if (b == 'M') { code = "03"; used = 2; return; }
+            if (b == 'N') { code = "02"; used = 2; return; }
+            code = "07"; return;
+        case 'K':
+            if (b == 'N') { code = "02"; used = 2; return; }
+            code = "07"; return;
+        case 'P':
+            if (b == 'F' || b == 'H') { code = "08"; used = 2; return; }
+            if (b == 'N') { code = "02"; used = 2; return; }
+            code = "09"; return;
+        case 'W':
+            if (b == 'R') { code = "04"; used = 2; return; }
+            code = "4"; return;
+        case 'A': case 'E': case 'I': case 'O': case 'U': code = "1"; return;
+        case 'B': code = "09"; return;
+        case 'F': code = "08"; return;
+        case 'H': code = "2"; return;
+        case 'J': code = "3"; return;
+        case 'L': code = "05"; return;
+        case 'M': code = "03"; return;
+        case 'N': code = "02"; return;
+        case 'Q': code = "07"; return;
+        case 'R': code = "04"; return;
+        case 'V': code = "08"; return;
+        case 'X': code = "07"; return;
+        case 'Y': code = "5"; return;
+        default:  code = "00"; return;  // Z
         }
-        s.swap(out);
+    }
+
+    // Rule for the rest of the name: one digit, or '\0' for "no rule here".
+    static void rest_rule(const char* w, std::size_t n, char& digit,
+                          std::size_t& used) {
+        used = 1;
+        const bool two = n >= 2;
+        const char b = two ? w[1] : '\0';
+        switch (w[0]) {
+        case 'T':
+            if (n >= 4 && w[1] == 'S' && w[2] == 'C' && w[3] == 'H') {
+                digit = '6'; used = 4; return;
+            }
+            if (n >= 3 && b == 'S' && w[2] == 'H') { digit = '6'; used = 3; return; }
+            if (b == 'S') { digit = '0'; used = 2; return; }
+            digit = '1'; return;
+        case 'S':
+            if (n >= 3 && b == 'C' && w[2] == 'H') { digit = '6'; used = 3; return; }
+            if (b == 'H') { digit = '6'; used = 2; return; }
+            digit = '0'; return;
+        case 'C':
+            if (b == 'E' || b == 'I' || b == 'Y') { digit = '0'; used = 2; return; }
+            if (b == 'H') { digit = '6'; used = 2; return; }
+            digit = '7'; return;
+        case 'D':
+            if (b == 'C') { digit = '7'; used = 2; return; }
+            digit = '1'; return;
+        case 'P':
+            if (b == 'H') { digit = '8'; used = 2; return; }
+            digit = '8'; return;
+        case 'B': digit = '9'; return;
+        case 'F': digit = '8'; return;
+        case 'G': digit = '7'; return;
+        case 'J': digit = '6'; return;
+        case 'K': digit = '7'; return;
+        case 'L': digit = '5'; return;
+        case 'M': digit = '3'; return;
+        case 'N': digit = '2'; return;
+        case 'Q': digit = '7'; return;
+        case 'R': digit = '4'; return;
+        case 'V': digit = '8'; return;
+        case 'X': digit = '7'; return;
+        case 'Z': digit = '0'; return;
+        default:  digit = '\0'; return;  // A E H I O U W Y
+        }
     }
 
     bool operator()(const char* input, std::size_t length,
                     std::string& code) const {
-        static const char* const FIRST[][2] = {
-            {"A", "1"}, {"B", "09"}, {"CE", "00"}, {"CH", "06"}, {"CI", "00"},
-            {"CY", "00"}, {"C", "07"}, {"DG", "07"}, {"D", "01"}, {"E", "1"},
-            {"F", "08"}, {"GF", "08"}, {"GM", "03"}, {"GN", "02"}, {"G", "07"},
-            {"H", "2"}, {"I", "1"}, {"J", "3"}, {"KN", "02"}, {"K", "07"},
-            {"L", "05"}, {"M", "03"}, {"N", "02"}, {"O", "1"}, {"PF", "08"},
-            {"PH", "08"}, {"PN", "02"}, {"P", "09"}, {"Q", "07"}, {"R", "04"},
-            {"SCH", "06"}, {"SH", "06"}, {"S", "00"}, {"TSCH", "06"},
-            {"TSH", "06"}, {"TS", "00"}, {"T", "01"}, {"U", "1"}, {"V", "08"},
-            {"WR", "04"}, {"W", "4"}, {"X", "07"}, {"Y", "5"}, {"Z", "00"}};
-        static const char* const REST[][2] = {
-            {"B", "9"}, {"CE", "0"}, {"CH", "6"}, {"CI", "0"}, {"CY", "0"},
-            {"C", "7"}, {"DG", "7"}, {"D", "1"}, {"F", "8"}, {"G", "7"},
-            {"J", "6"}, {"K", "7"}, {"L", "5"}, {"M", "3"}, {"N", "2"},
-            {"PH", "8"}, {"P", "8"}, {"Q", "7"}, {"R", "4"}, {"SCH", "6"},
-            {"SH", "6"}, {"S", "0"}, {"TSCH", "6"}, {"TSH", "6"}, {"TS", "0"},
-            {"T", "1"}, {"V", "8"}, {"X", "7"}, {"Z", "0"}};
         std::string word;
         if (!clean_ascii_letters(input, length, word)) return false;
-        // The first rule (in table order) matching the start of the name.
-        for (const auto& rule : FIRST) {
-            const std::size_t n = std::strlen(rule[0]);
-            if (word.compare(0, n, rule[0]) == 0) {
-                word.replace(0, n, rule[1]);
-                break;
-            }
-        }
-        // Then every rule over the whole name, one after another.
-        for (const auto& rule : REST) replace_all(word, rule[0], rule[1]);
-        // Runs of one non-zero digit collapse; then any character followed
-        // by two or more zeros becomes one zero (phonics' ".([0])\\1+").
-        std::string step;
-        for (char c : word) {
-            if (c >= '1' && c <= '9' && !step.empty() && step.back() == c)
-                continue;
-            step.push_back(c);
-        }
-        word.clear();
-        for (std::size_t i = 0; i < step.size();) {
-            if (i + 2 < step.size() && step[i + 1] == '0' && step[i + 2] == '0') {
-                std::size_t j = i + 1;
-                while (j < step.size() && step[j] == '0') ++j;
-                word.push_back('0');
-                i = j;
-            } else {
-                word.push_back(step[i++]);
-            }
-        }
         code.clear();
-        for (char c : word)
-            if (c >= '0' && c <= '9') code.push_back(c);
+        if (word.empty()) return true;
+        const char* w = word.data();
+        const std::size_t n = word.size();
+        const char* first = nullptr;
+        std::size_t used = 0;
+        first_rule(w, n, first, used);
+        code.assign(first);
+        char last = code.back();
+        for (std::size_t i = used; i < n && code.size() < max_length;) {
+            char digit = '\0';
+            std::size_t take = 1;
+            rest_rule(w + i, n - i, digit, take);
+            if (digit == '\0') {
+                last = '\0';
+                ++i;
+                continue;
+            }
+            if (digit != last) code.push_back(digit);
+            last = digit;
+            i += take;
+        }
         pad_zeros(code, max_length);
-        if (all_zeros(code)) code.clear();
         return true;
     }
 };

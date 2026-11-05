@@ -1,0 +1,113 @@
+ascii_fold              Fold accented and other Latin characters to
+                        ASCII
+block_pairs             Candidate pairs by blocking on exact keys
+caverphone              Caverphone 2.0 phonetic code (Caversham
+                        Project, University of Otago)
+cluster_pairs           Entity clusters from matched pairs
+cologne                 Cologne phonetic code
+cosine_matrix           Q-gram cosine all-pairs similarity matrix
+cosine_similarity       Q-gram cosine similarity
+daitch_mokotoff         Daitch-Mokotoff Soundex
+damerau_levenshtein_matrix
+                        Unrestricted Damerau-Levenshtein all-pairs
+                        distance matrix
+date_parts              Decompose a Date vector into year, month, day
+                        integer columns.
+dice_matrix             Q-gram Sorensen-Dice all-pairs similarity
+                        matrix
+double_metaphone        Double Metaphone phonetic code (Lawrence
+                        Philips, 2000)
+edit_distance           Parallel edit distances and normalized
+                        similarities
+edit_ops                The edits that turn one string into another
+editex                  Editex phonetic edit distance
+fagrepl                 Fast parallel approximate (fuzzy) matching
+fas.Date                Fast fixed-format date parsing and epoch
+                        day-count conversion
+fas.POSIXct             Fast fixed-format timestamp parsing
+fast.string-package     fast.string: parallel string, date and
+                        fuzzy-matching functions
+fchartr                 Fast parallel character translation
+fcount                  Fast parallel match counting
+fextract                Fast parallel match extraction
+fgrep                   Fast parallel string matching returning indices
+                        or values
+fgrepl                  Fast parallel string matching
+fgrepl_any              Search for many literal strings at once
+fgsub                   Fast parallel global substitution
+fhash                   Fast vectorised hashing of strings
+fingerprint             OpenRefine clustering keys
+fnchar                  Fast character/byte counting
+format_date             Format a Date vector as strings without locale
+                        or timezone overhead.
+format_date_parts       Concatenate separate year/month/day fields into
+                        a formatted date string.
+format_datetime         Fast fixed-format timestamp formatting
+fpad                    Fast string padding
+fparse_number           Fast parsing of numbers from messy text
+freplace_tokens         Fast whole-token dictionary replacement
+freverse                Fast string reversal
+fsplit_field            Fast parallel field extraction from delimited
+                        strings
+fsquish                 Fast whitespace squishing
+fstrsplit               Fast parallel string splitting
+fsub                    Fast parallel first-match substitution
+fsubstr                 Fast substring extraction
+ftitle_case             Title case for names, in parallel
+ftrimws                 Fast whitespace trimming
+fupper                  Fast parallel case conversion
+fuzz                    RapidFuzz string scorers
+fuzz_default_process    RapidFuzz's default string preprocessing
+fuzz_partial_ratio_alignment
+                        Where fuzz_partial_ratio() aligns two strings
+fuzz_process            Search and compare tables with the RapidFuzz
+                        scorers
+fuzzy_lookup            Memory-efficient fuzzy lookup
+fuzzy_within            Every table entry within a few edits of each
+                        query
+gsub_all                Apply multiple substitutions in one pass
+html_unescape           Fast HTML entity decoding and escaping
+jaccard_matrix          Q-gram Jaccard all-pairs similarity matrix
+jaro_winkler            Jaro-Winkler string similarity
+jaro_winkler_matrix     Jaro-Winkler all-pairs similarity matrix
+jaro_winkler_tokens     Token-aware Jaro-Winkler similarity for
+                        multi-token strings
+lcs_seq                 LCS, Indel, prefix and postfix distances
+lcs_str                 Longest common substring
+levenshtein_matrix      Levenshtein all-pairs distance matrix
+levenshtein_within      Test whether Levenshtein distance is within a
+                        cutoff
+longest_prefix          Longest matching prefix or suffix from a table
+metaphone               Metaphone phonetic code (Lawrence Philips,
+                        1990)
+minhash_pairs           Candidate pairs by MinHash locality-sensitive
+                        hashing
+monge_elkan             Monge-Elkan token similarity
+mra_encode              Match Rating Approach codes and comparison
+name_codes              Statistics Canada, Lein, Phonex, Roger Root and
+                        ONCA name codes
+nysiis                  NYSIIS phonetic code (New York State
+                        Identification and Intelligence System)
+osa_distance_matrix     Optimal String Alignment all-pairs distance
+                        matrix
+qgram_metrics           Vectorised q-gram set-overlap similarity:
+                        Jaccard, Dice, Tversky
+rLink                   Link or deduplicate records
+refined_soundex         Refined Soundex phonetic code
+run_benchmark_example   Interactive speed comparison: fast.string vs
+                        base R and other packages
+smith_waterman          Smith-Waterman-Gotoh local alignment similarity
+sorted_neighbourhood    Candidate pairs by the sorted neighbourhood
+                        method
+soundex                 Soundex phonetic code (American Soundex / US
+                        Census Bureau rules)
+string_shape            Character-class shape of strings, for profiling
+                        formats
+tfidf_top_n             TF-IDF n-gram matching
+token_counts            Fast token frequencies across a character
+                        vector
+token_initials          Fast initials of the words in each string
+token_sort              Fast sorting of the words within each string
+tversky_matrix          Q-gram Tversky all-pairs similarity matrix
+url_encode              Fast URL encoding and decoding
+valid_id                Fast check-digit validation of identifiers

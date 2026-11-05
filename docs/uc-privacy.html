@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="generator" content="quarto-1.10.19">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>7&nbsp; Pseudonymise identifiers – fast.string</title>
+<title>8&nbsp; Pseudonymise identifiers – fast.string</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -68,7 +68,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
 <link href="./03-theory.html" rel="next">
-<link href="./uc-link.html" rel="prev">
+<link href="./uc-metrics.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -279,7 +279,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./uc-clean.html">Use cases</a></li><li class="breadcrumb-item"><a href="./uc-privacy.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./uc-clean.html">Use cases</a></li><li class="breadcrumb-item"><a href="./uc-privacy.html"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -373,8 +373,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./uc-metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
   </div>
 </li>
       </ul>
@@ -391,13 +397,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
   </div>
 </li>
       </ul>
@@ -414,19 +420,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
   </div>
 </li>
       </ul>
@@ -439,17 +445,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
    
   <ul>
-<li><a href="#why-an-unkeyed-hash-is-not-a-pseudonym" id="toc-why-an-unkeyed-hash-is-not-a-pseudonym" class="nav-link active" data-scroll-target="#why-an-unkeyed-hash-is-not-a-pseudonym"><span class="header-section-number">7.1</span> Why an unkeyed hash is not a pseudonym</a></li>
-  <li><a href="#keyed-hashing-hmac" id="toc-keyed-hashing-hmac" class="nav-link" data-scroll-target="#keyed-hashing-hmac"><span class="header-section-number">7.2</span> Keyed hashing (HMAC)</a></li>
-  <li><a href="#normalise-before-you-hash" id="toc-normalise-before-you-hash" class="nav-link" data-scroll-target="#normalise-before-you-hash"><span class="header-section-number">7.3</span> Normalise before you hash</a></li>
-  <li><a href="#linkage-keys-from-names-and-dates-of-birth" id="toc-linkage-keys-from-names-and-dates-of-birth" class="nav-link" data-scroll-target="#linkage-keys-from-names-and-dates-of-birth"><span class="header-section-number">7.4</span> Linkage keys from names and dates of birth</a></li>
-  <li><a href="#fast-fingerprints-for-change-detection" id="toc-fast-fingerprints-for-change-detection" class="nav-link" data-scroll-target="#fast-fingerprints-for-change-detection"><span class="header-section-number">7.5</span> Fast fingerprints for change detection</a></li>
-  <li><a href="#which-algorithm" id="toc-which-algorithm" class="nav-link" data-scroll-target="#which-algorithm"><span class="header-section-number">7.6</span> Which algorithm</a></li>
+<li><a href="#why-an-unkeyed-hash-is-not-a-pseudonym" id="toc-why-an-unkeyed-hash-is-not-a-pseudonym" class="nav-link active" data-scroll-target="#why-an-unkeyed-hash-is-not-a-pseudonym"><span class="header-section-number">8.1</span> Why an unkeyed hash is not a pseudonym</a></li>
+  <li><a href="#keyed-hashing-hmac" id="toc-keyed-hashing-hmac" class="nav-link" data-scroll-target="#keyed-hashing-hmac"><span class="header-section-number">8.2</span> Keyed hashing (HMAC)</a></li>
+  <li><a href="#normalise-before-you-hash" id="toc-normalise-before-you-hash" class="nav-link" data-scroll-target="#normalise-before-you-hash"><span class="header-section-number">8.3</span> Normalise before you hash</a></li>
+  <li><a href="#linkage-keys-from-names-and-dates-of-birth" id="toc-linkage-keys-from-names-and-dates-of-birth" class="nav-link" data-scroll-target="#linkage-keys-from-names-and-dates-of-birth"><span class="header-section-number">8.4</span> Linkage keys from names and dates of birth</a></li>
+  <li><a href="#fast-fingerprints-for-change-detection" id="toc-fast-fingerprints-for-change-detection" class="nav-link" data-scroll-target="#fast-fingerprints-for-change-detection"><span class="header-section-number">8.5</span> Fast fingerprints for change detection</a></li>
+  <li><a href="#which-algorithm" id="toc-which-algorithm" class="nav-link" data-scroll-target="#which-algorithm"><span class="header-section-number">8.6</span> Which algorithm</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/uc-privacy.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./uc-clean.html">Use cases</a></li><li class="breadcrumb-item"><a href="./uc-privacy.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></a></li></ol></nav><div class="quarto-title">
-<h1 class="title"><span id="sec-uc-privacy" class="quarto-section-identifier"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></h1>
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./uc-clean.html">Use cases</a></li><li class="breadcrumb-item"><a href="./uc-privacy.html"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></a></li></ol></nav><div class="quarto-title">
+<h1 class="title"><span id="sec-uc-privacy" class="quarto-section-identifier"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></h1>
 </div>
 
 
@@ -465,8 +471,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 </header><p>Linking data held by different organisations often means sharing identifiers that should not leave the building: tax file numbers, Medicare numbers, names and dates of birth. The usual answer is to replace each identifier with a <strong>pseudonym</strong> – a value that is the same every time the same identifier goes in, so records still join, but that cannot be turned back into the identifier. <code>fhash()</code> computes the digests this needs, over whole columns and on every core.</p>
 <p>This chapter is about using hashing <em>correctly</em> for that purpose. Hashing is one control among several – access rules, separation of duties, output checking – not a substitute for them.</p>
-<section id="why-an-unkeyed-hash-is-not-a-pseudonym" class="level2" data-number="7.1"><h2 data-number="7.1" class="anchored" data-anchor-id="why-an-unkeyed-hash-is-not-a-pseudonym">
-<span class="header-section-number">7.1</span> Why an unkeyed hash is not a pseudonym</h2>
+<section id="why-an-unkeyed-hash-is-not-a-pseudonym" class="level2" data-number="8.1"><h2 data-number="8.1" class="anchored" data-anchor-id="why-an-unkeyed-hash-is-not-a-pseudonym">
+<span class="header-section-number">8.1</span> Why an unkeyed hash is not a pseudonym</h2>
 <p>A plain SHA-256 digest looks opaque, but most identifiers come from a small, structured space. Anyone who knows the format can hash every possible value and look the digest up. A million 9-digit candidates take a moment:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">candidates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"%09d"</span>, <span class="fl">0</span><span class="op">:</span><span class="fl">999999</span><span class="op">)</span></span>
@@ -482,8 +488,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>At that rate the whole 9-digit space – every possible TFN – is a lunch break on one laptop; most of the time above is R allocating the result strings, and dedicated hardware computes billions of digests a second. Names and dates of birth are an even smaller space. So an unkeyed hash of an identifier is, for privacy purposes, the identifier.</p>
-</section><section id="keyed-hashing-hmac" class="level2" data-number="7.2"><h2 data-number="7.2" class="anchored" data-anchor-id="keyed-hashing-hmac">
-<span class="header-section-number">7.2</span> Keyed hashing (HMAC)</h2>
+</section><section id="keyed-hashing-hmac" class="level2" data-number="8.2"><h2 data-number="8.2" class="anchored" data-anchor-id="keyed-hashing-hmac">
+<span class="header-section-number">8.2</span> Keyed hashing (HMAC)</h2>
 <p>Give <code>fhash()</code> a secret <code>key</code> and it computes an HMAC instead (RFC 2104). Without the key nobody can compute the pseudonym of a guessed identifier, so the dictionary attack above fails; with it, the same identifier always gets the same pseudonym:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">key</span> <span class="op">&lt;-</span> <span class="st">"a long random secret held only by the linkage unit"</span></span>
@@ -493,8 +499,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Generate the key randomly (for example <code>openssl::rand_bytes(32)</code>, which <code>fhash()</code> accepts as a raw vector), keep it out of code and version control, and give it only to the people who must compute pseudonyms. Two custodians who hash with the same key can send their pseudonymised extracts to a linkage unit that never sees an identifier, and that unit can join them exactly.</p>
-</section><section id="normalise-before-you-hash" class="level2" data-number="7.3"><h2 data-number="7.3" class="anchored" data-anchor-id="normalise-before-you-hash">
-<span class="header-section-number">7.3</span> Normalise before you hash</h2>
+</section><section id="normalise-before-you-hash" class="level2" data-number="8.3"><h2 data-number="8.3" class="anchored" data-anchor-id="normalise-before-you-hash">
+<span class="header-section-number">8.3</span> Normalise before you hash</h2>
 <p>Hashing is exact: one character of difference gives an unrelated digest. Formatting differences that a human would ignore therefore break the join, unless every party normalises the same way first:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">raw</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"123456782"</span>, <span class="st">"123 456 782"</span>, <span class="st">"123-456-782"</span><span class="op">)</span></span>
@@ -508,8 +514,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Write the normalisation down and share it with the key. For names that means case, accents, punctuation and whitespace at least (<code><a href="https://rdrr.io/r/base/chartr.html">toupper()</a></code>, <code>ascii_fold()</code>, <code>fgsub()</code>, <code>fsquish()</code>), and often nicknames and titles too (<code>freplace_tokens()</code>, <a href="#sec-uc-clean" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-clean</span></a>). Validate identifiers before hashing (<code>valid_id()</code>, <a href="#sec-uc-profile" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-profile</span></a>): a mistyped number hashes to a pseudonym that will never match anything.</p>
-</section><section id="linkage-keys-from-names-and-dates-of-birth" class="level2" data-number="7.4"><h2 data-number="7.4" class="anchored" data-anchor-id="linkage-keys-from-names-and-dates-of-birth">
-<span class="header-section-number">7.4</span> Linkage keys from names and dates of birth</h2>
+</section><section id="linkage-keys-from-names-and-dates-of-birth" class="level2" data-number="8.4"><h2 data-number="8.4" class="anchored" data-anchor-id="linkage-keys-from-names-and-dates-of-birth">
+<span class="header-section-number">8.4</span> Linkage keys from names and dates of birth</h2>
 <p>Where there is no shared identifier, a <em>statistical linkage key</em> built from name fragments, date of birth and sex stands in for one. In Australian health and community-services data the standard is the AIHW’s SLK-581: letters 2, 3 and 5 of the family name, letters 2 and 3 of the given name, the date of birth as <code>DDMMYYYY</code> and a sex code. A sketch of the core rules, built from vectorised pieces, then hashed with the key:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">slk_letters</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">name</span>, <span class="va">positions</span>, <span class="va">missing</span><span class="op">)</span> <span class="op">{</span></span>
@@ -547,8 +553,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>The AIHW specification has further rules (for example for names given only as initials) – follow it for production use. An SLK is coarse by design: different people can share one, and one person’s key changes with a change of surname, so treat matches on it as evidence, not proof.</p>
-</section><section id="fast-fingerprints-for-change-detection" class="level2" data-number="7.5"><h2 data-number="7.5" class="anchored" data-anchor-id="fast-fingerprints-for-change-detection">
-<span class="header-section-number">7.5</span> Fast fingerprints for change detection</h2>
+</section><section id="fast-fingerprints-for-change-detection" class="level2" data-number="8.5"><h2 data-number="8.5" class="anchored" data-anchor-id="fast-fingerprints-for-change-detection">
+<span class="header-section-number">8.5</span> Fast fingerprints for change detection</h2>
 <p>Not every hash needs to be secret. XXH64 is a fast, non-cryptographic 64-bit hash: useful for spotting which rows changed between two extracts, partitioning data or building compact join keys. Hash each row’s fields joined with a separator that cannot occur in the data:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">old</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"D"</span>, <span class="st">"E"</span><span class="op">)</span>,</span>
@@ -563,8 +569,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>[1] 2 5 6</code></pre>
 </div>
 </div>
-</section><section id="which-algorithm" class="level2" data-number="7.6"><h2 data-number="7.6" class="anchored" data-anchor-id="which-algorithm">
-<span class="header-section-number">7.6</span> Which algorithm</h2>
+</section><section id="which-algorithm" class="level2" data-number="8.6"><h2 data-number="8.6" class="anchored" data-anchor-id="which-algorithm">
+<span class="header-section-number">8.6</span> Which algorithm</h2>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 50%">
@@ -1006,13 +1012,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     }
   });
   </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
-      <a href="./uc-link.html" class="pagination-link" aria-label="Match, deduplicate and link records">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></span>
+      <a href="./uc-metrics.html" class="pagination-link" aria-label="Choose a string metric">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
       <a href="./03-theory.html" class="pagination-link" aria-label="Algorithms under the hood">
-        <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

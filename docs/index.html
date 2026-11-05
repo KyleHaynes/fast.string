@@ -5,7 +5,7 @@
 <meta name="generator" content="quarto-1.10.19">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <meta name="author" content="Kyle Haynes">
-<meta name="dcterms.date" content="2026-10-30">
+<meta name="dcterms.date" content="2026-11-05">
 <title>fast.string</title>
 <style>
 /* Default styles provided by pandoc.
@@ -374,8 +374,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./uc-metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
   </div>
 </li>
       </ul>
@@ -392,13 +398,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
   </div>
 </li>
       </ul>
@@ -415,19 +421,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
   </div>
 </li>
       </ul>
@@ -471,7 +477,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">30 October 2026</p>
+      <p class="date">5 November 2026</p>
     </div>
   </div>
   
@@ -481,7 +487,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 </header><section id="preface" class="level1 unnumbered"><h1 class="unnumbered">Preface</h1>
-<p><code>fast.string</code> is an R package of drop-in-faster equivalents for the string, date, and phonetic-matching functions that show up constantly in record linkage and ETL work — <code><a href="https://rdrr.io/r/base/grep.html">grepl()</a></code>, <code><a href="https://rdrr.io/r/base/grep.html">grep()</a></code>, <code><a href="https://rdrr.io/r/base/grep.html">sub()</a></code>, <code><a href="https://rdrr.io/r/base/grep.html">gsub()</a></code>, <code><a href="https://rdrr.io/r/base/trimws.html">trimws()</a></code>, <code><a href="https://rdrr.io/r/base/substr.html">substr()</a></code>, <code><a href="https://rdrr.io/r/base/nchar.html">nchar()</a></code>, <code><a href="https://rdrr.io/r/base/chartr.html">chartr()</a></code>, plus a handful of functions base R simply doesn’t have at all: Soundex/NYSIIS phonetic codes, and vectorised Jaro-Winkler similarity (including a token-reorder/punctuation-aware variant for multi-word names).</p>
+<p><code>fast.string</code> is an R package for the string, date and name-matching work that record linkage and ETL pipelines spend their time on. It has three layers:</p>
+<ul>
+<li>
+<strong><code>rLink()</code></strong>, which links or deduplicates data frames in one call: multi-pass blocking, any number of comparators, one table of scored candidate pairs (<a href="#sec-uc-link" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-link</span></a>).</li>
+<li>
+<strong>The record-linkage primitives base R does not have</strong> — phonetic blocking keys (Soundex, NYSIIS, Double Metaphone, Daitch-Mokotoff, Caverphone, …), string similarities and edit distances (Jaro-Winkler, Levenshtein, Editex, q-gram overlap, the RapidFuzz scorers), candidate search without a comparison matrix, and connected-component clustering.</li>
+<li>
+<strong>Faster equivalents of the everyday functions</strong> — <code><a href="https://rdrr.io/r/base/grep.html">grepl()</a></code>, <code><a href="https://rdrr.io/r/base/grep.html">grep()</a></code>, <code><a href="https://rdrr.io/r/base/grep.html">sub()</a></code>, <code><a href="https://rdrr.io/r/base/grep.html">gsub()</a></code>, <code><a href="https://rdrr.io/r/base/trimws.html">trimws()</a></code>, <code><a href="https://rdrr.io/r/base/substr.html">substr()</a></code>, <code><a href="https://rdrr.io/r/base/nchar.html">nchar()</a></code>, <code><a href="https://rdrr.io/r/base/chartr.html">chartr()</a></code>, <code><a href="https://rdrr.io/r/base/strsplit.html">strsplit()</a></code>, <code><a href="https://rdrr.io/r/base/chartr.html">toupper()</a></code>, date parsing and formatting — so the cleaning either side of a linkage is not the slow part.</li>
+</ul>
 <p>Large workloads are parallelised via Intel TBB (through <a href="https://rcppcore.github.io/RcppParallel/">RcppParallel</a>), with <a href="https://www.pcre.org/">PCRE2</a> doing the regex work and a prepared byte-oriented searcher handling fixed/literal matching. Performance depends on string length, match density, value reuse, matrix shape, and available cores. Some operations (parallel Jaro-Winkler, multi-pattern substitution in one pass) have no base R equivalent at all.</p>
 <section id="why-this-exists" class="level2"><h2 class="anchored" data-anchor-id="why-this-exists">Why this exists</h2>
 <p>Record linkage and data-cleaning pipelines spend a surprising fraction of their wall-clock time in string operations that look trivial in isolation — <code><a href="https://rdrr.io/r/base/trimws.html">trimws()</a></code> on a column, a <code><a href="https://rdrr.io/r/base/grep.html">gsub()</a></code> to strip punctuation, <code><a href="https://rdrr.io/r/base/grep.html">grepl()</a></code> to flag a pattern — but get called over and over on multi-million-row name/address files. Individually each call is fast; in aggregate, on a 5M-row file, they add up to minutes of CPU time spent doing work a single core could be doing across eight or sixteen instead.</p>
@@ -498,38 +512,76 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p><code>fast.string</code> exists to make all of the above fast enough to run unblinkingly on real-sized data, and to package the boring-but-essential 80% (trimming, substitution, date parsing) so a project doesn’t need five different dependencies for five different speed problems.</p>
 </section><section id="how-it-fits-with-record-linkage-packages" class="level2"><h2 class="anchored" data-anchor-id="how-it-fits-with-record-linkage-packages">How it fits with record-linkage packages</h2>
-<p><code>fast.string</code> is a toolbox of vectorised string primitives. The blocking-strategy selection, EM-based match probability estimation, and persistence of a linked dataset are handled well already by packages like <a href="https://cran.r-project.org/package=RecordLinkage"><code>RecordLinkage</code></a> or <a href="https://cran.r-project.org/package=reclin2"><code>reclin2</code></a> — pair <code>fast.string</code> with one of those for the per-string comparison work they call underneath. <a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a> compares <code>fast.string</code>’s comparison primitives directly against the equivalent functions in <code>RecordLinkage</code> and <code>stringdist</code> at scale.</p>
+<p><code>rLink()</code> covers one step of a linkage: two files in, scored candidate pairs out. It does not classify them. Estimating match probabilities from the scores — EM-fitted Fellegi-Sunter weights, training against a labelled sample — is what <a href="https://cran.r-project.org/package=RecordLinkage"><code>RecordLinkage</code></a>, <a href="https://cran.r-project.org/package=reclin2"><code>reclin2</code></a> and <a href="https://cran.r-project.org/package=fastLink"><code>fastLink</code></a> are for, and they do it well. The natural division is <code>rLink()</code> for the blocking and the per-field comparison, where the string work and the parallelism are, and one of those packages for the model that decides. <a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a> compares this package’s comparison primitives directly against the equivalent functions in <code>RecordLinkage</code> and <code>stringdist</code> at scale, and <a href="#sec-wf-score" class="quarto-xref"><span class="quarto-unresolved-ref">sec-wf-score</span></a> shows how far hand weights get you and where they stop.</p>
 </section><section id="how-this-book-is-organised" class="level2"><h2 class="anchored" data-anchor-id="how-this-book-is-organised">How this book is organised</h2>
 <ul>
 <li>
 <strong>Getting started</strong> — what <code>fast.string</code> is for and how it’s positioned against base R, <code>stringi</code>/<code>stringr</code>, <code>stringdist</code>, and <code>RecordLinkage</code> (<a href="#sec-about" class="quarto-xref"><span class="quarto-unresolved-ref">sec-about</span></a>), then a hands-on tour of every function group (<a href="#sec-quickstart" class="quarto-xref"><span class="quarto-unresolved-ref">sec-quickstart</span></a>).</li>
 <li>
-<strong>Use cases</strong> — task-oriented recipes: cleaning and standardising text (entities, accents, abbreviation dictionaries, leading zeros, spelling variants; <a href="#sec-uc-clean" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-clean</span></a>), finding, flagging and extracting values from free text (<a href="#sec-uc-extract" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-extract</span></a>), profiling and validating columns (format shapes, identifier check digits; <a href="#sec-uc-profile" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-profile</span></a>), matching, deduplicating and linking records at scale (<a href="#sec-uc-link" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-link</span></a>), and pseudonymising identifiers with keyed hashes (<a href="#sec-uc-privacy" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-privacy</span></a>).</li>
+<strong>Use cases</strong> — task-oriented recipes: cleaning and standardising text (entities, accents, abbreviation dictionaries, leading zeros, spelling variants; <a href="#sec-uc-clean" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-clean</span></a>), finding, flagging and extracting values from free text (<a href="#sec-uc-extract" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-extract</span></a>), profiling and validating columns (format shapes, identifier check digits; <a href="#sec-uc-profile" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-profile</span></a>), matching, deduplicating and linking records at scale with <code>rLink()</code> and the primitives under it (<a href="#sec-uc-link" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-link</span></a>), and pseudonymising identifiers with keyed hashes (<a href="#sec-uc-privacy" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-privacy</span></a>).</li>
 <li>
-<strong>Under the hood</strong> — the algorithms (<a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>): how regex and fixed-literal matching differ, how the bit-parallel Jaro-Winkler implementation works, how the phonetic schemes trade block size against recall, and how multi-token name comparison resolves reordered tokens — followed by a full worked record-linkage pipeline (<a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a>) that takes a messy incoming batch through profiling, parsing, deduplication, multi-key blocking, scoring, and a defensible accept/review decision.</li>
+<strong>Under the hood</strong> — the algorithms (<a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a>): how regex and fixed-literal matching differ, how the bit-parallel Jaro-Winkler implementation works, how the phonetic schemes trade block size against recall, and how multi-token name comparison resolves reordered tokens — followed by a full worked record-linkage pipeline (<a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a>) that links two files of people whose names, dates of birth, addresses, sex and postcodes are each recorded differently: profiling, standardising field by field, multi-pass blocking, per-field scoring, a defensible accept/review/reject decision, entity identifiers, and a measurement of how well it worked against a known truth.</li>
 <li>
 <strong>Reference</strong> — an exhaustive per-function reference with every argument and runnable examples (<a href="#sec-reference" class="quarto-xref"><span class="quarto-unresolved-ref">sec-reference</span></a>); the heavy benchmark chapter at <strong>3 million strings</strong>, with <code>base</code>, <code>stringi</code>, <code>stringdist</code>, and <code>RecordLinkage</code> as comparison baselines (<a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a>); and a troubleshooting/FAQ chapter (<a href="#sec-troubleshooting" class="quarto-xref"><span class="quarto-unresolved-ref">sec-troubleshooting</span></a>).</li>
 </ul></section><section id="a-quick-taste" class="level2"><h2 class="anchored" data-anchor-id="a-quick-taste">A quick taste</h2>
+<p>A whole linkage — blocking, scoring, one row per candidate pair — is one call. Two small files of people, with a surname spelled two ways, a nickname instead of a registered given name, and a date of birth whose day and month were transposed:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">2e5</span></span>
-<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"%s-%04d"</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"John Smith"</span>, <span class="st">"Mary O'Brien"</span>, <span class="st">"Kyle Haynes"</span><span class="op">)</span>, <span class="va">n</span>, <span class="cn">TRUE</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">9999</span>, <span class="va">n</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">enrol</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    id      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"E1"</span>, <span class="st">"E2"</span>, <span class="st">"E3"</span>, <span class="st">"E4"</span><span class="op">)</span>,</span>
+<span>    given   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ROBERT"</span>, <span class="st">"ELIZABETH"</span>, <span class="st">"MOHAMMED"</span>, <span class="st">"LI"</span><span class="op">)</span>,</span>
+<span>    surname <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"O'BRIEN"</span>, <span class="st">"SMITH-JONES"</span>, <span class="st">"EL-MASRI"</span>, <span class="st">"NGUYEN"</span><span class="op">)</span>,</span>
+<span>    dob     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1985-03-05"</span>, <span class="st">"1972-11-30"</span>, <span class="st">"1990-07-14"</span>, <span class="st">"1964-02-29"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    sex     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"M"</span>, <span class="st">"F"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">base</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">grepl</a></span><span class="op">(</span><span class="st">"Smith"</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span><span class="va">claims</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    id      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"C1"</span>, <span class="st">"C2"</span>, <span class="st">"C3"</span><span class="op">)</span>,</span>
+<span>    given   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"BOB"</span>, <span class="st">"LIZ"</span>, <span class="st">"MOHAMED"</span><span class="op">)</span>,</span>
+<span>    surname <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"OBRIEN"</span>, <span class="st">"SMITH JONES"</span>, <span class="st">"EL MASRI"</span><span class="op">)</span>,</span>
+<span>    dob     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1985-05-03"</span>, <span class="st">"1972-11-30"</span>, <span class="st">"1990-07-14"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    sex     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"M"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">rLink</span><span class="op">(</span><span class="va">enrol</span>, <span class="va">claims</span>,</span>
+<span>      block   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>exact_dob    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="va">dob</span><span class="op">)</span>,</span>
+<span>                     surname_year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>                                         <span class="fu">format_date</span><span class="op">(</span><span class="va">dob</span>, <span class="st">"y"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>sn  <span class="op">=</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>                     gn  <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">given</span><span class="op">)</span>,</span>
+<span>                     dob <span class="op">=</span> <span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">a</span> <span class="op">==</span> <span class="va">b</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="va">dob</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      keep    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"given"</span>, <span class="st">"surname"</span>, <span class="st">"dob"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>   user  system elapsed 
-   0.06    0.00    0.05 </code></pre>
+<pre><code>   pair_id index_1 index_2  pass  block_key   id_1   id_2   given_1 given_2
+     &lt;int&gt;   &lt;int&gt;   &lt;int&gt; &lt;int&gt;     &lt;char&gt; &lt;char&gt; &lt;char&gt;    &lt;char&gt;  &lt;char&gt;
+1:       1       1       1     2  O165|1985     E1     C1    ROBERT     BOB
+2:       2       2       2     1 1972-11-30     E2     C2 ELIZABETH     LIZ
+3:       3       3       3     1 1990-07-14     E3     C3  MOHAMMED MOHAMED
+          gn   surname_1   surname_2    sn      dob_1      dob_2   dob
+       &lt;num&gt;      &lt;char&gt;      &lt;char&gt; &lt;num&gt;     &lt;Date&gt;     &lt;Date&gt; &lt;num&gt;
+1: 0.5000000     O'BRIEN      OBRIEN     1 1985-03-05 1985-05-03     0
+2: 0.7777778 SMITH-JONES SMITH JONES     1 1972-11-30 1972-11-30     1
+3: 0.9750000    EL-MASRI    EL MASRI     1 1990-07-14 1990-07-14     1</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu">fgrepl</span><span class="op">(</span><span class="st">"Smith"</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>All three claims found their person, and the <code>pass</code> column says how: two on the exact date of birth, and Robert O’Brien — whose day and month had been swapped — on the second pass, a phonetic surname code plus the year alone. <code>jaro_winkler_tokens()</code> scores <code>"SMITH-JONES"</code> against <code>"SMITH JONES"</code> at 1, because it folds punctuation and word order inside the comparison. <a href="#sec-uc-link" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-link</span></a> and <a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a> take this all the way through on data that is properly messy.</p>
+<p>And the ordinary string work underneath it, on a million values:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">1e6</span></span>
+<span><span class="va">nm</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"%s %s"</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"John"</span>, <span class="st">"Mary"</span>, <span class="st">"Kyle"</span>, <span class="st">"Priya"</span><span class="op">)</span>, <span class="va">n</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>               <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Smith"</span>, <span class="st">"O'Brien"</span>, <span class="st">"Haynes"</span>, <span class="st">"Nguyen"</span><span class="op">)</span>, <span class="va">n</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">dob</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="st">"1950-01-01"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">25000</span>, <span class="va">n</span>, <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind</a></span><span class="op">(</span>toupper     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/chartr.html">toupper</a></span><span class="op">(</span><span class="va">nm</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span>,</span>
+<span>      fupper      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">fupper</span><span class="op">(</span><span class="va">nm</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span>,</span>
+<span>      format      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="va">dob</span>, <span class="st">"%Y-%m-%d"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span>,</span>
+<span>      format_date <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">format_date</span><span class="op">(</span><span class="va">dob</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>   user  system elapsed 
-   0.08    0.11    0.00 </code></pre>
+<pre><code>            user.self sys.self elapsed
+toupper          0.48     0.00    0.48
+fupper           0.16     0.11    0.04
+format           5.36     0.00    5.36
+format_date      0.09     0.17    0.05</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">fast.string</span><span class="fu">::</span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="st">"Kyle John Haynes"</span>, <span class="st">"John Kylie Haynes"</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 0.984</code></pre>
 </div>
-</div>
-<p>That last call is the headline example for the multi-token comparison function: two names with reordered tokens and one typo still score above 0.95. The full story — including why it also handles <code>"O'Brien"</code> vs. <code>"O Brien"</code> vs.&nbsp;<code>"OBrien"</code> — is in <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> and <a href="#sec-reference" class="quarto-xref"><span class="quarto-unresolved-ref">sec-reference</span></a>.</p>
+<p><code>format_date()</code> is the extreme case: <code><a href="https://rdrr.io/r/base/format.html">format()</a></code> on a <code>Date</code> reaches <code><a href="https://rdrr.io/r/base/strptime.html">strftime()</a></code> once per element, and replacing that with integer calendar arithmetic is worth two orders of magnitude. Most functions here are nearer 2—10x, a few are no faster than base R at all (<a href="#sec-troubleshooting" class="quarto-xref"><span class="quarto-unresolved-ref">sec-troubleshooting</span></a> says which), and the phonetic codes and similarity scores have no base R equivalent to be compared with.</p>
 
 
 </section></section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">

@@ -4,6 +4,7 @@
 #| label: setup
 #| include: false
 source("_setup.R")
+source("_people.R")
 ```
 
 Record linkage -- finding the records that refer to the same person,
@@ -18,102 +19,428 @@ shape whatever the data:
 4. **Decide** which pairs are matches.
 5. **Cluster** the matched pairs into entities.
 
-@sec-workflow walks through a small linkage end to end. This chapter is the
-toolbox for each stage, and finishes by deduplicating 100,000 records.
+[`rLink()`](#sec-rlink-link) does steps 2 and 3 in one call. The rest of
+this chapter is the toolbox underneath it, for the cases where you want to
+drive each stage yourself. @sec-workflow takes a messy pair of files all
+the way through, including the standardising and the decision.
 
 | Stage | Functions |
 |---|---|
+| Blocking **and** scoring in one call | `rLink()` |
 | Candidate pairs from keys | `block_pairs()`, `sorted_neighbourhood()` |
-| Phonetic keys | `soundex()`, `nysiis()`, `metaphone()`, `double_metaphone()`, `statcan()`, `phonex()`, `onca()`, `mra_encode()`, ... |
+| Phonetic keys | `soundex()`, `nysiis()`, `metaphone()`, `double_metaphone()`, `daitch_mokotoff()`, `statcan()`, `phonex()`, `onca()`, `caverphone()`, ... |
 | Candidates by similarity search | `fuzzy_within()`, `tfidf_top_n()`, `tfidf_match()`, `minhash_pairs()`, `fuzzy_top_n()` |
-| Scoring | `jaro_winkler()`, `editex()`, `monge_elkan()`, `smith_waterman()`, `lcs_str()`, `levenshtein()`, `fuzz_*()` |
+| Scoring | `jaro_winkler()`, `jaro_winkler_tokens()`, `editex()`, `monge_elkan()`, `smith_waterman()`, `lcs_str()`, `levenshtein()`, `fuzz_*()` |
 | Explaining a score | `edit_ops()` |
 | Entities from matches | `cluster_pairs()` |
 
-## Candidate pairs by blocking
+## Two files of people {#sec-uc-link-data}
 
-Comparing every record with every other is $O(n^2)$: five billion pairs for
-100,000 records. **Blocking** only pairs records that agree exactly on a
-key, such as the Soundex code of the surname plus the date of birth. One
-key misses every true match with an error in that key, so linkage projects
-run several *passes* with different keys and take the union. `block_pairs()`
-does that in one call, with one column per pass, and reports each pair once
-along with the first pass that found it:
+Everything below works on the same pair of files: an enrolment extract and
+a claims extract that hold the same people, recorded by two systems that
+agree about nothing except who those people are. `docs/_people.R` in the
+repository builds them, with a `person_id` kept aside so every claim in
+this chapter can be checked rather than asserted.
+
+```{r}
+#| label: data
+files <- people_files(n_enrol = 20000, overlap = 0.6)
+enrol  <- files$enrol
+claims <- files$claims
+
+str(enrol[1:3, c("enrol_id", "given_name", "surname", "dob", "sex",
+                 "number", "street", "street_type", "suburb", "postcode")],
+    vec.len = 2)
+claims[1:4, ]
+```
+
+The claims file is the awkward one, and awkward in all the usual ways: the
+whole name in one `"SURNAME, Title Given Middle"` field in title case with
+doubled and trailing spaces, the date of birth as `"DD/MM/YYYY"` text, sex
+spelled out (and sometimes blank), the address as one line with
+abbreviated street types and a unit prefix, and a *numeric* postcode, so
+`0823` arrived as `823`.
+
+@sec-workflow standardises it field by field. For now, here it is in one
+block, so that the examples below have two files with the same column
+names and the same types:
+
+```{r}
+#| label: standardise
+titles        <- c("MR", "MRS", "MS", "MISS", "DR", "PROF")
+street_abbrev <- c("ST", "RD", "AVE", "CT", "PL", "TCE", "PDE", "CRES", "DR", "LN")
+street_full   <- c("STREET", "ROAD", "AVENUE", "COURT", "PLACE", "TERRACE",
+                   "PARADE", "CRESCENT", "DRIVE", "LANE")
+
+name <- fsquish(fupper(claims$patient_name))                  # one pass, no case left
+rest <- fsquish(freplace_tokens(ftrimws(fsplit_field(name, ",", 2)),
+                                titles, rep("", length(titles))))
+addr <- fgsub("^U[0-9]+/", "", fupper(claims$address_line))   # drop the unit prefix
+
+claims_std <- data.frame(
+    claim_id       = claims$claim_id,
+    given_name     = fsplit_field(rest, " ", 1),
+    middle_name    = fsplit_field(rest, " ", 2),
+    surname        = ftrimws(fsplit_field(name, ",", 1)),
+    dob            = fas.Date(claims$date_of_birth, format = "dmy"),
+    sex            = c(Male = "M", Female = "F", Unknown = "U")[claims$gender],
+    street_address = fsquish(freplace_tokens(ftrimws(fsplit_field(addr, ",", 1)),
+                                             street_abbrev, street_full)),
+    suburb         = ftrimws(fgsub(" VIC$", "", fsplit_field(addr, ",", 2))),
+    postcode       = fpad(as.character(claims$postcode), 4, pad = "0"),
+    stringsAsFactors = FALSE
+)
+claims_std$sex[is.na(claims_std$sex)] <- "U"
+
+# The enrolment file keeps its address in parts; join them the same way.
+enrol$street_address <- fsquish(paste(enrol$number, enrol$street,
+                                      enrol$street_type))
+head(claims_std, 4)
+```
+
+## Blocking and scoring in one call: `rLink()` {#sec-rlink-link}
+
+`rLink()` takes the two data frames, a list of blocking *passes*, and a
+list of comparators, and returns one row per candidate pair with the
+compared columns side by side and a score column for each comparator.
+Blocking keys and comparison fields are written as ordinary R expressions
+evaluated against the data, so a phonetic code or a date part goes in the
+call rather than into a column prepared beforehand:
+
+```{r}
+#| label: rlink
+cand <- rLink(
+    enrol, claims_std,
+    block = list(
+        surname_dob  = list(soundex(surname), dob),
+        surname_year = list(soundex(surname), format_date(dob, "y")),
+        given_dob    = list(soundex(given_name), dob),
+        name_postcode = list(soundex(surname), fsubstr(given_name, 1, 1), postcode)
+    ),
+    compare = list(
+        surname  = jaro_winkler(surname),
+        given    = jaro_winkler_tokens(given_name),
+        dob      = (function(a, b) a == b)(dob),
+        sex      = (function(a, b) a == b | a == "U" | b == "U")(sex),
+        address  = jaro_winkler_tokens(street_address),
+        suburb   = jaro_winkler(suburb),
+        postcode = (function(a, b) a == b)(postcode)
+    ),
+    keep = c("enrol_id", "claim_id", "surname", "given_name", "dob", "sex",
+             "street_address", "postcode")
+)
+dim(cand)
+cand[1:3, 1:12]
+```
+
+The outer `list()` separates passes; a pair is a candidate if it agrees on
+*any* one pass, each pair is reported once, and `pass` records the first
+pass that found it. Inside a pass, `list()` joins terms into one key, so
+`list(soundex(surname), dob)` requires the same surname code **and** the
+same date of birth. A comparator's first argument names the column to
+compare; anything else is its own options. Any function of two character
+vectors works, which is how `sex` and the exact `dob`/`postcode`
+comparisons above are written inline.
+
+Three things are worth knowing straight away.
+
+**Scores are oriented for you.** Comparators disagree about which end of
+their scale means "identical": `jaro_winkler()` returns 1, `levenshtein()`
+returns 0, the RapidFuzz `fuzz_*()` scorers return 100. `rLink()` probes
+each one on a calibration pair and converts, so **1 always means an exact
+match**. What it found is recorded, and is worth reading once:
+
+```{r}
+#| label: rlink-compare
+attr(cand, "compare")
+```
+
+**Comparators see text.** Every comparison column is converted to
+character first, so a `Date` reaches the comparator as `"YYYY-MM-DD"`.
+Exact agreement therefore just works, but a *tolerance* needs the date
+back:
+
+```{r}
+#| label: rlink-dob-near
+near_dob <- function(a, b, days = 1)
+    abs(as.numeric(fas.Date(a)) - as.numeric(fas.Date(b))) <= days
+head(rLink(enrol, claims_std,
+           block = list(list(soundex(surname), postcode)),
+           compare = list(dob_within_1 = near_dob(dob)),
+           keep = c("surname", "dob"))[, -1], 4)
+```
+
+**Where the time goes is on the object.** `attr(cand, "timings")` breaks
+the call into stages, which is how you find the pass that is about to
+explode:
+
+```{r}
+#| label: rlink-timings
+attr(cand, "timings")
+```
+
+### Read the pass table before you trust the design
+
+Because `pass` records the pass that found each pair, and because these
+files come with a known truth, each pass can be audited for what it
+actually contributed:
+
+```{r}
+#| label: pass-audit
+truth <- same_person(files, cand$index_1, cand$index_2)
+cbind(candidates = table(pass = cand$pass),
+      true_pairs = tapply(truth, cand$pass, sum),
+      yield      = round(tapply(truth, cand$pass, mean), 3))
+
+c(true_pairs_in_data = true_pair_count(files),
+  found_by_blocking  = sum(truth),
+  pairs_compared     = nrow(cand),
+  pairs_possible     = as.numeric(nrow(enrol)) * nrow(claims_std))
+```
+
+Blocking found every true pair in the data while comparing
+`r format(nrow(cand), big.mark = ",")` of the
+`r format(as.numeric(nrow(enrol)) * nrow(claims_std), big.mark = ",", scientific = FALSE)`
+possible ones. The pass table also shows what each pass costs: pass 2
+(surname code plus year of birth) generates most of the candidates for a
+few hundred extra matches. It is the pass that survives a transposed day
+and month, so it earns its place -- but it is the one to tighten first if
+the run gets too big, with `max_block_size` or a narrower key.
+
+### Deciding, and clustering
+
+Combine the score columns however your project justifies -- hand weights
+here, a Fellegi-Sunter model in `fastLink` or `reclin2` on real data -- and
+look at the two distributions before picking a threshold:
+
+```{r}
+#| label: decide
+cand$score <- with(cand,
+    (3 * surname + 2 * given + 2 * dob + 0.5 * sex +
+     address + suburb + postcode) / 10.5)
+
+qs <- c(0.01, 0.05, 0.5, 0.95)
+round(rbind(same_person = quantile(cand$score[truth], qs),
+            different   = quantile(cand$score[!truth], qs)), 3)
+```
+
+The two are well separated: the weakest 1% of true pairs still score above
+the strongest 5% of false ones, so a threshold anywhere in the gap is
+defensible.
+
+```{r}
+#| label: threshold-sweep
+for (t in c(0.70, 0.75, 0.78, 0.82, 0.85)) {
+    keep <- cand$score >= t
+    cat(sprintf("%.2f  links %6s  precision %.4f  recall %.4f\n", t,
+                format(sum(keep), big.mark = ","), mean(truth[keep]),
+                sum(truth & keep) / true_pair_count(files)))
+}
+```
+
+Then turn the accepted pairs into entity identifiers. `cluster_pairs()`
+joins records connected by any chain of matches (the connected components
+of the match graph); offset the second file's indices so the two files
+share one numbering:
+
+```{r}
+#| label: cluster
+links <- cand[cand$score >= 0.78, ]
+entity <- cluster_pairs(links$index_1, links$index_2 + nrow(enrol),
+                        n = nrow(enrol) + nrow(claims_std))
+table(cluster_size = tabulate(entity))
+```
+
+Chaining is also the risk: if A and C do not match directly, their cluster
+rests on B. Look at the largest clusters before trusting them, or raise
+the threshold for pairs that would join two already-large clusters.
+
+### Deduplicating one file
+
+With one data frame, `rLink()` deduplicates it: pairs come back with
+`index_1 < index_2` and no record paired with itself. Here the two files
+arrive stacked, as a single extract, and the job is to find the people who
+appear twice:
+
+```{r}
+#| label: dedupe
+shared <- c("given_name", "surname", "dob", "sex", "street_address",
+            "suburb", "postcode")
+combined <- rbind(cbind(source = "enrol", enrol[, shared]),
+                  cbind(source = "claims", claims_std[, shared]))
+
+dup <- rLink(combined,
+             block = list(list(soundex(surname), dob),
+                          list(soundex(given_name), dob)),
+             compare = list(given   = jaro_winkler_tokens(given_name),
+                            surname = jaro_winkler(surname),
+                            addr    = jaro_winkler_tokens(street_address)),
+             keep = c("source", "surname", "given_name", "dob"))
+nrow(dup)
+dup[order(-dup$given - dup$surname), ][1:4,
+    c("source_1", "source_2", "surname_1", "surname_2",
+      "given_name_1", "given_name_2", "dob_1", "given", "surname")]
+```
+
+### Scoring pairs you found some other way
+
+`pairs` takes candidate pairs from anywhere instead of blocking -- any data
+frame with `x_index` and `y_index`, which is the shape
+`minhash_pairs()`, `fuzzy_within()` and `tfidf_top_n()` all return:
+
+```{r}
+#| label: rlink-pairs-arg
+candidates <- data.frame(x_index = c(1L, 2L, 3L), y_index = c(7L, 7L, 9L))
+rLink(enrol, claims_std, pairs = candidates,
+      compare = list(surname = jaro_winkler(surname)),
+      keep = c("surname", "dob"))
+```
+
+### Columns named differently in the two files
+
+`compare` takes `column_1 | column_2` when the two files call the same
+thing by different names, and `block_2` gives the second file its own
+blocking expressions, pass for pass:
+
+```{r}
+#| label: rlink-different-names
+raw <- claims                       # the unstandardised claims file
+raw$surname_raw <- ftrimws(fsplit_field(fsquish(fupper(raw$patient_name)), ",", 1))
+
+head(rLink(enrol, raw,
+           block   = list(soundex(surname)),
+           block_2 = list(soundex(surname_raw)),
+           compare = list(sn = jaro_winkler(surname | surname_raw)),
+           keep    = c("surname", "surname_raw"))[, -1], 3)
+```
+
+## Candidate pairs by blocking, by hand
+
+`block_pairs()` is the blocking engine `rLink()` calls, and is what to
+reach for when you want the pairs without the scoring -- to count them
+first, or to feed them somewhere else. It takes one column per pass:
 
 ```{r}
 #| label: block-pairs
-people <- data.frame(
-    surname  = c("SMITH", "SMYTH", "JONES", "SMITH", "JONSE", "BROWN", "SMITH-JONES"),
-    given    = c("JOHN", "JON", "MARY", "JOHN", "MARY", "ROBERT", "MARY"),
-    dob      = as.Date(c("1980-01-02", "1980-01-02", "1975-06-30", "1990-12-01",
-                         "1975-06-30", "1962-03-03", "1975-03-06")),
-    postcode = c("4000", "4000", "2000", "4101", "2000", "3000", "2000")
-)
-keys <- data.frame(
-    surname_dob = paste(soundex(people$surname), people$dob),
-    dob         = people$dob,
-    initial_pc  = paste(substr(people$given, 1, 1), people$postcode)
-)
-block_pairs(keys)
+block_keys <- function(d) data.frame(
+    surname_dob = paste(soundex(d$surname), d$dob),
+    dob         = as.character(d$dob),
+    initial_pc  = paste(fsubstr(d$given_name, 1, 1), d$postcode))
+
+p <- block_pairs(block_keys(enrol), block_keys(claims_std))
+nrow(p)
+table(pass = p$pass)
 ```
 
-Record 7 -- Mary Jones after a double-barrelled marriage, with day and month
-swapped in her date of birth -- only shares the third key with records 3
-and 5, and the `pass` column shows it. That makes a blocking design
-auditable: you can see which pass carries the recall, and drop the ones that
-only add noise. A missing key (`NA`) never pairs, and `max_block_size`
-skips blocks too big to be useful, such as the most common surname, with a
-warning.
+A missing key (`NA`) never pairs with anything, which is what makes
+blocking on an incomplete field safe: the records with no date of birth
+simply do not appear in the passes that use it.
 
-Linking two files instead of deduplicating one is the same call with a
-second set of keys: `block_pairs(keys_a, keys_b)` returns pairs with one
-record from each.
+`max_block_size` skips blocks too big to be worth comparing -- the
+commonest surname code, or the 1 January placeholder date -- and warns
+with how many it dropped. How big a block gets is worth measuring before
+you decide:
+
+```{r}
+#| label: block-sizes
+sizes <- table(soundex(enrol$surname))
+c(blocks = length(sizes), largest = max(sizes), over_400 = sum(sizes > 400))
+
+# A surname-only pass, capped. A handful of codes go, and with them more
+# than half the pairs the pass would have produced.
+nrow(block_pairs(soundex(enrol$surname), soundex(claims_std$surname)))
+nrow(block_pairs(soundex(enrol$surname), soundex(claims_std$surname),
+                 max_block_size = 400))
+```
 
 ## The sorted neighbourhood method
 
-Exact keys miss pairs whose keys differ in the last characters (`SMITH` and
-`SMITHE`). `sorted_neighbourhood()` sorts the distinct key values and pairs
-records whose values are within `(window - 1) / 2` places of each other, as
-well as records with equal values. A second pass on the *reversed* key
-catches errors at the start of the string:
+Exact keys miss pairs whose keys differ in the last characters (`SMITH`
+and `SMITHE`). `sorted_neighbourhood()` sorts the distinct key values and
+pairs records whose values are within `(window - 1) / 2` places of each
+other, as well as records with equal values. A second pass on the
+*reversed* key catches errors at the start of the string:
 
 ```{r}
 #| label: sorted-neighbourhood
 surname <- c("SMITH", "SMITHE", "SMYTH", "JONES", "JONSON", "XMITH")
-rev_str <- function(s) vapply(strsplit(s, NULL),
-                              function(ch) paste(rev(ch), collapse = ""), "")
-p <- sorted_neighbourhood(data.frame(surname, rev_str(surname)), window = 3)
+p <- sorted_neighbourhood(data.frame(surname, freverse(surname)), window = 3)
 data.frame(a = surname[p$x_index], b = surname[p$y_index], pass = p$pass)
 ```
 
-`XMITH` only meets `SMITH` in the reversed pass. The window moves over
-distinct values, as in Python's `recordlinkage` package, so the pairs do not
-depend on the order of the records and every tie is paired. Keys can be
-dates or numbers too: a date of birth with `window = 3` pairs dates one day
-apart.
+`XMITH` only meets `SMITH` in the reversed pass. Note what else the window
+pairs: `SMITH` with `JONSON`, because they are alphabetical neighbours, not
+because they are alike. The method trades precision for recall by design,
+so it belongs in a pass whose candidates are then scored, never on its
+own. The window moves over distinct values, as in Python's `recordlinkage`
+package, so the pairs do not depend on the order of the records and every
+tie is paired. Keys can
+be dates or numbers too: a date of birth with `window = 3` pairs dates one
+day apart, which is exactly the transcription error that `format_date(dob,
+"y")` above needed a whole extra pass to survive.
+
+```{r}
+#| label: sn-dates
+d <- as.Date(c("1985-03-14", "1985-03-15", "1985-03-16", "1990-01-01"))
+sorted_neighbourhood(d, window = 3)
+```
+
+`rLink(block_method = "sorted_neighbourhood", window = 3)` uses it for
+every pass of a linkage.
 
 ## Choose phonetic keys by how much they merge
 
 Every phonetic code merges some spellings and separates others, and the
-trade-off is block size against recall. Comparing codes on a list of known
-variants shows the differences quickly:
+trade-off is block size against recall. Comparing codes on the name
+variants you actually expect shows the differences quickly:
 
 ```{r}
 #| label: phonetic-keys
 surn <- c("SMITH", "SMYTH", "SCHMIDT", "MEYER", "MEIER", "MCDONALD",
           "MACDONALD", "THOMPSON", "TOMSON", "NGUYEN", "NGYUEN", "PHILLIPS",
-          "FILLIPS")
+          "FILLIPS", "O'BRIEN", "OBRIEN", "BRIEN")
 codes <- data.frame(name = surn, soundex = soundex(surn), nysiis = nysiis(surn),
                     metaphone = metaphone(surn), statcan = statcan(surn),
                     phonex = phonex(surn), onca = onca(surn),
-                    mra = mra_encode(surn))
+                    caverphone = caverphone(surn))
 codes
 sapply(codes[-1], function(k) length(unique(k)))   # fewer = coarser blocks
 ```
 
 Soundex merges `SCHMIDT` with `SMITH` but separates `PHILLIPS` from
-`FILLIPS`; Phonex and ONCA join the latter pair; NYSIIS and Metaphone
+`FILLIPS`; Phonex and ONCA join the latter pair. NYSIIS and Metaphone
 separate more spellings, which makes smaller blocks and needs more passes.
+Caverphone was designed for New Zealand and Australian electoral-roll
+names.
+
+The same comparison on your own file, rather than on a list of variants,
+says how big the blocks will be:
+
+```{r}
+#| label: phonetic-block-sizes
+sizes <- sapply(list(exact = enrol$surname, soundex = soundex(enrol$surname),
+                     nysiis = nysiis(enrol$surname), phonex = phonex(enrol$surname),
+                     dmetaphone = double_metaphone(enrol$surname)$primary),
+                function(k) c(blocks = length(unique(k)),
+                              largest = max(tabulate(match(k, unique(k)))),
+                              pairs_per_1k = round(sum(tabulate(match(k, unique(k)))^2) /
+                                                   length(k) / 1000, 1)))
+sizes
+```
+
+`pairs_per_1k` is the number of candidate pairs, in thousands, that the key
+alone would generate against a file of the same size -- the number that
+decides whether a pass is affordable.
+
+Names from more than one language tradition need more than one code.
+`daitch_mokotoff()` returns up to several codes per name, so a name with
+an ambiguous pronunciation lands in every block it might belong to:
+
+```{r}
+#| label: dmsoundex
+daitch_mokotoff(c("SCHWARZ", "SHVARTZ", "MOSKOWITZ", "MOSKOVITZ"))
+```
+
 The Match Rating Approach is designed as a comparison rather than a key:
 `mra_compare()` says whether two names match under its rules.
 
@@ -129,28 +456,24 @@ these functions builds the full comparison matrix.
 
 `fuzzy_within()` returns every table entry within `k` edits of each query,
 using SymSpell's symmetric-delete index -- the right tool for checking
-typed values against a reference list such as a street gazetteer:
+typed values against a reference list such as a street or suburb
+gazetteer:
 
 ```{r}
 #| label: fuzzy-within
-set.seed(7)
-streets <- unique(paste(
-    sample(c("KING", "QUEEN", "GEORGE", "ELIZABETH", "ANN", "ADELAIDE", "WICKHAM",
-             "BRUNSWICK", "LOGAN", "IPSWICH", "OXLEY", "SANDGATE", "GYMPIE",
-             "STANLEY", "MAIN", "CHURCH", "STATION", "RIVER"), 4000, TRUE),
-    sample(c("ST", "RD", "AVE", "TCE", "PDE", "LANE", "CT", "CRES"), 4000, TRUE)
-))
-q <- c("KIGN ST", "QUEEN SRT", "WICKAM TCE", "LOGAN RD")
-w <- fuzzy_within(q, streets, max_distance = 2)
-data.frame(query = q[w$query_index], match = streets[w$table_index],
+gazetteer <- sort(unique(enrol$suburb))
+typed <- c("RICHMOND", "FITZROI", "ST KILDAA", "CAMBERWEL", "NOWHERE")
+w <- fuzzy_within(typed, gazetteer, max_distance = 2)
+data.frame(typed = typed[w$query_index], suburb = gazetteer[w$table_index],
            distance = w$distance)
 ```
 
-Results come ordered by distance, so the first row per query is the best.
-The result is exact -- the same pairs as filtering a full
-`osa_distance_matrix()` -- at a fraction of the cost for large tables.
+Results come ordered by distance, so the first row per query is the best,
+and `NOWHERE` returns nothing rather than a wrong answer. The result is
+exact -- the same pairs as filtering a full `osa_distance_matrix()` -- at a
+fraction of the cost for large tables.
 
-For names that differ by whole words -- organisations with and without
+For names that differ by whole words -- an organisation with and without
 `THE`, `UNI` for `UNIVERSITY`, an extra department -- edit distance is the
 wrong measure. `tfidf_match()` compares TF-IDF-weighted character n-grams,
 so rare, informative words dominate and common ones barely count:
@@ -166,62 +489,93 @@ data.frame(query = qs, match = orgs[tfidf_match(qs, orgs)])
 tfidf_top_n("QLD UNIVERSITY OF TECHNOLOGY", orgs, top_n = 3)
 ```
 
-For long text -- product descriptions, case notes, addresses with free-text
-additions -- `minhash_pairs()` finds pairs whose q-gram sets probably
-overlap by at least `threshold` (Jaccard), using locality-sensitive
-hashing, and verifies each candidate exactly:
+For long text -- product descriptions, case notes, addresses with
+free-text additions -- `minhash_pairs()` finds pairs whose q-gram sets
+probably overlap by at least `threshold` (Jaccard), using
+locality-sensitive hashing, and verifies each candidate exactly.
 
 ```{r}
 #| label: minhash
-descr <- c("Stainless steel kettle 1.7 litre with auto shut-off and boil-dry protection",
-           "Stainless steel kettle 1.7L with auto shut off and boil dry protection",
-           "Cordless stick vacuum cleaner with HEPA filter and wall mount",
-           "Cordless stick vacuum with HEPA filter, wall mount included",
-           "Cast iron frying pan 28cm pre-seasoned")
-minhash_pairs(descr, threshold = 0.4)
+notes <- c("Unit 4, 9 King St Brisbane - deliver to rear entrance",
+           "U4 9 King Street, Brisbane (rear entrance delivery)",
+           "12 Logan Road Woolloongabba, upstairs office",
+           "12 Logan Rd, Woolloongabba - upstairs office suite",
+           "88 Gympie Road Chermside")
+minhash_pairs(notes, threshold = 0.4)
 ```
 
 ## Score with the comparison that fits the field
 
-Jaro-Winkler is the standard for short names, but each kind of field has its
-own kind of difference. @sec-uc-metrics measures every comparator in the
-package against labelled name and address pairs and says which to reach for
-when; the short version is below:
+Jaro-Winkler is the standard for short names, but each kind of field has
+its own kind of difference. @sec-uc-metrics measures every comparator in
+the package against labelled name and address pairs and says which to
+reach for when; the short version is below.
 
-- **Phonetic misspellings** (`PH`/`F`, `C`/`K`) cost less under `editex()`,
-  an edit distance whose substitution cost depends on whether the letters
-  sound alike:
+**Phonetic misspellings** (`PH`/`F`, `C`/`K`) cost less under `editex()`,
+an edit distance whose substitution cost depends on whether the letters
+sound alike:
 
-  ```{r}
-  #| label: editex
-  a <- c("PHILIP", "CATHERINE", "SHEPHERD")
-  b <- c("FILIP", "KATHRYN", "SHEPPARD")
-  data.frame(a, b, levenshtein = levenshtein_similarity(a, b),
-             editex = editex_similarity(a, b))
-  ```
+```{r}
+#| label: editex
+a <- c("PHILIP", "CATHERINE", "SHEPHERD", "STEPHEN")
+b <- c("FILIP", "KATHRYN", "SHEPPARD", "STEVEN")
+data.frame(a, b, levenshtein = round(levenshtein_similarity(a, b), 3),
+           editex = round(editex_similarity(a, b), 3))
+```
 
-- **Multi-word names** with reordered, missing or extra words suit
-  `monge_elkan()` (the mean best match of each word) or
-  `jaro_winkler_tokens()`:
+**Multi-word names** with reordered, missing or extra words suit
+`monge_elkan()` (the mean best match of each word) or
+`jaro_winkler_tokens()`. This is the comparison to use on a name field
+that was never split:
 
-  ```{r}
-  #| label: monge-elkan
-  a <- c("JOHN PAUL SMITH", "MARY JANE O BRIEN", "ROBERT JONES")
-  b <- c("SMITH JOHN", "OBRIEN MARY", "BOB JONES")
-  data.frame(a, b, jaro_winkler = jaro_winkler(a, b),
-             monge_elkan = monge_elkan(a, b), tokens = jaro_winkler_tokens(a, b))
-  ```
+```{r}
+#| label: monge-elkan
+a <- c("JOHN PAUL SMITH", "MARY JANE O BRIEN", "ROBERT JONES", "LI WEI CHEN")
+b <- c("SMITH JOHN", "OBRIEN MARY", "BOB JONES", "CHEN LI WEI")
+data.frame(a, b,
+           jaro_winkler = round(jaro_winkler(a, b), 3),
+           monge_elkan  = round(monge_elkan(a, b), 3),
+           tokens       = round(jaro_winkler_tokens(a, b), 3))
+```
 
-- **One string inside another** -- a street address inside a full address
-  line -- is local alignment: `smith_waterman()` scores the best-matching
-  substring, and `lcs_str()` returns the longest common substring:
+Plain Jaro-Winkler is the wrong tool on every row here. `monge_elkan()`
+holds up best when a word is *missing* (`JOHN PAUL SMITH` against
+`SMITH JOHN`) or replaced by a nickname (`ROBERT` / `BOB`), because it
+scores each word against its own best partner and averages;
+`jaro_winkler_tokens()` is the stronger of the two on a clean reordering,
+and it also folds punctuation and spacing, which is what rescues
+`O BRIEN` / `OBRIEN`. Neither recovers a name whose words were both
+reordered *and* split differently --- row 2 --- which is the case for
+comparing the parsed `surname` and `given_name` fields separately instead.
 
-  ```{r}
-  #| label: smith-waterman
-  smith_waterman(c("9 KING ST", "9 KING ST"),
-                 c("UNIT 4 9 KING ST BRISBANE", "19 KINGS ST"))
-  lcs_str("9 KING ST", "UNIT 4 9 KING ST BRISBANE")
-  ```
+**One string inside another** -- a street address inside a full address
+line -- is local alignment: `smith_waterman()` scores the best-matching
+substring, and `lcs_str()` returns the longest common substring:
+
+```{r}
+#| label: smith-waterman
+smith_waterman(c("9 KING ST", "9 KING ST"),
+               c("UNIT 4 9 KING ST BRISBANE", "19 KINGS ST"))
+lcs_str("9 KING ST", "UNIT 4 9 KING ST BRISBANE")
+```
+
+**A date of birth** is not a string: compare the day numbers, so that
+2 January and 1 January are one apart rather than two characters apart.
+
+```{r}
+#| label: dob-compare
+d1 <- as.Date(c("1985-03-14", "1985-03-05", "1985-03-15", "1985-03-15"))
+d2 <- as.Date(c("1985-03-15", "1985-05-03", "1986-03-15", "1985-03-15"))
+# date_parts() splits both sides in one pass, which is cheaper than
+# formatting them and much cheaper than three format() calls each.
+pa <- date_parts(d1)
+pb <- date_parts(d2)
+data.frame(d1, d2,
+           days_apart = abs(as.numeric(d1 - d2)),
+           transposed = pa$year == pb$year & pa$day == pb$month &
+                        pa$month == pb$day & pa$day != pa$month,
+           same_year_month = pa$year == pb$year & pa$month == pb$month)
+```
 
 When a pair goes to clerical review, `edit_ops()` explains a distance as
 the edits themselves:
@@ -234,8 +588,7 @@ edit_ops("JONATHAN", "JONHATAN", type = "opcodes")
 ## From matched pairs to entities
 
 Deduplication needs one identifier per entity, not a list of pairs.
-`cluster_pairs()` joins records connected by any chain of matches (the
-connected components of the match graph):
+`cluster_pairs()` joins records connected by any chain of matches:
 
 ```{r}
 #| label: cluster-pairs
@@ -243,132 +596,74 @@ connected components of the match graph):
 cluster_pairs(c(1, 2, 4), c(2, 3, 5), n = 6)
 ```
 
-Chaining is also the risk: if 1 and 3 do not match directly, the cluster
-rests on record 2. Look at the largest clusters before trusting them, or
-raise the threshold for pairs that join large clusters.
-
-## End to end: deduplicating 100,000 records
-
-To see the whole pipeline at a useful scale, build a file of 80,000 people
-in which a quarter appear a second time with one error each: a typo in the
-surname or given name, a date of birth one day out, or a missing postcode.
+It takes the pair table directly, so the usual last line of a
+deduplication is one call. On the stacked extract above:
 
 ```{r}
-#| label: e2e-data
-set.seed(42)
-surnames <- c("SMITH", "JONES", "WILLIAMS", "BROWN", "WILSON", "TAYLOR", "JOHNSON",
-    "WHITE", "MARTIN", "ANDERSON", "THOMPSON", "NGUYEN", "THOMAS", "WALKER", "HARRIS",
-    "LEE", "RYAN", "ROBINSON", "KELLY", "KING", "DAVIS", "WRIGHT", "EVANS", "ROBERTS",
-    "GREEN", "HALL", "WOOD", "JACKSON", "CLARKE", "PATEL", "KHAN", "LEWIS", "JAMES",
-    "PHILLIPS", "MITCHELL", "CAMPBELL", "MORRIS", "YOUNG", "SCOTT", "MURPHY", "COOK",
-    "BAKER", "TURNER", "COOPER", "HILL", "WARD", "HUGHES", "MOORE", "CHEN", "WANG",
-    "SINGH", "OBRIEN", "MCDONALD", "STEWART", "MACDONALD", "SULLIVAN", "MURRAY",
-    "WATSON", "PRICE", "BELL", "ALLEN")
-given <- c("JOHN", "MARY", "ROBERT", "JENNIFER", "MICHAEL", "LINDA", "WILLIAM",
-    "ELIZABETH", "DAVID", "SUSAN", "JAMES", "MARGARET", "PETER", "SARAH", "ANDREW",
-    "JESSICA", "DANIEL", "EMILY", "MATTHEW", "CHLOE", "THOMAS", "OLIVIA", "JOSHUA",
-    "EMMA", "RYAN", "GRACE", "BENJAMIN", "SOPHIE", "LUKE", "HANNAH", "KYLE", "ZOE",
-    "NATHAN", "AMY", "SAMUEL", "LUCY")
-n_people <- 80000
-truth <- data.frame(
-    person   = seq_len(n_people),
-    surname  = sample(surnames, n_people, TRUE),
-    given    = sample(given, n_people, TRUE),
-    dob      = as.Date("1940-01-01") + sample(0:25000, n_people, TRUE),
-    postcode = sprintf("%04d", sample(c(800:899, 2000:4999), n_people, TRUE))
-)
-
-# One random substitution, deletion or transposition per string
-typo <- function(s) {
-    k <- nchar(s)
-    i <- floor(runif(length(s)) * k) + 1
-    r <- runif(length(s))
-    out <- s
-    sub_ <- r < 0.4
-    substr(out[sub_], i[sub_], i[sub_]) <- sample(LETTERS, sum(sub_), TRUE)
-    del <- r >= 0.4 & r < 0.7
-    out[del] <- paste0(substr(s[del], 1, i[del] - 1), substr(s[del], i[del] + 1, 100))
-    tr <- r >= 0.7 & i < k
-    out[tr] <- paste0(substr(s[tr], 1, i[tr] - 1), substr(s[tr], i[tr] + 1, i[tr] + 1),
-                      substr(s[tr], i[tr], i[tr]), substr(s[tr], i[tr] + 2, 100))
-    out
-}
-copies <- truth[sample(n_people, n_people / 4), ]
-e <- runif(nrow(copies))
-copies$surname[e < 0.3] <- typo(copies$surname[e < 0.3])
-copies$given[e >= 0.3 & e < 0.5] <- typo(copies$given[e >= 0.3 & e < 0.5])
-off <- e >= 0.5 & e < 0.65
-copies$dob[off] <- copies$dob[off] + sample(c(-1, 1), sum(off), TRUE)
-copies$postcode[e >= 0.65 & e < 0.8] <- NA
-
-records <- rbind(truth, copies)
-records <- records[sample(nrow(records)), ]
-nrow(records)
-```
-
-Three blocking passes, each robust to a different kind of error: a
-phonetic surname with the date of birth (survives most surname typos), the
-given name with the date of birth (survives any surname change), and the
-exact names with the postcode (survives date errors):
-
-```{r}
-#| label: e2e-block
-system.time(
-    pairs <- block_pairs(data.frame(
-        surname_dob = paste(soundex(records$surname), records$dob),
-        given_dob   = paste(records$given, records$dob),
-        names_pc    = paste(records$surname, substr(records$given, 1, 1),
-                            records$postcode)
-    ))
-)
-nrow(pairs)
-table(pass = pairs$pass)
-```
-
-Score each candidate on every field, weight them, and keep pairs above a
-threshold:
-
-```{r}
-#| label: e2e-score
-system.time({
-    i <- pairs$x_index
-    j <- pairs$y_index
-    surname_sim <- jaro_winkler(records$surname[i], records$surname[j])
-    given_sim   <- jaro_winkler(records$given[i], records$given[j])
-    dob_agree   <- as.numeric(abs(records$dob[i] - records$dob[j]) <= 1)
-    pc_agree    <- ifelse(is.na(records$postcode[i]) | is.na(records$postcode[j]), 0.5,
-                          as.numeric(records$postcode[i] == records$postcode[j]))
-    pairs$score <- (2 * surname_sim + given_sim + dob_agree + 0.5 * pc_agree) / 4.5
-})
-matches <- pairs[pairs$score >= 0.9, ]
-```
-
-Then cluster the matches into entities:
-
-```{r}
-#| label: e2e-cluster
-system.time(entity <- cluster_pairs(matches, n = nrow(records)))
-c(entities = max(entity), true_people = n_people)
+#| label: cluster-from-pairs
+accepted <- dup[dup$given > 0.85 & dup$surname > 0.85, ]
+entity <- cluster_pairs(accepted, n = nrow(combined))
+c(records = length(entity), entities = max(entity),
+  merged = length(entity) - max(entity))
 table(cluster_size = tabulate(entity))
 ```
 
-Because the data are synthetic we know the truth, so we can measure how
-well each stage did:
+Chaining is the risk, and it is visible right there. The stacked extract
+holds each shared person exactly twice, so a perfect deduplication would
+leave clusters of size 1 and 2 only. The clusters of eight and thirteen
+are not people recorded thirteen times; they are chains, where A matched
+B, B matched C, and nothing ever compared A with C. Three defences, in
+order of how much work they are:
+
+- resolve the pairs one-to-one before clustering, keeping each record's
+  single best partner (@sec-workflow does this);
+- raise the threshold for a pair that would join two already-large
+  clusters;
+- review the largest clusters by hand. There are few of them, and they are
+  where the wrong merges live.
+
+A cluster is only as sound as its weakest accepted pair, so it is the
+*minimum* pair score inside a large cluster that is worth looking at, not
+the average.
+
+## At scale
+
+The whole of the linkage above -- four blocking passes and seven
+comparators over 20,000 enrolment records and 15,000 claims -- is one
+`rLink()` call. The same call on ten times the data:
 
 ```{r}
-#| label: e2e-quality
-same_person <- function(a, b) records$person[a] == records$person[b]
-true_pairs  <- sum(choose(table(records$person), 2))
-c(
-    blocking_recall = sum(same_person(pairs$x_index, pairs$y_index)) / true_pairs,
-    precision       = mean(same_person(matches$x_index, matches$y_index)),
-    recall          = sum(same_person(matches$x_index, matches$y_index)) / true_pairs
+#| label: scale
+big <- people_files(n_enrol = 200000, overlap = 0.6)
+big_claims <- big$claims
+nm <- fsquish(fupper(big_claims$patient_name))
+rs <- fsquish(freplace_tokens(ftrimws(fsplit_field(nm, ",", 2)),
+                              titles, rep("", length(titles))))
+big_std <- data.frame(
+    given_name = fsplit_field(rs, " ", 1),
+    surname    = ftrimws(fsplit_field(nm, ",", 1)),
+    dob        = fas.Date(big_claims$date_of_birth, format = "dmy"),
+    postcode   = fpad(as.character(big_claims$postcode), 4, pad = "0"),
+    stringsAsFactors = FALSE)
+big_enrol <- big$enrol
+
+system.time(
+    out <- rLink(big_enrol, big_std,
+        block = list(list(soundex(surname), dob),
+                     list(soundex(given_name), dob),
+                     list(soundex(surname), fsubstr(given_name, 1, 1), postcode)),
+        compare = list(surname = jaro_winkler(surname),
+                       given   = jaro_winkler_tokens(given_name),
+                       dob     = (function(a, b) a == b)(dob)),
+        keep = character())
 )
+c(records_a = nrow(big_enrol), records_b = nrow(big_std),
+  pairs_possible = as.numeric(nrow(big_enrol)) * nrow(big_std),
+  pairs_compared = nrow(out),
+  blocking_recall = round(sum(same_person(big, out$index_1, out$index_2)) /
+                          true_pair_count(big), 4))
 ```
 
-Blocking reduced five billion possible pairs to a few tens of thousands
-without losing a true match, and the whole run takes well under a second.
-The weights and threshold here are picked by hand; on real data, tune them
-against a labelled sample, or estimate them with a probabilistic model
-(the `fastLink` and `reclin2` packages fit Fellegi-Sunter weights) and
-use `fast.string` for the steps around it.
+`keep = character()` carries none of the input columns onto the output,
+which is what you want once the pipeline is no longer being read by eye:
+the indices and the scores are enough to join back.

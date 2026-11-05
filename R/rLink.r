@@ -342,6 +342,13 @@ rLink <- function(data_1,
         probs <- .rlink_problems()
         keys_1 <- vector("list", n_pass)
         keys_2 <- vector("list", n_pass)
+        # A term written into more than one pass -- soundex(surname) in both
+        # `list(list(soundex(surname), dob), list(soundex(surname),
+        # postcode))` -- is evaluated once per side. The comparators already
+        # share a column this way; the passes did not, and a phonetic code
+        # or a date is the most expensive thing in a pass.
+        cache_1 <- .rlink_term_cache()
+        cache_2 <- .rlink_term_cache()
         for (p in seq_len(n_pass)) {
             terms_1 <- spec$passes[[p]]
             inherit <- is.null(spec_2) || is.null(spec_2$passes[[p]])
@@ -349,13 +356,13 @@ rLink <- function(data_1,
             env_2 <- if (is.null(spec_2)) spec$env else spec_2$env
             arg_2 <- if (inherit) "block" else "block_2"
             parts_1 <- lapply(seq_along(terms_1), function(k)
-                .rlink_term(terms_1[[k]], mask_1, spec$env, nrow(data_1),
-                            "block", p, k, probs))
+                .rlink_cached_term(cache_1, terms_1[[k]], mask_1, spec$env,
+                                   nrow(data_1), "block", p, k, probs))
             # Deduplicating, the second side would be the same key built
             # from the same data a second time.
             parts_2 <- if (!dedupe) lapply(seq_along(terms_2), function(k)
-                .rlink_term(terms_2[[k]], mask_2, env_2, nrow(d2),
-                            arg_2, p, k, probs))
+                .rlink_cached_term(cache_2, terms_2[[k]], mask_2, env_2,
+                                   nrow(d2), arg_2, p, k, probs))
             if (length(probs$msgs)) next
             keys_1[[p]] <- .rlink_key(parts_1, p, force_upper_case,
                                       na_strings, match_missing, nthreads)
@@ -431,7 +438,8 @@ rLink <- function(data_1,
     out[[paste0("index", suffixes[2L])]] <- yi
     out[["pass"]] <- pairs$pass
     if (show_key)
-        out[["block_key"]] <- .rlink_block_key(keys_1, pairs, xi, n_pairs)
+        out[["block_key"]] <- .rlink_block_key(keys_1, pairs, xi, n_pairs,
+                                               nthreads)
     for (nm in keep_1) out[[paste0(nm, suffixes[1L])]] <- data_1[[nm]][xi]
     for (nm in keep_2) out[[paste0(nm, suffixes[2L])]] <- d2[[nm]][yi]
     data.table::setDT(out)
@@ -468,7 +476,7 @@ rLink <- function(data_1,
                             "compare", i, 2L, probs)
             if (!is.null(v))
                 rec_cache[[rec_id[[i]][k]]] <-
-                    .rlink_chr(v, force_upper_case, na_strings)
+                    .rlink_chr(v, force_upper_case, na_strings, nthreads)
         }
         .rlink_stop(probs, data_1)
         a0 <- rec_cache[[rec_id[[i]][1L]]]
@@ -654,6 +662,25 @@ rLink <- function(data_1,
     v
 }
 
+# Terms are shared across passes by their written form, so an expression
+# that is not a pure function of the data (a sample(), say) is evaluated
+# once rather than once per pass -- the same contract the comparators have
+# always had.
+.rlink_term_cache <- function() new.env(parent = emptyenv())
+
+.rlink_cached_term <- function(cache, e, mask, env, n, arg, pass, slot,
+                               probs) {
+    id <- paste(deparse(e), collapse = "
+")
+    held <- cache[[id]]
+    # Wrapped, so that a term that failed (and left its message with
+    # `probs`) is remembered as NULL rather than reported once per pass.
+    if (!is.null(held)) return(held$value)
+    value <- .rlink_term(e, mask, env, n, arg, pass, slot, probs)
+    cache[[id]] <- list(value = value)
+    value
+}
+
 # One blocking key per pass. A lone term keeps its own type, so numbers and
 # dates still sort as numbers and dates under the sorted neighbourhood.
 .rlink_key <- function(parts, pass, upper, na_strings, match_missing,
@@ -690,12 +717,22 @@ rLink <- function(data_1,
     # Upper-casing and na_strings are about text, so they never turn a lone
     # number or date into text: that would sort 10 before 9 under the sorted
     # neighbourhood.
-    if (force_chr || match_missing) v <- as.character(v)
+    dated <- FALSE
+    if (force_chr || match_missing) {
+        text <- .rlink_date_chr(v, nthreads)
+        dated <- !is.null(text)
+        v <- if (dated) text else as.character(v)
+    }
     if (is.character(v)) {
-        if (length(na_strings)) v[v %in% na_strings] <- NA_character_
-        if (upper) v <- fupper(v)
-        # Before the placeholder goes in, or it would flag itself.
-        if (length(guard)) .rlink_check_sep(v, pass, guard, nthreads)
+        v <- .rlink_na_strings(v, na_strings)
+        # A date that came through format_date() is digits and dashes: there
+        # is no case to fold and no control character to find, so it skips
+        # two whole passes over the column.
+        if (!dated) {
+            if (upper) v <- fupper(v)
+            # Before the placeholder goes in, or it would flag itself.
+            if (length(guard)) .rlink_check_sep(v, pass, guard, nthreads)
+        }
     }
     if (match_missing) v[is.na(v)] <- .rlink_na_key
     v
@@ -708,15 +745,64 @@ rLink <- function(data_1,
 # Each pass is rendered once per record, and the passes laid end to end, so
 # one index picks every pair's key: as.character() of a Date and gsub() over
 # every pair cost many times what they do over the records.
-.rlink_block_key <- function(keys_1, pairs, xi, n_pairs) {
+.rlink_block_key <- function(keys_1, pairs, xi, n_pairs, nthreads = NULL) {
     shown <- lapply(keys_1, function(k) {
-        if (!is.character(k)) return(as.character(k))
+        if (!is.character(k)) return(.rlink_as_character(k, nthreads))
         k <- gsub(.rlink_na_key, "<NA>", k, fixed = TRUE)
         gsub(.rlink_sep, "|", k, fixed = TRUE)
     })
     if (length(shown) == 1L) return(shown[[1L]][xi])
     offset <- c(0L, cumsum(lengths(shown)))
     unlist(shown, use.names = FALSE)[xi + offset[pairs$pass]]
+}
+
+# as.character() on a Date runs format.Date(), which reaches strftime() per
+# element: for a date of birth it is by far the most expensive step in
+# building a blocking key or a comparison value --- 147 ms per 200,000 dates
+# against 11 ms for format_date(), which writes the same "YYYY-MM-DD" from
+# integer calendar arithmetic, in parallel.
+#
+# The two agree on every four-digit year. Outside that, format_date() pads
+# year 1 to "0001" where base R writes "1", and gives NA for a year past
+# 9999 or a non-finite day where base R writes the number. .rlink_date_chr()
+# therefore returns NULL for anything out of range, deciding it with a range
+# check over the day numbers rather than per element, and the caller falls
+# back to as.character().
+.rlink_date_min <- -354285   # 1000-01-01
+.rlink_date_max <- 2932896   # 9999-12-31
+
+.rlink_date_chr <- function(v, nthreads = NULL) {
+    if (!inherits(v, "Date")) return(NULL)
+    days <- unclass(v)
+    if (!is.numeric(days) || !is.null(attributes(days))) return(NULL)
+    if (anyNA(days)) {
+        # is.na() is TRUE of NaN too, which base R renders as "NaN"; only
+        # a column that has missings at all pays for telling them apart.
+        if (any(is.nan(days))) return(NULL)
+        days <- days[!is.na(days)]
+    }
+    if (length(days) &&
+        !(is.finite(min(days)) && min(days) >= .rlink_date_min &&
+          max(days) <= .rlink_date_max))
+        return(NULL)
+    format_date(unclass(v), nthreads = nthreads)
+}
+
+.rlink_as_character <- function(v, nthreads = NULL) {
+    text <- .rlink_date_chr(v, nthreads)
+    if (is.null(text)) as.character(v) else text
+}
+
+# v[v %in% na_strings] <- NA, but %in% builds a hash table of na_strings and
+# probes it once per record. The default is the single string "", for which
+# a direct comparison is three times faster. which() is what drops the NAs
+# that == leaves behind.
+.rlink_na_strings <- function(v, na_strings) {
+    if (!length(na_strings)) return(v)
+    hit <- if (length(na_strings) == 1L) which(v == na_strings)
+           else which(v %in% na_strings)
+    if (length(hit)) v[hit] <- NA_character_
+    v
 }
 
 .rlink_same_type <- function(a, b)
@@ -863,11 +949,16 @@ rLink <- function(data_1,
     NA_character_
 }
 
-.rlink_chr <- function(v, upper, na_strings) {
+.rlink_chr <- function(v, upper, na_strings, nthreads = NULL) {
     if (is.factor(v)) v <- as.character(v)
-    if (!is.character(v)) v <- as.character(v)
-    if (length(na_strings)) v[v %in% na_strings] <- NA_character_
-    if (upper) v <- fupper(v)
+    dated <- FALSE
+    if (!is.character(v)) {
+        text <- .rlink_date_chr(v, nthreads)
+        dated <- !is.null(text)
+        v <- if (dated) text else as.character(v)
+    }
+    v <- .rlink_na_strings(v, na_strings)
+    if (upper && !dated) v <- fupper(v)
     v
 }
 

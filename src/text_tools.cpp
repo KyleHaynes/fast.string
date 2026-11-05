@@ -1427,11 +1427,35 @@ CharacterVector fast_html_escape_impl(const StringVector& x, bool attribute,
 }
 
 // [[Rcpp::export]]
+// True when `value` is ASCII and already entirely in the target case, so
+// case_string() would reproduce it byte for byte. Record-linkage fields are
+// routinely upper-cased again and again -- and every phonetic code and
+// fixed-format date this package produces is upper-case ASCII already -- so
+// this is the usual case, and answering it costs one scan rather than a
+// rebuild of the string plus the memcmp that would then discard it. A high
+// bit means the character is not ASCII, so the Unicode tables decide; the
+// unsigned subtraction is the usual branch-free "is this a letter of the
+// wrong case" test.
+static inline bool already_cased_ascii(const StringView& value, bool upper) {
+    const unsigned char* s =
+        reinterpret_cast<const unsigned char*>(value.data);
+    const std::size_t n = value.size;
+    const unsigned char wrong = upper ? 'a' : 'A';
+    for (std::size_t i = 0; i < n; ++i) {
+        const unsigned char c = s[i];
+        if (c >= 0x80) return false;
+        if (static_cast<unsigned char>(c - wrong) < 26u) return false;
+    }
+    return true;
+}
+
+// [[Rcpp::export]]
 CharacterVector fast_case_impl(const StringVector& x, bool upper,
                                int nthreads) {
     StringSnapshot snapshot(x, SnapshotText::utf8);
     auto body = [upper](const StringView& value, std::string& out,
                         std::vector<Span>&) {
+        if (already_cased_ascii(value, upper)) return false;
         case_string(value, out, upper);
         return true;
     };

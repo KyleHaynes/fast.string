@@ -59,6 +59,15 @@ struct PairWorker : public Worker {
           n_x(n_x_), chunks(chunks_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
+        // One exact pass is the common case (block_pairs() on a single key).
+        // Its block's members are already in ascending record order and
+        // cannot repeat, so there is nothing to sort or de-duplicate and the
+        // pairs go straight out: for a record in a block of b partners that
+        // is b writes instead of b writes plus a b log b sort.
+        if (passes.size() == 1 && passes[0].half_window == 0) {
+            single_exact(begin, end);
+            return;
+        }
         std::vector<Candidate> found;
         for (std::size_t chunk = begin; chunk < end; ++chunk) {
             PairChunk& out = chunks[chunk];
@@ -66,6 +75,12 @@ struct PairWorker : public Worker {
             const std::size_t last = (std::min)(n_x, first + rows_per_chunk);
             for (std::size_t i = first; i < last; ++i) {
                 found.clear();
+                // Several passes can report the same partner, and a window
+                // wider than one code interleaves partners from neighbouring
+                // codes; either one means the list has to be put in order
+                // before duplicates can be dropped.
+                int contributors = 0;
+                bool ordered = true;
                 for (std::size_t p = 0; p < passes.size(); ++p) {
                     const Pass& pass = passes[p];
                     const int code = pass.x_codes[i];
@@ -76,13 +91,25 @@ struct PairWorker : public Worker {
                                               code + pass.half_window);
                     const std::size_t from = pass.offsets[lo];
                     const std::size_t to = pass.offsets[hi + 1];
+                    const std::size_t before = found.size();
                     for (std::size_t k = from; k < to; ++k) {
                         const int j = pass.members[k];
                         if (dedupe && j <= static_cast<int>(i)) continue;
                         found.push_back(Candidate{j, static_cast<int>(p)});
                     }
+                    if (found.size() == before) continue;
+                    if (++contributors > 1 || pass.half_window != 0)
+                        ordered = false;
                 }
                 if (found.empty()) continue;
+                if (ordered) {
+                    for (const Candidate& c : found) {
+                        out.x.push_back(static_cast<int>(i) + 1);
+                        out.y.push_back(c.y + 1);
+                        out.pass.push_back(c.pass + 1);
+                    }
+                    continue;
+                }
                 std::sort(found.begin(), found.end(),
                           [](const Candidate& a, const Candidate& b) {
                               return a.y != b.y ? a.y < b.y : a.pass < b.pass;
@@ -94,6 +121,35 @@ struct PairWorker : public Worker {
                     out.x.push_back(static_cast<int>(i) + 1);
                     out.y.push_back(c.y + 1);
                     out.pass.push_back(c.pass + 1);
+                }
+            }
+        }
+    }
+
+    void single_exact(std::size_t begin, std::size_t end) {
+        const Pass& pass = passes[0];
+        const bool has_skipped = !pass.skipped.empty();
+        for (std::size_t chunk = begin; chunk < end; ++chunk) {
+            PairChunk& out = chunks[chunk];
+            const std::size_t first = chunk * rows_per_chunk;
+            const std::size_t last = (std::min)(n_x, first + rows_per_chunk);
+            for (std::size_t i = first; i < last; ++i) {
+                const int code = pass.x_codes[i];
+                if (code == NA_INTEGER) continue;
+                if (has_skipped && pass.skipped[code]) continue;
+                const int* from = pass.members.data() + pass.offsets[code];
+                const int* to = pass.members.data() + pass.offsets[code + 1];
+                // members ascend within a block, so when deduplicating the
+                // partners above i are a suffix, found by binary search
+                // rather than by walking the whole block.
+                if (dedupe)
+                    from = std::upper_bound(from, to, static_cast<int>(i));
+                if (from == to) continue;
+                const int x = static_cast<int>(i) + 1;
+                for (const int* k = from; k != to; ++k) {
+                    out.x.push_back(x);
+                    out.y.push_back(*k + 1);
+                    out.pass.push_back(1);
                 }
             }
         }

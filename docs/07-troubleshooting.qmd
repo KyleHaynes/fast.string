@@ -137,6 +137,131 @@ coarsens its ranges to limit useful parallel work instead. `nthreads = 1`
 still runs strictly serially on either backend. Set the build variable
 `FAST_STRING_TINYTHREAD=1` only when installing such a diagnostic build.
 
+## Performance
+
+### Which functions are *not* faster than base R?
+
+Several, and it is better to know which than to find out. Every function
+here pays a fixed cost per call that base R does not: it copies the
+vector's string pointers into a snapshot the worker threads can read
+safely, plans the work into byte-balanced chunks, and assembles the
+result. When the actual work is one cheap pass over short strings, that
+scaffolding is most of the cost, and base R's own C code is already near
+the floor.
+
+```{r}
+#| label: slower-than-base
+set.seed(1)
+n <- 5e5
+# Short values with a handful of matches each: names, codes, postcodes.
+x <- vapply(seq_len(4000),
+            function(i) paste(sample(LETTERS, 8, TRUE), collapse = ""), "")
+x <- sample(x, n, TRUE)
+
+ms <- function(f, reps = 5) {
+    f(); start <- Sys.time()
+    for (i in seq_len(reps)) f()
+    round(1000 * (as.numeric(Sys.time()) - as.numeric(start)) / reps, 1)
+}
+cmp <- function(label, fast, base) {
+    f <- ms(fast); b <- ms(base)
+    data.frame(operation = label, fast_ms = f, base_ms = b,
+               ratio = round(b / f, 2))
+}
+do.call(rbind, list(
+    cmp("substr(), positive positions",
+        function() fsubstr(x, 1, 4), function() substr(x, 1, 4)),
+    cmp("substr(), from the end",
+        function() fsubstr(x, -3, -1),
+        function() substring(x, nchar(x) - 2, nchar(x))),
+    cmp("strsplit() to a list",
+        function() fstrsplit(x, "A"), function() strsplit(x, "A", fixed = TRUE)),
+    cmp("one field of a split",
+        function() fsplit_field(x, "A", 1),
+        function() vapply(strsplit(x, "A", fixed = TRUE), `[`, "", 1L)),
+    cmp("grepl(), fixed, 8 characters",
+        function() fgrepl("A", x, fixed = TRUE),
+        function() grepl("A", x, fixed = TRUE)),
+    cmp("gsub(), fixed, 8 characters",
+        function() fgsub("A", "4", x, fixed = TRUE),
+        function() gsub("A", "4", x, fixed = TRUE)),
+    cmp("gsub(), regular expression",
+        function() fgsub("[AEIOU]", "", x),
+        function() gsub("[AEIOU]", "", x)),
+    cmp("grepl(), regular expression",
+        function() fgrepl("^[A-M].*N$", x),
+        function() grepl("^[A-M].*N$", x))
+))
+```
+
+Read `ratio` as "times faster than base R"; below 1 means base R wins.
+The pattern, which holds across machines even though the exact numbers do
+not:
+
+- **`fsubstr()` with plain positive positions is slower than `substr()`**,
+  which already does one cheap pass. It wins decisively on *negative*
+  positions — `fsubstr(x, -3, -1)` for the last three characters —
+  where the base R equivalent needs an `nchar()` call and arithmetic per
+  element.
+- **`fstrsplit()` is slower than `strsplit()`.** The cost is building half
+  a million R character vectors, which happens on the main thread either
+  way. If you only want one field, `fsplit_field()` skips the list
+  entirely and beats `strsplit()` plus `vapply()` several times over —
+  that is the function to reach for.
+- **Fixed-string matching and substitution on short values is roughly a
+  tie**, and which way it falls depends on how many elements actually
+  contain the pattern. When most do not match, base R returns them
+  untouched almost for free while this package still pays for the
+  snapshot; when most do, the parallel substitution pulls ahead. Neither
+  direction is worth restructuring code for.
+- **Regular expressions are where the package wins**, and the margin grows
+  with the length of the subject and the complexity of the pattern,
+  because PCRE2 matching is the part that parallelises.
+
+Two more cases where base R is the better tool:
+
+- **Short vectors.** Below a few thousand elements nothing parallelises
+  (the thresholds are in @sec-theory) and the per-call cost dominates.
+  These functions are for columns, not scalars.
+- **Scalar calls inside a loop.** Call them once on the whole vector.
+
+None of this applies to the functions with no base R equivalent — the
+phonetic codes, the similarity metrics, `fcount()`, `format_date()`,
+`fas.Date()`, `freplace_tokens()`, `string_shape()`, `fpad()`,
+`freverse()`, `rLink()`. There the comparison is against a hand-written
+loop or another package, the gaps are one to two orders of magnitude, and
+@sec-benchmarks makes it.
+
+### `rLink()` is slower than I expected — where is the time going?
+
+Read `attr(result, "timings")`. It breaks the call into the stages that
+scale differently: `keys` is work per *record* (phonetic codes, date
+formatting, joining the terms of each key), `pairs` is the blocking itself,
+`attach` is copying the carried columns onto the pairs, and one row per
+comparator is work per *candidate pair*.
+
+```{r}
+#| label: rlink-timings-faq
+people <- data.frame(
+    given    = sample(c("JOHN", "MARY", "ROBERT"), 2e4, TRUE),
+    surname  = sample(c("SMITH", "JONES", "NGUYEN", "PATEL"), 2e4, TRUE),
+    dob      = as.Date("1950-01-01") + sample(0:2e4, 2e4, TRUE),
+    postcode = sprintf("%04d", sample(3000:3100, 2e4, TRUE)))
+r <- rLink(people, block = list(list(soundex(surname), dob)),
+           compare = list(jaro_winkler(given)), keep = character())
+attr(r, "timings")
+```
+
+If `keys` dominates, the blocking expressions are the cost: a term written
+into several passes is evaluated once per side, so that is already shared,
+but an expensive one (`daitch_mokotoff()`, `ngram_fingerprint()`) is worth
+computing into a column beforehand. If a *comparator* dominates, there are
+too many candidate pairs — tighten the key or set
+`max_block_size`, and check `attr(result, "compare")` to be sure a
+comparator is not being applied to a column you did not mean. If `attach`
+dominates, pass `keep` to carry fewer columns, or `keep = character()` to
+carry none and join back by the indices.
+
 ## Regex behaviour
 
 ### `fsub()`/`fgsub()` with `perl = FALSE` replaced a different match than base R

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head><title>R: Fast Parallel String Functions via PCRE2 and RcppParallel</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body><div class="container">
+<h1> Fast Parallel String Functions via PCRE2 and RcppParallel
+<img class="toplogo" src="../../../doc/html/Rlogo.svg" alt="[R logo]">
+</h1>
+<hr>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]"></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]"></a>
+</div><h2>Documentation for package &lsquo;fast.string&rsquo; version 0.3.0</h2>
+
+<ul><li><a href="../DESCRIPTION" type="text/plain; charset=utf-8">DESCRIPTION file</a></li>
+<li><a href="../README.md">Package README</a></li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<p style="text-align: center;">
+<a href="# "> </a>
+<a href="#A">A</a>
+<a href="#B">B</a>
+<a href="#C">C</a>
+<a href="#D">D</a>
+<a href="#E">E</a>
+<a href="#F">F</a>
+<a href="#G">G</a>
+<a href="#H">H</a>
+<a href="#I">I</a>
+<a href="#J">J</a>
+<a href="#L">L</a>
+<a href="#M">M</a>
+<a href="#N">N</a>
+<a href="#O">O</a>
+<a href="#P">P</a>
+<a href="#Q">Q</a>
+<a href="#R">R</a>
+<a href="#S">S</a>
+<a href="#T">T</a>
+<a href="#U">U</a>
+<a href="#V">V</a>
+</p>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="fast.string-package.html">fast.string-package</a></td>
+<td>fast.string: parallel string, date and fuzzy-matching functions</td></tr>
+</table>
+
+<h2><a id="A">-- A --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="ascii_fold.html">ascii_fold</a></td>
+<td>Fold accented and other Latin characters to ASCII</td></tr>
+</table>
+
+<h2><a id="B">-- B --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="block_pairs.html">block_pairs</a></td>
+<td>Candidate pairs by blocking on exact keys</td></tr>
+</table>
+
+<h2><a id="C">-- C --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="caverphone.html">caverphone</a></td>
+<td>Caverphone 2.0 phonetic code (Caversham Project, University of Otago)</td></tr>
+<tr><td style="width: 25%;"><a href="cluster_pairs.html">cluster_pairs</a></td>
+<td>Entity clusters from matched pairs</td></tr>
+<tr><td style="width: 25%;"><a href="cologne.html">cologne</a></td>
+<td>Cologne phonetic code</td></tr>
+<tr><td style="width: 25%;"><a href="cosine_matrix.html">cosine_matrix</a></td>
+<td>Q-gram cosine all-pairs similarity matrix</td></tr>
+<tr><td style="width: 25%;"><a href="cosine_similarity.html">cosine_similarity</a></td>
+<td>Q-gram cosine similarity</td></tr>
+</table>
+
+<h2><a id="D">-- D --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="daitch_mokotoff.html">daitch_mokotoff</a></td>
+<td>Daitch-Mokotoff Soundex</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">damerau_levenshtein</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="damerau_levenshtein_matrix.html">damerau_levenshtein_matrix</a></td>
+<td>Unrestricted Damerau-Levenshtein all-pairs distance matrix</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">damerau_levenshtein_similarity</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="date_parts.html">date_parts</a></td>
+<td>Decompose a Date vector into year, month, day integer columns.</td></tr>
+<tr><td style="width: 25%;"><a href="qgram_metrics.html">dice_coefficient</a></td>
+<td>Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky</td></tr>
+<tr><td style="width: 25%;"><a href="dice_matrix.html">dice_matrix</a></td>
+<td>Q-gram Sorensen-Dice all-pairs similarity matrix</td></tr>
+<tr><td style="width: 25%;"><a href="double_metaphone.html">double_metaphone</a></td>
+<td>Double Metaphone phonetic code (Lawrence Philips, 2000)</td></tr>
+</table>
+
+<h2><a id="E">-- E --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="editex.html">editex</a></td>
+<td>Editex phonetic edit distance</td></tr>
+<tr><td style="width: 25%;"><a href="editex.html">editex_similarity</a></td>
+<td>Editex phonetic edit distance</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">edit_distance</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="edit_ops.html">edit_ops</a></td>
+<td>The edits that turn one string into another</td></tr>
+</table>
+
+<h2><a id="F">-- F --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="fagrepl.html">fagrep</a></td>
+<td>Fast parallel approximate (fuzzy) matching</td></tr>
+<tr><td style="width: 25%;"><a href="fagrepl.html">fagrepl</a></td>
+<td>Fast parallel approximate (fuzzy) matching</td></tr>
+<tr><td style="width: 25%;"><a href="fas.Date.html">fas.Date</a></td>
+<td>Fast fixed-format date parsing and epoch day-count conversion</td></tr>
+<tr><td style="width: 25%;"><a href="fas.POSIXct.html">fas.POSIXct</a></td>
+<td>Fast fixed-format timestamp parsing</td></tr>
+<tr><td style="width: 25%;"><a href="fast.string-package.html">fast.string</a></td>
+<td>fast.string: parallel string, date and fuzzy-matching functions</td></tr>
+<tr><td style="width: 25%;"><a href="fchartr.html">fchartr</a></td>
+<td>Fast parallel character translation</td></tr>
+<tr><td style="width: 25%;"><a href="fcount.html">fcount</a></td>
+<td>Fast parallel match counting</td></tr>
+<tr><td style="width: 25%;"><a href="fgrepl_any.html">fcount_any</a></td>
+<td>Search for many literal strings at once</td></tr>
+<tr><td style="width: 25%;"><a href="fextract.html">fextract</a></td>
+<td>Fast parallel match extraction</td></tr>
+<tr><td style="width: 25%;"><a href="fextract.html">fextract_all</a></td>
+<td>Fast parallel match extraction</td></tr>
+<tr><td style="width: 25%;"><a href="fgrepl_any.html">fextract_any</a></td>
+<td>Search for many literal strings at once</td></tr>
+<tr><td style="width: 25%;"><a href="fgrep.html">fgrep</a></td>
+<td>Fast parallel string matching returning indices or values</td></tr>
+<tr><td style="width: 25%;"><a href="fgrepl.html">fgrepl</a></td>
+<td>Fast parallel string matching</td></tr>
+<tr><td style="width: 25%;"><a href="fgrepl_any.html">fgrepl_any</a></td>
+<td>Search for many literal strings at once</td></tr>
+<tr><td style="width: 25%;"><a href="fgsub.html">fgsub</a></td>
+<td>Fast parallel global substitution</td></tr>
+<tr><td style="width: 25%;"><a href="fhash.html">fhash</a></td>
+<td>Fast vectorised hashing of strings</td></tr>
+<tr><td style="width: 25%;"><a href="fingerprint.html">fingerprint</a></td>
+<td>OpenRefine clustering keys</td></tr>
+<tr><td style="width: 25%;"><a href="fupper.html">flower</a></td>
+<td>Fast parallel case conversion</td></tr>
+<tr><td style="width: 25%;"><a href="fnchar.html">fnchar</a></td>
+<td>Fast character/byte counting</td></tr>
+<tr><td style="width: 25%;"><a href="format_date.html">format_date</a></td>
+<td>Format a Date vector as strings without locale or timezone overhead.</td></tr>
+<tr><td style="width: 25%;"><a href="format_datetime.html">format_datetime</a></td>
+<td>Fast fixed-format timestamp formatting</td></tr>
+<tr><td style="width: 25%;"><a href="format_date_parts.html">format_date_parts</a></td>
+<td>Concatenate separate year/month/day fields into a formatted date string.</td></tr>
+<tr><td style="width: 25%;"><a href="fpad.html">fpad</a></td>
+<td>Fast string padding</td></tr>
+<tr><td style="width: 25%;"><a href="fparse_number.html">fparse_number</a></td>
+<td>Fast parsing of numbers from messy text</td></tr>
+<tr><td style="width: 25%;"><a href="freplace_tokens.html">freplace_tokens</a></td>
+<td>Fast whole-token dictionary replacement</td></tr>
+<tr><td style="width: 25%;"><a href="freverse.html">freverse</a></td>
+<td>Fast string reversal</td></tr>
+<tr><td style="width: 25%;"><a href="fsplit_field.html">fsplit_field</a></td>
+<td>Fast parallel field extraction from delimited strings</td></tr>
+<tr><td style="width: 25%;"><a href="fsquish.html">fsquish</a></td>
+<td>Fast whitespace squishing</td></tr>
+<tr><td style="width: 25%;"><a href="fstrsplit.html">fstrsplit</a></td>
+<td>Fast parallel string splitting</td></tr>
+<tr><td style="width: 25%;"><a href="fsub.html">fsub</a></td>
+<td>Fast parallel first-match substitution</td></tr>
+<tr><td style="width: 25%;"><a href="fsubstr.html">fsubstr</a></td>
+<td>Fast substring extraction</td></tr>
+<tr><td style="width: 25%;"><a href="ftitle_case.html">ftitle_case</a></td>
+<td>Title case for names, in parallel</td></tr>
+<tr><td style="width: 25%;"><a href="ftrimws.html">ftrimws</a></td>
+<td>Fast whitespace trimming</td></tr>
+<tr><td style="width: 25%;"><a href="fupper.html">fupper</a></td>
+<td>Fast parallel case conversion</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzzy_lookup.html">fuzzy_lookup</a></td>
+<td>Memory-efficient fuzzy lookup</td></tr>
+<tr><td style="width: 25%;"><a href="fuzzy_lookup.html">fuzzy_match</a></td>
+<td>Memory-efficient fuzzy lookup</td></tr>
+<tr><td style="width: 25%;"><a href="fuzzy_lookup.html">fuzzy_top_n</a></td>
+<td>Memory-efficient fuzzy lookup</td></tr>
+<tr><td style="width: 25%;"><a href="fuzzy_within.html">fuzzy_within</a></td>
+<td>Every table entry within a few edits of each query</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz_process.html">fuzz_cdist</a></td>
+<td>Search and compare tables with the RapidFuzz scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz_process.html">fuzz_cpdist</a></td>
+<td>Search and compare tables with the RapidFuzz scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz_default_process.html">fuzz_default_process</a></td>
+<td>RapidFuzz's default string preprocessing</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz_process.html">fuzz_extract</a></td>
+<td>Search and compare tables with the RapidFuzz scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz_process.html">fuzz_extract_one</a></td>
+<td>Search and compare tables with the RapidFuzz scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_partial_ratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz_partial_ratio_alignment.html">fuzz_partial_ratio_alignment</a></td>
+<td>Where fuzz_partial_ratio() aligns two strings</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_partial_token_ratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_partial_token_set_ratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_partial_token_sort_ratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz_process.html">fuzz_process</a></td>
+<td>Search and compare tables with the RapidFuzz scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_qratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_ratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_token_ratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_token_set_ratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_token_sort_ratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fuzz.html">fuzz_wratio</a></td>
+<td>RapidFuzz string scorers</td></tr>
+<tr><td style="width: 25%;"><a href="fgrepl_any.html">fwhich_any</a></td>
+<td>Search for many literal strings at once</td></tr>
+</table>
+
+<h2><a id="G">-- G --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="gsub_all.html">gsub_all</a></td>
+<td>Apply multiple substitutions in one pass</td></tr>
+</table>
+
+<h2><a id="H">-- H --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="edit_distance.html">hamming</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="html_unescape.html">html_escape</a></td>
+<td>Fast HTML entity decoding and escaping</td></tr>
+<tr><td style="width: 25%;"><a href="html_unescape.html">html_unescape</a></td>
+<td>Fast HTML entity decoding and escaping</td></tr>
+</table>
+
+<h2><a id="I">-- I --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="lcs_seq.html">indel_distance</a></td>
+<td>LCS, Indel, prefix and postfix distances</td></tr>
+<tr><td style="width: 25%;"><a href="lcs_seq.html">indel_similarity</a></td>
+<td>LCS, Indel, prefix and postfix distances</td></tr>
+</table>
+
+<h2><a id="J">-- J --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="qgram_metrics.html">jaccard_index</a></td>
+<td>Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky</td></tr>
+<tr><td style="width: 25%;"><a href="jaccard_matrix.html">jaccard_matrix</a></td>
+<td>Q-gram Jaccard all-pairs similarity matrix</td></tr>
+<tr><td style="width: 25%;"><a href="jaro_winkler.html">jaro_winkler</a></td>
+<td>Jaro-Winkler string similarity</td></tr>
+<tr><td style="width: 25%;"><a href="jaro_winkler_matrix.html">jaro_winkler_matrix</a></td>
+<td>Jaro-Winkler all-pairs similarity matrix</td></tr>
+<tr><td style="width: 25%;"><a href="jaro_winkler_tokens.html">jaro_winkler_tokens</a></td>
+<td>Token-aware Jaro-Winkler similarity for multi-token strings</td></tr>
+</table>
+
+<h2><a id="L">-- L --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="lcs_seq.html">lcs_seq</a></td>
+<td>LCS, Indel, prefix and postfix distances</td></tr>
+<tr><td style="width: 25%;"><a href="lcs_seq.html">lcs_seq_distance</a></td>
+<td>LCS, Indel, prefix and postfix distances</td></tr>
+<tr><td style="width: 25%;"><a href="lcs_seq.html">lcs_seq_similarity</a></td>
+<td>LCS, Indel, prefix and postfix distances</td></tr>
+<tr><td style="width: 25%;"><a href="lcs_str.html">lcs_str</a></td>
+<td>Longest common substring</td></tr>
+<tr><td style="width: 25%;"><a href="lcs_str.html">lcs_str_similarity</a></td>
+<td>Longest common substring</td></tr>
+<tr><td style="width: 25%;"><a href="name_codes.html">lein</a></td>
+<td>Statistics Canada, Lein, Phonex, Roger Root and ONCA name codes</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">levenshtein</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="levenshtein_matrix.html">levenshtein_matrix</a></td>
+<td>Levenshtein all-pairs distance matrix</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">levenshtein_similarity</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="levenshtein_within.html">levenshtein_within</a></td>
+<td>Test whether Levenshtein distance is within a cutoff</td></tr>
+<tr><td style="width: 25%;"><a href="longest_prefix.html">longest_prefix</a></td>
+<td>Longest matching prefix or suffix from a table</td></tr>
+<tr><td style="width: 25%;"><a href="longest_prefix.html">longest_suffix</a></td>
+<td>Longest matching prefix or suffix from a table</td></tr>
+</table>
+
+<h2><a id="M">-- M --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="metaphone.html">metaphone</a></td>
+<td>Metaphone phonetic code (Lawrence Philips, 1990)</td></tr>
+<tr><td style="width: 25%;"><a href="minhash_pairs.html">minhash_pairs</a></td>
+<td>Candidate pairs by MinHash locality-sensitive hashing</td></tr>
+<tr><td style="width: 25%;"><a href="monge_elkan.html">monge_elkan</a></td>
+<td>Monge-Elkan token similarity</td></tr>
+<tr><td style="width: 25%;"><a href="mra_encode.html">mra_compare</a></td>
+<td>Match Rating Approach codes and comparison</td></tr>
+<tr><td style="width: 25%;"><a href="mra_encode.html">mra_encode</a></td>
+<td>Match Rating Approach codes and comparison</td></tr>
+</table>
+
+<h2><a id="N">-- N --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="name_codes.html">name_codes</a></td>
+<td>Statistics Canada, Lein, Phonex, Roger Root and ONCA name codes</td></tr>
+<tr><td style="width: 25%;"><a href="fingerprint.html">ngram_fingerprint</a></td>
+<td>OpenRefine clustering keys</td></tr>
+<tr><td style="width: 25%;"><a href="nysiis.html">nysiis</a></td>
+<td>NYSIIS phonetic code (New York State Identification and Intelligence System)</td></tr>
+</table>
+
+<h2><a id="O">-- O --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="name_codes.html">onca</a></td>
+<td>Statistics Canada, Lein, Phonex, Roger Root and ONCA name codes</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">osa_distance</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+<tr><td style="width: 25%;"><a href="osa_distance_matrix.html">osa_distance_matrix</a></td>
+<td>Optimal String Alignment all-pairs distance matrix</td></tr>
+<tr><td style="width: 25%;"><a href="edit_distance.html">osa_similarity</a></td>
+<td>Parallel edit distances and normalized similarities</td></tr>
+</table>
+
+<h2><a id="P">-- P --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="name_codes.html">phonex</a></td>
+<td>Statistics Canada, Lein, Phonex, Roger Root and ONCA name codes</td></tr>
+<tr><td style="width: 25%;"><a href="lcs_seq.html">postfix_distance</a></td>
+<td>LCS, Indel, prefix and postfix distances</td></tr>
+<tr><td style="width: 25%;"><a href="lcs_seq.html">postfix_similarity</a></td>
+<td>LCS, Indel, prefix and postfix distances</td></tr>
+<tr><td style="width: 25%;"><a href="lcs_seq.html">prefix_distance</a></td>
+<td>LCS, Indel, prefix and postfix distances</td></tr>
+<tr><td style="width: 25%;"><a href="lcs_seq.html">prefix_similarity</a></td>
+<td>LCS, Indel, prefix and postfix distances</td></tr>
+</table>
+
+<h2><a id="Q">-- Q --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="qgram_metrics.html">qgram_metrics</a></td>
+<td>Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky</td></tr>
+</table>
+
+<h2><a id="R">-- R --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="refined_soundex.html">refined_soundex</a></td>
+<td>Refined Soundex phonetic code</td></tr>
+<tr><td style="width: 25%;"><a href="rLink.html">rLink</a></td>
+<td>Link or deduplicate records</td></tr>
+<tr><td style="width: 25%;"><a href="name_codes.html">roger_root</a></td>
+<td>Statistics Canada, Lein, Phonex, Roger Root and ONCA name codes</td></tr>
+<tr><td style="width: 25%;"><a href="run_benchmark_example.html">run_benchmark_example</a></td>
+<td>Interactive speed comparison: fast.string vs base R and other packages</td></tr>
+</table>
+
+<h2><a id="S">-- S --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="smith_waterman.html">smith_waterman</a></td>
+<td>Smith-Waterman-Gotoh local alignment similarity</td></tr>
+<tr><td style="width: 25%;"><a href="sorted_neighbourhood.html">sorted_neighbourhood</a></td>
+<td>Candidate pairs by the sorted neighbourhood method</td></tr>
+<tr><td style="width: 25%;"><a href="soundex.html">soundex</a></td>
+<td>Soundex phonetic code (American Soundex / US Census Bureau rules)</td></tr>
+<tr><td style="width: 25%;"><a href="name_codes.html">statcan</a></td>
+<td>Statistics Canada, Lein, Phonex, Roger Root and ONCA name codes</td></tr>
+<tr><td style="width: 25%;"><a href="string_shape.html">string_shape</a></td>
+<td>Character-class shape of strings, for profiling formats</td></tr>
+</table>
+
+<h2><a id="T">-- T --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="tfidf_top_n.html">tfidf_match</a></td>
+<td>TF-IDF n-gram matching</td></tr>
+<tr><td style="width: 25%;"><a href="tfidf_top_n.html">tfidf_top_n</a></td>
+<td>TF-IDF n-gram matching</td></tr>
+<tr><td style="width: 25%;"><a href="token_counts.html">token_counts</a></td>
+<td>Fast token frequencies across a character vector</td></tr>
+<tr><td style="width: 25%;"><a href="token_initials.html">token_initials</a></td>
+<td>Fast initials of the words in each string</td></tr>
+<tr><td style="width: 25%;"><a href="token_sort.html">token_sort</a></td>
+<td>Fast sorting of the words within each string</td></tr>
+<tr><td style="width: 25%;"><a href="qgram_metrics.html">tversky_index</a></td>
+<td>Vectorised q-gram set-overlap similarity: Jaccard, Dice, Tversky</td></tr>
+<tr><td style="width: 25%;"><a href="tversky_matrix.html">tversky_matrix</a></td>
+<td>Q-gram Tversky all-pairs similarity matrix</td></tr>
+</table>
+
+<h2><a id="U">-- U --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="url_encode.html">url_decode</a></td>
+<td>Fast URL encoding and decoding</td></tr>
+<tr><td style="width: 25%;"><a href="url_encode.html">url_encode</a></td>
+<td>Fast URL encoding and decoding</td></tr>
+</table>
+
+<h2><a id="V">-- V --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="valid_id.html">valid_id</a></td>
+<td>Fast check-digit validation of identifiers</td></tr>
+</table>
+</div></body></html>

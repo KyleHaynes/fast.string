@@ -373,8 +373,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./uc-metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
   </div>
 </li>
       </ul>
@@ -391,13 +397,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
   </div>
 </li>
       </ul>
@@ -414,19 +420,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
   </div>
 </li>
       </ul>
@@ -588,12 +594,12 @@ character(0)</code></pre>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="va">hit_fast</span> <span class="op">&lt;-</span> <span class="fu">fgrepl_any</span><span class="op">(</span><span class="va">terms</span>, <span class="va">big</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.00    0.00    0.02 </code></pre>
+   0.01    0.00    0.00 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="va">hit_base</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html">grepl</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="va">terms</span>, collapse <span class="op">=</span> <span class="st">"|"</span><span class="op">)</span>, <span class="va">big</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-  20.06    0.43   20.53 </code></pre>
+  14.00    0.61   14.64 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html">identical</a></span><span class="op">(</span><span class="va">hit_fast</span>, <span class="va">hit_base</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -693,20 +699,25 @@ character(0)</code></pre>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">prices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"$1,234.50"</span>, <span class="st">"AUD 99"</span>, <span class="st">"12.5%"</span>, <span class="st">"approx. 3,000 kg"</span>, <span class="st">"-$45.10"</span>,</span>
 <span>            <span class="st">"(1,200)"</span>, <span class="st">"N/A"</span>, <span class="st">"Free"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">prices</span>,</span>
-<span>           fparse_number <span class="op">=</span> <span class="fu">fparse_number</span><span class="op">(</span><span class="va">prices</span><span class="op">)</span>,</span>
-<span>           readr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html">suppressWarnings</a></span><span class="op">(</span><span class="fu">readr</span><span class="fu">::</span><span class="fu">parse_number</span><span class="op">(</span><span class="va">prices</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>           gsub  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">gsub</a></span><span class="op">(</span><span class="st">"[^0-9.-]"</span>, <span class="st">""</span>, <span class="va">prices</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    <span class="va">prices</span>,</span>
+<span>    fparse_number <span class="op">=</span> <span class="fu">fparse_number</span><span class="op">(</span><span class="va">prices</span><span class="op">)</span>,</span>
+<span>    gsub <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">gsub</a></span><span class="op">(</span><span class="st">"[^0-9.-]"</span>, <span class="st">""</span>, <span class="va">prices</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># readr is not a dependency of this package; compare against it when it</span></span>
+<span><span class="co"># happens to be installed.</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html">requireNamespace</a></span><span class="op">(</span><span class="st">"readr"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">out</span><span class="op">$</span><span class="va">readr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html">suppressWarnings</a></span><span class="op">(</span><span class="fu">readr</span><span class="fu">::</span><span class="fu">parse_number</span><span class="op">(</span><span class="va">prices</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">out</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>            prices fparse_number  readr   gsub
-1        $1,234.50        1234.5 1234.5 1234.5
-2           AUD 99          99.0   99.0   99.0
-3            12.5%          12.5   12.5   12.5
-4 approx. 3,000 kg        3000.0     NA    0.3
-5          -$45.10         -45.1     NA  -45.1
-6          (1,200)        1200.0 1200.0 1200.0
-7              N/A            NA     NA     NA
-8             Free            NA     NA     NA</code></pre>
+<pre><code>            prices fparse_number   gsub
+1        $1,234.50        1234.5 1234.5
+2           AUD 99          99.0   99.0
+3            12.5%          12.5   12.5
+4 approx. 3,000 kg        3000.0    0.3
+5          -$45.10         -45.1  -45.1
+6          (1,200)        1200.0 1200.0
+7              N/A            NA     NA
+8             Free            NA     NA</code></pre>
 </div>
 </div>
 <p>The common shortcut of deleting everything but digits fails as soon as the text contains another full stop (<code>"approx."</code> becomes <code>0.3</code>). <code>readr::parse_number()</code> returns <code>NA</code> for that case and for a minus sign in front of a currency symbol, and (in our tests) rounds about a quarter of two-decimal amounts to a neighbouring double; <code>fparse_number()</code> returns exactly what <code><a href="https://rdrr.io/r/base/numeric.html">as.numeric()</a></code> gives for the number it finds. Accounting-style negatives such as <code>"(1,200)"</code> are read as positive by both, so test for the parentheses separately if your data uses them. Other conventions are one argument away:</p>

@@ -1,0 +1,774 @@
+# Benchmarks at scale {#sec-benchmarks}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+suppressPackageStartupMessages({
+    library(stringi)
+    library(microbenchmark)
+})
+has_stringdist     <- requireNamespace("stringdist", quietly = TRUE)
+has_recordlinkage  <- requireNamespace("RecordLinkage", quietly = TRUE)
+has_phonics        <- requireNamespace("phonics", quietly = TRUE)
+```
+
+Every other chapter uses small inputs so the page renders quickly. This
+chapter doesn't: every benchmark below runs on **3 million strings**,
+because this package is built for exactly that scale — record linkage and
+ETL pipelines where a "small" file is already six figures of rows. If a
+function is only 10% faster at 3M rows, that's a real, honestly-reported
+result, not a number picked to flatter the package.
+
+Comparison baselines, used wherever they have a real equivalent:
+
+- **base R** — the function this package's API mirrors.
+- **stringi**/**stringr** — the standard fast-string ecosystem package for
+  general string operations (stringr wraps stringi; benchmarks below call
+  stringi directly).
+- **stringdist** — `method = "jw"` is the closest equivalent to
+  `jaro_winkler()`; `method = "lv"`/`"osa"`/`"dl"`/`"hamming"`/`"jaccard"`
+  are the closest equivalents to `levenshtein()`/`osa_distance()`/
+  `damerau_levenshtein()`/`hamming()`/`jaccard_index()`.
+- **RecordLinkage** — `soundex()` and `jarowinkler()` are the closest
+  equivalents to this package's phonetic and fuzzy-matching functions.
+- **phonics** — `metaphone()` and `caverphone()` are throughput comparison
+  points for `double_metaphone()`/`caverphone()`; they implement different
+  algorithm revisions, so outputs aren't expected to match (the comparison
+  is "a phonetic-coding R function over this vector", not output parity).
+- **readr**, **curl**, **openssl**, **digest**, **xml2**, **data.table** and
+  **igraph** — the usual packages for parsing numbers, URL coding, hashing,
+  HTML decoding, joins and graph components, against which the newer text,
+  validation and linkage functions are measured (at 1 million strings,
+  near the end of the chapter).
+
+```{r}
+#| label: versions
+cat("fast.string: ", as.character(utils::packageVersion("fast.string")), "\n")
+cat("stringi:     ", as.character(utils::packageVersion("stringi")), "\n")
+if (has_stringdist)    cat("stringdist:  ", as.character(utils::packageVersion("stringdist")), "\n")
+if (has_recordlinkage) cat("RecordLinkage:", as.character(utils::packageVersion("RecordLinkage")), "\n")
+if (has_phonics)       cat("phonics:     ", as.character(utils::packageVersion("phonics")), "\n")
+cat("R:           ", R.version.string, "\n")
+cat("cores:       ", parallel::detectCores(), "\n")
+```
+
+```{r}
+#| label: test-data
+set.seed(1)
+n <- 3e6
+
+x <- stri_rand_strings(n, sample(2:40, n, replace = TRUE), pattern = "[A-Za-z0-9 ]")
+na_idx    <- sample(n, 3000)
+empty_idx <- sample(setdiff(seq_len(n), na_idx), 3000)
+x[na_idx]    <- NA_character_
+x[empty_idx] <- ""
+
+cat(sprintf("n = %s strings (%d NA, %d empty, lengths 2-40)\n",
+            format(n, big.mark = ",", scientific = FALSE), length(na_idx), length(empty_idx)))
+```
+
+A results table accumulates through the chapter and prints in full at the
+end (@tbl-summary), alongside every individual comparison inline.
+
+```{r}
+#| label: results-accumulator
+results <- list()
+record <- function(op, baseline, baseline_s, fast_s) {
+    baseline_s <- unname(baseline_s)
+    fast_s <- unname(fast_s)
+    results[[length(results) + 1]] <<- data.frame(
+        operation = op, baseline = baseline,
+        baseline_s = baseline_s, fast_s = fast_s,
+        speedup = baseline_s / fast_s
+    )
+}
+```
+
+## Matching & substitution
+
+```{r}
+#| label: bench-grepl
+t_base <- system.time(base::grepl("[0-9]{2}", x))["elapsed"]
+t_fast <- system.time(fast.string::fgrepl("[0-9]{2}", x))["elapsed"]
+t_stri <- system.time(stri_detect_regex(x, "[0-9]{2}"))["elapsed"]
+cat(sprintf("base::grepl       %.3fs\nstringi::stri_detect_regex %.3fs\nfast.string::fgrepl %.3fs\n", t_base, t_stri, t_fast))
+record("fgrepl (regex)", "base::grepl", t_base, t_fast)
+```
+
+```{r}
+#| label: bench-gsub
+t_base <- system.time(base::gsub("[0-9]+", "#", x, perl = TRUE))["elapsed"]
+t_fast <- system.time(fast.string::fgsub("[0-9]+", "#", x))["elapsed"]
+t_stri <- system.time(stri_replace_all_regex(x, "[0-9]+", "#"))["elapsed"]
+cat(sprintf("base::gsub        %.3fs\nstringi::stri_replace_all_regex %.3fs\nfast.string::fgsub %.3fs\n", t_base, t_stri, t_fast))
+record("fgsub (regex)", "base::gsub", t_base, t_fast)
+```
+
+```{r}
+#| label: bench-gsub-all
+patterns <- c("a", "e", "i", "o", "u")
+repls    <- c("4", "3", "1", "0", "*")
+t_base <- system.time({
+    y <- x
+    for (i in seq_along(patterns)) y <- base::gsub(patterns[i], repls[i], y, fixed = TRUE)
+})["elapsed"]
+t_fast <- system.time(fast.string::gsub_all(patterns, repls, x, fixed = TRUE, sequential = TRUE))["elapsed"]
+cat(sprintf("base (5x chained gsub)  %.3fs\nfast.string::gsub_all   %.3fs\n", t_base, t_fast))
+record("gsub_all (5 patterns)", "base (chained gsub)", t_base, t_fast)
+```
+
+`fcount()` is compared against the base idiom it replaces —
+`gregexpr()` plus a `vapply()` — which pays not just for the match loop but
+for allocating an integer vector of match positions per element only to
+take its length, and which needs an explicit `NA` branch to match
+`fcount()`'s missing-value handling. `stri_count_regex()` is the fair third
+baseline.
+
+```{r}
+#| label: bench-count
+t_base <- system.time(vapply(base::gregexpr("[0-9]", x),
+                             function(m) if (is.na(m[1])) NA_integer_
+                                         else if (m[1] < 0L) 0L else length(m),
+                             integer(1)))["elapsed"]
+t_fast <- system.time(fast.string::fcount("[0-9]", x))["elapsed"]
+t_stri <- system.time(stri_count_regex(x, "[0-9]"))["elapsed"]
+cat(sprintf("base gregexpr + vapply     %.3fs\nstringi::stri_count_regex  %.3fs\nfast.string::fcount        %.3fs\n",
+            t_base, t_stri, t_fast))
+record("fcount (regex)", "base gregexpr + vapply", t_base, t_fast)
+```
+
+## String utilities
+
+```{r}
+#| label: bench-str-utils
+x_ws <- ifelse(is.na(x), NA_character_, paste0("  ", x, "\t\n"))
+
+t_base <- system.time(base::trimws(x_ws))["elapsed"]
+t_fast <- system.time(fast.string::ftrimws(x_ws))["elapsed"]
+t_stri <- system.time(stri_trim_both(x_ws))["elapsed"]
+cat(sprintf("base::trimws      %.3fs\nstringi::stri_trim_both %.3fs\nfast.string::ftrimws %.3fs\n", t_base, t_stri, t_fast))
+record("ftrimws", "base::trimws", t_base, t_fast)
+
+t_base <- system.time(base::substr(x, 1, 10))["elapsed"]
+t_fast <- system.time(fast.string::fsubstr(x, 1, 10))["elapsed"]
+cat(sprintf("base::substr      %.3fs\nfast.string::fsubstr %.3fs\n", t_base, t_fast))
+record("fsubstr", "base::substr", t_base, t_fast)
+
+t_base <- system.time(base::nchar(x, "chars"))["elapsed"]
+t_fast <- system.time(fast.string::fnchar(x, "chars"))["elapsed"]
+t_stri <- system.time(stri_length(x))["elapsed"]
+cat(sprintf("base::nchar       %.3fs\nstringi::stri_length %.3fs\nfast.string::fnchar %.3fs\n", t_base, t_stri, t_fast))
+record("fnchar", "base::nchar", t_base, t_fast)
+
+t_base <- system.time(base::chartr("aeiou", "AEIOU", x))["elapsed"]
+t_fast <- system.time(fast.string::fchartr("aeiou", "AEIOU", x))["elapsed"]
+cat(sprintf("base::chartr      %.3fs\nfast.string::fchartr %.3fs\n", t_base, t_fast))
+record("fchartr", "base::chartr", t_base, t_fast)
+```
+
+`fsubstr` is the one operation in this whole chapter where parallelism
+doesn't help: base R's `substr()` is already close to memcpy speed for a
+fixed-width extraction, so there's little headroom — consistent with the
+~1x result in @tbl-summary. The win shows up on operations with real
+per-element branching cost (`trimws`, `chartr`) or where base R's
+implementation does something surprisingly expensive (`nchar`).
+
+## Dates
+
+```{r}
+#| label: bench-dates
+dates <- as.Date(sample(seq(as.Date("1950-01-01"), as.Date("2024-12-31"), by = "day"), n, replace = TRUE))
+dates[na_idx] <- NA
+date_strings_iso <- fast.string::format_date(dates, "iso")
+
+t_base <- system.time(format(dates, "%Y-%m-%d"))["elapsed"]
+t_fast <- system.time(fast.string::format_date(dates, "iso"))["elapsed"]
+cat(sprintf("base format.Date  %.3fs\nfast.string::format_date %.3fs\n", t_base, t_fast))
+record("format_date", "format.Date", t_base, t_fast)
+
+t_base <- system.time(base::as.Date(date_strings_iso, format = "%Y-%m-%d"))["elapsed"]
+t_fast <- system.time(fast.string::fas.Date(date_strings_iso, "iso"))["elapsed"]
+cat(sprintf("base::as.Date     %.3fs\nfast.string::fas.Date %.3fs\n", t_base, t_fast))
+record("fas.Date", "as.Date", t_base, t_fast)
+```
+
+Timestamps are the larger win of the two, because `base::as.POSIXct()`
+carries `strptime()`'s locale handling *and* timezone resolution, while
+`fas.POSIXct()` does fixed-shape field extraction into UTC epoch seconds —
+and still validates the full calendar, which `fas.Date()` does not.
+
+```{r}
+#| label: bench-datetimes
+stamps <- fast.string::format_datetime(
+    as.POSIXct("1990-01-01", tz = "UTC") + sample(1.1e9, n, replace = TRUE), "iso"
+)
+stamps[na_idx] <- NA_character_
+
+t_base <- system.time(base::as.POSIXct(stamps, tz = "UTC"))["elapsed"]
+t_fast <- system.time(fast.string::fas.POSIXct(stamps, "iso"))["elapsed"]
+cat(sprintf("base::as.POSIXct   %.3fs\nfast.string::fas.POSIXct %.3fs\n", t_base, t_fast))
+record("fas.POSIXct", "as.POSIXct", t_base, t_fast)
+
+parsed <- fast.string::fas.POSIXct(stamps, "iso")
+t_base <- system.time(base::format(parsed, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))["elapsed"]
+t_fast <- system.time(fast.string::format_datetime(parsed, "rfc3339"))["elapsed"]
+cat(sprintf("base format.POSIXct %.3fs\nfast.string::format_datetime %.3fs\n", t_base, t_fast))
+record("format_datetime", "format.POSIXct", t_base, t_fast)
+```
+
+## Phonetic blocking keys
+
+`soundex()`/`nysiis()` have no base R equivalent; `RecordLinkage::soundex()`
+is the closest comparison (algorithm details and why the two can disagree
+on specific inputs are in @sec-theory). `RecordLinkage::soundex()` runs a
+single timed pass rather than `microbenchmark`'s repeated runs — at 3M
+rows it's the single slowest operation in this chapter, and repeating it
+five times buys little additional statistical confidence for a lot of
+extra render time.
+
+```{r}
+#| label: bench-phonetic
+names_x <- stri_rand_strings(n, sample(3:15, n, replace = TRUE), pattern = "[A-Z]")
+names_x[na_idx] <- NA_character_
+
+t_fast_sx <- system.time(fast.string::soundex(names_x))["elapsed"]
+t_fast_ny <- system.time(fast.string::nysiis(names_x))["elapsed"]
+cat(sprintf("fast.string::soundex %.3fs\nfast.string::nysiis  %.3fs\n", t_fast_sx, t_fast_ny))
+
+if (has_recordlinkage) {
+    t_rl_sx <- system.time(RecordLinkage::soundex(names_x))["elapsed"]
+    cat(sprintf("RecordLinkage::soundex %.3fs\n", t_rl_sx))
+    record("soundex", "RecordLinkage::soundex", t_rl_sx, t_fast_sx)
+} else {
+    cat("RecordLinkage not installed — skipping cross-package soundex comparison.\n")
+}
+```
+
+`nysiis()` is consistently slower than `soundex()` here — not a
+parallelism gap (both run through the same dispatch), but because NYSIIS's
+rule table is genuinely heavier per element (leading/trailing transforms
+plus a stateful per-letter pass, vs. Soundex's single fixed lookup), as
+described in @sec-theory.
+
+`refined_soundex()` and `cologne()` sit in the same cost class as
+`soundex()` — a table lookup per character, with no truncation for Refined
+Soundex and a small amount of multi-byte decoding for Cologne's umlaut
+folding. `phonics` implements both, and the two baselines differ in kind:
+with truncation disabled (`maxCodeLen` raised above the longest code here),
+`phonics::refinedSoundex()` produces output identical to
+`refined_soundex()`, so that row is a genuine like-for-like comparison.
+`phonics::cologne()` agrees on the canonical reference names but takes a
+different reading of two under-specified rules (@sec-theory), so that row
+is a throughput comparison only.
+
+```{r}
+#| label: bench-phonetic-extended
+t_fast_rs <- system.time(fast.string::refined_soundex(names_x))["elapsed"]
+t_fast_co <- system.time(fast.string::cologne(names_x))["elapsed"]
+cat(sprintf("fast.string::refined_soundex %.3fs\nfast.string::cologne         %.3fs\n",
+            t_fast_rs, t_fast_co))
+
+if (has_phonics) {
+    # maxCodeLen = 40 disables phonics' 10-character default truncation, so
+    # the two implementations are computing the same thing.
+    t_ph_rs <- system.time(phonics::refinedSoundex(names_x, maxCodeLen = 40))["elapsed"]
+    t_ph_co <- system.time(phonics::cologne(names_x))["elapsed"]
+    cat(sprintf("phonics::refinedSoundex %.3fs\nphonics::cologne        %.3fs\n",
+                t_ph_rs, t_ph_co))
+    record("refined_soundex", "phonics::refinedSoundex", t_ph_rs, t_fast_rs)
+    record("cologne", "phonics::cologne (differs on some inputs)", t_ph_co, t_fast_co)
+} else {
+    cat("phonics not installed — skipping cross-package comparison.\n")
+}
+```
+
+`double_metaphone()` and `caverphone()` are considerably heavier rulesets
+again (Double Metaphone's branching is the most involved of the four;
+Caverphone 2.0 is a long fixed chain of substring transforms), so absolute
+throughput is lower — `phonics::metaphone()`/`phonics::caverphone()` are
+shown alongside as "another phonetic-coding R function over this vector"
+throughput comparisons, not as algorithm-equivalent baselines (see the
+note at the top of this chapter):
+
+```{r}
+#| label: bench-phonetic-v2
+t_fast_dm <- system.time(fast.string::double_metaphone(names_x))["elapsed"]
+t_fast_cp <- system.time(fast.string::caverphone(names_x))["elapsed"]
+cat(sprintf("fast.string::double_metaphone %.3fs\nfast.string::caverphone       %.3fs\n",
+            t_fast_dm, t_fast_cp))
+
+if (has_phonics) {
+    t_ph_mp <- system.time(phonics::metaphone(names_x))["elapsed"]
+    t_ph_cp <- system.time(phonics::caverphone(names_x, maxCodeLen = 10))["elapsed"]
+    cat(sprintf("phonics::metaphone   %.3fs\nphonics::caverphone  %.3fs\n", t_ph_mp, t_ph_cp))
+    record("double_metaphone", "phonics::metaphone (different algorithm)", t_ph_mp, t_fast_dm)
+    record("caverphone", "phonics::caverphone (different revision)", t_ph_cp, t_fast_cp)
+} else {
+    cat("phonics not installed — skipping cross-package comparison.\n")
+}
+```
+
+## Fuzzy string similarity
+
+```{r}
+#| label: bench-jaro
+t_fast <- system.time(fast.string::jaro_winkler(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::jaro_winkler %.3fs (%s pairs, no base equivalent)\n",
+            t_fast, format(n, big.mark = ",", scientific = FALSE)))
+
+if (has_stringdist) {
+    t_sd <- system.time(1 - stringdist::stringdist(names_x, rev(names_x), method = "jw", p = 0.1))["elapsed"]
+    cat(sprintf("stringdist::stringdist(jw, p=0.1) %.3fs\n", t_sd))
+    record("jaro_winkler", "stringdist::stringdist(jw)", t_sd, t_fast)
+}
+if (has_recordlinkage) {
+    t_rl <- system.time(RecordLinkage::jarowinkler(names_x, rev(names_x)))["elapsed"]
+    cat(sprintf("RecordLinkage::jarowinkler %.3fs\n", t_rl))
+    record("jaro_winkler", "RecordLinkage::jarowinkler", t_rl, t_fast)
+}
+```
+
+```{r}
+#| label: bench-jaro-correctness
+# All three should agree numerically (RecordLinkage's defaults and
+# stringdist with p = 0.1 both implement the same standard Jaro-Winkler).
+a3 <- c("MARTHA", "DWAYNE", "DIXON")
+b3 <- c("MARHTA", "DUANE", "DICKSONX")
+fast.string::jaro_winkler(a3, b3)
+if (has_recordlinkage) RecordLinkage::jarowinkler(a3, b3)
+if (has_stringdist) 1 - stringdist::stringdist(a3, b3, method = "jw", p = 0.1)
+```
+
+`jaro_winkler_matrix()` is $O(n \times m)$ by construction, so a 3M x 3M
+matrix is neither a realistic workload nor something most machines could
+hold in memory — a 3,000 x 3,000 block (9M cell comparisons) is a more
+representative blocking-table size:
+
+```{r}
+#| label: bench-jaro-matrix
+m <- 3000
+a_small <- names_x[seq_len(m)]
+b_small <- names_x[(n - m + 1):n]
+t_fast <- system.time(fast.string::jaro_winkler_matrix(a_small, b_small))["elapsed"]
+cat(sprintf("fast.string::jaro_winkler_matrix: %s x %s (%s cells) in %.3fs\n",
+            m, m, format(m * m, big.mark = ","), t_fast))
+```
+
+`jaro_winkler_tokens()` does more work per pair (tokenising, an internal
+similarity matrix per row, greedy assignment, plus the collapsed
+comparison — @sec-theory) than plain `jaro_winkler()`, so it's
+meaningfully slower per comparison. No package in this comparison set has
+a token-reorder-aware equivalent, so this is absolute throughput only:
+
+```{r}
+#| label: bench-jaro-tokens
+cap1 <- function(s) paste0(toupper(substr(s, 1, 1)), substr(s, 2, nchar(s)))
+make_multitoken_names <- function(n) {
+    paste(
+        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = "[a-z]")),
+        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = "[a-z]")),
+        cap1(stri_rand_strings(n, sample(3:9, n, replace = TRUE), pattern = "[a-z]"))
+    )
+}
+tok_a <- make_multitoken_names(n)
+tok_b <- make_multitoken_names(n)
+t_plain  <- system.time(fast.string::jaro_winkler(tok_a, tok_b))["elapsed"]
+t_tokens <- system.time(fast.string::jaro_winkler_tokens(tok_a, tok_b))["elapsed"]
+cat(sprintf("fast.string::jaro_winkler        %.3fs (%s pairs)\n", t_plain, format(n, big.mark = ",", scientific = FALSE)))
+cat(sprintf("fast.string::jaro_winkler_tokens %.3fs (%.1fx the plain-comparison cost)\n", t_tokens, t_tokens / t_plain))
+```
+
+## Edit distance
+
+```{r}
+#| label: bench-editdist
+t_fast_lv <- system.time(fast.string::levenshtein(names_x, rev(names_x)))["elapsed"]
+t_fast_osa <- system.time(fast.string::osa_distance(names_x, rev(names_x)))["elapsed"]
+t_fast_dl <- system.time(fast.string::damerau_levenshtein(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::levenshtein         %.3fs\nfast.string::osa_distance        %.3fs\nfast.string::damerau_levenshtein %.3fs\n",
+            t_fast_lv, t_fast_osa, t_fast_dl))
+
+if (has_stringdist) {
+    t_sd_lv <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "lv"))["elapsed"]
+    t_sd_osa <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "osa"))["elapsed"]
+    t_sd_dl <- system.time(stringdist::stringdist(names_x, rev(names_x), method = "dl"))["elapsed"]
+    cat(sprintf("stringdist (lv) %.3fs\nstringdist (osa) %.3fs\nstringdist (dl) %.3fs\n", t_sd_lv, t_sd_osa, t_sd_dl))
+    record("levenshtein", "stringdist::stringdist(lv)", t_sd_lv, t_fast_lv)
+    record("osa_distance", "stringdist::stringdist(osa)", t_sd_osa, t_fast_osa)
+    record("damerau_levenshtein", "stringdist::stringdist(dl)", t_sd_dl, t_fast_dl)
+}
+
+# hamming() needs equal-length pairs to avoid the all-Inf degenerate case
+names_eqlen <- fast.string::fsubstr(names_x, 1, 8)
+t_fast_hm <- system.time(fast.string::hamming(names_eqlen, rev(names_eqlen)))["elapsed"]
+cat(sprintf("fast.string::hamming %.3fs\n", t_fast_hm))
+if (has_stringdist) {
+    t_sd_hm <- system.time(stringdist::stringdist(names_eqlen, rev(names_eqlen), method = "hamming"))["elapsed"]
+    cat(sprintf("stringdist (hamming) %.3fs\n", t_sd_hm))
+    record("hamming", "stringdist::stringdist(hamming)", t_sd_hm, t_fast_hm)
+}
+```
+
+`fuzzy_match()` computes the same best-match result without retaining the
+full score matrix. The output matrix below is modest for documentation, but
+its allocation grows as `length(query) * length(table)` while lookup output
+remains one integer per query.
+
+```{r}
+#| label: bench-fuzzy-lookup
+lookup_queries <- names_x[seq_len(100L)]
+lookup_table <- names_x[1001:2000]
+t_lookup <- system.time(
+    fuzzy_match(lookup_queries, lookup_table, use_bytes = TRUE)
+)["elapsed"]
+t_matrix <- system.time(
+    max.col(jaro_winkler_matrix(lookup_queries, lookup_table),
+            ties.method = "first")
+)["elapsed"]
+cat(sprintf("fuzzy_match %.3fs; materialized matrix %.3fs\n",
+            t_lookup, t_matrix))
+```
+
+```{r}
+#| label: bench-editdist-correctness
+# Each edit-distance implementation should agree with its stringdist method.
+a3 <- c("kitten", "Saturday", "flaw")
+b3 <- c("sitting", "Sunday", "lawn")
+fast.string::levenshtein(a3, b3)
+if (has_stringdist) stringdist::stringdist(a3, b3, method = "lv")
+fast.string::osa_distance("ca", "abc")
+if (has_stringdist) stringdist::stringdist("ca", "abc", method = "osa")
+fast.string::damerau_levenshtein("ca", "abc")
+if (has_stringdist) stringdist::stringdist("ca", "abc", method = "dl")
+```
+
+## Q-gram similarity
+
+```{r}
+#| label: bench-qgram
+t_fast_jac <- system.time(fast.string::jaccard_index(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::jaccard_index %.3fs\n", t_fast_jac))
+if (has_stringdist) {
+    t_sd_jac <- system.time(stringdist::stringsim(names_x, rev(names_x), method = "jaccard"))["elapsed"]
+    cat(sprintf("stringdist::stringsim(jaccard) %.3fs\n", t_sd_jac))
+    record("jaccard_index", "stringdist::stringsim(jaccard)", t_sd_jac, t_fast_jac)
+}
+
+t_fast_dice <- system.time(fast.string::dice_coefficient(names_x, rev(names_x)))["elapsed"]
+t_fast_tver <- system.time(fast.string::tversky_index(names_x, rev(names_x), alpha = 0.3, beta = 0.7))["elapsed"]
+cat(sprintf("fast.string::dice_coefficient %.3fs (no direct stringdist equivalent)\n", t_fast_dice))
+cat(sprintf("fast.string::tversky_index    %.3fs (no direct stringdist equivalent)\n", t_fast_tver))
+```
+
+`cosine_similarity()` does strictly more work than the three set metrics —
+its q-gram vectors are sorted but not deduplicated, so the merge pass
+walks more elements and accumulates three running sums instead of one
+intersection count. `stringdist::stringsim(method = "cosine")` is the
+direct equivalent.
+
+```{r}
+#| label: bench-cosine
+t_fast_cos <- system.time(fast.string::cosine_similarity(names_x, rev(names_x)))["elapsed"]
+cat(sprintf("fast.string::cosine_similarity %.3fs\n", t_fast_cos))
+if (has_stringdist) {
+    t_sd_cos <- system.time(stringdist::stringsim(names_x, rev(names_x), method = "cosine", q = 2))["elapsed"]
+    cat(sprintf("stringdist::stringsim(cosine)  %.3fs\n", t_sd_cos))
+    record("cosine_similarity", "stringdist::stringsim(cosine)", t_sd_cos, t_fast_cos)
+}
+```
+
+## RapidFuzz scorers
+
+The `fuzz_*()` ports of Python's RapidFuzz scorers on the same
+multi-token names. None of the comparison packages here implements these
+scores, so this is absolute throughput only.
+
+```{r}
+#| label: bench-rapidfuzz
+t_ratio   <- system.time(fast.string::fuzz_ratio(tok_a, tok_b))["elapsed"]
+t_partial <- system.time(fast.string::fuzz_partial_ratio(tok_a, tok_b))["elapsed"]
+t_tsort   <- system.time(fast.string::fuzz_token_sort_ratio(tok_a, tok_b))["elapsed"]
+t_tset    <- system.time(fast.string::fuzz_token_set_ratio(tok_a, tok_b))["elapsed"]
+t_wratio  <- system.time(fast.string::fuzz_wratio(tok_a, tok_b))["elapsed"]
+cat(sprintf(
+    "fast.string::fuzz_ratio            %.3fs\nfast.string::fuzz_partial_ratio    %.3fs\nfast.string::fuzz_token_sort_ratio %.3fs\nfast.string::fuzz_token_set_ratio  %.3fs\nfast.string::fuzz_wratio           %.3fs\n",
+    t_ratio, t_partial, t_tsort, t_tset, t_wratio
+))
+```
+
+## Text cleaning, extraction, validation and linkage
+
+The newer functions have the widest gaps, because their usual R
+equivalents are either loops over strings in R code, one regular expression
+per dictionary entry, or packages that call into C one string at a time.
+These run on **1 million** strings (`n_new` below) of a shape that suits each
+task. A few baselines would take minutes at that size -- `utils::URLencode()`,
+`xml2` used to decode HTML, `digest::digest()` called per string, and a
+1,000-term alternation -- so they run on a sample and are scaled to
+`n_new`; the table marks those rows.
+
+```{r}
+#| label: bench-new-data
+set.seed(2)
+n_new <- 1e6
+results_new <- list()
+record_new <- function(op, baseline, baseline_s, fast_s, sampled = FALSE) {
+    results_new[[length(results_new) + 1]] <<- data.frame(
+        operation = op, baseline = baseline, scaled = if (sampled) "yes" else "",
+        baseline_s = unname(baseline_s), fast_s = unname(fast_s),
+        speedup = unname(baseline_s / fast_s)
+    )
+}
+words <- c("12", "SMITH", "ST", "RD", "AVE", "UNIT", "MR", "DR", "JOHN",
+           "NORTH", "QLD", "4000", "BRISBANE", "CRES", "HWY", "PDE")
+addr <- do.call(paste, lapply(1:5, function(i) sample(words, n_new, TRUE)))
+```
+
+```{r}
+#| label: bench-new-text
+from <- c("ST", "RD", "AVE", "CRES", "HWY", "PDE", "MR", "DR")
+to   <- c("STREET", "ROAD", "AVENUE", "CRESCENT", "HIGHWAY", "PARADE", "", "")
+t_base <- system.time({
+    tok <- strsplit(addr, " ", fixed = TRUE)
+    vapply(tok, function(t) {
+        m <- match(t, from); t[!is.na(m)] <- to[m[!is.na(m)]]
+        paste(t[nzchar(t)], collapse = " ")
+    }, "")
+})["elapsed"]
+t_stri <- system.time(stri_replace_all_regex(addr, paste0("\\b", from, "\\b"), to,
+                                             vectorize_all = FALSE))["elapsed"]
+t_fast <- system.time(freplace_tokens(addr, from, to))["elapsed"]
+record_new("freplace_tokens (8 words)", "strsplit + match + paste", t_base, t_fast)
+record_new("freplace_tokens (8 words)", "stringi regex, one per word", t_stri, t_fast)
+
+pc <- as.character(sample(200:9999, n_new, TRUE))
+t_stri <- system.time(stri_pad_left(pc, 4, "0"))["elapsed"]
+t_fast <- system.time(fpad(pc, 4, pad = "0"))["elapsed"]
+record_new("fpad", "stringi::stri_pad_left", t_stri, t_fast)
+
+acc <- do.call(paste, lapply(1:3, function(i) sample(
+    c("Fran\u00e7ois", "M\u00fcller", "Zo\u00eb", "caf\u00e9", "plain", "\u00c6sir"),
+    n_new, TRUE)))
+t_stri <- system.time(stri_trans_general(acc, "Latin-ASCII"))["elapsed"]
+t_fast <- system.time(ascii_fold(acc))["elapsed"]
+record_new("ascii_fold", "stringi Latin-ASCII", t_stri, t_fast)
+
+ht <- rep(c("Tom &amp; Jerry", "caf&eacute; &#233; &#x41;", "a &lt;b&gt; c",
+            "plain text"), length.out = n_new)
+k <- 2000
+t_base <- system.time(vapply(ht[1:k], function(s)
+    xml2::xml_text(xml2::read_html(paste0("<p>", s, "</p>"))), ""))["elapsed"] * n_new / k
+t_fast <- system.time(html_unescape(ht))["elapsed"]
+record_new("html_unescape", "xml2, one string at a time", t_base, t_fast, sampled = TRUE)
+
+u <- paste0("https://example.com/search?q=", stri_rand_strings(n_new, 20, "[a-z/\\&\\u0020]"))
+k <- 10000
+t_base <- system.time(URLencode(u[1:k], reserved = TRUE))["elapsed"] * n_new / k
+t_curl <- system.time(curl::curl_escape(u))["elapsed"]
+t_fast <- system.time(enc <- url_encode(u, reserved = TRUE))["elapsed"]
+record_new("url_encode", "utils::URLencode", t_base, t_fast, sampled = TRUE)
+record_new("url_encode", "curl::curl_escape", t_curl, t_fast)
+t_base <- system.time(URLdecode(enc[1:k]))["elapsed"] * n_new / k
+t_curl <- system.time(curl::curl_unescape(enc))["elapsed"]
+t_fast <- system.time(url_decode(enc))["elapsed"]
+record_new("url_decode", "utils::URLdecode", t_base, t_fast, sampled = TRUE)
+record_new("url_decode", "curl::curl_unescape", t_curl, t_fast)
+
+comp <- do.call(paste, lapply(1:4, function(i) sample(
+    c("Acme", "PTY", "Ltd.", "Holdings", "&", "Co"), n_new, TRUE)))
+fingerprint_r <- function(s) {
+    s <- tolower(stri_trans_general(trimws(s), "Latin-ASCII"))
+    s <- gsub("[[:punct:][:cntrl:]]", "", s)
+    vapply(strsplit(s, "\\s+"), function(t) paste(sort(unique(t[nzchar(t)])), collapse = " "), "")
+}
+t_base <- system.time(fingerprint_r(comp))["elapsed"]
+t_fast <- system.time(fingerprint(comp))["elapsed"]
+record_new("fingerprint", "R: stringi + strsplit + sort", t_base, t_fast)
+```
+
+```{r}
+#| label: bench-new-extract
+notes <- do.call(paste, lapply(1:8, function(i) sample(
+    c(words, "paracetamol", "police"), n_new, TRUE)))
+terms <- c("paracetamol", stri_rand_strings(999, 8, "[a-z]"))
+k <- 20000
+t_base <- system.time(grepl(paste(terms, collapse = "|"), notes[1:k]))["elapsed"] * n_new / k
+t_fast <- system.time(fgrepl_any(terms, notes))["elapsed"]
+record_new("fgrepl_any (1,000 terms)", "grepl, one alternation", t_base, t_fast, sampled = TRUE)
+
+t_base <- system.time(agrepl("paracetamol", notes, max.distance = 2))["elapsed"]
+t_fast <- system.time(fagrepl("paracetamol", notes, max.distance = 2))["elapsed"]
+record_new("fagrepl", "base::agrepl", t_base, t_fast)
+
+t_base <- system.time(regmatches(addr, gregexpr("[0-9]+", addr)))["elapsed"]
+t_stri <- system.time(stri_extract_all_regex(addr, "[0-9]+"))["elapsed"]
+t_fast <- system.time(fextract_all("[0-9]+", addr))["elapsed"]
+record_new("fextract_all", "regmatches + gregexpr", t_base, t_fast)
+record_new("fextract_all", "stringi::stri_extract_all_regex", t_stri, t_fast)
+
+amounts <- sprintf("$%s.%02d", formatC(sample.int(1e6, n_new, TRUE), big.mark = ",",
+                                       format = "d"), sample.int(99, n_new, TRUE))
+t_base  <- system.time(as.numeric(gsub("[^0-9.]", "", amounts)))["elapsed"]
+t_fast  <- system.time(fparse_number(amounts))["elapsed"]
+record_new("fparse_number", "as.numeric(gsub())", t_base, t_fast)
+# readr is not a dependency; benchmark against it only where it is present.
+if (requireNamespace("readr", quietly = TRUE)) {
+    t_readr <- system.time(readr::parse_number(amounts))["elapsed"]
+    record_new("fparse_number", "readr::parse_number", t_readr, t_fast)
+}
+
+phone <- sprintf("04%02d %03d %03d", sample.int(99, n_new, TRUE),
+                 sample.int(999, n_new, TRUE), sample.int(999, n_new, TRUE))
+t_base <- system.time(gsub("(.)\\1+", "\\1", chartr(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+    paste0(strrep("a", 26), strrep("A", 26), strrep("9", 10)), phone), perl = TRUE))["elapsed"]
+t_fast <- system.time(string_shape(phone, collapse = TRUE))["elapsed"]
+record_new("string_shape", "chartr + gsub", t_base, t_fast)
+
+cards <- stri_rand_strings(n_new, 16, "[0-9]")
+luhn_r <- function(s) {
+    d <- matrix(as.integer(unlist(strsplit(s, ""))), nrow = 16)
+    dbl <- d[seq(15, 1, -2), , drop = FALSE] * 2L
+    (colSums(d[seq(16, 2, -2), , drop = FALSE]) + colSums(dbl - 9L * (dbl > 9L))) %% 10L == 0L
+}
+t_base <- system.time(luhn_r(cards))["elapsed"]
+t_fast <- system.time(valid_id(cards, "luhn"))["elapsed"]
+record_new("valid_id (Luhn)", "vectorised base R", t_base, t_fast)
+```
+
+```{r}
+#| label: bench-new-hash
+ids <- sprintf("%09d", sample.int(999999999, n_new))
+t_base <- system.time(openssl::sha256(ids))["elapsed"]
+t_fast <- system.time(fhash(ids))["elapsed"]
+record_new("fhash (SHA-256)", "openssl::sha256", t_base, t_fast)
+t_base <- system.time(openssl::sha256(ids, key = "secret"))["elapsed"]
+t_fast <- system.time(fhash(ids, key = "secret"))["elapsed"]
+record_new("fhash (HMAC-SHA-256)", "openssl::sha256(key =)", t_base, t_fast)
+k <- 20000
+t_base <- system.time(vapply(ids[1:k], digest::digest, "", algo = "xxhash64",
+                             serialize = FALSE))["elapsed"] * n_new / k
+t_fast <- system.time(fhash(ids, "xxh64"))["elapsed"]
+record_new("fhash (XXH64)", "digest::digest per string", t_base, t_fast, sampled = TRUE)
+```
+
+```{r}
+#| label: bench-new-linkage
+key1 <- sample(sprintf("K%05d", 1:100000), n_new, TRUE)
+key2 <- sample(sprintf("D%05d", 1:100000), n_new, TRUE)
+t_base <- system.time({
+    d <- data.table::data.table(i = seq_len(n_new), k1 = key1, k2 = key2)
+    a <- d[d, on = "k1", allow.cartesian = TRUE, nomatch = NULL][i < i.i, .(i, j = i.i)]
+    b <- d[d, on = "k2", allow.cartesian = TRUE, nomatch = NULL][i < i.i, .(i, j = i.i)]
+    unique(data.table::rbindlist(list(a, b)))
+})["elapsed"]
+t_fast <- system.time(pairs <- block_pairs(data.frame(key1, key2)))["elapsed"]
+record_new("block_pairs (2 passes)", "data.table joins + unique", t_base, t_fast)
+
+pi_ <- sample.int(n_new, n_new, TRUE)
+pj  <- sample.int(n_new, n_new, TRUE)
+t_base <- system.time(igraph::components(
+    igraph::graph_from_edgelist(cbind(pi_, pj), directed = FALSE))$membership)["elapsed"]
+t_fast <- system.time(cluster_pairs(pi_, pj, n = n_new))["elapsed"]
+record_new("cluster_pairs", "igraph::components", t_base, t_fast)
+```
+
+```{r}
+#| label: tbl-new
+#| tbl-cap: !expr sprintf("Newer functions, n = %s strings, %d cores, one run per cell (this machine -- yours will vary). \"scaled\" marks baselines timed on a sample and scaled to n.", format(n_new, big.mark = ",", scientific = FALSE), parallel::detectCores())
+new_tbl <- do.call(rbind, results_new)
+new_tbl$baseline_s <- round(new_tbl$baseline_s, 3)
+new_tbl$fast_s     <- round(new_tbl$fast_s, 3)
+# below the timer's resolution, the speedup is only a lower bound
+new_tbl$speedup    <- ifelse(new_tbl$baseline_s < 0.01, "",
+                      ifelse(new_tbl$fast_s < 0.01,
+                             sprintf("> %.0fx", new_tbl$baseline_s / 0.01),
+                             sprintf("%.0fx", new_tbl$baseline_s / new_tbl$fast_s)))
+knitr::kable(new_tbl, row.names = FALSE,
+             col.names = c("Operation", "Baseline", "Scaled", "Baseline (s)",
+                           "fast.string (s)", "Speedup"))
+```
+
+Two caveats when reading it. Functions that return new strings
+(`url_encode()`, `fhash()`, `fpad()`) spend most of their time in R's own
+string allocation, which is single-threaded, so their margin over a fast C
+baseline such as `curl` is smaller than over the R-level ones. And
+`block_pairs()` returns more than the `data.table` version: the pass that
+found each pair, in sorted order.
+
+## The small-n crossover
+
+@sec-theory claims every parallel function applies a size threshold and
+falls back to single-threaded execution below it, *because* thread-pool
+dispatch overhead would otherwise exceed the time saved. Here's that claim
+checked directly, at `n = 20` — small enough that the claim predicts
+`fast.string` will be *no faster, possibly slower* than base R:
+
+```{r}
+#| label: bench-small-n
+small <- stri_rand_strings(20, sample(5:15, 20, replace = TRUE))
+print(microbenchmark(
+    base = base::grepl("[0-9]", small),
+    fast = fast.string::fgrepl("[0-9]", small),
+    times = 50
+))
+```
+
+At this scale the two are within noise of each other (sometimes base R
+even wins outright) — exactly what the size-threshold design predicts, and
+the reason the rest of this chapter uses 3M rows rather than 20: the
+benefit this package offers only shows up once there's enough work to
+amortise parallel dispatch.
+
+## Summary
+
+```{r}
+#| label: tbl-summary
+#| tbl-cap: !expr sprintf("Observed speedups, n = %s, %d cores, 1 run per cell unless noted (this machine — yours will vary).", format(n, big.mark = ",", scientific = FALSE), parallel::detectCores())
+summary_df <- do.call(rbind, results)
+summary_df$baseline_s <- round(summary_df$baseline_s, 3)
+summary_df$fast_s     <- round(summary_df$fast_s, 3)
+summary_df$speedup    <- paste0(round(summary_df$speedup, 1), "x")
+knitr::kable(
+    summary_df,
+    row.names = FALSE,
+    col.names = c("Operation", "Baseline", "Baseline (s)", "fast.string (s)", "Speedup")
+)
+```
+
+A few patterns worth drawing out explicitly, in descending order of
+speedup:
+
+- **The biggest wins aren't parallelism wins at all.** `fas.POSIXct()`,
+  `fas.Date()`, `format_date()`, and `fcount()` land in the hundreds of
+  times faster, and the reason is that they do *less work*, not that they
+  spread the same work over more cores: no locale handling, no timezone
+  database, no `%`-format interpretation, and — for `fcount()` — no
+  per-element allocation of a match-position vector that gets discarded.
+  These are the rows to read with the trade-off in mind: each one accepts a
+  narrower contract (one fixed shape, no format guessing) in exchange, and
+  @sec-theory is explicit about where that narrowness bites.
+- **Phonetic encoding and multi-pattern substitution are the genuine
+  parallelism wins** — roughly 8-60x, on operations with real
+  per-element branching to spread across cores. `cologne()` and
+  `caverphone()` sit at the top of that band mainly because their
+  single-threaded R baselines are expensive.
+- **The smallest wins are where the baseline is already tight C.** The
+  edit-distance and q-gram kernels against `stringdist` run 1.3-1.8x
+  (`damerau_levenshtein` is actually *slower* here, at 0.8x), because
+  `stringdist` is a well-optimised C implementation and there is little
+  headroom beyond threading. Same story for `substr()` at 1.1x, which base
+  R already does close to memcpy speed. `cosine_similarity()` is the
+  exception in that group at 5.7x, since `stringdist` tabulates q-grams
+  generically where this package packs them into integers.
+- Cross-package comparisons (`stringdist`, `RecordLinkage`, `phonics`)
+  confirm *correctness* as much as speed — the Jaro-Winkler numbers agree
+  to floating-point precision, `cosine_similarity()` matches
+  `stringdist`'s cosine, and `refined_soundex()` matches
+  `phonics::refinedSoundex()` once its truncation is disabled. Agreement is
+  the more important result, since a faster-but-wrong implementation isn't
+  a useful trade. Where outputs *don't* agree — `cologne()` versus
+  `phonics::cologne()`, and the Soundex `H`/`W` rule — @sec-theory says
+  exactly which rule each side takes.
+

@@ -356,8 +356,14 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./uc-metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
   </div>
 </li>
       </ul>
@@ -374,13 +380,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
   </div>
 </li>
       </ul>
@@ -397,19 +403,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
   </div>
 </li>
       </ul>
@@ -716,15 +722,26 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: center;">—</td>
 <td style="text-align: center;"><strong>yes</strong> (<code>cluster_pairs()</code>; <code>igraph</code> has components)</td>
 </tr>
+<tr class="odd">
+<td>Blocking <strong>and</strong> per-field scoring in one call</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;"><code>compare.linkage()</code> / <code>compare.dedup()</code></td>
+<td style="text-align: center;"><strong>yes</strong> (<code>rLink()</code>)</td>
+</tr>
 </tbody>
 </table>
 <p>A few things worth calling out explicitly:</p>
 <ul>
 <li><strong>stringi/stringr</strong> are excellent, mature, and already parallel-friendly at the C level for many operations via ICU — but ICU’s regex engine and <code>fast.string</code>’s PCRE2 path land in similar performance territory for <em>regex</em>. Where <code>fast.string</code> pulls ahead is parallelism (stringi’s core loops are single-threaded; this package’s are TBB-parallel) and the data-linkage-specific functions stringi doesn’t have at all.</li>
 <li><strong>stringdist</strong> is the closest relative for the fuzzy-matching half of this package. <code>fast.string</code> now covers most of the same distance-metric ground (Levenshtein, OSA, unrestricted Damerau-Levenshtein, Hamming, Jaro-Winkler, Jaccard, cosine), plus a few <code>stringdist</code> doesn’t have at all (Dice, Tversky, token-reorder-aware comparison, the RapidFuzz scorers). The benchmark chapter measures the overlapping kernels on the current checkout. What <code>stringdist</code> still has that this package doesn’t is the q-gram-count distance (LCS distances are covered by <code>lcs_seq_distance()</code> and <code>indel_distance()</code>) — and it has nothing on the regex/substitution side, the text-cleaning and validation functions, or candidate-pair generation, which are the other half of <code>fast.string</code>.</li>
-<li><strong>RecordLinkage</strong> is a full record-linkage <em>framework</em> (blocking, EM-based classification, training), not a string-function library. Its <code>soundex()</code>/<code>jarowinkler()</code> are useful comparison points (used directly in <a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a>) but solve a much narrower problem than the package itself.</li>
+<li><strong>RecordLinkage</strong>, <strong>reclin2</strong> and <strong>fastLink</strong> are record-linkage <em>frameworks</em>. They overlap with <code>rLink()</code> on the step that turns two files into scored candidate pairs, and <code>rLink()</code> is deliberately only that step: it does no classification. What those packages add — and this one does not attempt — is the decision: EM estimation of Fellegi-Sunter weights, training against labelled pairs, and the probabilistic model that turns a vector of field scores into a match probability. The sensible division is <code>rLink()</code> for the blocking and the comparison (where the per-string work is, and where parallelism pays) and one of those packages for the model on top. <code>RecordLinkage</code>’s own <code>soundex()</code>/<code>jarowinkler()</code> are also the comparison points used in
+<ol class="example" type="1">
+<li></li>
+</ol></li>
 </ul>
-<p><a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a> puts numbers behind every row in that table at 3-million-row scale.</p>
+<p>1 puts numbers behind every row in that table at 3-million-row scale.</p>
 </section>
 <section id="architecture" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="architecture"><span class="header-section-number">1.2</span> Architecture</h2>
@@ -757,7 +774,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="who-this-is-for" class="level2" data-number="1.3">
 <h2 data-number="1.3" class="anchored" data-anchor-id="who-this-is-for"><span class="header-section-number">1.3</span> Who this is for</h2>
 <p>If you’re doing record linkage, deduplication, ETL, or any other pipeline that processes name/address/free-text columns with <strong>hundreds of thousands to tens of millions of rows</strong>, and you’ve profiled your pipeline and found string operations are a meaningful fraction of the runtime, this package is squarely aimed at you.</p>
-<p>If your data is a few thousand rows, or your bottleneck is somewhere else entirely (I/O, a join, a model fit), the speedups here won’t be the thing that matters, and the simpler base R/stringi call is the right choice — fewer dependencies, identical behaviour, and the performance difference won’t be visible at that scale. <a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a> shows this explicitly: at small <code>n</code>, the parallel-dispatch overhead can make <code>fast.string</code> functions <em>slower</em> than their base R/stringi equivalents.</p>
+<p>If your data is a few thousand rows, or your bottleneck is somewhere else entirely (I/O, a join, a model fit), the speedups here won’t be the thing that matters, and the simpler base R/stringi call is the right choice — fewer dependencies, identical behaviour, and the performance difference won’t be visible at that scale. 1 shows this explicitly: at small <code>n</code>, the parallel-dispatch overhead can make <code>fast.string</code> functions <em>slower</em> than their base R/stringi equivalents.</p>
 
 
 </section>
