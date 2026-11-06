@@ -11,7 +11,7 @@
 #' beforehand:
 #'
 #' ```
-#' block = list(list(soundex(surname), dob), fsubstr(postcode, 1, 2))
+#' block_1 = list(list(soundex(surname), dob), fsubstr(postcode, 1, 2))
 #' ```
 #'
 #' The outer `list()` separates blocking *passes*: a pair is a candidate if it
@@ -47,6 +47,7 @@
 #'     jaro_winkler(given_name),
 #'     sn_jac = jaccard_index(surname, q = 3),
 #'     name   = jaro_winkler_tokens(full_name, contractions = TRUE),
+#'     cross  = jaro_winkler(family_name | surname),
 #'     exact  = (function(a, b) a == b)(postcode)
 #' )
 #' ```
@@ -57,10 +58,17 @@
 #'
 #' A score column takes its name from the list element; unnamed elements fall
 #' back to `<column>_<comparator>`, so `jaro_winkler(given_name)` becomes
-#' `given_name_jaro_winkler`. Write `column_1 | column_2` to compare columns
-#' named differently in the two inputs. `nthreads` reaches a comparator only
-#' when it declares that argument, so plain functions of two arguments are
-#' safe to supply.
+#' `given_name_jaro_winkler`. `nthreads` reaches a comparator only when it
+#' declares that argument, so plain functions of two arguments are safe to
+#' supply.
+#'
+#' **Columns named differently in the two inputs** are compared by writing
+#' `left | right`: the expression to the left of the `|` is evaluated against
+#' `data_1` and the one to the right against `data_2`, as `cross` is above.
+#' Either side may be any expression, not only a bare column name, so
+#' `soundex(family_name) | surname_code` works too --- this is to `compare`
+#' what `block_2` is to `block_1`. Such an element compares no single column on
+#' both sides, so it has no name to fall back on and must be given one.
 #'
 #' Comparators disagree about which end of their scale means "identical":
 #' [jaro_winkler()] and the `*_similarity()` family return 1, edit distances
@@ -73,24 +81,43 @@
 #' leaves every comparator's own scale untouched. What was detected is
 #' recorded in `attr(out, "compare")` and printed when `verbose = TRUE`.
 #'
+#' @section Pair identifiers:
+#' `pair_id` identifies each pair. By default it is built from the `frame_id`
+#' column of each input, as `"<id_1>|<id_2>"`, and falls back to numbering the
+#' pairs when either input has no such column. Two different names are given
+#' as `pair_id = c("frame_id", "person_id")`.
+#'
+#' An identifier built from the records is *stable*: the same two records give
+#' the same `pair_id` whatever blocking found them, so a judgement recorded
+#' against a pair is still about that pair after a re-run with another pass. A
+#' row number is not stable, which is why [rLink_inspect()] keys its review
+#' artifact on this column. The identifiers are carried onto the output as
+#' ordinary columns under both suffixes too, so nothing is lost by joining
+#' them into one key.
+#'
+#' An identifier containing `"|"` is an error rather than an ambiguous key, and
+#' identifiers that are missing or repeated raise a warning saying how many,
+#' because a review cannot then tell those pairs apart.
+#'
 #' @param data_1 A data frame (or `data.table`). Never modified.
 #' @param data_2 An optional second data frame to link `data_1` to. When
 #'   `NULL` (the default) `rLink()` deduplicates within `data_1`, returning
 #'   pairs with `index_1 < index_2` and no record paired with itself.
-#' @param block Blocking passes, as described above. Required unless `pairs`
-#'   is given.
+#' @param block_1 Blocking passes, as described above. Required unless
+#'   `pairs` is given. This argument was called `block` before it gained the
+#'   `_1` that pairs it with `block_2`; both names still work.
 #' @param block_2 Optional blocking expressions for `data_2`, for when the two
 #'   inputs name or store the same information differently (`dob` as a `Date`
 #'   in one and `"DDMMYYYY"` text in the other). Must have as many passes as
-#'   `block`, each with the same number of terms; a pass given as `NULL`
-#'   reuses `block`'s. By default `block`'s own expressions are evaluated
+#'   `block_1`, each with the same number of terms; a pass given as `NULL`
+#'   reuses `block_1`'s. By default `block_1`'s own expressions are evaluated
 #'   against `data_2`. An error when deduplicating, as there is no `data_2`.
 #' @param compare A list of comparator calls, as described above. `NULL`
 #'   returns the candidate pairs unscored.
 #' @param pairs Optional candidate pairs to score instead of blocking: any
 #'   data frame with `x_index` and `y_index` columns, such as the result of
 #'   [minhash_pairs()], [fuzzy_within()] or [tfidf_top_n()]. Supply this or
-#'   `block`, not both.
+#'   `block_1`, not both.
 #' @param block_method `"exact"` (the default) requires keys to be equal, via
 #'   [block_pairs()]. `"sorted_neighbourhood"` also pairs records whose keys
 #'   are near each other in sorted order, via [sorted_neighbourhood()].
@@ -108,6 +135,12 @@
 #'   an exact match. See *Comparators*.
 #' @param keep Columns to carry onto the output, or `NULL` (the default) for
 #'   all of them. `character()` carries none.
+#' @param pair_id Record identifier column from which to build the `pair_id`
+#'   column: one name used on both sides, or two when the inputs name it
+#'   differently, as `c("frame_id", "person_id")`. `"frame_id"` by default,
+#'   and a default that is not there falls back to numbering the pairs, so
+#'   naming no identifier costs nothing; a name given explicitly must exist.
+#'   `NULL` always numbers the pairs. See *Pair identifiers*.
 #' @param block_key Whether to add the `block_key` column, a readable copy of
 #'   the key that paired each record. It is there for diagnosis only, and
 #'   `FALSE` saves one string per pair. Ignored when `pairs` is given.
@@ -120,9 +153,13 @@
 #'   RcppParallel default. `1` forces serial execution.
 #' @param verbose Whether to print per-stage timings and the pairs found.
 #'   Timings are returned either way, as `attr(out, "timings")`.
-#' @return A `data.table` with one row per candidate pair: `pair_id`,
-#'   `index_1` and `index_2` (row numbers into `data_1` and `data_2`, suffixed
-#'   as `suffixes` says), `pass`, `block_key` (when blocking and
+#' @param block Former name of `block_1`, still accepted. Give one or the
+#'   other, not both.
+#' @return A `data.table`, also classed `fs_pairs` so that [summary()] and
+#'   [plot()] describe it, with one row per candidate pair: `pair_id`
+#'   (character when built from identifier columns, otherwise the pair's
+#'   number), `index_1` and `index_2` (row numbers into `data_1` and `data_2`,
+#'   suffixed as `suffixes` says), `pass`, `block_key` (when blocking and
 #'   `block_key = TRUE`), the carried columns under both suffixes, and one
 #'   column per comparator. Attributes `timings` and `compare` describe the
 #'   run.
@@ -149,36 +186,36 @@
 #' # Block on the Soundex of surname together with date of birth, then score
 #' out <- rLink(
 #'     enrol, claims,
-#'     block   = list(list(soundex(surname), dob)),
+#'     block_1 = list(list(soundex(surname), dob)),
 #'     compare = list(jaro_winkler(given), sn = jaro_winkler(surname))
 #' )
 #' out$given_jaro_winkler
 #'
 #' # An edit distance is converted so that 1 is still an exact match
 #' rLink(enrol, claims,
-#'       block   = list(soundex(surname)),
+#'       block_1 = list(soundex(surname)),
 #'       compare = list(lev = levenshtein(surname)))$lev
 #'
 #' # `normalise = FALSE` keeps the comparator's own scale, here edits
 #' rLink(enrol, claims,
-#'       block     = list(soundex(surname)),
+#'       block_1   = list(soundex(surname)),
 #'       compare   = list(lev = levenshtein(surname)),
 #'       normalise = FALSE)$lev
 #'
 #' # Two passes: same Soundex of surname, or same date of birth
-#' rLink(enrol, claims, block = list(soundex(surname), dob))$pass
+#' rLink(enrol, claims, block_1 = list(soundex(surname), dob))$pass
 #'
 #' # --- block_method = "sorted_neighbourhood" ----------------------------
 #' # Blocking on surname exactly only ever finds SMITH = SMITH: the typos
 #' # put every other true match in a block of its own.
-#' rLink(enrol, claims, block = list(surname))[, c("index_1", "index_2")]
+#' rLink(enrol, claims, block_1 = list(surname))[, c("index_1", "index_2")]
 #'
 #' # The sorted neighbourhood slides a window over the keys in sorted order
 #' # instead, so neighbours pair without agreeing: BROWN with BROWNE,
 #' # JONES with JONSE, SMITH with SMYTH.
 #' sn <- rLink(
 #'     enrol, claims,
-#'     block        = list(surname),
+#'     block_1      = list(surname),
 #'     block_method = "sorted_neighbourhood",
 #'     window       = 3,
 #'     compare      = list(jaro_winkler(surname)),
@@ -189,7 +226,7 @@
 #' sn[, c("surname_1", "surname_2", "surname_jaro_winkler")]
 #'
 #' # A wider window reaches further either side, for more pairs to score
-#' nrow(rLink(enrol, claims, block = list(surname),
+#' nrow(rLink(enrol, claims, block_1 = list(surname),
 #'            block_method = "sorted_neighbourhood", window = 5))
 #'
 #' # --- the rest of the arguments ----------------------------------------
@@ -197,7 +234,7 @@
 #' # sides, `score_position = "end"` puts the scores after them, and
 #' # `block_key = FALSE` drops the diagnostic key column.
 #' rLink(enrol, claims,
-#'       block          = list(dob),
+#'       block_1        = list(dob),
 #'       compare        = list(jaro_winkler(surname), jaro_winkler(given)),
 #'       keep           = c("surname", "given"),
 #'       suffixes       = c(".x", ".y"),
@@ -208,14 +245,14 @@
 #' enrol2 <- enrol
 #' names(enrol2)[2] <- "family_name"
 #' rLink(enrol2, claims,
-#'       block   = list(dob),
+#'       block_1 = list(dob),
 #'       compare = list(sn = jaro_winkler(family_name | surname)))$sn
 #'
 #' # `block_2` builds the same key from a column stored differently
 #' claims2 <- claims
 #' claims2$dob <- format(claims2$dob, "%d%m%Y")
 #' rLink(enrol, claims2,
-#'       block   = list(format(dob, "%d%m%Y")),
+#'       block_1 = list(format(dob, "%d%m%Y")),
 #'       block_2 = list(dob),
 #'       compare = list(jaro_winkler(surname)))$block_key
 #'
@@ -224,18 +261,18 @@
 #' enrol3$surname[4] <- NA
 #' claims3 <- claims
 #' claims3$surname[1] <- NA
-#' nrow(rLink(enrol3, claims3, block = list(surname)))
-#' nrow(rLink(enrol3, claims3, block = list(surname), match_missing = TRUE))
+#' nrow(rLink(enrol3, claims3, block_1 = list(surname)))
+#' nrow(rLink(enrol3, claims3, block_1 = list(surname), match_missing = TRUE))
 #'
 #' # `force_upper_case = FALSE` makes keys and scores case-sensitive
 #' enrol4 <- enrol
 #' enrol4$surname <- tolower(enrol4$surname)
-#' nrow(rLink(enrol4, claims, block = list(surname)))
-#' nrow(rLink(enrol4, claims, block = list(surname),
+#' nrow(rLink(enrol4, claims, block_1 = list(surname)))
+#' nrow(rLink(enrol4, claims, block_1 = list(surname),
 #'            force_upper_case = FALSE))
 #'
 #' # `max_block_size` skips blocks too big to be worth comparing
-#' nrow(rLink(enrol, claims, block = list(fsubstr(surname, 1, 1)),
+#' nrow(rLink(enrol, claims, block_1 = list(fsubstr(surname, 1, 1)),
 #'            max_block_size = 2))
 #'
 #' # `pairs` scores candidates found some other way instead of blocking
@@ -246,18 +283,18 @@
 #'
 #' # `verbose = TRUE` reports the pairs expected, the timings and what each
 #' # comparator was found to return
-#' invisible(rLink(enrol, claims, block = list(soundex(surname)),
+#' invisible(rLink(enrol, claims, block_1 = list(soundex(surname)),
 #'                 compare = list(jaro_winkler(given)), verbose = TRUE))
 #'
 #' # Deduplicating one file, then turning the matches into entity IDs
-#' dup <- rLink(enrol, block = list(soundex(surname)),
+#' dup <- rLink(enrol, block_1 = list(soundex(surname)),
 #'              compare = list(jaro_winkler(given)))
 #' cluster_pairs(dup$index_1[dup$given_jaro_winkler > 0.8],
 #'               dup$index_2[dup$given_jaro_winkler > 0.8], n = nrow(enrol))
 #' @export
 rLink <- function(data_1,
                   data_2 = NULL,
-                  block = NULL,
+                  block_1 = NULL,
                   block_2 = NULL,
                   compare = NULL,
                   pairs = NULL,
@@ -269,20 +306,40 @@ rLink <- function(data_1,
                   force_upper_case = TRUE,
                   normalise = TRUE,
                   keep = NULL,
+                  pair_id = "frame_id",
                   block_key = TRUE,
                   suffixes = c("_1", "_2"),
                   score_position = c("grouped", "end"),
                   nthreads = NULL,
-                  verbose = FALSE) {
+                  verbose = FALSE,
+                  block = NULL) {
     t_all <- .bench_now()
+    # Read before anything touches `pair_id`: a default that is not in the
+    # data falls back to the pair number, while a name the caller chose must
+    # be there.
+    pair_id_default <- missing(pair_id)
     timings <- list()
     t0 <- t_all
 
     # Captured before anything touches them, so a term naming a column is
     # never evaluated as a variable in the caller first.
-    quo_block <- rlang::enquo(block)
+    quo_block <- rlang::enquo(block_1)
+    quo_block_old <- rlang::enquo(block)
     quo_block_2 <- rlang::enquo(block_2)
     quo_compare <- rlang::enquo(compare)
+
+    # `block` was this argument's name before it gained the `_1` that pairs it
+    # with `block_2`. Both are accepted, and every message below names
+    # whichever was written, so it points at the caller's own code.
+    block_arg <- "block_1"
+    if (!rlang::quo_is_null(quo_block_old)) {
+        if (!rlang::quo_is_null(quo_block))
+            stop(paste0("Give `block_1` or `block`, not both: they are the ",
+                        "same argument, and `block_1` is the current name."),
+                 call. = FALSE)
+        quo_block <- quo_block_old
+        block_arg <- "block"
+    }
 
     block_method <- match.arg(block_method)
     score_position <- match.arg(score_position)
@@ -311,16 +368,27 @@ rLink <- function(data_1,
     if (is.null(na_strings)) na_strings <- character()
     if (!is.character(na_strings) || anyNA(na_strings))
         stop("`na_strings` must be a character vector without NA.")
+    if (!is.null(pair_id) &&
+        (!is.character(pair_id) || length(pair_id) < 1L ||
+         length(pair_id) > 2L || anyNA(pair_id) || !all(nzchar(pair_id))))
+        stop(paste0("`pair_id` must be NULL, the name of one record ",
+                    "identifier column, or two names, one per input."),
+             call. = FALSE)
+    if (dedupe && !is.null(pair_id) && length(pair_id) == 2L)
+        stop(paste0("`pair_id` names a column in each input, but there is ",
+                    "only one: deduplicating takes a single name."),
+             call. = FALSE)
 
     use_block <- !rlang::quo_is_null(quo_block)
     if (use_block && !is.null(pairs))
-        stop("Give `block` or `pairs`, not both.")
+        stop(sprintf("Give `%s` or `pairs`, not both.", block_arg))
     if (!use_block && is.null(pairs))
-        stop("`block` is required (or supply `pairs`).")
+        stop(sprintf("`%s` is required (or supply `pairs`).", block_arg))
     # It would be evaluated against data_1 and then never used.
     if (dedupe && !rlang::quo_is_null(quo_block_2))
-        stop(paste0("`block_2` describes `data_2`, but there is none: ",
-                    "deduplicating uses `block` alone."))
+        stop(sprintf(paste0(
+            "`block_2` describes `data_2`, but there is none: deduplicating ",
+            "uses `%s` alone."), block_arg))
     show_key <- use_block && block_key
 
     mask_1 <- as.list(data_1)
@@ -332,12 +400,13 @@ rLink <- function(data_1,
     keys_1 <- NULL
     if (use_block) {
         t0 <- .bench_now()
-        spec <- .rlink_passes(quo_block, "block")
+        spec <- .rlink_passes(quo_block, block_arg)
         labels <- spec$labels
         n_pass <- length(spec$passes)
         spec_2 <- if (rlang::quo_is_null(quo_block_2)) NULL else
             .rlink_passes(quo_block_2, "block_2")
-        if (!is.null(spec_2)) .rlink_check_block_2(spec, spec_2, n_pass)
+        if (!is.null(spec_2))
+            .rlink_check_block_2(spec, spec_2, n_pass, block_arg)
 
         probs <- .rlink_problems()
         keys_1 <- vector("list", n_pass)
@@ -354,10 +423,10 @@ rLink <- function(data_1,
             inherit <- is.null(spec_2) || is.null(spec_2$passes[[p]])
             terms_2 <- if (inherit) terms_1 else spec_2$passes[[p]]
             env_2 <- if (is.null(spec_2)) spec$env else spec_2$env
-            arg_2 <- if (inherit) "block" else "block_2"
+            arg_2 <- if (inherit) block_arg else "block_2"
             parts_1 <- lapply(seq_along(terms_1), function(k)
                 .rlink_cached_term(cache_1, terms_1[[k]], mask_1, spec$env,
-                                   nrow(data_1), "block", p, k, probs))
+                                   nrow(data_1), block_arg, p, k, probs))
             # Deduplicating, the second side would be the same key built
             # from the same data a second time.
             parts_2 <- if (!dedupe) lapply(seq_along(terms_2), function(k)
@@ -433,7 +502,8 @@ rLink <- function(data_1,
     keep_2 <- intersect(names(d2), keep_cols)
 
     out <- list()
-    out[["pair_id"]] <- seq_len(n_pairs)
+    out[["pair_id"]] <- .rlink_pair_id(data_1, d2, pair_id, pair_id_default,
+                                       dedupe, xi, yi, n_pairs, nthreads)
     out[[paste0("index", suffixes[1L])]] <- xi
     out[[paste0("index", suffixes[2L])]] <- yi
     out[["pass"]] <- pairs$pass
@@ -504,7 +574,8 @@ rLink <- function(data_1,
                         value = orient$convert(score, a0, b0, xi, yi))
         info[[i]] <- data.frame(score = s$name, comparator = s$label,
                                 column_1 = s$col_1, column_2 = s$col_2,
-                                scale = orient$kind)
+                                scale = orient$kind,
+                                direction = orient$direction)
         timings[[s$name]] <- .bench_now() - t0
     }
 
@@ -529,6 +600,12 @@ rLink <- function(data_1,
         seconds = unlist(c(timings, list(total)), use.names = FALSE)))
     data.table::setattr(out, "compare",
                         if (length(info)) do.call(rbind, info) else NULL)
+    # `fs_pairs` ahead of the data.table classes, so that summary() and plot()
+    # describe the result. data.table carries both this class and the two
+    # attributes above through `[`, `order()`, `head()` and `:=`, so they
+    # survive a filter on the scores.
+    data.table::setattr(out, "class",
+                        c("fs_pairs", "data.table", "data.frame"))
     if (verbose) {
         for (x in info)
             cli::cli_alert_info(sprintf("%s: %s (%s).", x$score,
@@ -588,12 +665,12 @@ rLink <- function(data_1,
     list(passes = passes, labels = labels, env = env)
 }
 
-.rlink_check_block_2 <- function(spec, spec_2, n_pass) {
+.rlink_check_block_2 <- function(spec, spec_2, n_pass, arg = "block_1") {
     n2 <- length(spec_2$passes)
     if (n2 != n_pass)
         stop(sprintf(paste0(
-            "`block_2` has %d pass%s but `block` has %d; they are matched up ",
-            "pass by pass."), n2, if (n2 == 1L) "" else "es", n_pass),
+            "`block_2` has %d pass%s but `%s` has %d; they are matched up ",
+            "pass by pass."), n2, if (n2 == 1L) "" else "es", arg, n_pass),
             call. = FALSE)
     for (p in seq_len(n_pass)) {
         if (is.null(spec_2$passes[[p]])) next
@@ -601,9 +678,9 @@ rLink <- function(data_1,
         k2 <- length(spec_2$passes[[p]])
         if (k1 != k2)
             stop(sprintf(paste0(
-                "Pass %d has %d term%s in `block` but %d in `block_2`; keys ",
+                "Pass %d has %d term%s in `%s` but %d in `block_2`; keys ",
                 "built from different numbers of terms can never agree."),
-                p, k1, if (k1 == 1L) "" else "s", k2), call. = FALSE)
+                p, k1, if (k1 == 1L) "" else "s", arg, k2), call. = FALSE)
     }
     invisible(NULL)
 }
@@ -786,6 +863,81 @@ rLink <- function(data_1,
           max(days) <= .rlink_date_max))
         return(NULL)
     format_date(unclass(v), nthreads = nthreads)
+}
+
+# A stable identifier per pair, built from a record identifier column on each
+# side rather than from the row number. Row numbers describe a particular run:
+# re-block the same two files and pair 412 is a different pair, so a judgement
+# filed against it is silently about something else. Record identifiers do not
+# move, which is what lets rLink_inspect() keep a review across re-runs.
+.rlink_pair_sep <- "|"
+
+.rlink_pair_id <- function(data_1, d2, pair_id, default, dedupe, xi, yi,
+                           n_pairs, nthreads) {
+    if (is.null(pair_id)) return(seq_len(n_pairs))
+    nm_1 <- pair_id[[1L]]
+    nm_2 <- if (length(pair_id) == 2L) pair_id[[2L]] else pair_id[[1L]]
+    gone_1 <- !nm_1 %in% names(data_1)
+    gone_2 <- !nm_2 %in% names(d2)
+    if (gone_1 || gone_2) {
+        # The default name is a convention, not a promise: a file that does not
+        # use it still links, numbered as it always was.
+        if (default) return(seq_len(n_pairs))
+        side <- if (gone_1 || dedupe) "data_1" else "data_2"
+        held <- if (gone_1) data_1 else d2
+        stop(sprintf(paste0(
+            "`pair_id` names `%s`, which is not a column of `%s`.\n",
+            "Columns in `%s`: %s."),
+            if (gone_1) nm_1 else nm_2, side, side,
+            paste(names(held), collapse = ", ")), call. = FALSE)
+    }
+    # Rendered once per record and then indexed, never once per pair, which is
+    # the discipline .rlink_block_key() follows and for the same reason.
+    a <- .rlink_as_character(data_1[[nm_1]], nthreads)
+    shared <- dedupe && identical(nm_1, nm_2)
+    b <- if (shared) a else .rlink_as_character(d2[[nm_2]], nthreads)
+    .rlink_check_pair_sep(a, nm_1, "data_1", nthreads)
+    if (!shared)
+        .rlink_check_pair_sep(b, nm_2, if (dedupe) "data_1" else "data_2",
+                              nthreads)
+    left <- a[xi]
+    right <- b[yi]
+    key <- paste0(left, .rlink_pair_sep, right)
+    key[is.na(left) | is.na(right)] <- NA_character_
+    .rlink_warn_pair_id(key, nm_1, nm_2)
+    key
+}
+
+# The separator is rejected in the data rather than assumed absent, because a
+# key that collides is a wrong answer rather than an untidy one -- the same
+# stance .rlink_check_sep() takes for the blocking keys.
+.rlink_check_pair_sep <- function(v, column, side, nthreads) {
+    if (any(fgrepl(.rlink_pair_sep, v, fixed = TRUE, nthreads = nthreads),
+            na.rm = TRUE))
+        stop(sprintf(paste0(
+            "Values of `%s` in `%s` contain `%s`, which joins the two ",
+            "identifiers into `pair_id`, so the key would be ambiguous. Name ",
+            "another `pair_id` column, or take the character out first."),
+            column, side, .rlink_pair_sep), call. = FALSE)
+    invisible(NULL)
+}
+
+.rlink_warn_pair_id <- function(key, nm_1, nm_2) {
+    n_na <- sum(is.na(key))
+    n_dup <- sum(duplicated(key[!is.na(key)]))
+    if (!n_na && !n_dup) return(invisible(NULL))
+    parts <- c(
+        if (n_na) sprintf("%s missing", format(n_na, big.mark = ",")),
+        if (n_dup) sprintf("%s duplicated", format(n_dup, big.mark = ",")))
+    warning(sprintf(paste0(
+        "`pair_id` has %s value%s, because `%s` does not identify records ",
+        "uniquely. A review keyed on `pair_id` cannot tell those pairs ",
+        "apart."),
+        paste(parts, collapse = " and "),
+        if (n_na + n_dup == 1L) "" else "s",
+        if (identical(nm_1, nm_2)) nm_1 else paste0(nm_1, "`/`", nm_2)),
+        call. = FALSE)
+    invisible(NULL)
 }
 
 .rlink_as_character <- function(v, nthreads = NULL) {
@@ -994,9 +1146,12 @@ rLink <- function(data_1,
 # indices into them, not the values per pair, so lengths are counted once
 # per record.
 .rlink_orient <- function(fn, args, normalise, nthreads) {
-    keep <- function(kind)
-        list(kind = kind, convert = function(s, a, b, xi, yi) s)
-    if (!normalise) return(keep("as is"))
+    # The probe runs even when no conversion is wanted. `normalise = FALSE`
+    # leaves a score on its own scale, and then which end of it means "match"
+    # is the one thing a reader cannot recover from the column itself --- so
+    # the probed direction is reported either way, and threshold_sweep() cuts
+    # by that rather than guessing from the comparator's name.
+    #
     # A warning is muffled rather than taken as failure: the probe's score
     # is still good, and the real call warns again if the data merit it.
     p <- tryCatch(
@@ -1004,20 +1159,30 @@ rLink <- function(data_1,
             .rlink_call(fn, .rlink_probe_a, .rlink_probe_b, args, nthreads),
             warning = function(w) invokeRestart("muffleWarning")),
         error = function(cnd) NULL)
-    if (is.null(p) || length(p) != 2L ||
-        !(is.numeric(p) || is.logical(p)) || anyNA(p))
-        return(keep("not detected"))
-    hi <- as.numeric(p[[1L]])
-    lo <- as.numeric(p[[2L]])
-    if (!is.finite(hi) || !is.finite(lo) || isTRUE(all.equal(hi, lo)))
-        return(keep("not detected"))
+    usable <- !(is.null(p) || length(p) != 2L ||
+                !(is.numeric(p) || is.logical(p)) || anyNA(p))
+    hi <- if (usable) as.numeric(p[[1L]]) else NA_real_
+    lo <- if (usable) as.numeric(p[[2L]]) else NA_real_
+    if (usable && (!is.finite(hi) || !is.finite(lo) ||
+                   isTRUE(all.equal(hi, lo))))
+        usable <- FALSE
+    probed <- if (!usable) NA_character_ else if (hi > lo) "higher" else "lower"
+
+    keep <- function(kind, direction = probed)
+        list(kind = kind, direction = direction,
+             convert = function(s, a, b, xi, yi) s)
+    if (!normalise) return(keep("as is"))
+    if (!usable) return(keep("not detected"))
+    # Past here the score is converted so that 1 is an exact match, whatever
+    # the comparator returned, so the column that comes out is always
+    # higher-is-better even when `scale` records that the input was a distance.
     if (hi > lo) {
-        if (isTRUE(all.equal(hi, 1))) return(keep("similarity"))
-        return(list(kind = sprintf("similarity/%g", hi),
+        if (isTRUE(all.equal(hi, 1))) return(keep("similarity", "higher"))
+        return(list(kind = sprintf("similarity/%g", hi), direction = "higher",
                     convert = function(s, a, b, xi, yi) s / hi))
     }
     if (lo <= 1.5)
-        return(list(kind = "distance",
+        return(list(kind = "distance", direction = "higher",
                     convert = function(s, a, b, xi, yi) 1 - s))
     # Lengths in the unit the comparator counts edits in: a byte-wise
     # distance over a character length would charge an accented letter two
@@ -1025,7 +1190,8 @@ rLink <- function(data_1,
     ub <- if ("use_bytes" %in% names(args)) args$use_bytes
           else formals(fn)$use_bytes
     unit <- if (isTRUE(ub)) "bytes" else "chars"
-    list(kind = "edit distance", convert = function(s, a, b, xi, yi) {
+    list(kind = "edit distance", direction = "higher",
+         convert = function(s, a, b, xi, yi) {
         n <- pmax(nchar(a, unit)[xi], nchar(b, unit)[yi])
         v <- 1 - s / n
         v[which(n == 0L)] <- 1

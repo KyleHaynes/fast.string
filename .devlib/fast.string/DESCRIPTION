@@ -79,5 +79,5 @@ Author: Kyle Haynes [aut, cre],
   WHATWG [cph] (HTML named character references in src/html_entities.h
     (CC BY 4.0))
 Maintainer: Kyle Haynes <kyle@kylehaynes.com.au>
-Built: R 4.6.1; x86_64-w64-mingw32; 2026-11-05 12:45:32 UTC; windows
+Built: R 4.6.1; x86_64-w64-mingw32; 2026-11-05 20:40:57 UTC; windows
 Archs: x64

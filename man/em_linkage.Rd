@@ -122,7 +122,12 @@ Other record linkage model functions:
 \code{\link[=compare_levels]{compare_levels()}},
 \code{\link[=linkage_eval]{linkage_eval()}},
 \code{\link[=match_weights]{match_weights()}},
+\code{\link[=plot.fs_pairs]{plot.fs_pairs()}},
+\code{\link[=plot.fs_sweep]{plot.fs_sweep()}},
+\code{\link[=review_order]{review_order()}},
+\code{\link[=summary.fs_pairs]{summary.fs_pairs()}},
 \code{\link[=tf_adjust]{tf_adjust()}},
+\code{\link[=threshold_sweep]{threshold_sweep()}},
 \code{\link[=value_frequency]{value_frequency()}}
 }
 \concept{record linkage model functions}

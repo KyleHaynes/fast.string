@@ -516,7 +516,7 @@ test_that("the probabilistic pipeline runs end to end from rLink()", {
     )
     out <- rLink(
         enrol, claims,
-        block   = list(dob, soundex(surname)),
+        block_1 = list(dob, soundex(surname)),
         compare = list(sn = jaro_winkler(surname), gn = jaro_winkler(given),
                        db = (function(a, b) as.numeric(a == b))(dob))
     )

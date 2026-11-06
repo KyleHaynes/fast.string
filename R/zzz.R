@@ -4,6 +4,10 @@
 #' @importFrom rlang inform
 #' @importFrom rlang enquo eval_tidy new_quosure quo_get_env quo_get_expr
 #' @importFrom rlang quo_is_null
+#' @importFrom graphics abline hist legend matplot par plot.new text
+#' @importFrom grDevices colorRamp n2mfrow rgb
+#' @importFrom stats quantile
+#' @importFrom utils head packageVersion tail
 #' @import data.table
 NULL
 # rlang is imported because cli::cli_inform(), used for the reminders, is a

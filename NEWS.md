@@ -109,16 +109,120 @@ not yet covered:
   is a phonetic comparator that weights a difference in the first letter 34
   times as heavily as one in the last sound recorded.
 
+### Choosing a threshold, and recording the judgement
+
+A linkage ends in a decision, and the decision has never been the part this
+package helped with. It could score a pair to four decimal places and then
+leave the two questions that matter --- *where does the cut-off go?* and *was
+this particular pair really the same person?* --- to a hand-picked number in a
+script, with no record of who chose it or why. These functions close that gap.
+
+* `threshold_sweep()` reports, for every candidate cut-off, what keeping the
+  pairs above it would actually produce: the pairs kept, the records linked on
+  each side, how many of those links are a clean one-to-one, and how many
+  records are left holding two links or more. Reading it downwards, the point
+  where the conflict counts start climbing is where the cut has begun admitting
+  pairs that contradict pairs already accepted --- and it needs no known truth.
+  Given the posteriors from `match_weights()` it also estimates precision and
+  recall by summing probabilities rather than counting, as `Splink` does, and
+  given a truth it reports the observed figures beside the estimates so the
+  estimates themselves can be checked.
+* `review_order()` orders pairs by how undecided they are, so that an hour of
+  manual review is spent on the pairs where a judgement changes the outcome
+  rather than on the obvious ones at either end.
+* `summary()` and `plot()` methods now describe an `rLink()` result: the pairs,
+  the records reached, the contribution of each blocking pass, and the
+  distribution of every score. A linkage that is going to work shows two humps
+  in `plot()`, and the dip between them is where the threshold belongs; a
+  single hump means the comparator is not separating the two populations, which
+  is worth knowing before tuning a cut-off that cannot exist. `plot()` on a
+  sweep draws the curve.
+
+The sweep is exact at every distinct score and costs one pass over the pairs,
+not one per threshold: a quarter of a second for a million pairs against all
+999,859 of their distinct scores. It is therefore cheap enough to recompute
+while a slider moves, which is what the next part needs.
+
+* `rLink_inspect()` opens the candidate pairs in a browser --- a reactable
+  table with the score columns filled by a colour gradient, one slider per
+  score, and three buttons and a comment box on every row. Pairs failing the
+  current cut are dimmed rather than hidden, because a false negative you
+  cannot see is a false negative you will not find. Every count it reports is
+  computed over *all* the pairs, not only the ones on screen.
+* `rLink_review()` reads back the JSON artifact `rLink_inspect()` writes. That
+  file is the point of the exercise: it records who reviewed what and when, the
+  thresholds they accepted and the reason they typed for each, every per-pair
+  verdict with its comment, and fingerprints of the data as it stood. Its
+  decision log is **append-only**, so a second reviewer's session is added to
+  it rather than written over it --- which is what makes `$disagreements`
+  possible, and what stops a QA pass quietly erasing the work it is meant to
+  be checking.
+* `rLink_apply()` turns a review back into one logical per pair, applying the
+  recorded threshold and then the per-pair overrides, with
+  `attr(, "reason")` naming the rule that decided each one. Doing this by hand
+  is where a review goes wrong: the threshold has to be applied with the
+  operator it was recorded with, and pairs that were reviewed but have since
+  vanished have to be noticed rather than silently dropped.
+
+`shiny`, `reactable` and `jsonlite` are suggested, not required; only
+`rLink_inspect()` needs them, and it says which are missing in one message.
+
+```r
+pairs <- rLink(enrol, claims,
+               block_1 = list(list(soundex(surname), dob)),
+               compare = list(sn = jaro_winkler(surname),
+                              gn = jaro_winkler(given_name)))
+
+# Where should the cut go?
+sweep <- threshold_sweep(pairs, "sn")
+plot(sweep)
+
+# Decide it, and record the decision
+rLink_inspect(pairs, artifact = "review.json")
+
+# What the next person runs
+review <- rLink_review("review.json", x = pairs)
+review$disagreements
+links <- rLink_apply(pairs, review)
+```
+
+### `rLink()` names its arguments in pairs
+
+* `block` is now `block_1`, which pairs it with the `block_2` that was already
+  there. `block` keeps working, and every error message names whichever of the
+  two the caller actually wrote.
+* `pair_id` builds the `pair_id` column from a record identifier on each side
+  --- `"frame_id"` by default, or `c("frame_id", "person_id")` where the two
+  inputs name it differently --- instead of numbering the pairs. A row number
+  describes one particular run: re-block the same two files and pair 412 is a
+  different pair, so a judgement filed against it is silently about something
+  else. An identifier built from the records does not move, which is what lets
+  a saved review survive a re-run. An identifier containing `"|"` is an error
+  rather than an ambiguous key, and identifiers that are missing or repeated
+  raise a warning saying how many. A default `frame_id` that is not there
+  falls back to numbering the pairs, so nothing that worked before changes.
+* The result is now also classed `fs_pairs`, which is what `summary()` and
+  `plot()` dispatch on. `data.table` carries the class and the `timings` and
+  `compare` attributes through `[`, `order()`, `head()` and `:=`, so they all
+  survive a filter on the scores.
+* `attr(out, "compare")` gains a `direction` column recording which end of each
+  score means "a match". Under the default `normalise = TRUE` that is always
+  `"higher"`, because every comparator's output is converted so 1 is an exact
+  match. Under `normalise = FALSE` it is the only record of the fact, and
+  without it `threshold_sweep()` and `rLink_apply()` would cut an unnormalised
+  edit distance upside down.
+
 ## Bug fixes
 
+* `cluster_pairs()` now reads a data frame's `index_1`/`index_2` columns, or
+  its `x_index`/`y_index`, before falling back to the first two columns ---
+  the rule `select_greedy()`, `linkage_eval()` and `blocking_eval()` already
+  follow. Passing an `rLink()` result straight in previously clustered
+  `pair_id` against `index_1`, because `pair_id` is the first column.
 * A stray `// [[Rcpp::export]]` in `src/text_tools.cpp` was attached to the
   internal `already_cased_ascii()` helper, which made `Rcpp::compileAttributes()`
   emit an entry point that did not compile. The tag is gone; nothing about
   the package's behaviour changes.
-
-
-## Bug fixes
-
 * `roger_root()` now reproduces `phonics::rogerroot()` on every input, as
   its documentation says it does. It previously applied its rule table as a
   sequence of whole-string replacements, which is not the same thing as the
@@ -172,6 +276,17 @@ machine and data.
 
 ## Documentation
 
+* `rLink()`'s `compare` has always been able to compare columns named
+  differently in the two inputs, by writing
+  `jaro_winkler(family_name | surname)`: the expression to the left of the
+  `|` is evaluated against `data_1` and the one to its right against
+  `data_2`, and either side may be any expression rather than only a bare
+  column name. That is to `compare` what `block_2` is to `block_1`, and it was
+  buried in a subordinate clause of a single sentence. It now has its own
+  paragraph, a line in the worked example and a mention in `@param compare`.
+* `rLink()` gains a *Pair identifiers* section, covering what `pair_id` is
+  built from and why an identifier that comes from the records rather than
+  from the row order is what lets a saved review outlive the run that made it.
 * The linkage chapters are rebuilt around `rLink()` and around two
   realistic files of people whose names, dates of birth, addresses, sex and
   postcodes are each recorded differently, with a known truth so that

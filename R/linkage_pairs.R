@@ -174,10 +174,12 @@ sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
 #' second file's indices: `cluster_pairs(p$x_index, p$y_index + length(x),
 #' n = length(x) + length(y))`.
 #'
-#' @param i Integer vector of record indices (1-based), or a data frame whose
-#'   first two columns are the two indices of each pair (such as the result
-#'   of [block_pairs()], [fuzzy_within()] or [minhash_pairs()], filtered to
-#'   the matches).
+#' @param i Integer vector of record indices (1-based), or a data frame of
+#'   pairs, such as the result of [block_pairs()], [fuzzy_within()],
+#'   [minhash_pairs()] or [rLink()], filtered to the matches. A data frame's
+#'   `index_1` and `index_2` columns are used when it has them, then its
+#'   `x_index` and `y_index`, and its first two columns otherwise --- so an
+#'   [rLink()] result, whose first column is `pair_id`, goes straight in.
 #' @param j Integer vector of the other record of each pair; omit when `i`
 #'   is a data frame.
 #' @param n Number of records. Defaults to the largest index; records that
@@ -200,8 +202,12 @@ cluster_pairs <- function(i, j = NULL, n = NULL) {
     if (is.data.frame(i)) {
         if (!is.null(j)) stop("Give `j` only when `i` is a vector.")
         if (ncol(i) < 2L) stop("`i` must have at least two columns.")
-        j <- i[[2L]]
-        i <- i[[1L]]
+        # By name where the package's own pair functions provide one, as
+        # select_greedy() and linkage_eval() do. Position alone would read
+        # `pair_id` out of an rLink() result and cluster that.
+        at <- .pair_columns(names(i))
+        j <- i[[at[2L]]]
+        i <- i[[at[1L]]]
     }
     if (is.null(j)) stop("`j` is missing.")
     if (!is.numeric(i) || !is.numeric(j) || length(i) != length(j))

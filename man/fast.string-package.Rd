@@ -268,6 +268,17 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=linkage_eval]{linkage_eval()}} - precision, recall and F-measure
 \item \code{\link[=blocking_eval]{blocking_eval()}} - reduction ratio, pairs completeness
 }
+\item \emph{Review & thresholds}
+\itemize{
+\item \code{\link[=threshold_sweep]{threshold_sweep()}} - links and conflicts by cut-off
+\item \code{\link[=review_order]{review_order()}} - order pairs by how undecided
+}
+\item \emph{Clerical review}
+\itemize{
+\item \code{\link[=rLink_inspect]{rLink_inspect()}} - review pairs in a browser
+\item \code{\link[=rLink_review]{rLink_review()}} - read a saved pair review
+\item \code{\link[=rLink_apply]{rLink_apply()}} - apply a review to pairs
+}
 }
 \item \strong{Benchmarking}
 \itemize{
@@ -341,6 +352,7 @@ Other contributors:
   \item Adam Cohen (Author of fuzzywuzzy, on which RapidFuzz's fuzz module builds) [copyright holder]
   \item James P. Howard (Author of phonics, whose Statistics Canada, Lein, Phonex and Roger Root rules are reproduced) [copyright holder]
   \item The Apache Software Foundation (Apache Commons Codec, whose Metaphone is ported and whose Daitch-Mokotoff Soundex rules are read by tools/gen_dm_table.py) [copyright holder]
+  \item ticki (Author of the Rust crate eudex, whose phone tables and distance weights eudex() and eudex_distance() reproduce) [copyright holder]
   \item OpenRefine contributors (Fingerprint keyers followed by fingerprint() and src/fingerprint_table.h) [copyright holder]
   \item Unicode, Inc. (CLDR Latin-ASCII data in src/ascii_fold_table.h and Unicode Character Database categories in src/shape_table.h) [copyright holder]
   \item WHATWG (HTML named character references in src/html_entities.h (CC BY 4.0)) [copyright holder]
