@@ -62,8 +62,10 @@ limit) followed by \code{\link[=soundex]{soundex()}} of the result.
 
 \code{statcan()}, \code{lein()}, \code{phonex()} and \code{roger_root()} reproduce the
 \code{phonics} package's implementations (James P. Howard II, BSD-2-Clause)
-rule for rule, quirks included: a name whose Phonex or Roger Root code
-would be all zeros gets \code{""}. Unlike \code{phonics}, they ignore characters
+rule for rule, quirks included: a name whose Phonex code would be all
+zeros gets \code{""}, and \code{roger_root()} reads the name left to right taking
+the longest rule that starts at each position, so \code{"SCHMIDT"} is \code{"SCH"}
+rather than the \code{"CH"} inside it. Unlike \code{phonics}, they ignore characters
 other than letters instead of returning \code{NA} for them, fold accented
 letters (\code{phonics} folds only some upper-case ones), and pad \code{lein()} to
 the full \code{max_length}. \code{onca()} uses this package's \code{\link[=nysiis]{nysiis()}}, which
@@ -97,6 +99,7 @@ R. Journal of Statistical Software 95(8).
 Other phonetic codes:
 \code{\link[=caverphone]{caverphone()}},
 \code{\link[=cologne]{cologne()}},
+\code{\link[=daitch_mokotoff]{daitch_mokotoff()}},
 \code{\link[=double_metaphone]{double_metaphone()}},
 \code{\link[=metaphone]{metaphone()}},
 \code{\link[=mra_encode]{mra_encode()}},

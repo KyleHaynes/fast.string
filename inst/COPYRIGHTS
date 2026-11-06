@@ -144,8 +144,11 @@ reproduce the rules of the R package phonics
 metaphone() ports the Metaphone encoder of Apache Commons Codec
 (https://commons.apache.org/proper/commons-codec/), whose structure
 double_metaphone(), nysiis(), refined_soundex() and caverphone() also
-follow. Commons Codec is licensed under the Apache License, Version 2.0 (a
-copy is in R's share/licenses/Apache-2.0 and at
+follow. daitch_mokotoff() ports its DaitchMokotoffSoundex encoder, and
+src/dm_table.h holds that encoder's coding rules (its dmrules.txt
+resource), read by tools/gen_dm_table.py. Commons Codec is licensed under
+the Apache License, Version 2.0 (a copy is in R's
+share/licenses/Apache-2.0 and at
 https://www.apache.org/licenses/LICENSE-2.0), with this notice:
 
     Apache Commons Codec
@@ -190,3 +193,21 @@ XXH64) were written from their published specifications: RFC 1321, FIPS
 sorted_neighbourhood() reproduces the pairs of SortedNeighbourhood in the
 Python package recordlinkage (https://github.com/J535D165/recordlinkage), also
 without using its code.
+
+eudex() and eudex_distance() port the Rust crate eudex
+(https://github.com/ticki/eudex): src/linkage_metrics.cpp reproduces its two
+phone tables and the byte weights of its graduated distance. eudex is
+distributed under the MIT licence (as quoted above for RapidFuzz), with this
+copyright notice:
+
+    Copyright (c) 2016 ticki and contributors (eudex)
+
+numeric_compare() follows the five similarity curves of the Numeric
+comparator in the Python package recordlinkage
+(https://github.com/J535D165/recordlinkage), without using its code, as
+sorted_neighbourhood() does for its blocking. ratcliff_obershelp(),
+bag_distance(), needleman_wunsch() and overlap_coefficient() were written
+from the published definitions cited in their help pages; the Python package
+abydos (https://github.com/chrislit/abydos) and the Java library SimMetrics
+were consulted for how each measure is conventionally normalised, and no
+code from either is included.

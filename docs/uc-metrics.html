@@ -1,0 +1,2523 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.19">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>7&nbsp; Choose a string metric – fast.string</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./uc-privacy.html" rel="next">
+<link href="./uc-link.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-81839be11d7c0a433e0d81da47f36f61.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-6f0e10586235980e3f1c17895143fc2e.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-81839be11d7c0a433e0d81da47f36f61.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-d587337f1b67c02bc0fa53c7f6cf1ddf.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-5200ca5851dd7ad788d12405348fdff5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-d587337f1b67c02bc0fa53c7f6cf1ddf.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light"><script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script><style>html{ scroll-behavior: smooth; }</style>
+</head>
+<body class="nav-sidebar docked quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top"><nav class="quarto-secondary-nav"><div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./uc-clean.html">Use cases</a></li><li class="breadcrumb-item"><a href="./uc-metrics.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav></header><!-- content --><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">fast.string</a> 
+        <div class="sidebar-tools-main tools-wide">
+    <a href="https://github.com/KyleHaynes/fast.string" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">Getting started</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-about.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">About fast.string</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-quickstart.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Quickstart</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Use cases</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-clean.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Clean and standardise text</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-extract.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Find, flag and extract</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-profile.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Profile and validate columns</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-link.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-metrics.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">Under the hood</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+    </ul>
+</div>
+</nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+<li><a href="#the-candidates" id="toc-the-candidates" class="nav-link active" data-scroll-target="#the-candidates"><span class="header-section-number">7.1</span> The candidates</a></li>
+  <li><a href="#the-test-pairs-graded-by-difficulty" id="toc-the-test-pairs-graded-by-difficulty" class="nav-link" data-scroll-target="#the-test-pairs-graded-by-difficulty"><span class="header-section-number">7.2</span> The test pairs, graded by difficulty</a></li>
+  <li><a href="#how-each-comparator-is-scored" id="toc-how-each-comparator-is-scored" class="nav-link" data-scroll-target="#how-each-comparator-is-scored"><span class="header-section-number">7.3</span> How each comparator is scored</a></li>
+  <li>
+<a href="#sec-given" id="toc-sec-given" class="nav-link" data-scroll-target="#sec-given"><span class="header-section-number">7.4</span> Given names</a>
+  <ul class="collapse">
+<li><a href="#what-no-comparator-can-do" id="toc-what-no-comparator-can-do" class="nav-link" data-scroll-target="#what-no-comparator-can-do">What no comparator can do</a></li>
+  </ul>
+</li>
+  <li><a href="#sec-surname" id="toc-sec-surname" class="nav-link" data-scroll-target="#sec-surname"><span class="header-section-number">7.5</span> Surnames</a></li>
+  <li><a href="#sec-address" id="toc-sec-address" class="nav-link" data-scroll-target="#sec-address"><span class="header-section-number">7.6</span> Addresses</a></li>
+  <li><a href="#cost-is-not-the-deciding-factor" id="toc-cost-is-not-the-deciding-factor" class="nav-link" data-scroll-target="#cost-is-not-the-deciding-factor"><span class="header-section-number">7.7</span> Cost is not the deciding factor</a></li>
+  <li><a href="#sec-recommendations" id="toc-sec-recommendations" class="nav-link" data-scroll-target="#sec-recommendations"><span class="header-section-number">7.8</span> What to use</a></li>
+  <li><a href="#sec-recipe" id="toc-sec-recipe" class="nav-link" data-scroll-target="#sec-recipe"><span class="header-section-number">7.9</span> Putting it together</a></li>
+  <li><a href="#running-this-on-your-own-data" id="toc-running-this-on-your-own-data" class="nav-link" data-scroll-target="#running-this-on-your-own-data"><span class="header-section-number">7.10</span> Running this on your own data</a></li>
+  </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/uc-metrics.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./uc-clean.html">Use cases</a></li><li class="breadcrumb-item"><a href="./uc-metrics.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></a></li></ol></nav><div class="quarto-title">
+<h1 class="title"><span id="sec-uc-metrics" class="quarto-section-identifier"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header><p>This package ships around thirty ways to score how alike two strings are. Picking one by reputation – “Jaro-Winkler is the standard for names” – leaves the obvious question unanswered: standard for <em>which</em> names, against <em>which</em> wrong answers?</p>
+<p>This chapter answers it by measurement. Three hand-labelled sets of pairs, one each for <strong>given names</strong>, <strong>surnames</strong> and <strong>addresses</strong>, are scored by every candidate comparator, and the results say which comparator separates the true pairs from the false ones in each field. Every number below is computed when this page is rendered; the code is all here, so the same exercise runs on your own labelled pairs by swapping the data in.</p>
+<p>Three things fall out of it, and they are worth stating before the tables:</p>
+<ol type="1">
+<li>
+<strong>The field matters more than the metric’s reputation.</strong> The comparator that wins on addresses is near the bottom on given names, and vice versa.</li>
+<li>
+<strong>Jaro-Winkler’s prefix bonus is a liability when the wrong answers share a prefix</strong> – <code>ALAN</code>/<code>ALANA</code>, <code>HARRIS</code>/<code>HARRISON</code>, <code>12 SMITH ST</code>/<code>12 SMITH AVE</code>. Plain Jaro, or a length-sensitive edit similarity, discriminates better on exactly the pairs that cause trouble.</li>
+<li>
+<strong>For the hardest pairs no comparator works</strong>, because the strings do not carry the answer: <code>BOB</code> and <code>ROBERT</code> are the same person and <code>SIMON</code> and <code>SIMONE</code> are not, and no function of two character vectors can know that. Those pairs are fixed by standardising before scoring, by comparing parsed components, or by another field – never by a better metric. <a href="#sec-recipe" class="quarto-xref"><span class="quarto-unresolved-ref">sec-recipe</span></a> does all three.</li>
+</ol>
+<section id="the-candidates" class="level2" data-number="7.1"><h2 data-number="7.1" class="anchored" data-anchor-id="the-candidates">
+<span class="header-section-number">7.1</span> The candidates</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead><tr class="header">
+<th>Comparator</th>
+<th>Call</th>
+<th>What it rewards</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Jaro-Winkler</td>
+<td><code>jaro_winkler(a, b)</code></td>
+<td>character agreement, with a bonus for a shared prefix</td>
+</tr>
+<tr class="even">
+<td>Jaro</td>
+<td><code>jaro_winkler(a, b, p = 0)</code></td>
+<td>the same, with no prefix bonus</td>
+</tr>
+<tr class="odd">
+<td>Jaro-Winkler, tokens</td>
+<td><code>jaro_winkler_tokens(a, b)</code></td>
+<td>the best alignment of whole words, in any order</td>
+</tr>
+<tr class="even">
+<td>Monge-Elkan</td>
+<td><code>monge_elkan(a, b, symmetric = TRUE)</code></td>
+<td>each word’s best match in the other string</td>
+</tr>
+<tr class="odd">
+<td>Levenshtein</td>
+<td><code>levenshtein_similarity(a, b)</code></td>
+<td>few insertions, deletions, substitutions, relative to length</td>
+</tr>
+<tr class="even">
+<td>OSA</td>
+<td><code>osa_similarity(a, b)</code></td>
+<td>the same, counting an adjacent swap as one edit</td>
+</tr>
+<tr class="odd">
+<td>Editex</td>
+<td><code>editex_similarity(a, b)</code></td>
+<td>edits, charging less for letters that sound alike</td>
+</tr>
+<tr class="even">
+<td>Indel</td>
+<td><code>indel_similarity(a, b)</code></td>
+<td>insertions and deletions only (no substitutions)</td>
+</tr>
+<tr class="odd">
+<td>LCS (subsequence)</td>
+<td><code>lcs_seq_similarity(a, b)</code></td>
+<td>a long common subsequence</td>
+</tr>
+<tr class="even">
+<td>LCS (substring)</td>
+<td><code>lcs_str_similarity(a, b)</code></td>
+<td>one long <em>contiguous</em> run in common</td>
+</tr>
+<tr class="odd">
+<td>Prefix</td>
+<td><code>prefix_similarity(a, b)</code></td>
+<td>a long common start</td>
+</tr>
+<tr class="even">
+<td>Smith-Waterman</td>
+<td><code>smith_waterman(a, b)</code></td>
+<td>the best-matching local region, gaps forgiven</td>
+</tr>
+<tr class="odd">
+<td>Jaccard, 2-grams</td>
+<td><code>jaccard_index(a, b, q = 2)</code></td>
+<td>shared character pairs, penalising unshared ones</td>
+</tr>
+<tr class="even">
+<td>Jaccard, 3-grams</td>
+<td><code>jaccard_index(a, b, q = 3)</code></td>
+<td>the same, over longer and so more specific grams</td>
+</tr>
+<tr class="odd">
+<td>Cosine, 3-grams</td>
+<td><code>cosine_similarity(a, b, q = 3)</code></td>
+<td>shared 3-grams, weighted by how often each occurs</td>
+</tr>
+<tr class="even">
+<td>Tversky containment</td>
+<td><code>tversky_index(a, b, q = 3, alpha = 1, beta = 0)</code></td>
+<td>how much of <code>a</code> appears in <code>b</code>, ignoring extra material in <code>b</code>
+</td>
+</tr>
+<tr class="odd">
+<td>Token set</td>
+<td><code>fuzz_token_set_ratio(a, b)</code></td>
+<td>the words in common, ignoring order and duplicates</td>
+</tr>
+<tr class="even">
+<td>Weighted ratio</td>
+<td><code>fuzz_wratio(a, b)</code></td>
+<td>RapidFuzz’s own blend of ratio, partial and token scorers</td>
+</tr>
+<tr class="odd">
+<td>Soundex agreement</td>
+<td><code>soundex(a) == soundex(b)</code></td>
+<td>the same phonetic code – a blocking key, included for contrast</td>
+</tr>
+</tbody>
+</table>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">comparators</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span></span>
+<span>    jaro_winkler   <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    jaro           <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, p <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>    jw_tokens      <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    monge_elkan    <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">monge_elkan</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, symmetric <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>    levenshtein    <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">levenshtein_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    osa            <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">osa_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    editex         <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">editex_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    indel          <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">indel_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    lcs_seq        <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">lcs_seq_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    lcs_str        <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">lcs_str_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    prefix         <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">prefix_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    smith_waterman <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">smith_waterman</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
+<span>    jaccard_q2     <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">jaccard_index</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, q <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    jaccard_q3     <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">jaccard_index</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, q <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
+<span>    cosine_q3      <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">cosine_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, q <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
+<span>    tversky_in     <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">tversky_index</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, q <span class="op">=</span> <span class="fl">3</span>, alpha <span class="op">=</span> <span class="fl">1</span>, beta <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>    fuzz_token_set <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">fuzz_token_set_ratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="op">/</span> <span class="fl">100</span>,</span>
+<span>    fuzz_wratio    <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu">fuzz_wratio</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="op">/</span> <span class="fl">100</span>,</span>
+<span>    soundex_equal  <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">a</span><span class="op">)</span> <span class="op">==</span> <span class="fu">soundex</span><span class="op">(</span><span class="va">b</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Every one is put on the same scale, where <strong>1 means identical</strong>: the <code>*_similarity()</code> functions already are, the RapidFuzz scorers are divided by 100, and distances are left out in favour of their similarity twins. <code>rLink()</code> does this conversion itself, so a comparator chosen here drops straight into a linkage (<a href="#sec-uc-link" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-link</span></a>).</p>
+</section><section id="the-test-pairs-graded-by-difficulty" class="level2" data-number="7.2"><h2 data-number="7.2" class="anchored" data-anchor-id="the-test-pairs-graded-by-difficulty">
+<span class="header-section-number">7.2</span> The test pairs, graded by difficulty</h2>
+<p>A comparison is only as good as what it is compared against. Scoring true matches against <em>randomly chosen</em> non-matches flatters every metric: every comparator in the list separates <code>SMITH</code>/<code>SMYTH</code> from <code>SMITH</code>/<code>NGUYEN</code>. What distinguishes them is the awkward middle, so each set grades both classes:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead><tr class="header">
+<th></th>
+<th>easy</th>
+<th>moderate</th>
+<th>hard</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><strong>match</strong></td>
+<td>one keystroke, a transposition, a dropped letter</td>
+<td>a phonetic variant, a prefix convention, an abbreviation</td>
+<td>a nickname, a short form, reordered or extra words</td>
+</tr>
+<tr class="even">
+<td><strong>non-match</strong></td>
+<td>unrelated values</td>
+<td>the same root word, a different locality</td>
+<td>one decisive letter or digit apart</td>
+</tr>
+</tbody>
+</table>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">given</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.csv</a></span><span class="op">(</span>text <span class="op">=</span> <span class="st">"a,b,kind,degree,match</span></span>
+<span><span class="st">MICHELLE,MICHELE,dropped letter,easy,TRUE</span></span>
+<span><span class="st">JOHN,JOHM,keystroke,easy,TRUE</span></span>
+<span><span class="st">SARAH,SARA,dropped letter,easy,TRUE</span></span>
+<span><span class="st">JEFFREY,JEFFERY,transposition,easy,TRUE</span></span>
+<span><span class="st">MICHAEL,MCIHAEL,transposition,easy,TRUE</span></span>
+<span><span class="st">ANNE MARIE,ANNEMARIE,spacing,easy,TRUE</span></span>
+<span><span class="st">CATHERINE,KATHERINE,phonetic,moderate,TRUE</span></span>
+<span><span class="st">PHILIP,FILIP,phonetic,moderate,TRUE</span></span>
+<span><span class="st">GEOFFREY,JEFFREY,phonetic,moderate,TRUE</span></span>
+<span><span class="st">STEVEN,STEPHEN,phonetic,moderate,TRUE</span></span>
+<span><span class="st">SHAUN,SHAWN,phonetic,moderate,TRUE</span></span>
+<span><span class="st">ASHLEIGH,ASHLEY,phonetic,moderate,TRUE</span></span>
+<span><span class="st">MARY JANE,JANE MARY,word order,hard,TRUE</span></span>
+<span><span class="st">ALEXANDER,ALEX,short form,hard,TRUE</span></span>
+<span><span class="st">CHRISTOPHER,CHRIS,short form,hard,TRUE</span></span>
+<span><span class="st">SAMANTHA,SAM,short form,hard,TRUE</span></span>
+<span><span class="st">ROBERT,BOB,nickname,hard,TRUE</span></span>
+<span><span class="st">WILLIAM,BILL,nickname,hard,TRUE</span></span>
+<span><span class="st">ELIZABETH,LIZ,nickname,hard,TRUE</span></span>
+<span><span class="st">MARGARET,PEGGY,nickname,hard,TRUE</span></span>
+<span><span class="st">JOHN,PETER,unrelated,easy,FALSE</span></span>
+<span><span class="st">MARY,SIOBHAN,unrelated,easy,FALSE</span></span>
+<span><span class="st">ROBERT,AMELIA,unrelated,easy,FALSE</span></span>
+<span><span class="st">HARRY,FRANCESCA,unrelated,easy,FALSE</span></span>
+<span><span class="st">GRACE,DIMITRIOS,unrelated,easy,FALSE</span></span>
+<span><span class="st">JOHN,JOHNATHAN,same root,moderate,FALSE</span></span>
+<span><span class="st">KIM,KIMBERLEY,same root,moderate,FALSE</span></span>
+<span><span class="st">CHRIS,CHRISTINE,same root,moderate,FALSE</span></span>
+<span><span class="st">SAM,SAMUEL,same root,moderate,FALSE</span></span>
+<span><span class="st">STEPHEN,STEPHANIE,same root,moderate,FALSE</span></span>
+<span><span class="st">JOAN,JOHN,one letter apart,hard,FALSE</span></span>
+<span><span class="st">JULIE,JULIA,one letter apart,hard,FALSE</span></span>
+<span><span class="st">CLARE,CLARA,one letter apart,hard,FALSE</span></span>
+<span><span class="st">ANDREA,ANDREW,one letter apart,hard,FALSE</span></span>
+<span><span class="st">ERIN,ERIC,one letter apart,hard,FALSE</span></span>
+<span><span class="st">ALAN,ALANA,one letter apart,hard,FALSE</span></span>
+<span><span class="st">SIMON,SIMONE,one letter apart,hard,FALSE</span></span>
+<span><span class="st">MARTIN,MARTINA,one letter apart,hard,FALSE</span></span>
+<span><span class="st">DANIEL,DANIELLE,one letter apart,hard,FALSE</span></span>
+<span><span class="st">BRIAN,BRIANNA,one letter apart,hard,FALSE</span></span>
+<span><span class="st">"</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">surname</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.csv</a></span><span class="op">(</span>text <span class="op">=</span> <span class="st">"a,b,kind,degree,match</span></span>
+<span><span class="st">JONES,JONSE,transposition,easy,TRUE</span></span>
+<span><span class="st">WILLIAMSON,WILLIAMSEN,keystroke,easy,TRUE</span></span>
+<span><span class="st">NGUYEN,NGYUEN,transposition,easy,TRUE</span></span>
+<span><span class="st">KOWALCZYK,KOWALCYZK,transposition,easy,TRUE</span></span>
+<span><span class="st">PAPADOPOULOS,PAPADOPOLOUS,transposition,easy,TRUE</span></span>
+<span><span class="st">OBRIEN,O BRIEN,punctuation,easy,TRUE</span></span>
+<span><span class="st">SMITH,SMYTH,phonetic,moderate,TRUE</span></span>
+<span><span class="st">SHEPHERD,SHEPPARD,phonetic,moderate,TRUE</span></span>
+<span><span class="st">MACDONALD,MCDONALD,prefix variant,moderate,TRUE</span></span>
+<span><span class="st">FITZGERALD,FITZGERLAD,transposition,moderate,TRUE</span></span>
+<span><span class="st">CHAUDHRY,CHOUDARY,phonetic,moderate,TRUE</span></span>
+<span><span class="st">DE LA CRUZ,DELACRUZ,spacing,moderate,TRUE</span></span>
+<span><span class="st">SMITH,SMITH-JONES,double-barrelled,hard,TRUE</span></span>
+<span><span class="st">LEE,LEE NGUYEN,name added,hard,TRUE</span></span>
+<span><span class="st">VAN DER BERG,BERG,prefix dropped,hard,TRUE</span></span>
+<span><span class="st">WOJCIECHOWSKI,WOJCIK,shortened,hard,TRUE</span></span>
+<span><span class="st">SMITH,NGUYEN,unrelated,easy,FALSE</span></span>
+<span><span class="st">JONES,PAPADOPOULOS,unrelated,easy,FALSE</span></span>
+<span><span class="st">BROWN,SZCZEPANSKI,unrelated,easy,FALSE</span></span>
+<span><span class="st">TAYLOR,MWANGI,unrelated,easy,FALSE</span></span>
+<span><span class="st">WILSON,FERNANDEZ,unrelated,easy,FALSE</span></span>
+<span><span class="st">HARRIS,HARRISON,same root,moderate,FALSE</span></span>
+<span><span class="st">MORRIS,MORRISON,same root,moderate,FALSE</span></span>
+<span><span class="st">STEWART,STEWARDSON,same root,moderate,FALSE</span></span>
+<span><span class="st">ANDERSON,HENDERSON,rhyming,moderate,FALSE</span></span>
+<span><span class="st">WILLIAMS,WILLIAMSON,same root,moderate,FALSE</span></span>
+<span><span class="st">THOMSON,THOMPSON,one letter apart,hard,FALSE</span></span>
+<span><span class="st">JOHNSON,JOHNSTON,one letter apart,hard,FALSE</span></span>
+<span><span class="st">BAKER,BARKER,one letter apart,hard,FALSE</span></span>
+<span><span class="st">CHAN,CHEN,one letter apart,hard,FALSE</span></span>
+<span><span class="st">WANG,WONG,one letter apart,hard,FALSE</span></span>
+<span><span class="st">HALL,HILL,one letter apart,hard,FALSE</span></span>
+<span><span class="st">MARTIN,MARTIN JR,suffix,hard,FALSE</span></span>
+<span><span class="st">SINGH,SINGHA,one letter apart,hard,FALSE</span></span>
+<span><span class="st">"</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">address</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.csv</a></span><span class="op">(</span>text <span class="op">=</span> <span class="st">'a,b,kind,degree,match</span></span>
+<span><span class="st">12 SMITH ST,12 SMITH STREET,abbreviation,easy,TRUE</span></span>
+<span><span class="st">100 QUEEN ST BRISBANE,100 QUEEN STREET BRISBANE,abbreviation,easy,TRUE</span></span>
+<span><span class="st">12 SMITH ST,12 SMTIH ST,transposition,easy,TRUE</span></span>
+<span><span class="st">PO BOX 123 BRISBANE,P O BOX 123 BRISBANE,punctuation,easy,TRUE</span></span>
+<span><span class="st">7 BOTTLEBRUSH CRESCENT,7 BOTTLEBRUSH CRES,abbreviation,easy,TRUE</span></span>
+<span><span class="st">45 ST KILDA RD MELBOURNE,45 SAINT KILDA ROAD MELBOURNE,abbreviation,moderate,TRUE</span></span>
+<span><span class="st">12 SMITH ST BRISBANE QLD 4000,12 SMITH STREET BRISBANE 4000,dropped token,moderate,TRUE</span></span>
+<span><span class="st">LEVEL 3 100 QUEEN ST,100 QUEEN ST LEVEL 3,token order,moderate,TRUE</span></span>
+<span><span class="st">1/12 SMITH ST,UNIT 1 12 SMITH ST,format,moderate,TRUE</span></span>
+<span><span class="st">GPO BOX 9 SYDNEY NSW 2001,G.P.O. BOX 9 SYDNEY 2001,punctuation,moderate,TRUE</span></span>
+<span><span class="st">12 SMITH ST,UNIT 4 12 SMITH ST ANNERLEY QLD 4103,extra detail,hard,TRUE</span></span>
+<span><span class="st">9 KING ST,9 KING STREET WEST END BRISBANE QUEENSLAND,extra detail,hard,TRUE</span></span>
+<span><span class="st">12 SMITH ST,88 ORCHID AVE SURFERS PARADISE,unrelated,easy,FALSE</span></span>
+<span><span class="st">100 QUEEN ST BRISBANE,7 BOTTLEBRUSH CRESCENT CAIRNS,unrelated,easy,FALSE</span></span>
+<span><span class="st">PO BOX 123 BRISBANE,41 MARINE PARADE REDCLIFFE,unrelated,easy,FALSE</span></span>
+<span><span class="st">45 ST KILDA RD MELBOURNE,2 HIGH ST FREMANTLE,unrelated,easy,FALSE</span></span>
+<span><span class="st">12 SMITH ST BRISBANE,12 SMITH ST SYDNEY,different locality,moderate,FALSE</span></span>
+<span><span class="st">100 QUEEN ST BRISBANE,100 QUEEN ST MELBOURNE,different locality,moderate,FALSE</span></span>
+<span><span class="st">12 KING ST,12 KINGS ST,different street,moderate,FALSE</span></span>
+<span><span class="st">12 SMITH ST,12 SMITH AVE,different street type,hard,FALSE</span></span>
+<span><span class="st">12 SMITH ST,21 SMITH ST,transposed number,hard,FALSE</span></span>
+<span><span class="st">12 SMITH ST,12A SMITH ST,different dwelling,hard,FALSE</span></span>
+<span><span class="st">UNIT 1 12 SMITH ST,UNIT 2 12 SMITH ST,different dwelling,hard,FALSE</span></span>
+<span><span class="st">12 SMITH ST 4000,12 SMITH ST 4001,different postcode,hard,FALSE</span></span>
+<span><span class="st">45 ST KILDA RD MELBOURNE,45 ST KILDA RD EAST MELBOURNE,different locality,hard,FALSE</span></span>
+<span><span class="st">'</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">nm</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"given"</span>, <span class="st">"surname"</span>, <span class="st">"address"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/get.html">get</a></span><span class="op">(</span><span class="va">nm</span><span class="op">)</span></span>
+<span>    <span class="va">d</span><span class="op">$</span><span class="va">match</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/logical.html">as.logical</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">match</span><span class="op">)</span></span>
+<span>    <span class="va">d</span><span class="op">$</span><span class="va">degree</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">degree</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"easy"</span>, <span class="st">"moderate"</span>, <span class="st">"hard"</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/assign.html">assign</a></span><span class="op">(</span><span class="va">nm</span>, <span class="va">d</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The labels encode one judgement: <em>would a reviewer, seeing only this field, call these the same person or address?</em> Several pairs are genuinely arguable – <code>THOMSON</code>/<code>THOMPSON</code> is a misspelling as often as it is two families – and they are labelled non-match deliberately, because a comparator that cannot be told to be cautious there is a comparator that will merge two people. The non-match side is adversarial by design: half of it is near misses, where a real linkage would see mostly unrelated pairs. The absolute numbers below are therefore pessimistic; what they are good for is <strong>ranking the comparators against each other</strong> on the pairs that decide a linkage.</p>
+</section><section id="how-each-comparator-is-scored" class="level2" data-number="7.3"><h2 data-number="7.3" class="anchored" data-anchor-id="how-each-comparator-is-scored">
+<span class="header-section-number">7.3</span> How each comparator is scored</h2>
+<p>Two measures, both reported per field:</p>
+<ul>
+<li>
+<strong>AUC</strong> – the probability that a randomly chosen true pair outranks a randomly chosen false one, over the easy and moderate pairs only. It needs no threshold, which matters because the right threshold differs per comparator. The hard pairs are excluded here and reported separately, since (as the tables show) no comparator separates them and including them only compresses the ranking.</li>
+<li>
+<strong>Mean score per cell</strong> of the match x degree grid, which is where the behaviour actually shows: a comparator is useful when its moderate <em>matches</em> sit well above its moderate <em>non-matches</em>.</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">score_all</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">scores</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="va">comparators</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu">f</span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">a</span>, <span class="va">pairs</span><span class="op">$</span><span class="va">b</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span><span class="va">pairs</span>, <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html">as.data.frame</a></span><span class="op">(</span><span class="va">scores</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Mann-Whitney / rank formulation: no bootstrapping, no ties problem</span></span>
+<span><span class="va">auc</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">score</span>, <span class="va">match</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rank.html">rank</a></span><span class="op">(</span><span class="va">score</span><span class="op">)</span></span>
+<span>    <span class="va">n1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">match</span><span class="op">)</span></span>
+<span>    <span class="va">n0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="op">!</span><span class="va">match</span><span class="op">)</span></span>
+<span>    <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">r</span><span class="op">[</span><span class="va">match</span><span class="op">]</span><span class="op">)</span> <span class="op">-</span> <span class="va">n1</span> <span class="op">*</span> <span class="op">(</span><span class="va">n1</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="va">n1</span> <span class="op">*</span> <span class="va">n0</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">report</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">scored</span> <span class="op">&lt;-</span> <span class="fu">score_all</span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span></span>
+<span>    <span class="va">easy_mod</span> <span class="op">&lt;-</span> <span class="va">scored</span><span class="op">$</span><span class="va">degree</span> <span class="op">!=</span> <span class="st">"hard"</span></span>
+<span>    <span class="va">cell</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">v</span>, <span class="va">keep</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html">mean</a></span><span class="op">(</span><span class="va">v</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span>    <span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">comparators</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">nm</span><span class="op">)</span> <span class="op">{</span></span>
+<span>        <span class="va">v</span> <span class="op">&lt;-</span> <span class="va">scored</span><span class="op">[[</span><span class="va">nm</span><span class="op">]</span><span class="op">]</span></span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>            comparator <span class="op">=</span> <span class="va">nm</span>,</span>
+<span>            auc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">auc</span><span class="op">(</span><span class="va">v</span><span class="op">[</span><span class="va">easy_mod</span><span class="op">]</span>, <span class="va">scored</span><span class="op">$</span><span class="va">match</span><span class="op">[</span><span class="va">easy_mod</span><span class="op">]</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>            tp_easy <span class="op">=</span> <span class="fu">cell</span><span class="op">(</span><span class="va">v</span>, <span class="va">scored</span><span class="op">$</span><span class="va">match</span> <span class="op">&amp;</span> <span class="va">scored</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"easy"</span><span class="op">)</span>,</span>
+<span>            tp_mod  <span class="op">=</span> <span class="fu">cell</span><span class="op">(</span><span class="va">v</span>, <span class="va">scored</span><span class="op">$</span><span class="va">match</span> <span class="op">&amp;</span> <span class="va">scored</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"moderate"</span><span class="op">)</span>,</span>
+<span>            tp_hard <span class="op">=</span> <span class="fu">cell</span><span class="op">(</span><span class="va">v</span>, <span class="va">scored</span><span class="op">$</span><span class="va">match</span> <span class="op">&amp;</span> <span class="va">scored</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"hard"</span><span class="op">)</span>,</span>
+<span>            fp_easy <span class="op">=</span> <span class="fu">cell</span><span class="op">(</span><span class="va">v</span>, <span class="op">!</span><span class="va">scored</span><span class="op">$</span><span class="va">match</span> <span class="op">&amp;</span> <span class="va">scored</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"easy"</span><span class="op">)</span>,</span>
+<span>            fp_mod  <span class="op">=</span> <span class="fu">cell</span><span class="op">(</span><span class="va">v</span>, <span class="op">!</span><span class="va">scored</span><span class="op">$</span><span class="va">match</span> <span class="op">&amp;</span> <span class="va">scored</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"moderate"</span><span class="op">)</span>,</span>
+<span>            fp_hard <span class="op">=</span> <span class="fu">cell</span><span class="op">(</span><span class="va">v</span>, <span class="op">!</span><span class="va">scored</span><span class="op">$</span><span class="va">match</span> <span class="op">&amp;</span> <span class="va">scored</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"hard"</span><span class="op">)</span></span>
+<span>        <span class="op">)</span></span>
+<span>    <span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">out</span><span class="op">$</span><span class="va">margin</span> <span class="op">&lt;-</span> <span class="va">out</span><span class="op">$</span><span class="va">tp_mod</span> <span class="op">-</span> <span class="va">out</span><span class="op">$</span><span class="va">fp_mod</span></span>
+<span>    <span class="va">out</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">out</span><span class="op">$</span><span class="va">auc</span>, <span class="op">-</span><span class="va">out</span><span class="op">$</span><span class="va">margin</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">kable_report</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">pairs</span>, <span class="va">caption</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html">kable</a></span><span class="op">(</span></span>
+<span>        <span class="fu">report</span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span>, caption <span class="op">=</span> <span class="va">caption</span>,</span>
+<span>        col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Comparator"</span>, <span class="st">"AUC"</span>, <span class="st">"easy"</span>, <span class="st">"moderate"</span>, <span class="st">"hard"</span>,</span>
+<span>                      <span class="st">"easy"</span>, <span class="st">"moderate"</span>, <span class="st">"hard"</span>, <span class="st">"margin"</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>In the tables, the first group of three columns is the mean score on <strong>true matches</strong> of each difficulty, the second group the mean on <strong>non-matches</strong>, and <code>margin</code> is the moderate gap between them – the headroom a threshold has to work in.</p>
+</section><section id="sec-given" class="level2" data-number="7.4"><h2 data-number="7.4" class="anchored" data-anchor-id="sec-given">
+<span class="header-section-number">7.4</span> Given names</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">kable_report</span><span class="op">(</span><span class="va">given</span>, <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="tbl-given" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure"><figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-given-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;7.1: Given names: 20 matched and 20 non-matched pairs. AUC over the easy and moderate pairs.
+</figcaption><div aria-describedby="tbl-given-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 13%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 13%">
+<col style="width: 7%">
+<col style="width: 10%">
+</colgroup>
+<thead><tr class="header">
+<th style="text-align: left;">Comparator</th>
+<th style="text-align: right;">AUC</th>
+<th style="text-align: right;">easy</th>
+<th style="text-align: right;">moderate</th>
+<th style="text-align: right;">hard</th>
+<th style="text-align: right;">easy</th>
+<th style="text-align: right;">moderate</th>
+<th style="text-align: right;">hard</th>
+<th style="text-align: right;">margin</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">levenshtein</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.04</td>
+<td style="text-align: right;">0.50</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.24</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">osa</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.04</td>
+<td style="text-align: right;">0.50</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.24</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lcs_seq</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">0.37</td>
+<td style="text-align: right;">0.11</td>
+<td style="text-align: right;">0.50</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.24</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">indel</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">0.48</td>
+<td style="text-align: right;">0.13</td>
+<td style="text-align: right;">0.65</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">fuzz_token_set</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">0.55</td>
+<td style="text-align: right;">0.13</td>
+<td style="text-align: right;">0.65</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.13</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">editex</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.41</td>
+<td style="text-align: right;">0.19</td>
+<td style="text-align: right;">0.58</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.23</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lcs_str</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.66</td>
+<td style="text-align: right;">0.64</td>
+<td style="text-align: right;">0.37</td>
+<td style="text-align: right;">0.11</td>
+<td style="text-align: right;">0.48</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.16</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jaro</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">0.68</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">0.03</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">jaccard_q2</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.58</td>
+<td style="text-align: right;">0.49</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.38</td>
+<td style="text-align: right;">0.63</td>
+<td style="text-align: right;">0.11</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jaro_winkler</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.70</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-0.01</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">jw_tokens</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.96</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-0.01</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jaccard_q3</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.43</td>
+<td style="text-align: right;">0.38</td>
+<td style="text-align: right;">0.19</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.29</td>
+<td style="text-align: right;">0.54</td>
+<td style="text-align: right;">0.09</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">cosine_q3</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">0.59</td>
+<td style="text-align: right;">0.53</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.51</td>
+<td style="text-align: right;">0.68</td>
+<td style="text-align: right;">0.02</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">monge_elkan</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-0.01</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">soundex_equal</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.33</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">0.13</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">prefix</td>
+<td style="text-align: right;">0.70</td>
+<td style="text-align: right;">0.57</td>
+<td style="text-align: right;">0.28</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.48</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">-0.20</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">fuzz_wratio</td>
+<td style="text-align: right;">0.65</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.19</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">-0.09</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">smith_waterman</td>
+<td style="text-align: right;">0.59</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.16</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">-0.19</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">tversky_in</td>
+<td style="text-align: right;">0.53</td>
+<td style="text-align: right;">0.54</td>
+<td style="text-align: right;">0.49</td>
+<td style="text-align: right;">0.21</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">-0.43</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>The ordering is emphatic, and it is the opposite of the folklore. The length-sensitive edit similarities – <code>levenshtein_similarity()</code>, <code>osa_similarity()</code>, <code>lcs_seq_similarity()</code> – separate these names almost perfectly, while <code>jaro_winkler()</code> lands tenth of nineteen with a <em>negative</em> margin: its moderate non-matches score <strong>higher</strong> (0.89) than its moderate matches (0.88).</p>
+<p>The reason is in the <code>prefix</code> row, and in the data. Every moderate non-match here (<code>JOHN</code>/<code>JOHNATHAN</code>, <code>KIM</code>/<code>KIMBERLEY</code>, <code>SAM</code>/<code>SAMUEL</code>) is a longer name that starts with the shorter one, and most of the hard non-matches (<code>ALAN</code>/<code>ALANA</code>, <code>SIMON</code>/<code>SIMONE</code>, <code>MARTIN</code>/<code>MARTINA</code>) are the same thing with one letter. Jaro-Winkler is built to reward a shared prefix, so it rewards precisely the wrong pairs. Turning the bonus off recovers much of the loss:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">confusable</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    a <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ALAN"</span>, <span class="st">"SIMON"</span>, <span class="st">"MARTIN"</span>, <span class="st">"JOHN"</span>, <span class="st">"KIM"</span>, <span class="st">"DANIEL"</span><span class="op">)</span>,</span>
+<span>    b <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ALANA"</span>, <span class="st">"SIMONE"</span>, <span class="st">"MARTINA"</span>, <span class="st">"JOHNATHAN"</span>, <span class="st">"KIMBERLEY"</span>, <span class="st">"DANIELLE"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    <span class="va">confusable</span>,</span>
+<span>    jaro_winkler <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">confusable</span><span class="op">$</span><span class="va">a</span>, <span class="va">confusable</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    jaro         <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">confusable</span><span class="op">$</span><span class="va">a</span>, <span class="va">confusable</span><span class="op">$</span><span class="va">b</span>, p <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    osa          <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">osa_similarity</span><span class="op">(</span><span class="va">confusable</span><span class="op">$</span><span class="va">a</span>, <span class="va">confusable</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>       a         b jaro_winkler jaro  osa
+1   ALAN     ALANA         0.96 0.93 0.80
+2  SIMON    SIMONE         0.97 0.94 0.83
+3 MARTIN   MARTINA         0.97 0.95 0.86
+4   JOHN JOHNATHAN         0.89 0.81 0.44
+5    KIM KIMBERLEY         0.84 0.78 0.33
+6 DANIEL  DANIELLE         0.95 0.92 0.75</code></pre>
+</div>
+</div>
+<p><code>p</code> is tunable rather than all-or-nothing: <code>0</code> gives plain Jaro, <code>0.25</code> the maximum bonus. If your true matches are typos near the <em>start</em> of the string – common with scanned or dictated data – keep the bonus. If your hard non-matches are suffix extensions, as above, drop it.</p>
+<p>The easy column shows what <em>is</em> uncontroversial: every comparator in the table scores an easy match above 0.4 and an unrelated pair below 0.2, so for clean data with only keystroke noise the choice hardly matters. It starts mattering at <code>tp_mod</code>, and by <code>tp_hard</code> the question has changed entirely.</p>
+<section id="what-no-comparator-can-do" class="level3"><h3 class="anchored" data-anchor-id="what-no-comparator-can-do">What no comparator can do</h3>
+<p>Look along the hard row. The best <code>tp_hard</code> figures belong to comparators that also score hard non-matches high, which is no use. The honest reading is that the hard matches here are not a string problem at all:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">semantic</span> <span class="op">&lt;-</span> <span class="va">given</span><span class="op">[</span><span class="va">given</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"hard"</span> <span class="op">&amp;</span> <span class="va">given</span><span class="op">$</span><span class="va">match</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"kind"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    <span class="va">semantic</span>,</span>
+<span>    jaro_winkler <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">semantic</span><span class="op">$</span><span class="va">a</span>, <span class="va">semantic</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    osa          <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">osa_similarity</span><span class="op">(</span><span class="va">semantic</span><span class="op">$</span><span class="va">a</span>, <span class="va">semantic</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    jw_tokens    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">semantic</span><span class="op">$</span><span class="va">a</span>, <span class="va">semantic</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             a         b       kind jaro_winkler  osa jw_tokens
+13   MARY JANE JANE MARY word order         0.56 0.33      1.00
+14   ALEXANDER      ALEX short form         0.89 0.44      0.89
+15 CHRISTOPHER     CHRIS short form         0.89 0.45      0.89
+16    SAMANTHA       SAM short form         0.85 0.38      0.85
+17      ROBERT       BOB   nickname         0.50 0.33      0.50
+18     WILLIAM      BILL   nickname         0.73 0.43      0.73
+19   ELIZABETH       LIZ   nickname         0.78 0.33      0.78
+20    MARGARET     PEGGY   nickname         0.44 0.12      0.44</code></pre>
+</div>
+</div>
+<p><code>BOB</code> is not a corrupted <code>ROBERT</code> and <code>PEGGY</code> is not a corrupted <code>MARGARET</code>; they are different words for the same person. The fix is a lookup, not a metric. <code>freplace_tokens()</code> applies a nickname table to whole words in one vectorised pass, and the scores stop being a judgement call:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">nicknames</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span></span>
+<span>    BOB <span class="op">=</span> <span class="st">"ROBERT"</span>, BILL <span class="op">=</span> <span class="st">"WILLIAM"</span>, LIZ <span class="op">=</span> <span class="st">"ELIZABETH"</span>, BETH <span class="op">=</span> <span class="st">"ELIZABETH"</span>,</span>
+<span>    PEGGY <span class="op">=</span> <span class="st">"MARGARET"</span>, ALEX <span class="op">=</span> <span class="st">"ALEXANDER"</span>, CHRIS <span class="op">=</span> <span class="st">"CHRISTOPHER"</span>,</span>
+<span>    SAM <span class="op">=</span> <span class="st">"SAMANTHA"</span>, JIM <span class="op">=</span> <span class="st">"JAMES"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">standardised</span> <span class="op">&lt;-</span> <span class="fu">freplace_tokens</span><span class="op">(</span><span class="va">semantic</span><span class="op">$</span><span class="va">b</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">nicknames</span><span class="op">)</span>, <span class="va">nicknames</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    <span class="va">semantic</span><span class="op">[</span><span class="st">"a"</span><span class="op">]</span>, b <span class="op">=</span> <span class="va">semantic</span><span class="op">$</span><span class="va">b</span>, <span class="va">standardised</span>,</span>
+<span>    before <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">semantic</span><span class="op">$</span><span class="va">a</span>, <span class="va">semantic</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    after  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">semantic</span><span class="op">$</span><span class="va">a</span>, <span class="va">standardised</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             a         b standardised before after
+13   MARY JANE JANE MARY    JANE MARY   0.56  0.56
+14   ALEXANDER      ALEX    ALEXANDER   0.89  1.00
+15 CHRISTOPHER     CHRIS  CHRISTOPHER   0.89  1.00
+16    SAMANTHA       SAM     SAMANTHA   0.85  1.00
+17      ROBERT       BOB       ROBERT   0.50  1.00
+18     WILLIAM      BILL      WILLIAM   0.73  1.00
+19   ELIZABETH       LIZ    ELIZABETH   0.78  1.00
+20    MARGARET     PEGGY     MARGARET   0.44  1.00</code></pre>
+</div>
+</div>
+<p>The one row that stays low is <code>MARY JANE</code>/<code>JANE MARY</code>, which is not a vocabulary problem but a word-order one – and that is a metric choice after all: <code>jaro_winkler_tokens()</code> scores it 1, as the table above shows. A nickname table also has a cost: <code>SAM = "SAMANTHA"</code> fixes one row here and would wrongly merge <code>SAM</code>/<code>SAMUEL</code>, so the table belongs with the rest of your standardisation rules, under review, not buried in a scoring call.</p>
+</section></section><section id="sec-surname" class="level2" data-number="7.5"><h2 data-number="7.5" class="anchored" data-anchor-id="sec-surname">
+<span class="header-section-number">7.5</span> Surnames</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">kable_report</span><span class="op">(</span><span class="va">surname</span>, <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="tbl-surname" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure"><figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-surname-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;7.2: Surnames: 16 matched and 18 non-matched pairs. AUC over the easy and moderate pairs.
+</figcaption><div aria-describedby="tbl-surname-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 13%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 13%">
+<col style="width: 7%">
+<col style="width: 10%">
+</colgroup>
+<thead><tr class="header">
+<th style="text-align: left;">Comparator</th>
+<th style="text-align: right;">AUC</th>
+<th style="text-align: right;">easy</th>
+<th style="text-align: right;">moderate</th>
+<th style="text-align: right;">hard</th>
+<th style="text-align: right;">easy</th>
+<th style="text-align: right;">moderate</th>
+<th style="text-align: right;">hard</th>
+<th style="text-align: right;">margin</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">osa</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.39</td>
+<td style="text-align: right;">0.07</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.07</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">lcs_seq</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.39</td>
+<td style="text-align: right;">0.11</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.07</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">editex</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.47</td>
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.08</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jaro</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">0.72</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">0.02</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">soundex_equal</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.40</td>
+<td style="text-align: right;">0.62</td>
+<td style="text-align: right;">0.60</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jw_tokens</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.03</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">jaro_winkler</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">0.96</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.02</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">levenshtein</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.77</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">0.39</td>
+<td style="text-align: right;">0.07</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.06</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">indel</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.55</td>
+<td style="text-align: right;">0.13</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">fuzz_wratio</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.21</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">monge_elkan</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-0.03</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">fuzz_token_set</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.13</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">-0.07</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">prefix</td>
+<td style="text-align: right;">0.66</td>
+<td style="text-align: right;">0.53</td>
+<td style="text-align: right;">0.36</td>
+<td style="text-align: right;">0.28</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.58</td>
+<td style="text-align: right;">0.49</td>
+<td style="text-align: right;">-0.22</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">lcs_str</td>
+<td style="text-align: right;">0.60</td>
+<td style="text-align: right;">0.63</td>
+<td style="text-align: right;">0.50</td>
+<td style="text-align: right;">0.37</td>
+<td style="text-align: right;">0.09</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">0.58</td>
+<td style="text-align: right;">-0.24</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">jaccard_q2</td>
+<td style="text-align: right;">0.55</td>
+<td style="text-align: right;">0.49</td>
+<td style="text-align: right;">0.45</td>
+<td style="text-align: right;">0.31</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.67</td>
+<td style="text-align: right;">0.47</td>
+<td style="text-align: right;">-0.22</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">smith_waterman</td>
+<td style="text-align: right;">0.55</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">0.70</td>
+<td style="text-align: right;">0.96</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">-0.25</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">jaccard_q3</td>
+<td style="text-align: right;">0.48</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.24</td>
+<td style="text-align: right;">0.23</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.63</td>
+<td style="text-align: right;">0.28</td>
+<td style="text-align: right;">-0.39</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">cosine_q3</td>
+<td style="text-align: right;">0.47</td>
+<td style="text-align: right;">0.49</td>
+<td style="text-align: right;">0.34</td>
+<td style="text-align: right;">0.46</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">0.38</td>
+<td style="text-align: right;">-0.44</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">tversky_in</td>
+<td style="text-align: right;">0.44</td>
+<td style="text-align: right;">0.50</td>
+<td style="text-align: right;">0.32</td>
+<td style="text-align: right;">0.62</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.44</td>
+<td style="text-align: right;">-0.61</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p><code>osa_similarity()</code> and <code>lcs_seq_similarity()</code> lead again, but the interesting rows are the next two.</p>
+<p><strong><code>editex_similarity()</code></strong> is the only comparator whose moderate matches (0.84) beat its easy ones (0.83), because the moderate band is where the phonetic variants live. It charges less for a substitution between letters that sound alike, which is exactly the error surnames collect when they are taken down by ear:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">phonetic</span> <span class="op">&lt;-</span> <span class="va">surname</span><span class="op">[</span><span class="va">surname</span><span class="op">$</span><span class="va">kind</span> <span class="op"><a href="https://rdrr.io/r/base/match.html">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"phonetic"</span>, <span class="st">"prefix variant"</span><span class="op">)</span> <span class="op">&amp;</span></span>
+<span>                    <span class="va">surname</span><span class="op">$</span><span class="va">match</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    <span class="va">phonetic</span>,</span>
+<span>    levenshtein <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">levenshtein_similarity</span><span class="op">(</span><span class="va">phonetic</span><span class="op">$</span><span class="va">a</span>, <span class="va">phonetic</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    editex      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">editex_similarity</span><span class="op">(</span><span class="va">phonetic</span><span class="op">$</span><span class="va">a</span>, <span class="va">phonetic</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           a        b levenshtein editex
+7      SMITH    SMYTH        0.80   0.90
+8   SHEPHERD SHEPPARD        0.75   0.81
+9  MACDONALD MCDONALD        0.89   0.89
+11  CHAUDHRY CHOUDARY        0.75   0.81</code></pre>
+</div>
+</div>
+<p><strong><code>soundex_equal</code></strong> – phonetic-code agreement, not a similarity at all – has the largest margin in the table (0.60) and perfect recall on the easy and moderate matches. That is a real result, and a trap. It is 0 on every hard match and 0.62 on the hard non-matches, because Soundex is built to merge:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">hard_fp</span> <span class="op">&lt;-</span> <span class="va">surname</span><span class="op">[</span><span class="va">surname</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"hard"</span> <span class="op">&amp;</span> <span class="op">!</span><span class="va">surname</span><span class="op">$</span><span class="va">match</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    <span class="va">hard_fp</span>,</span>
+<span>    code_a <span class="op">=</span> <span class="fu">soundex</span><span class="op">(</span><span class="va">hard_fp</span><span class="op">$</span><span class="va">a</span><span class="op">)</span>,</span>
+<span>    code_b <span class="op">=</span> <span class="fu">soundex</span><span class="op">(</span><span class="va">hard_fp</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>,</span>
+<span>    same   <span class="op">=</span> <span class="fu">soundex</span><span class="op">(</span><span class="va">hard_fp</span><span class="op">$</span><span class="va">a</span><span class="op">)</span> <span class="op">==</span> <span class="fu">soundex</span><span class="op">(</span><span class="va">hard_fp</span><span class="op">$</span><span class="va">b</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         a         b code_a code_b  same
+27 THOMSON  THOMPSON   T525   T512 FALSE
+28 JOHNSON  JOHNSTON   J525   J523 FALSE
+29   BAKER    BARKER   B260   B626 FALSE
+30    CHAN      CHEN   C500   C500  TRUE
+31    WANG      WONG   W520   W520  TRUE
+32    HALL      HILL   H400   H400  TRUE
+33  MARTIN MARTIN JR   M635   M635  TRUE
+34   SINGH    SINGHA   S520   S520  TRUE</code></pre>
+</div>
+</div>
+<p><code>CHAN</code>/<code>CHEN</code>, <code>WANG</code>/<code>WONG</code> and <code>HALL</code>/<code>HILL</code> all collapse to one code. That makes phonetic codes excellent <strong>blocking keys</strong> – generous, cheap, and they bring the right pairs into consideration – and poor deciders. <a href="#sec-uc-link" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-link</span></a> compares the codes by how aggressively they merge; use one to generate candidates and a similarity to score them.</p>
+<p>The hard matches here are the other familiar surname problem: <code>SMITH</code>/<code>SMITH-JONES</code> after a marriage, <code>LEE</code>/<code>LEE NGUYEN</code>, <code>VAN DER BERG</code>/<code>BERG</code>. One string is contained in the other, which is a containment question, and the containment-shaped comparators answer it:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">contained</span> <span class="op">&lt;-</span> <span class="va">surname</span><span class="op">[</span><span class="va">surname</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"hard"</span> <span class="op">&amp;</span> <span class="va">surname</span><span class="op">$</span><span class="va">match</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    <span class="va">contained</span>,</span>
+<span>    osa            <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">osa_similarity</span><span class="op">(</span><span class="va">contained</span><span class="op">$</span><span class="va">a</span>, <span class="va">contained</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    tversky_in     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">tversky_index</span><span class="op">(</span><span class="va">contained</span><span class="op">$</span><span class="va">a</span>, <span class="va">contained</span><span class="op">$</span><span class="va">b</span>, q <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>                                         alpha <span class="op">=</span> <span class="fl">1</span>, beta <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    fuzz_token_set <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">fuzz_token_set_ratio</span><span class="op">(</span><span class="va">contained</span><span class="op">$</span><span class="va">a</span>, <span class="va">contained</span><span class="op">$</span><span class="va">b</span><span class="op">)</span> <span class="op">/</span> <span class="fl">100</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    smith_waterman <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">smith_waterman</span><span class="op">(</span><span class="va">contained</span><span class="op">$</span><span class="va">a</span>, <span class="va">contained</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>               a           b  osa tversky_in fuzz_token_set smith_waterman
+13         SMITH SMITH-JONES 0.45       1.00           1.00           1.00
+14           LEE  LEE NGUYEN 0.30       1.00           1.00           1.00
+15  VAN DER BERG        BERG 0.33       0.20           1.00           1.00
+16 WOJCIECHOWSKI      WOJCIK 0.46       0.27           0.63           0.83</code></pre>
+</div>
+</div>
+<p><code>tversky_index(alpha = 1, beta = 0)</code> asks only “how much of <code>a</code> is in <code>b</code>?” and so ignores the words <code>b</code> has added. Note that this makes it <strong>directional</strong>, which the <code>VAN DER BERG</code>/<code>BERG</code> row shows: the extra words are on the <code>a</code> side there, and the score collapses to 0.20. When either side may be the fuller one – which is the normal case across two files – score both directions and keep the larger:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">both_ways</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">pmax</a></span><span class="op">(</span></span>
+<span>    <span class="fu">tversky_index</span><span class="op">(</span><span class="va">contained</span><span class="op">$</span><span class="va">a</span>, <span class="va">contained</span><span class="op">$</span><span class="va">b</span>, q <span class="op">=</span> <span class="fl">3</span>, alpha <span class="op">=</span> <span class="fl">1</span>, beta <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>    <span class="fu">tversky_index</span><span class="op">(</span><span class="va">contained</span><span class="op">$</span><span class="va">b</span>, <span class="va">contained</span><span class="op">$</span><span class="va">a</span>, q <span class="op">=</span> <span class="fl">3</span>, alpha <span class="op">=</span> <span class="fl">1</span>, beta <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">contained</span>, containment <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="va">both_ways</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>               a           b containment
+13         SMITH SMITH-JONES        1.00
+14           LEE  LEE NGUYEN        1.00
+15  VAN DER BERG        BERG        1.00
+16 WOJCIECHOWSKI      WOJCIK        0.75</code></pre>
+</div>
+</div>
+<p>Containment costs precision: <code>tversky_in</code> is near the bottom of <a href="#tbl-surname" class="quarto-xref">Table&nbsp;<span class="quarto-unresolved-ref">tbl-surname</span></a> overall, because it also rates <code>MARTIN</code>/<code>MARTIN JR</code> and <code>SINGH</code>/<code>SINGHA</code> highly – which is the whole trade in one row. So score both: a high <code>osa_similarity()</code> <em>or</em> a high containment score, with the reason recorded, beats one blended number nobody can audit.</p>
+</section><section id="sec-address" class="level2" data-number="7.6"><h2 data-number="7.6" class="anchored" data-anchor-id="sec-address">
+<span class="header-section-number">7.6</span> Addresses</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">kable_report</span><span class="op">(</span><span class="va">address</span>, <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="tbl-address" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure"><figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-address-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;7.3: Addresses: 12 matched and 13 non-matched pairs. AUC over the easy and moderate pairs.
+</figcaption><div aria-describedby="tbl-address-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 13%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 13%">
+<col style="width: 7%">
+<col style="width: 10%">
+</colgroup>
+<thead><tr class="header">
+<th style="text-align: left;">Comparator</th>
+<th style="text-align: right;">AUC</th>
+<th style="text-align: right;">easy</th>
+<th style="text-align: right;">moderate</th>
+<th style="text-align: right;">hard</th>
+<th style="text-align: right;">easy</th>
+<th style="text-align: right;">moderate</th>
+<th style="text-align: right;">hard</th>
+<th style="text-align: right;">margin</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">tversky_in</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.02</td>
+<td style="text-align: right;">0.63</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.15</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jaccard_q3</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.69</td>
+<td style="text-align: right;">0.59</td>
+<td style="text-align: right;">0.22</td>
+<td style="text-align: right;">0.01</td>
+<td style="text-align: right;">0.45</td>
+<td style="text-align: right;">0.69</td>
+<td style="text-align: right;">0.14</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">cosine_q3</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">0.47</td>
+<td style="text-align: right;">0.03</td>
+<td style="text-align: right;">0.62</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.12</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jaccard_q2</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">0.67</td>
+<td style="text-align: right;">0.26</td>
+<td style="text-align: right;">0.06</td>
+<td style="text-align: right;">0.56</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.11</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">fuzz_token_set</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">0.34</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.09</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">fuzz_wratio</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">0.36</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">0.06</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">smith_waterman</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.17</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">indel</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">0.41</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-0.04</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">jw_tokens</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.72</td>
+<td style="text-align: right;">0.52</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">-0.05</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jaro</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.68</td>
+<td style="text-align: right;">0.56</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">-0.06</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lcs_seq</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.26</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">-0.05</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">levenshtein</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.63</td>
+<td style="text-align: right;">0.26</td>
+<td style="text-align: right;">0.18</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">-0.13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">osa</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: right;">0.63</td>
+<td style="text-align: right;">0.26</td>
+<td style="text-align: right;">0.18</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">-0.13</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">editex</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">0.66</td>
+<td style="text-align: right;">0.32</td>
+<td style="text-align: right;">0.27</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">-0.13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">jaro_winkler</td>
+<td style="text-align: right;">0.77</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">0.83</td>
+<td style="text-align: right;">0.73</td>
+<td style="text-align: right;">0.56</td>
+<td style="text-align: right;">0.92</td>
+<td style="text-align: right;">0.96</td>
+<td style="text-align: right;">-0.09</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">monge_elkan</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.77</td>
+<td style="text-align: right;">0.42</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">-0.02</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lcs_str</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.68</td>
+<td style="text-align: right;">0.51</td>
+<td style="text-align: right;">0.26</td>
+<td style="text-align: right;">0.09</td>
+<td style="text-align: right;">0.61</td>
+<td style="text-align: right;">0.74</td>
+<td style="text-align: right;">-0.10</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">soundex_equal</td>
+<td style="text-align: right;">0.64</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.40</td>
+<td style="text-align: right;">0.50</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.67</td>
+<td style="text-align: right;">-0.60</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">prefix</td>
+<td style="text-align: right;">0.60</td>
+<td style="text-align: right;">0.51</td>
+<td style="text-align: right;">0.11</td>
+<td style="text-align: right;">0.11</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.61</td>
+<td style="text-align: right;">0.44</td>
+<td style="text-align: right;">-0.50</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>The ranking inverts. The q-gram set metrics and the containment score lead; <code>jaro_winkler()</code> is second from last, and the edit similarities that won on names are mid-table. Addresses break the assumptions those metrics make:</p>
+<ul>
+<li>
+<strong>Length varies enormously</strong> between two renderings of the same address (<code>9 KING ST</code> versus <code>9 KING STREET WEST END BRISBANE QUEENSLAND</code>). An edit similarity divides by the longer length, so a true match is punished for the detail one side happens to carry. <code>tversky_in</code> scores those pairs 1.00 (<code>tp_hard</code>) precisely because it does not.</li>
+<li>
+<strong>The decisive difference is tiny.</strong> <code>12 SMITH ST</code> versus <code>21 SMITH ST</code> is two characters out of eleven, and a different house. Every comparator in the table scores the hard non-matches above 0.4, and the four best separators score them 0.69–0.84. There is no threshold that keeps those out.</li>
+<li>
+<strong>Tokens move.</strong> <code>LEVEL 3 100 QUEEN ST</code> and <code>100 QUEEN ST LEVEL 3</code> are one address, which rewards the token and q-gram comparators and penalises anything positional, <code>prefix_similarity()</code> worst of all (0.11 on moderate matches).</li>
+</ul>
+<p>So the first thing to do with an address is not to pick a better comparator; it is to stop comparing the whole string. Two moves fix most of it. <strong>Standardise</strong> the vocabulary, then <strong>compare components separately</strong>, exactly where an exact comparison belongs:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">street_types</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span></span>
+<span>    STREET <span class="op">=</span> <span class="st">"ST"</span>, ROAD <span class="op">=</span> <span class="st">"RD"</span>, AVENUE <span class="op">=</span> <span class="st">"AVE"</span>, CRESCENT <span class="op">=</span> <span class="st">"CRES"</span>,</span>
+<span>    PARADE <span class="op">=</span> <span class="st">"PDE"</span>, DRIVE <span class="op">=</span> <span class="st">"DR"</span>, COURT <span class="op">=</span> <span class="st">"CT"</span>, PLACE <span class="op">=</span> <span class="st">"PL"</span>,</span>
+<span>    HIGHWAY <span class="op">=</span> <span class="st">"HWY"</span>, LANE <span class="op">=</span> <span class="st">"LN"</span>, TERRACE <span class="op">=</span> <span class="st">"TCE"</span>, SAINT <span class="op">=</span> <span class="st">"ST"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">std_address</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu">freplace_tokens</span><span class="op">(</span><span class="fu">fsquish</span><span class="op">(</span><span class="fu">fupper</span><span class="op">(</span><span class="fu">ascii_fold</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                    <span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">street_types</span><span class="op">)</span>, <span class="va">street_types</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">house_number</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu">fextract</span><span class="op">(</span><span class="st">"^[0-9]+[A-Z]?"</span>, <span class="fu">fsquish</span><span class="op">(</span><span class="fu">fupper</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">hard_cases</span> <span class="op">&lt;-</span> <span class="va">address</span><span class="op">[</span><span class="va">address</span><span class="op">$</span><span class="va">degree</span> <span class="op">==</span> <span class="st">"hard"</span>, <span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    <span class="va">hard_cases</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"match"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>    no_a  <span class="op">=</span> <span class="fu">house_number</span><span class="op">(</span><span class="va">hard_cases</span><span class="op">$</span><span class="va">a</span><span class="op">)</span>,</span>
+<span>    no_b  <span class="op">=</span> <span class="fu">house_number</span><span class="op">(</span><span class="va">hard_cases</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>,</span>
+<span>    agree <span class="op">=</span> <span class="fu">house_number</span><span class="op">(</span><span class="va">hard_cases</span><span class="op">$</span><span class="va">a</span><span class="op">)</span> <span class="op">==</span> <span class="fu">house_number</span><span class="op">(</span><span class="va">hard_cases</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>,</span>
+<span>    tversky_in <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">tversky_index</span><span class="op">(</span><span class="fu">std_address</span><span class="op">(</span><span class="va">hard_cases</span><span class="op">$</span><span class="va">a</span><span class="op">)</span>,</span>
+<span>                                     <span class="fu">std_address</span><span class="op">(</span><span class="va">hard_cases</span><span class="op">$</span><span class="va">b</span><span class="op">)</span>,</span>
+<span>                                     q <span class="op">=</span> <span class="fl">3</span>, alpha <span class="op">=</span> <span class="fl">1</span>, beta <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                          a                                          b match
+11              12 SMITH ST       UNIT 4 12 SMITH ST ANNERLEY QLD 4103  TRUE
+12                9 KING ST 9 KING STREET WEST END BRISBANE QUEENSLAND  TRUE
+20              12 SMITH ST                               12 SMITH AVE FALSE
+21              12 SMITH ST                                21 SMITH ST FALSE
+22              12 SMITH ST                               12A SMITH ST FALSE
+23       UNIT 1 12 SMITH ST                         UNIT 2 12 SMITH ST FALSE
+24         12 SMITH ST 4000                           12 SMITH ST 4001 FALSE
+25 45 ST KILDA RD MELBOURNE              45 ST KILDA RD EAST MELBOURNE FALSE
+   no_a no_b agree tversky_in
+11   12 &lt;NA&gt;    NA       1.00
+12    9    9  TRUE       1.00
+20   12   12  TRUE       0.78
+21   12   21 FALSE       0.78
+22   12  12A FALSE       0.78
+23 &lt;NA&gt; &lt;NA&gt;    NA       0.81
+24   12   12  TRUE       0.93
+25   45   45  TRUE       0.95</code></pre>
+</div>
+</div>
+<p>The house number separates <code>12 SMITH ST</code> from <code>21 SMITH ST</code> and from <code>12A SMITH ST</code> in a way no similarity score will, and it says nothing at all about the <code>PO BOX</code> and unit-number forms, where it is <code>NA</code> – which is the right answer, and why the comparison has to be <em>per component</em> rather than one number for the whole line. <code>fsplit_field()</code>, <code>fextract()</code> and <code>string_shape()</code> (<a href="#sec-uc-profile" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-profile</span></a>) are the tools for pulling the components out; <code>freplace_tokens()</code> for the vocabulary.</p>
+</section><section id="cost-is-not-the-deciding-factor" class="level2" data-number="7.7"><h2 data-number="7.7" class="anchored" data-anchor-id="cost-is-not-the-deciding-factor">
+<span class="header-section-number">7.7</span> Cost is not the deciding factor</h2>
+<p>All nineteen comparators are compiled and parallel, so the choice can be made on accuracy alone. On 200,000 pairs of surnames:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">pool</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, <span class="st">"JONES"</span>, <span class="st">"NGUYEN"</span>, <span class="st">"PAPADOPOULOS"</span>, <span class="st">"OBRIEN"</span>,</span>
+<span>          <span class="st">"WILLIAMSON"</span>, <span class="st">"CHAUDHRY"</span>, <span class="st">"SZCZEPANSKI"</span>, <span class="st">"LEE"</span><span class="op">)</span></span>
+<span><span class="va">left</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">pool</span>, <span class="fl">2e5</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">right</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">pool</span>, <span class="fl">2e5</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">timings</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">comparators</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="fu">f</span><span class="op">(</span><span class="va">left</span>, <span class="va">right</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">cost</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>comparator <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">timings</span><span class="op">)</span>, seconds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unname.html">unname</a></span><span class="op">(</span><span class="va">timings</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html">kable</a></span><span class="op">(</span><span class="va">cost</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="va">cost</span><span class="op">$</span><span class="va">seconds</span><span class="op">)</span>, <span class="op">]</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>             col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Comparator"</span>, <span class="st">"Seconds"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="tbl-cost" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure"><figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-cost-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;7.4: Seconds to score 200,000 pairs, 16 cores, one run each (this machine – yours will vary).
+</figcaption><div aria-describedby="tbl-cost-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="cell caption-top table table-sm table-striped small">
+<thead><tr class="header">
+<th style="text-align: left;">Comparator</th>
+<th style="text-align: right;">Seconds</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">jaro_winkler</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jaro</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">osa</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">editex</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">jaccard_q2</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">tversky_in</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">fuzz_token_set</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">fuzz_wratio</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">soundex_equal</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">levenshtein</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">indel</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">lcs_seq</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lcs_str</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jw_tokens</td>
+<td style="text-align: right;">0.02</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">monge_elkan</td>
+<td style="text-align: right;">0.02</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">prefix</td>
+<td style="text-align: right;">0.02</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">smith_waterman</td>
+<td style="text-align: right;">0.02</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">jaccard_q3</td>
+<td style="text-align: right;">0.02</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">cosine_q3</td>
+<td style="text-align: right;">0.02</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>The spread between the cheapest and the dearest is a few hundredths of a second over 200,000 pairs. Candidate generation, not scoring, is where a linkage spends its time (<a href="#sec-benchmarks" class="quarto-xref"><span class="quarto-unresolved-ref">sec-benchmarks</span></a>), so score two or three comparators per field and keep the columns – it costs almost nothing and makes a clerical reviewer’s job far easier than one blended number.</p>
+</section><section id="sec-recommendations" class="level2" data-number="7.8"><h2 data-number="7.8" class="anchored" data-anchor-id="sec-recommendations">
+<span class="header-section-number">7.8</span> What to use</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead><tr class="header">
+<th>Field, and what goes wrong in it</th>
+<th>Use</th>
+<th>Why</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<strong>Given name</strong>, typos and dropped letters</td>
+<td><code>osa_similarity()</code></td>
+<td>best AUC here; counts a transposition as one edit</td>
+</tr>
+<tr class="even">
+<td>
+<strong>Given name</strong>, where longer names are different people (<code>ALAN</code>/<code>ALANA</code>)</td>
+<td>
+<code>osa_similarity()</code>, or <code>jaro_winkler(p = 0)</code>
+</td>
+<td>length-sensitive; no prefix bonus to exploit</td>
+</tr>
+<tr class="odd">
+<td>
+<strong>Given name</strong>, typos in the first letters</td>
+<td><code>jaro_winkler()</code></td>
+<td>the prefix bonus earns its keep</td>
+</tr>
+<tr class="even">
+<td>
+<strong>Given name</strong>, nicknames and short forms</td>
+<td>
+<code>freplace_tokens()</code> first, then score</td>
+<td>not a string-distance problem</td>
+</tr>
+<tr class="odd">
+<td>
+<strong>Given names</strong> in one field, reordered</td>
+<td>
+<code>jaro_winkler_tokens()</code>, <code>monge_elkan()</code>
+</td>
+<td>align whole words in any order</td>
+</tr>
+<tr class="even">
+<td>
+<strong>Surname</strong>, taken down by ear</td>
+<td><code>editex_similarity()</code></td>
+<td>cheaper substitutions between like-sounding letters</td>
+</tr>
+<tr class="odd">
+<td>
+<strong>Surname</strong>, general scoring</td>
+<td>
+<code>osa_similarity()</code>, <code>lcs_seq_similarity()</code>
+</td>
+<td>best AUC here</td>
+</tr>
+<tr class="even">
+<td>
+<strong>Surname</strong>, candidate generation</td>
+<td>
+<code>soundex()</code>, <code>double_metaphone()</code>, <code>nysiis()</code>
+</td>
+<td>perfect recall on easy and moderate pairs; far too generous to decide with</td>
+</tr>
+<tr class="odd">
+<td>
+<strong>Surname</strong>, double-barrelled or added names</td>
+<td>
+<code>tversky_index(alpha = 1, beta = 0)</code>, <code>fuzz_token_set_ratio()</code>
+</td>
+<td>containment, ignoring what the other side adds</td>
+</tr>
+<tr class="even">
+<td>
+<strong>Address</strong>, whole-string comparison</td>
+<td>
+<code>jaccard_index(q = 3)</code>, <code>cosine_similarity(q = 3)</code>
+</td>
+<td>tolerant of token order, strict about unshared content</td>
+</tr>
+<tr class="odd">
+<td>
+<strong>Address</strong>, one side carrying extra detail</td>
+<td>
+<code>tversky_index(q = 3, alpha = 1, beta = 0)</code>, <code>smith_waterman()</code>
+</td>
+<td>asymmetric: extra material in <code>b</code> is free</td>
+</tr>
+<tr class="even">
+<td>
+<strong>Address</strong>, reordered tokens</td>
+<td><code>fuzz_token_set_ratio()</code></td>
+<td>set comparison over words</td>
+</tr>
+<tr class="odd">
+<td>
+<strong>Address</strong>, house number, unit, postcode</td>
+<td>exact comparison of the parsed component</td>
+<td>the decisive differences are one character long</td>
+</tr>
+<tr class="even">
+<td>Free text, long strings</td>
+<td>
+<code>fuzz_token_set_ratio()</code>, <code>cosine_similarity()</code>
+</td>
+<td>word sets, not character edits</td>
+</tr>
+<tr class="odd">
+<td>You need to explain a score</td>
+<td><code>edit_ops()</code></td>
+<td>returns the edits themselves</td>
+</tr>
+</tbody>
+</table></section><section id="sec-recipe" class="level2" data-number="7.9"><h2 data-number="7.9" class="anchored" data-anchor-id="sec-recipe">
+<span class="header-section-number">7.9</span> Putting it together</h2>
+<p>The four pairs below are the hardest kinds in this chapter: two different people whose names look alike, and two matches disguised by a nickname and by abbreviation. One comparator on one field cannot resolve them. The recipe can: standardise, use the comparator that suits each field, compare the decisive component exactly, and let the fields vote.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">left_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    given   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ALAN"</span>, <span class="st">"DANIEL"</span>, <span class="st">"MICHELLE"</span>, <span class="st">"ROBERT"</span><span class="op">)</span>,</span>
+<span>    surname <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"BAKER"</span>, <span class="st">"THOMSON"</span>, <span class="st">"WILLIAMSON"</span>, <span class="st">"SMITH"</span><span class="op">)</span>,</span>
+<span>    address <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"12 Smith St"</span>, <span class="st">"100 Queen St Brisbane"</span>,</span>
+<span>                <span class="st">"7 Bottlebrush Crescent"</span>, <span class="st">"45 St Kilda Rd Melbourne"</span><span class="op">)</span>,</span>
+<span>    truth   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"different person"</span>, <span class="st">"different person"</span>,</span>
+<span>                <span class="st">"same person"</span>, <span class="st">"same person"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">right_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    given   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ALANA"</span>, <span class="st">"DANIEL"</span>, <span class="st">"MICHELE"</span>, <span class="st">"BOB"</span><span class="op">)</span>,</span>
+<span>    surname <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"BARKER"</span>, <span class="st">"THOMPSON"</span>, <span class="st">"WILLIAMSEN"</span>, <span class="st">"SMYTH"</span><span class="op">)</span>,</span>
+<span>    address <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"21 SMITH ST"</span>, <span class="st">"100 QUEEN ST MELBOURNE"</span>,</span>
+<span>                <span class="st">"7 BOTTLEBRUSH CRES"</span>, <span class="st">"45 SAINT KILDA ROAD MELBOURNE"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">std_name</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu">freplace_tokens</span><span class="op">(</span><span class="fu">fsquish</span><span class="op">(</span><span class="fu">fupper</span><span class="op">(</span><span class="fu">ascii_fold</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">nicknames</span><span class="op">)</span>, <span class="va">nicknames</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">prepare</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">d</span><span class="op">$</span><span class="va">given</span>   <span class="op">&lt;-</span> <span class="fu">std_name</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">given</span><span class="op">)</span></span>
+<span>    <span class="va">d</span><span class="op">$</span><span class="va">address</span> <span class="op">&lt;-</span> <span class="fu">std_address</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">address</span><span class="op">)</span></span>
+<span>    <span class="va">d</span><span class="op">$</span><span class="va">no</span>      <span class="op">&lt;-</span> <span class="fu">house_number</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">address</span><span class="op">)</span></span>
+<span>    <span class="va">d</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">left_std</span>  <span class="op">&lt;-</span> <span class="fu">prepare</span><span class="op">(</span><span class="va">left_file</span><span class="op">)</span></span>
+<span><span class="va">right_std</span> <span class="op">&lt;-</span> <span class="fu">prepare</span><span class="op">(</span><span class="va">right_file</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">scored</span> <span class="op">&lt;-</span> <span class="fu">rLink</span><span class="op">(</span></span>
+<span>    <span class="va">left_std</span>, <span class="va">right_std</span>,</span>
+<span>    pairs   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>x_index <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, y_index <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span>,</span>
+<span>    compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span></span>
+<span>        given   <span class="op">=</span> <span class="fu">osa_similarity</span><span class="op">(</span><span class="va">given</span><span class="op">)</span>,</span>
+<span>        surname <span class="op">=</span> <span class="fu">editex_similarity</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>        address <span class="op">=</span> <span class="fu">tversky_index</span><span class="op">(</span><span class="va">address</span>, q <span class="op">=</span> <span class="fl">3</span>, alpha <span class="op">=</span> <span class="fl">1</span>, beta <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>        number  <span class="op">=</span> <span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">&amp;</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">x</span> <span class="op">==</span> <span class="va">y</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="va">no</span><span class="op">)</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"given"</span>, <span class="st">"surname"</span>, <span class="st">"truth"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">scored</span><span class="op">$</span><span class="va">decision</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span></span>
+<span>    <span class="va">scored</span><span class="op">$</span><span class="va">number</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">pmin</a></span><span class="op">(</span><span class="va">scored</span><span class="op">$</span><span class="va">given</span>, <span class="va">scored</span><span class="op">$</span><span class="va">surname</span>, <span class="va">scored</span><span class="op">$</span><span class="va">address</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="fl">0.75</span>,</span>
+<span>    <span class="st">"match"</span>, <span class="st">"non-match"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">scored</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"given_1"</span>, <span class="st">"given_2"</span>, <span class="st">"surname_1"</span>, <span class="st">"surname_2"</span>,</span>
+<span>           <span class="st">"given"</span>, <span class="st">"surname"</span>, <span class="st">"address"</span>, <span class="st">"number"</span>, <span class="st">"decision"</span>, <span class="st">"truth_1"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    given_1 given_2  surname_1  surname_2 given   surname   address number
+     &lt;char&gt;  &lt;char&gt;     &lt;char&gt;     &lt;char&gt; &lt;num&gt;     &lt;num&gt;     &lt;num&gt;  &lt;num&gt;
+1:     ALAN   ALANA      BAKER     BARKER 0.800 0.8333333 0.7777778      0
+2:   DANIEL  DANIEL    THOMSON   THOMPSON 1.000 0.8750000 0.5789474      1
+3: MICHELLE MICHELE WILLIAMSON WILLIAMSEN 0.875 0.9500000 1.0000000      1
+4:   ROBERT  ROBERT      SMITH      SMYTH 1.000 0.9000000 1.0000000      1
+    decision          truth_1
+      &lt;char&gt;           &lt;char&gt;
+1: non-match different person
+2: non-match different person
+3:     match      same person
+4:     match      same person</code></pre>
+</div>
+</div>
+<p>All four land correctly, and each decision is readable: pair 1 is rejected by the house number although every name score is respectable, pair 2 by the locality inside the address score, and pair 4 is accepted only because <code>BOB</code> became <code>ROBERT</code> before anything was compared. That is the shape to aim for – one column per piece of evidence, a rule you can state in a sentence, and no single metric carrying the whole decision.</p>
+</section><section id="running-this-on-your-own-data" class="level2" data-number="7.10"><h2 data-number="7.10" class="anchored" data-anchor-id="running-this-on-your-own-data">
+<span class="header-section-number">7.10</span> Running this on your own data</h2>
+<p>The ranking in this chapter is the ranking for <em>these</em> pairs. Fields differ, collection methods differ, and the only reliable way to choose is to grade a few dozen pairs of your own and re-run the tables:</p>
+<ol type="1">
+<li>Take a sample of candidate pairs from your own blocking – from <code>rLink()</code> with <code>compare = NULL</code>, say – and label them, including the awkward ones. A hundred pairs per field is enough to separate the comparators; it is not enough to tune a threshold to three decimal places.</li>
+<li>Grade each pair <code>easy</code>, <code>moderate</code> or <code>hard</code>, and keep the <code>kind</code> column. When a comparator does badly, the <code>kind</code> of the pairs it fails on tells you what to standardise.</li>
+<li>Swap your data frame into <code>report()</code> above. Nothing else in the scaffolding is specific to these examples.</li>
+<li>Read <code>margin</code> and the moderate columns, not the top line. A comparator with a high AUC and a thin margin is one bad batch of data away from failing.</li>
+</ol>
+<p><a href="#sec-uc-link" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-link</span></a> puts the chosen comparators into a full linkage, and <a href="#sec-theory" class="quarto-xref"><span class="quarto-unresolved-ref">sec-theory</span></a> explains what each one computes.</p>
+
+
+</section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
+      <a href="./uc-link.html" class="pagination-link" aria-label="Match, deduplicate and link records">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./uc-privacy.html" class="pagination-link" aria-label="Pseudonymise identifiers">
+        <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer"><div class="nav-footer">
+    <div class="nav-footer-left">
+<p>fast.string — PCRE2 + prepared literal search + RcppParallel for R</p>
+</div>   
+    <div class="nav-footer-center">
+      &nbsp;
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/uc-metrics.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+<p>Built with Quarto</p>
+</div>
+  </div>
+</footer>
+
+
+<script src="site_libs/quarto-html/zenscroll-min.js"></script>
+</body></html>

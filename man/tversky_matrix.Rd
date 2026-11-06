@@ -47,6 +47,8 @@ Other q-gram similarity functions:
 \code{\link[=cosine_similarity]{cosine_similarity()}},
 \code{\link[=dice_matrix]{dice_matrix()}},
 \code{\link[=jaccard_matrix]{jaccard_matrix()}},
+\code{\link[=overlap_coefficient]{overlap_coefficient()}},
+\code{\link[=overlap_matrix]{overlap_matrix()}},
 \code{\link{qgram_metrics}}
 }
 \concept{q-gram similarity functions}

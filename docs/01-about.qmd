@@ -38,6 +38,7 @@ gap none of them cover on another:
 | Candidate pairs: multi-pass blocking, sorted neighbourhood | no | no | — | blocking via `blockfld` in `compare.*()` | **yes** (`block_pairs()`, `sorted_neighbourhood()`) |
 | Candidates within k edits, by TF-IDF or MinHash, without a full matrix | no | no | `amatch()` (best only) | — | **yes** (`fuzzy_within()`, `tfidf_top_n()`, `minhash_pairs()`) |
 | Entity clusters from matched pairs | no | no | — | — | **yes** (`cluster_pairs()`; `igraph` has components) |
+| Blocking **and** per-field scoring in one call | no | no | — | `compare.linkage()` / `compare.dedup()` | **yes** (`rLink()`) |
 
 A few things worth calling out explicitly:
 
@@ -58,11 +59,18 @@ A few things worth calling out explicitly:
   and `indel_distance()`) — and it has nothing on the regex/substitution
   side, the text-cleaning and validation functions, or candidate-pair
   generation, which are the other half of `fast.string`.
-- **RecordLinkage** is a full record-linkage *framework* (blocking,
-  EM-based classification, training), not a string-function library. Its
-  `soundex()`/`jarowinkler()` are useful comparison points (used directly
-  in @sec-benchmarks) but solve a much narrower problem than the package
-  itself.
+- **RecordLinkage**, **reclin2** and **fastLink** are record-linkage
+  *frameworks*. They overlap with `rLink()` on the step that turns two
+  files into scored candidate pairs, and `rLink()` is deliberately only
+  that step: it does no classification. What those packages add — and
+  this one does not attempt — is the decision: EM estimation of
+  Fellegi-Sunter weights, training against labelled pairs, and the
+  probabilistic model that turns a vector of field scores into a match
+  probability. The sensible division is `rLink()` for the blocking and
+  the comparison (where the per-string work is, and where parallelism
+  pays) and one of those packages for the model on top. `RecordLinkage`'s
+  own `soundex()`/`jarowinkler()` are also the comparison points used in
+  @sec-benchmarks.
 
 @sec-benchmarks puts numbers behind every row in that table at 3-million-row
 scale.

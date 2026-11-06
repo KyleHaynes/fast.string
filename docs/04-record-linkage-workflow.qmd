@@ -4,421 +4,750 @@
 #| label: setup
 #| include: false
 source("_setup.R")
+source("_people.R")
 ```
 
-This chapter strings every piece from @sec-quickstart together into a
-single, realistic linkage pipeline: an incoming batch of records needs to
-be matched against a reference database. It's the same shape of problem
-`examples_data_linkage.R` in the repo demonstrates, written out here as a
-narrative.
+This chapter links two files of people end to end: a service **enrolment**
+extract and a **claims** extract from a different system, holding many of
+the same people. Nothing is pre-cleaned. Every step is one of the
+functions in this package, and because the data carry a hidden
+`person_id`, every claim made along the way is measured rather than
+asserted.
 
-The batch arrives the way batches actually arrive — names in mixed case
-with punctuation, dates as strings in a local format, a load timestamp per
-row, a junk record that should never have been sent, and the same person
-submitted twice. Getting from that to a defensible set of links is eight
-steps, and most of the functions in this package show up in one of them.
+The shape of the problem is always the same:
 
-## The data
+| Step | Question | Section |
+|---|---|---|
+| 1 | What is actually in these columns? | @sec-wf-profile |
+| 2 | Do the two files agree on types and spelling? | @sec-wf-standardise |
+| 3 | Which records are even worth comparing? | @sec-wf-block |
+| 4 | How alike is each candidate pair, field by field? | @sec-wf-score |
+| 5 | Which pairs do we accept, and which go to a human? | @sec-wf-decide |
+| 6 | What is one person's identifier across both files? | @sec-wf-entities |
+| 7 | How well did it work, and what did it cost? | @sec-wf-evaluate |
+
+## The two files
 
 ```{r}
 #| label: data
-incoming <- data.frame(
-    id       = 1:7,
-    name     = c("  JOHN O'BRIEN  ", "MARY-JANE SMITH", "ROBERT BROWN",
-                 "Kyle John Haynes", "Hans Müller", "UNKNOWN 00000000",
-                 "JOHN OBRIEN"),
-    dob      = c("15/03/1985", "22/07/1990", "01/12/1975", "05/01/1988",
-                 "09/09/1971", "01/01/1900", "15/03/1985"),
-    received = c("2024-06-18 09:15:00", "2024-06-18 09:17:42",
-                 "2024-06-18 11:02:10", "2024-06-18 11:45:00",
-                 "2024-06-18 12:00:00", "2024-06-18 12:30:00",
-                 "2024-06-18 14:20:00"),
-    stringsAsFactors = FALSE
-)
-
-reference <- data.frame(
-    ref_id = 101:106,
-    name   = c("JON OBRIEN", "MARYANN SMITH", "ROB BROWN", "JOHN BRIEN",
-               "Haynes John Kyle", "Hans Mueller"),
-    dob    = as.Date(c("1985-03-14", "1990-07-20", "1975-12-02",
-                       "1985-03-15", "1988-01-05", "1971-09-09")),
-    stringsAsFactors = FALSE
-)
-
-incoming
-reference
+files  <- people_files(n_enrol = 50000, overlap = 0.6)
+enrol  <- files$enrol
+claims <- files$claims
+c(enrol = nrow(enrol), claims = nrow(claims))
 ```
 
-Seven incoming records, six reference records, deliberately messy:
-inconsistent casing, stray whitespace, punctuation, typos, a near-duplicate
-in the reference file (`"JOHN BRIEN"` vs. `"JON OBRIEN"`), a fully
-reordered multi-token name (`"Kyle John Haynes"` vs. `"Haynes John Kyle"`),
-a German name spelled two ways (`"Hans Müller"` vs. `"Hans Mueller"`), a
-placeholder record (`"UNKNOWN 00000000"`), and one person submitted twice
-in the same batch (ids 1 and 7).
+The enrolment file is the tidy one: name in three fields, date of birth as
+a `Date`, sex as a one-letter code, address in parts, postcode as
+zero-padded text.
 
-## Step 1: profile before you match
+```{r}
+#| label: show-enrol
+enrol[1:4, c("enrol_id", "given_name", "middle_name", "surname", "dob", "sex")]
+enrol[1:4, c("unit", "number", "street", "street_type", "suburb", "postcode")]
+```
 
-The cheapest way to improve a linkage run is to not feed it rubbish.
-`fcount()` counts non-overlapping matches per element, which makes
-column-level quality rules one vectorised call each: how many digits are in
-a name field (a name with digits is almost always a placeholder or a
-concatenated identifier), and how many tokens a name has.
+The claims file is what a linkage project is usually handed:
+
+```{r}
+#| label: show-claims
+claims[1:6, ]
+```
+
+One name field holding `"SURNAME, Title Given Middle"` in title case, with
+doubled and trailing spaces. The date of birth as `"DD/MM/YYYY"` text. Sex
+spelled out, sometimes `"Unknown"`, sometimes blank. The address as one
+free-text line with a unit prefix and an abbreviated street type. And a
+*numeric* postcode, so every Northern Territory postcode has lost its
+leading zero.
+
+## Step 1: profile before you match {#sec-wf-profile}
+
+The fastest way to be wrong about a column is to assume you know its
+shape. `string_shape()` collapses each value to a character-class pattern,
+so the distinct *formats* in a column are a `table()` away:
 
 ```{r}
 #| label: profile
-incoming$n_digits <- fcount("[0-9]", incoming$name)
-incoming$n_tokens <- fcount(" +", ftrimws(incoming$name)) + 1L
-
-incoming[, c("id", "name", "n_digits", "n_tokens")]
+head(sort(table(string_shape(claims$date_of_birth)), decreasing = TRUE), 3)
+head(sort(table(string_shape(claims$patient_name)), decreasing = TRUE), 5)
 ```
 
-Record 6 is the placeholder. `fcount()` is the counting counterpart to
-`fgrepl()` — same PCRE2 and prepared-fixed-string engines, same parallel
-dispatch — and replaces the `vapply(gregexpr(...), length, ...)` idiom,
-which allocates a match-position vector per row just to take its length and
-needs two explicit branches to reproduce `fcount()`'s `NA`-and-zero
-handling:
+Every date of birth is `99/99/9999`, so one fixed format will parse the
+column. The name column has many shapes, which is the signal that it needs
+parsing rather than comparing as it stands.
+
+Two more questions worth asking of every incoming column --- how much is
+missing, and how much is a placeholder:
 
 ```{r}
-#| label: profile-equivalence
-identical(
-    fcount("[0-9]", incoming$name),
-    vapply(gregexpr("[0-9]", incoming$name),
-           function(m) if (is.na(m[1])) NA_integer_
-                       else if (m[1] < 0L) 0L else length(m),
-           integer(1))
+#| label: profile-quality
+c(gender_blank   = mean(!nzchar(claims$gender)),
+  gender_unknown = mean(claims$gender == "Unknown"),
+  name_untrimmed = mean(claims$patient_name != trimws(claims$patient_name)),
+  dob_jan_1      = mean(fgrepl("^01/01/", claims$date_of_birth)),
+  postcode_short = mean(fnchar(as.character(claims$postcode)) < 4))
+```
+
+About `r "one date of birth in forty-five"` is 1 January --- far more than
+the 1-in-365 a real population gives. That is the placeholder a clerk
+types when the date is unknown, and a blocking pass on the exact date
+would build one huge useless block out of it. @sec-wf-block caps it, and
+a real project would set those dates to `NA` instead.
+
+## Step 2: standardise, field by field {#sec-wf-standardise}
+
+The goal is one data frame per file with the same column names, the same
+types and the same spelling conventions. Every line below is vectorised
+over the whole column.
+
+### The name field
+
+`fupper()` and `fsquish()` first, so nothing downstream has to think about
+case or whitespace again; then `fsplit_field()` on the comma; then
+`freplace_tokens()` to drop the titles. `freplace_tokens()` matches whole
+tokens from a dictionary in one pass, so `"DR"` goes and `"DRUMMOND"`
+stays --- which a `gsub("DR", "", ...)` would not manage.
+
+```{r}
+#| label: parse-name
+titles <- c("MR", "MRS", "MS", "MISS", "DR", "PROF", "REV", "SIR")
+
+name  <- fsquish(fupper(claims$patient_name))
+surn  <- ftrimws(fsplit_field(name, ",", 1))
+rest  <- fsquish(freplace_tokens(ftrimws(fsplit_field(name, ",", 2)),
+                                 titles, rep("", length(titles))))
+given  <- fsplit_field(rest, " ", 1)
+middle <- fsplit_field(rest, " ", 2)
+
+data.frame(claims$patient_name, surn, given, middle)[1:6, ]
+```
+
+Apostrophes and hyphens are the other recurring name problem: the same
+person is `O'BRIEN` in one file and `OBRIEN` in the other, `SMITH-JONES`
+here and `SMITH JONES` there. Rather than choose, keep the name as given
+and compare on a form that ignores the difference. Three functions do
+different parts of that job:
+
+```{r}
+#| label: name-variants
+variants <- c("O'BRIEN", "OBRIEN", "O BRIEN", "o'brien", "D'ARCY", "DARCY",
+              "MULLER", "MÜLLER", "SMITH-JONES", "SMITH JONES")
+data.frame(variants,
+           ascii_fold  = ascii_fold(variants),
+           fingerprint = fingerprint(variants),
+           letters     = fgsub("[^A-Z]", "", fupper(variants)))
+```
+
+`ascii_fold()` is the one that matters for `MÜLLER`: it folds accented
+Latin letters to ASCII, so a file that lost its accents still matches one
+that kept them. `fingerprint()` (OpenRefine's clustering key) lower-cases,
+folds, strips punctuation and **sorts the words**, which is what makes
+`SMITH-JONES` and `SMITH JONES` meet --- but note that it keeps `O BRIEN`
+apart from `OBRIEN`, because there the space creates a second word rather
+than joining two. Stripping to letters alone collapses all four of the
+`O'BRIEN` spellings, at the cost of also collapsing names that differ only
+in their spacing. A blocking key wants the aggressive form; a *score*
+wants the gentle one, which is why `jaro_winkler_tokens()` exists ---
+it folds punctuation and spacing inside the comparison, so the raw names
+can be compared as they were recorded:
+
+```{r}
+#| label: token-compare
+jaro_winkler_tokens(c("O'BRIEN", "SMITH-JONES", "O'BRIEN"),
+                    c("O BRIEN", "SMITH JONES", "OBRIEN"))
+jaro_winkler(c("O'BRIEN", "SMITH-JONES", "O'BRIEN"),
+             c("O BRIEN", "SMITH JONES", "OBRIEN"))
+```
+
+### The date of birth
+
+`fas.Date()` parses one fixed layout with no locale, no `strptime()` and no
+format guessing, and validates the calendar, so an impossible date becomes
+`NA` instead of silently rolling over:
+
+```{r}
+#| label: parse-dob
+dob <- fas.Date(claims$date_of_birth, format = "dmy")
+c(parsed = sum(!is.na(dob)), failed = sum(is.na(dob)))
+
+# Strictness is the point: base R's as.Date() guesses, fas.Date() refuses.
+fas.Date(c("29/02/2024", "29/02/2023", "31/04/2024", "1/3/2024", NA),
+         format = "dmy")
+```
+
+2024 is a leap year and 2023 is not; 31 April does not exist; and
+`"1/3/2024"` is not `"DD/MM/YYYY"` --- a fixed-width format means
+fixed-width. Any of those being `NA` is a finding about the data, which is
+what you want at this stage, rather than a wrong date to discover later.
+
+`date_parts()` splits a `Date` into year, month and day columns in one
+pass, which is how the cheap partial blocking keys get built:
+
+```{r}
+#| label: date-parts
+parts <- date_parts(dob)
+head(parts, 3)
+head(format_date(dob, "y-m"), 3)      # "YYYY-MM", a coarser key
+```
+
+### Sex, gender and the vocabulary problem
+
+The two files use different vocabularies for the same field. Map both onto
+one, and keep "not recorded" distinct from "disagrees" --- treating an
+unknown as a disagreement throws away true matches:
+
+```{r}
+#| label: parse-sex
+sex_code <- function(x) {
+    x <- fupper(ftrimws(as.character(x)))
+    out <- rep("U", length(x))
+    out[x %in% c("M", "MALE", "1")]   <- "M"
+    out[x %in% c("F", "FEMALE", "2")] <- "F"
+    out
+}
+table(raw = claims$gender, coded = sex_code(claims$gender))
+```
+
+The comparison that goes with it returns agreement, disagreement, or
+neither:
+
+```{r}
+#| label: sex-compare
+sex_agree <- function(a, b) ifelse(a == "U" | b == "U", 0.5,
+                                   as.numeric(a == b))
+sex_agree(c("M", "M", "F", "U"), c("M", "F", "F", "F"))
+```
+
+### The address
+
+An address line is a street number, a street name, a street type and a
+locality, run together with the type abbreviated. Pull the unit off the
+front with `fgsub()`, split on the comma, and expand the abbreviations with
+a whole-token dictionary --- the same `freplace_tokens()` trick as the
+titles, and the reason `"ST KILDA"` does not become `"STREET KILDA"`:
+
+```{r}
+#| label: parse-address
+street_abbrev <- c("ST", "RD", "AVE", "CT", "PL", "TCE", "PDE", "CRES",
+                   "DR", "LN", "HWY", "BLVD")
+street_full   <- c("STREET", "ROAD", "AVENUE", "COURT", "PLACE", "TERRACE",
+                   "PARADE", "CRESCENT", "DRIVE", "LANE", "HIGHWAY",
+                   "BOULEVARD")
+
+raw_addr <- fupper(claims$address_line)
+unit     <- fextract("[0-9]+", fextract("^U[0-9]+/", raw_addr))
+body     <- fgsub("^U[0-9]+/", "", raw_addr)
+street   <- fsquish(freplace_tokens(ftrimws(fsplit_field(body, ",", 1)),
+                                    street_abbrev, street_full))
+locality <- ftrimws(fgsub(" VIC$", "", fsplit_field(body, ",", 2)))
+
+# Rows with a unit number, so the prefix is visible.
+head(data.frame(claims$address_line, unit, street, locality)[!is.na(unit), ], 5)
+```
+
+`fextract()` returns the first match of a pattern per element, so the unit
+number comes out without a `regmatches()`/`regexpr()` pair. Note that
+`"ST KILDA"` survived the dictionary while `"Flinders Cres"` became
+`"FLINDERS CRESCENT"`.
+
+### The postcode
+
+A numeric postcode has lost its leading zeros. Pad it back, and validate
+rather than assume:
+
+```{r}
+#| label: parse-postcode
+postcode <- fpad(as.character(claims$postcode), 4, pad = "0")
+table(width = fnchar(postcode))
+head(sort(table(string_shape(postcode)), decreasing = TRUE), 2)
+```
+
+### The standardised files
+
+```{r}
+#| label: standardised
+claims_std <- data.frame(
+    claim_id       = claims$claim_id,
+    given_name     = given,
+    middle_name    = middle,
+    surname        = surn,
+    surname_key    = fingerprint(surn),
+    dob            = dob,
+    sex            = sex_code(claims$gender),
+    unit           = unit,
+    street_address = street,
+    suburb         = locality,
+    postcode       = postcode,
+    stringsAsFactors = FALSE
 )
-```
 
-## Step 2: parse dates and timestamps
-
-The batch carries dates as `DD/MM/YYYY` strings and a load timestamp per
-row. `fas.Date()` and `fas.POSIXct()` parse one fixed, locale-free shape
-each — no format guessing, no timezone-database lookup.
-
-```{r}
-#| label: parse
-incoming$dob_date    <- fas.Date(incoming$dob, "dmy")
-incoming$received_ts <- fas.POSIXct(incoming$received)
-
-incoming[, c("id", "dob", "dob_date", "received", "received_ts")]
-```
-
-Both functions validate the full calendar, including month lengths and leap
-years, and return `NA` for an impossible value rather than silently
-accepting it:
-
-```{r}
-#| label: parse-strictness
-fas.Date("29/02/2023", "dmy")          # NA -- 2023 is not a leap year
-fas.POSIXct("2023-02-29 08:00:00")     # NA
-```
-
-So the parsers double as a validity check on the date and timestamp
-columns, and an `NA` there is a legitimate reason to quarantine a row.
-
-## Step 3: normalise and quarantine
-
-Strip punctuation and whitespace inconsistencies *before* comparing, so the
-comparison step measures genuine name similarity rather than formatting
-noise — then set aside the rows the profile step flagged.
-
-```{r}
-#| label: normalise
-incoming$name_clean <- fgsub(" +", " ", fchartr("'-", "  ", ftrimws(incoming$name)))
-reference$name_clean <- fchartr("'-", "  ", ftrimws(reference$name))
-
-usable <- incoming$n_digits == 0L &
-    !is.na(incoming$dob_date) &
-    !is.na(incoming$received_ts)
-
-quarantine <- incoming[!usable, ]
-batch      <- incoming[usable, ]
-
-batch[, c("id", "name_clean", "dob_date", "received_ts")]
-nrow(quarantine)
-```
-
-(`jaro_winkler_tokens()` does its own internal punctuation stripping and
-case-folding — see @sec-reference — but normalising up front keeps this
-example explicit, and matters for `jaro_winkler()`/`jaro_winkler_matrix()`
-and the q-gram metrics, which don't.)
-
-## Step 4: collapse duplicates inside the batch
-
-Ids 1 and 7 are the same person, sent twice. Deduplicating *before*
-matching keeps a single incoming record from generating two competing links
-to the same reference row. The parsed timestamp decides which copy
-survives — last write wins.
-
-```{r}
-#| label: dedupe
-batch$dedupe_key <- paste(fgsub(" ", "", toupper(batch$name_clean)), batch$dob_date)
-batch[, c("id", "dedupe_key", "received_ts")]
-
-batch <- batch[order(batch$dedupe_key, -as.numeric(batch$received_ts)), ]
-batch <- batch[!duplicated(batch$dedupe_key), ]
-batch <- batch[order(batch$id), ]
-
-batch[, c("id", "name_clean", "dob_date", "received_ts")]
-```
-
-Record 1 (09:15) is dropped in favour of record 7 (14:20). Note that this
-step only catches duplicates that normalise to the *same* string —
-genuinely fuzzy within-batch duplicates need the same scoring machinery as
-the linkage itself, run with `batch` on both sides: `block_pairs()` or
-`sorted_neighbourhood()` for the candidates, then `cluster_pairs()` to give
-each person one identifier (@sec-uc-link).
-
-## Step 5: block on more than one phonetic key
-
-Comparing every incoming record against every reference record is
-$O(n \times m)$ — fine at this toy scale, prohibitive at millions of rows.
-**Blocking** groups records by a cheap, coarse key first and only compares
-records *within* the same block.
-
-The classic key is `soundex()` on a surname, but a single key inherits that
-scheme's blind spots. Two of the additions here exist precisely to cover
-different ones:
-
-```{r}
-#| label: phonetic-comparison
-german <- c("Müller", "Mueller", "Miller", "Meier", "Meyer")
-data.frame(
-    name    = german,
-    soundex = soundex(german),
-    refined = refined_soundex(german),
-    cologne = cologne(german)
+enrol_std <- data.frame(
+    enrol_id       = enrol$enrol_id,
+    given_name     = enrol$given_name,
+    middle_name    = enrol$middle_name,
+    surname        = enrol$surname,
+    surname_key    = fingerprint(enrol$surname),
+    dob            = enrol$dob,
+    sex            = sex_code(enrol$sex),
+    unit           = enrol$unit,
+    street_address = fsquish(paste(enrol$number, enrol$street,
+                                    enrol$street_type)),
+    suburb         = enrol$suburb,
+    postcode       = enrol$postcode,
+    stringsAsFactors = FALSE
 )
+str(claims_std, vec.len = 2)
 ```
 
-Read that table in the direction of *how much each key merges*. Classic
-`soundex()` does catch `"Müller"`/`"Mueller"` here — but only as a side
-effect of discarding vowels entirely, which is also why it drops
-`"Miller"` in with them and collapses `"Meier"`/`"Meyer"` to a single
-`M600`. That bluntness is the thing you're trying to get away from at
-scale: coarse keys make big blocks, and big blocks are what blocking
-exists to avoid.
+## Step 3: block, and know what each pass buys you {#sec-wf-block}
 
-`refined_soundex()` is the precise end. It encodes vowels rather than
-discarding them and doesn't truncate, so blocks get smaller — but the
-umlaut isn't an ASCII vowel it can encode, so it splits `"Müller"`
-(`M8709`) from `"Mueller"` (`M80709`) and on its own would never make that
-pair a candidate. `cologne()` folds umlauts by design and gives both
-`657`, while staying coarse enough to pull `"Miller"` in too.
+Comparing every enrolment record with every claim is
+`r format(50000 * 30000, big.mark = ",", scientific = FALSE)` pairs. Blocking
+compares only the records that agree on some key. One key misses every
+true match with an error *in that key*, so a linkage runs several passes
+with keys that fail in different ways:
 
-Neither key is right on its own, and that's the point: running both and
-unioning the candidate sets recovers the specific pair the precise key
-misses without adopting the coarse key's block sizes everywhere else.
-@sec-theory quantifies the selectivity difference across a wider surname
-list.
+| Pass | Key | Survives |
+|---|---|---|
+| 1 | surname code + exact date of birth | any error in the given name or address |
+| 2 | surname code + year of birth | a transposed or shifted date of birth |
+| 3 | given-name code + exact date of birth | a changed or misspelled surname |
+| 4 | surname code + first initial + postcode | a date of birth that is wholly wrong |
 
-Because names arrive in inconsistent token order, block on the phonetic
-code of *every* token rather than a positional "surname" — a record is a
-candidate if it shares any token code, within the same birth year.
+`rLink()` takes those four passes as four `list()`s, and the blocking keys
+are written as expressions, so the phonetic code and the date part are
+computed inside the call:
 
 ```{r}
 #| label: blocking
-block_keys <- function(ids, names_vec, years, scheme) {
-    toks  <- strsplit(names_vec, " +")
-    codes <- scheme(unlist(toks))
-    out <- data.frame(
-        id    = rep(ids, lengths(toks)),
-        key   = paste0(codes, ":", rep(years, lengths(toks))),
-        token = unlist(toks),
-        stringsAsFactors = FALSE
-    )
-    out[!is.na(codes) & nzchar(codes), ]
+cand <- rLink(
+    enrol_std, claims_std,
+    block = list(
+        surname_dob   = list(soundex(surname), dob),
+        surname_year  = list(soundex(surname), format_date(dob, "y")),
+        given_dob     = list(soundex(given_name), dob),
+        name_postcode = list(soundex(surname), fsubstr(given_name, 1, 1),
+                             postcode)
+    ),
+    # The 1 January placeholder, and the commonest surname codes, would
+    # otherwise build blocks that cost more than they can return.
+    max_block_size = 2000,
+    keep = character()
+)
+nrow(cand)
+table(pass = cand$pass)
+```
+
+Because the data carry a truth, each pass can be charged for what it
+brought in:
+
+```{r}
+#| label: pass-value
+truth <- same_person(files, cand$index_1, cand$index_2)
+marginal <- t(sapply(sort(unique(cand$pass)), function(p) c(
+    candidates = sum(cand$pass == p),
+    true_pairs = sum(truth & cand$pass == p),
+    yield      = round(mean(truth[cand$pass == p]), 3))))
+rownames(marginal) <- paste("pass", sort(unique(cand$pass)))
+marginal
+
+c(true_pairs      = true_pair_count(files),
+  found           = sum(truth),
+  blocking_recall = round(sum(truth) / true_pair_count(files), 4),
+  reduction_ratio = round(1 - nrow(cand) /
+                          (as.numeric(nrow(enrol_std)) * nrow(claims_std)), 6))
+```
+
+Pass 1 does most of the work at a very high yield. Pass 2 is the expensive
+one --- it is the only pass that survives a transposed day and month, and
+it pays for that with most of the candidates. Passes 3 and 4 add the
+records whose surname or date of birth is simply wrong. This table is the
+blocking design's justification; a pass that adds no true pairs should be
+deleted, and a pass with a very low yield is the one to tighten first.
+
+## Step 4: score each candidate, field by field {#sec-wf-score}
+
+A single similarity over a concatenated name hides which field disagreed.
+Score each field separately and keep the columns, so a reviewer can see
+*why* a pair scored what it did. `rLink()` puts each score next to the pair
+of columns it scores:
+
+A date of birth deserves better than equal-or-not. The errors it actually
+carries are a transposed day and month, a year out by one, and the
+1 January placeholder --- so grade it, and let the weight apply to the
+grade:
+
+```{r}
+#| label: dob-agreement
+dob_agreement <- function(a, b) {
+    da <- fas.Date(a); db <- fas.Date(b)      # comparators are handed text
+    pa <- date_parts(da); pb <- date_parts(db)
+    ok <- !is.na(da) & !is.na(db)
+    gap <- abs(as.numeric(da) - as.numeric(db))
+    out <- numeric(length(a))
+    # Weakest first; each line overrides the one above it.
+    out[which(ok & pa$year == pb$year)]                      <- 0.3
+    out[which(ok & pa$year == pb$year & pa$month == pb$month)] <- 0.5
+    out[which(ok & gap <= 366)]                              <- 0.7
+    out[which(ok & pa$year == pb$year &                      # day/month swap
+                   pa$day == pb$month & pa$month == pb$day)]  <- 0.8
+    out[which(ok & gap <= 1)]                                <- 0.9
+    out[which(ok & da == db)]                                <- 1
+    out[!ok] <- 0.5                           # one side missing: no evidence
+    out
 }
-
-inc_year <- as.integer(format(batch$dob_date, "%Y"))
-ref_year <- as.integer(format(reference$dob, "%Y"))
-
-inc_keys <- rbind(
-    transform(block_keys(batch$id, batch$name_clean, inc_year, refined_soundex),
-              scheme = "refined_soundex"),
-    transform(block_keys(batch$id, batch$name_clean, inc_year, cologne),
-              scheme = "cologne")
-)
-ref_keys <- rbind(
-    transform(block_keys(reference$ref_id, reference$name_clean, ref_year, refined_soundex),
-              scheme = "refined_soundex"),
-    transform(block_keys(reference$ref_id, reference$name_clean, ref_year, cologne),
-              scheme = "cologne")
-)
-names(ref_keys)[c(1, 3)] <- c("ref_id", "ref_token")
-
-head(inc_keys, 8)
+d1 <- c("1985-03-05", "1985-03-14", "1985-03-15", "1985-03-15", "1985-03-15")
+d2 <- c("1985-05-03", "1985-03-15", "1986-03-15", "1985-11-02", "1985-03-15")
+data.frame(d1, d2, agreement = dob_agreement(d1, d2))
 ```
-
-The whole exploded token vector is encoded in one vectorised call per
-scheme, so the per-token cost is a parallel C++ pass rather than an R-level
-loop over records.
-
-```{r}
-#| label: candidates
-hits  <- merge(inc_keys, ref_keys, by = c("key", "scheme"))
-pairs <- unique(hits[, c("id", "ref_id")])
-pairs <- pairs[order(pairs$id, pairs$ref_id), ]
-
-nrow(pairs)
-nrow(batch) * nrow(reference)   # the full cross product this replaces
-pairs
-```
-
-Six candidate pairs instead of thirty. At this scale that saving is
-cosmetic; the point is the ratio, which is what survives to five million
-rows — and that every true match is still in the set.
-
-Tokens make this a many-keys-per-record blocking, hence the explicit
-`merge()`. When each record has one key per pass (a phonetic surname, a
-date of birth, a postcode), `block_pairs()` runs all the passes, removes the
-duplicate pairs and records which pass found each one in a single parallel
-call; @sec-uc-link uses it on 100,000 records.
-
-Keeping the token alongside the key makes the blocking step auditable —
-you can ask *why* any given pair is a candidate, which matters when you're
-tuning keys and need to know which one is carrying the recall:
-
-```{r}
-#| label: provenance
-unique(hits[hits$id == 5 & hits$ref_id == 106,
-            c("scheme", "token", "ref_token", "key")])
-```
-
-Note what this says, and what it doesn't. The `"Hans Müller"` pair is
-reachable under *both* schemes, because the given name is identical and
-`refined_soundex()` blocks it happily. Cologne's contribution is the second
-row: it is the only one of the two that also links the *surnames*
-(`"Müller"`/`"Mueller"` → `657`). On this batch that's redundant — but
-given names disagree across systems constantly (`"Hans"`/`"Johann"`/`"H"`),
-and when they do, that surname key is the only thing keeping the pair
-alive.
-
-## Step 6: score the candidates
-
-Score name similarity only among surviving candidates, with two
-deliberately different metrics. `jaro_winkler_tokens()` compares names
-token by token and is insensitive to token order by construction.
-`cosine_similarity()` compares q-gram *frequency profiles* across the whole
-string, so it is order-sensitive and weights repeated q-grams — an
-independent signal rather than a restatement of the first.
 
 ```{r}
 #| label: scoring
-pairs$name_a  <- batch$name_clean[match(pairs$id, batch$id)]
-pairs$name_b  <- reference$name_clean[match(pairs$ref_id, reference$ref_id)]
-pairs$dob_gap <- abs(as.integer(
-    batch$dob_date[match(pairs$id, batch$id)] -
-    reference$dob[match(pairs$ref_id, reference$ref_id)]
-))
-
-pairs$jw  <- jaro_winkler_tokens(pairs$name_a, pairs$name_b, ignore_case = TRUE)
-pairs$cos <- cosine_similarity(toupper(pairs$name_a), toupper(pairs$name_b), q = 2)
-
-pairs[order(pairs$id, -pairs$jw),
-      c("id", "name_a", "ref_id", "name_b", "jw", "cos", "dob_gap")]
+scored <- rLink(
+    enrol_std, claims_std,
+    block = list(
+        list(soundex(surname), dob),
+        list(soundex(surname), format_date(dob, "y")),
+        list(soundex(given_name), dob),
+        list(soundex(surname), fsubstr(given_name, 1, 1), postcode)
+    ),
+    max_block_size = 2000,
+    compare = list(
+        surname      = jaro_winkler(surname),
+        surname_key  = (function(a, b) as.numeric(a == b))(surname_key),
+        given        = jaro_winkler(given_name),
+        given_tokens = jaro_winkler_tokens(given_name),
+        middle       = (function(a, b)
+            ifelse(is.na(a) | is.na(b), 0.5, as.numeric(a == b)))(middle_name),
+        dob          = dob_agreement(dob),
+        dob_exact    = (function(a, b) as.numeric(a == b))(dob),
+        sex          = sex_agree(sex),
+        address      = jaro_winkler_tokens(street_address),
+        suburb       = jaro_winkler(suburb),
+        postcode     = (function(a, b) as.numeric(a == b))(postcode)
+    ),
+    keep = c("enrol_id", "claim_id", "surname", "given_name", "dob", "sex",
+             "street_address", "suburb", "postcode")
+)
+names(scored)
 ```
 
-The two scores disagree in informative ways. `"Kyle John Haynes"` vs.
-`"Haynes John Kyle"` is a perfect `1.000` under token comparison — every
-token has an exact partner — but `0.867` under cosine, which sees the
-reordering as changed bigrams across token boundaries. That gap *is* the
-information: a high `jw` with a lower `cos` says "same tokens, different
-arrangement", which is a different kind of evidence from "same arrangement,
-one typo".
-
-## Step 7: decide, and admit ambiguity
-
-Apply a cutoff to decide which candidate pairs are accepted as links. 0.85
-is a common starting point for Jaro-Winkler on names; the right value
-depends on your data and how costly false positives/negatives are relative
-to each other — tune it against a labelled sample if you have one. The
-date gap is a second field-level filter, tolerating a small typo in the day
-or month without accepting an unrelated birth date.
+Every carried column takes the suffix of the side it came from, including
+the ones only one file has: `enrol_id` is `enrol_id_1` and `claim_id` is
+`claim_id_2`. With `score_position = "grouped"` (the default) each score
+sits next to the pair of columns it scores, which is what makes a row
+readable:
 
 ```{r}
-#| label: threshold
-accepted <- pairs[pairs$jw >= 0.85 & pairs$dob_gap <= 2, ]
-accepted <- accepted[order(accepted$id, -accepted$jw), ]
-accepted$ambiguous <- table(accepted$id)[as.character(accepted$id)] > 1L
-
-accepted[, c("id", "name_a", "ref_id", "name_b", "jw", "cos", "dob_gap", "ambiguous")]
+#| label: scoring-read
+scored[1:3, c("enrol_id_1", "claim_id_2", "surname_1", "surname_2", "surname",
+              "given_name_1", "given_name_2", "given", "dob_1", "dob_2",
+              "dob", "dob_exact")]
 ```
 
-Every incoming record links to its obvious match, including the fully
-reordered `"Kyle John Haynes"` → `"Haynes John Kyle"` pair — the one case
-in this dataset where plain `jaro_winkler()` would have scored well below
-threshold and `jaro_winkler_tokens()` is doing real work — and the
-`"Hans Müller"` → `"Hans Mueller"` pair, which clears the threshold at
-`0.914` despite the umlaut, because token comparison is scoring the
-characters rather than a phonetic key.
-
-Record 7 is the honest case. It has two surviving candidates, `0.980` and
-`0.973`, and *identical* cosine scores of `0.843`:
+Every comparator was probed and oriented so that **1 means an exact
+match**, whichever way its own scale runs:
 
 ```{r}
-#| label: margin
-best   <- accepted[!duplicated(accepted$id), ]
-second <- accepted[duplicated(accepted$id), ]
-best$margin <- best$jw - second$jw[match(best$id, second$id)]
-
-best[, c("id", "name_a", "ref_id", "name_b", "jw", "cos", "margin")]
+#| label: orientation
+attr(scored, "compare")
 ```
 
-A margin of 0.007 between the top two candidates is not a decision, it's a
-coin toss with extra steps. The second metric doesn't break the tie here —
-it agrees — and that agreement is itself the finding: `"JOHN OBRIEN"` is
-genuinely close to both `"JOHN BRIEN"` and `"JON OBRIEN"`, and no threshold
-on this evidence can tell you which. The right output is a review queue,
-not a link. Routing thin-margin pairs to clerical review, rather than
-letting `!duplicated()` silently pick the first row, is the difference
-between a linkage you can defend and one you can't.
-
-## Step 8: stamp the output
-
-Downstream loads need to know which batch they're looking at.
-`format_datetime()` writes the batch watermark without a timezone-database
-lookup, in UTC or at one fixed offset for a local-time report:
+That matters as soon as you mix families. Adding an edit *distance* to the
+list needs no change to the weights:
 
 ```{r}
-#| label: watermark
-watermark <- max(batch$received_ts)
-
-format_datetime(watermark, "rfc3339")                        # UTC, for the audit log
-format_datetime(watermark, "iso_offset", offset = "+10:00")  # local time, for humans
-format_datetime(watermark, "compact")                        # sortable partition key
+#| label: orientation-distance
+d <- rLink(enrol_std[1:2000, ], claims_std[1:2000, ],
+           block = list(list(soundex(surname), dob)),
+           compare = list(jw = jaro_winkler(surname),
+                          lev = levenshtein(surname),
+                          fz = fuzz_token_set_ratio(surname)),
+           keep = "surname")
+attr(d, "compare")
+head(d[, c("surname_1", "surname_2", "jw", "lev", "fz")], 4)
 ```
 
-`"iso_offset"` applies one fixed numeric offset to every value — it is not
-a timezone. It has no daylight-saving rules, so a batch spanning a DST
-boundary needs `base::format()` with a real timezone; for stamping a single
-load with a known offset, this is the cheap and correct tool.
+`levenshtein()` counts edits (0 is identical) and `fuzz_token_set_ratio()`
+runs to 100; both come back on the same 0--1 scale as Jaro-Winkler. Set
+`normalise = FALSE` to keep each comparator's own units.
 
-## Why the fast versions matter here
+`dob_agreement` is listed as `not detected` in the table above, and that is
+the right answer: the probe is a pair of letter strings, which
+`fas.Date()` cannot parse, so nothing can be inferred from it and the
+scores are passed through untouched. That is harmless here because the
+function already returns 0--1 with 1 meaning identical. A comparator of
+your own that does *not* already run that way should either be written so
+it does or be left to `normalise = FALSE` --- and the `scale` column is
+where you check which happened.
 
-Steps 1 and 2 are the ones that quietly dominate a real batch load: they
-touch every row of every column, before any of the interesting matching
-work starts. A single timed run on this machine, over 300,000 rows:
+### Which fields actually carry information
+
+The weights say how much each field's agreement is worth, and the data can
+be asked. For each field, compare its mean score among the pairs that are
+the same person with its mean among the pairs that are not --- the
+*m*- and *u*-probabilities of the Fellegi-Sunter model, which here can be
+computed exactly because the truth is known:
+
+```{r}
+#| label: field-information
+field_info <- function(column, truth) {
+    m <- mean(column[truth]); u <- mean(column[!truth])
+    c(agreement_if_match = round(m, 3), agreement_if_not = round(u, 3),
+      log_odds = round(log(m / u), 2))
+}
+truth_c <- same_person(files, scored$index_1, scored$index_2)
+t(sapply(list(surname  = pmax(scored$surname, scored$surname_key),
+              given    = pmax(scored$given, scored$given_tokens),
+              dob      = scored$dob,
+              middle   = scored$middle,
+              sex      = scored$sex,
+              address  = scored$address,
+              suburb   = scored$suburb,
+              postcode = scored$postcode),
+         field_info, truth = truth_c))
+```
+
+Two things in that table are worth more than any rule of thumb.
+
+**Surname looks useless, and is not.** Its log-odds is near zero because
+*every candidate pair already agrees on the surname code or the given-name
+code* --- blocking conditioned on it. A field cannot discriminate among
+pairs that were selected for agreeing on it. This is why the naive move of
+reading the weights straight off this table misfires, and why a real
+project fits the model on the pairs it will actually score, with the
+blocking in the model.
+
+**Postcode looks decisive, and is a trap.** Its log-odds is the largest in
+the table, because two unrelated people rarely share a postcode. But the
+people who *moved* --- one in ten here --- disagree on it while being the
+same person. Weighting it by that log-odds buys precision on the easy
+pairs and loses exactly the matches that needed help. Address and suburb
+carry the same risk for the same reason, and the fix is to weight the
+identifiers that do not change (name, date of birth) far above the ones
+that do:
+
+```{r}
+#| label: weights
+w <- c(surname = 3, given = 3, dob = 4, middle = 0.5, sex = 0.5,
+       address = 0.75, suburb = 0.25, postcode = 0.5)
+
+scored$score <- with(scored,
+    (w["surname"]  * pmax(surname, surname_key) +
+     w["given"]    * pmax(given, given_tokens) +
+     w["dob"]      * dob +
+     w["middle"]   * middle +
+     w["sex"]      * sex +
+     w["address"]  * address +
+     w["suburb"]   * suburb +
+     w["postcode"] * postcode) / sum(w))
+round(quantile(scored$score, c(0, 0.5, 0.9, 0.99, 1)), 3)
+```
+
+`pmax(surname, surname_key)` is the "either kind of agreement will do"
+idiom: the Jaro-Winkler score, or 1 if the two fingerprints are identical,
+whichever is kinder. The same for the two given-name comparators.
+
+Hand weights are fine for a first pass as long as they are written down
+and swept (below). On real data, estimate them: `fastLink` and `reclin2`
+fit Fellegi-Sunter weights, including the conditional-independence and
+blocking subtleties this section only gestures at.
+
+## Step 5: decide, and admit ambiguity {#sec-wf-decide}
+
+Look at the two score distributions before picking a threshold. If they
+overlap, no single cut-off is right and the overlap is the review queue.
+
+```{r}
+#| label: distributions
+qs <- c(0.001, 0.01, 0.05, 0.25, 0.5)
+round(rbind(same_person = quantile(scored$score[truth_c], qs),
+            different   = quantile(scored$score[!truth_c], 1 - qs)), 3)
+```
+
+Read the second row right to left: the *strongest* non-matches. Where the
+weakest true pairs sit above the strongest false ones, a threshold in
+between separates them cleanly.
+
+```{r}
+#| label: sweep
+sweep <- t(sapply(seq(0.70, 0.95, by = 0.025), function(t) {
+    keep <- scored$score >= t
+    c(threshold = t, links = sum(keep),
+      precision = round(mean(truth_c[keep]), 4),
+      recall    = round(sum(truth_c & keep) / true_pair_count(files), 4))
+}))
+sweep
+```
+
+A two-threshold rule is more honest than one: accept above the upper,
+reject below the lower, and send the band between them to clerical review.
+Size that band before promising it to anyone.
+
+```{r}
+#| label: review-band
+accept <- 0.85
+review <- 0.78
+band   <- scored$score >= review & scored$score < accept
+c(accepted     = sum(scored$score >= accept),
+  to_review    = sum(band),
+  review_share = round(mean(band), 4),
+  review_true  = round(mean(truth_c[band]), 3),
+  rejected     = sum(scored$score < review))
+```
+
+The band is small --- under 1% of the candidates --- and most of it is
+*not* a match. That is the normal shape of a review queue: it holds the
+pairs that look like matches on the fields that usually settle it, and a
+reviewer's job is mostly to reject them. What the reviewer needs is not
+the total but the field that disagreed, which is why the scores were kept
+as separate columns rather than summed away:
+
+```{r}
+#| label: explain
+hard <- scored[band, ][order(-scored$score[band]), ]
+fields <- c("surname", "given", "dob", "sex", "address", "suburb", "postcode")
+hard[1:4, c("surname_1", "surname_2", "given_name_1", "given_name_2",
+            "dob_1", "dob_2", "score")]
+round(as.matrix(hard[1:4, ..fields]), 2)
+```
+
+And when it is a name that disagrees, `edit_ops()` turns the distance back
+into the edits that produced it:
+
+```{r}
+#| label: explain-edits
+i <- which(hard$given < 1)[1]          # the first pair whose names disagree
+hard[i, c("surname_1", "surname_2", "given_name_1", "given_name_2")]
+edit_ops(hard$given_name_1[i], hard$given_name_2[i], type = "opcodes")
+```
+
+### One-to-one links
+
+If each person should appear once in each file, the pair table needs
+resolving: keep each enrolment record's best claim and vice versa.
+
+```{r}
+#| label: one-to-one
+links <- scored[scored$score >= accept, ]
+links <- links[order(-links$score), ]
+best  <- links[!duplicated(links$index_1) & !duplicated(links$index_2), ]
+c(pairs_above_threshold = nrow(links), one_to_one = nrow(best),
+  precision = round(mean(same_person(files, best$index_1, best$index_2)), 4))
+```
+
+## Step 6: entity identifiers {#sec-wf-entities}
+
+Downstream work wants one identifier per person, not a list of pairs.
+`cluster_pairs()` takes the transitive closure of the accepted pairs;
+offset the second file's indices so both files share one numbering:
+
+```{r}
+#| label: entities
+n1 <- nrow(enrol_std)
+entity <- cluster_pairs(best$index_1, best$index_2 + n1,
+                        n = n1 + nrow(claims_std))
+enrol_std$entity_id  <- entity[seq_len(n1)]
+claims_std$entity_id <- entity[n1 + seq_len(nrow(claims_std))]
+
+c(entities = max(entity), records = length(entity))
+table(cluster_size = tabulate(entity))
+```
+
+Clusters larger than two mean a record was linked to more than one on the
+other side, or a chain formed. With a one-to-one resolution they cannot
+appear; without one, inspect them before trusting them.
+
+Finally, pseudonymise the identifiers if the linked file is going
+anywhere. `fhash()` with a keyed HMAC is stable across runs with the same
+key and not reversible without it (@sec-uc-privacy):
+
+```{r}
+#| label: pseudonymise
+key <- "a-secret-held-by-the-data-custodian"
+head(fhash(sprintf("ENT%07d", unique(entity)), algo = "sha256", key = key), 3)
+```
+
+## Step 7: what it cost, and what the fast versions bought {#sec-wf-evaluate}
+
+```{r}
+#| label: quality
+c(enrol = nrow(enrol_std), claims = nrow(claims_std),
+  true_pairs = true_pair_count(files),
+  pairs_compared = nrow(scored),
+  blocking_recall = round(sum(truth_c) / true_pair_count(files), 4),
+  precision = round(mean(same_person(files, best$index_1, best$index_2)), 4),
+  recall = round(sum(same_person(files, best$index_1, best$index_2)) /
+                 true_pair_count(files), 4))
+```
+
+`attr(scored, "timings")` says where the time actually went, stage by
+stage --- the key stage once per record, the comparators once per pair:
+
+```{r}
+#| label: timings
+attr(scored, "timings")
+```
+
+The standardising in step 2 is a dozen passes over a column each. At
+37,500 rows none of them is measurable, so here they are on a million ---
+the size at which the choice starts to matter --- against the base R
+equivalent:
 
 ```{r}
 #| label: timing
-set.seed(1)
-n  <- 3e5
-nm <- paste0(sample(c("John Smith", "Mary O'Brien", "Kyle J Haynes 12"), n, TRUE),
-             " ", sample(999, n, TRUE))
-ts <- format(as.POSIXct("2024-06-18 09:15:00", tz = "UTC") + sample(1e7, n), "%Y-%m-%d %H:%M:%S")
+ms <- function(f, reps = 3) {
+    f()                                    # warm up
+    start <- Sys.time()
+    for (i in seq_len(reps)) f()
+    round(1000 * (as.numeric(Sys.time()) - as.numeric(start)) / reps, 1)
+}
+bench <- function(label, fast, base = NULL) {
+    f <- ms(fast)
+    b <- if (is.null(base)) NA_real_ else ms(base)
+    data.frame(step = label, fast_ms = f, base_ms = b,
+               ratio = if (is.na(b)) NA_real_ else round(b / f, 1))
+}
+big_name <- rep_len(claims$patient_name, 1e6)
+big_date <- rep_len(claims$date_of_birth, 1e6)
+big_dob  <- rep_len(dob, 1e6)
+big_surn <- rep_len(claims_std$surname, 1e6)
 
-system.time(vapply(gregexpr("[0-9]", nm),
-                   function(m) if (m[1] < 0L) 0L else length(m), integer(1)))
-system.time(fcount("[0-9]", nm))
-
-system.time(as.POSIXct(ts, tz = "UTC"))
-system.time(fas.POSIXct(ts))
+do.call(rbind, list(
+    bench("upper-case the name",
+          function() fupper(big_name), function() toupper(big_name)),
+    bench("squish whitespace",
+          function() fsquish(big_name),
+          function() gsub("[[:space:]]+", " ", trimws(big_name))),
+    bench("split on the comma",
+          function() fsplit_field(big_name, ",", 1),
+          function() vapply(strsplit(big_name, ",", fixed = TRUE), `[`, "", 1L)),
+    bench("parse the date of birth",
+          function() fas.Date(big_date, format = "dmy"),
+          function() as.Date(big_date, format = "%d/%m/%Y")),
+    bench("write a Date back as text",
+          function() format_date(big_dob),
+          function() format(big_dob, "%Y-%m-%d")),
+    bench("count vowels per name",
+          function() fcount("[AEIOU]", big_name),
+          function() lengths(regmatches(big_name,
+                                        gregexpr("[AEIOU]", big_name)))),
+    bench("Soundex of the surname", function() soundex(big_surn)),
+    bench("Jaro-Winkler, a million pairs",
+          function() jaro_winkler(big_surn, rev(big_surn)))
+))
 ```
 
-Both are single runs on one machine and will vary with cores and input
-shape — @sec-benchmarks is the chapter with the reproducible harness, and
-it scales the comparison step of this exact pipeline shape up to 3 million
-rows.
+The wins are uneven, and that is the honest picture. The biggest ones are
+where base R is doing something structurally expensive: a `strptime()` and
+a `strftime()` per element for the dates, a `strsplit()` that allocates a
+list of pieces only to take one and throw the rest away, a `gregexpr()`
+that allocates a position vector per row only to take its length. Where
+base R is already doing one cheap pass in C, the gain is small --- and
+@sec-benchmarks lists the cases where base R is the faster choice
+outright.
+
+The last two rows have no base R equivalent at all, which is the other
+half of the argument: the phonetic key and the similarity score are what
+make blocking and scoring possible in the first place, and the pipeline
+above is built out of them.

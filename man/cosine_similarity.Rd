@@ -39,6 +39,8 @@ Other q-gram similarity functions:
 \code{\link[=cosine_matrix]{cosine_matrix()}},
 \code{\link[=dice_matrix]{dice_matrix()}},
 \code{\link[=jaccard_matrix]{jaccard_matrix()}},
+\code{\link[=overlap_coefficient]{overlap_coefficient()}},
+\code{\link[=overlap_matrix]{overlap_matrix()}},
 \code{\link{qgram_metrics}},
 \code{\link[=tversky_matrix]{tversky_matrix()}}
 }

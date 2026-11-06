@@ -376,6 +376,66 @@ fsquish(x, nthreads = NULL)
 fsquish(c("  12   Smith\tSt  ", "already clean", NA))
 ```
 
+### `fupper()` / `flower()`
+
+Upper- and lower-case text in parallel, with the full Unicode mappings ICU
+applies in its root locale, so one character can become several
+(`"ß"` to `"SS"`) and a capital sigma lower-cases to the final form at
+the end of a word. `base::toupper()` and `base::tolower()` are
+single-threaded, map one character to exactly one character, and follow the
+session's locale; these do not.
+
+```r
+fupper(x, nthreads = NULL)
+flower(x, nthreads = NULL)
+```
+
+```{r}
+fupper(c("Smith", "o'brien", "straße"))
+flower(c("MACDONALD", "ΟΔΟΣ"))
+toupper("Straße")   # base R leaves the sharp s alone
+```
+
+### `ftitle_case()`
+
+One capital per word, with the rules written names follow: a letter after
+`"Mc"` or after a one-letter prefix and an apostrophe is capitalised,
+nobiliary particles between two words stay in lower case, and an
+unambiguous Roman numeral suffix is upper-cased. `style = "simple"` turns
+all three off. Base R has no title-case function.
+
+```r
+ftitle_case(x, style = c("name", "simple"), particles = NULL, nthreads = NULL)
+```
+
+```{r}
+x <- c("MARY-JANE O'BRIEN", "mcdonald", "vincent van gogh",
+       "van gogh, vincent", "john smith iii", "3rd street")
+data.frame(x, name = ftitle_case(x), simple = ftitle_case(x, "simple"))
+```
+
+### `fstrsplit()`
+
+Every field of each string, cut where `base::strsplit()` cuts them, with
+the separator search parallelised. `simplify = TRUE` gives an `NA`-padded
+character matrix instead of a list, which is what `do.call(rbind, ...)`
+would build but without the copying. The search is the only parallel part,
+so a literal one-character separator (where base R is already at the floor
+of creating the result strings) is no faster here; a regular expression is
+about twice as fast, and `simplify = TRUE` about four times.
+
+```r
+fstrsplit(x, split, simplify = FALSE, fixed = FALSE, perl = FALSE,
+          ignore.case = FALSE, useBytes = FALSE, nthreads = NULL)
+```
+
+```{r}
+x <- c("12 Smith St", "4/7 Bay Rd", NA)
+fstrsplit(x, " ", fixed = TRUE)
+fstrsplit(x, " ", fixed = TRUE, simplify = TRUE)
+fstrsplit("a  b   c", "\\s+")
+```
+
 ### `fsplit_field()`
 
 One field of each string split at `split`, like `stringr::str_split_i()` or
@@ -487,19 +547,24 @@ url_decode(enc)
 url_decode("q=meat+pie%21", plus = TRUE)
 ```
 
-### `html_unescape()`
+### `html_unescape()` / `html_escape()`
 
 Decodes HTML character references exactly as Python's `html.unescape()`:
 all 2,231 named references of the HTML standard (including legacy ones
 without a semicolon) and decimal and hexadecimal numeric references, with
-the standard's rules for invalid numbers.
+the standard's rules for invalid numbers. `html_escape()` is the other
+direction, escaping what `htmltools::htmlEscape()` escapes: `&`, `<` and
+`>`, plus the quotes and line breaks with `attribute = TRUE`.
 
 ```r
 html_unescape(x, nthreads = NULL)
+html_escape(x, attribute = FALSE, nthreads = NULL)
 ```
 
 ```{r}
 html_unescape(c("Fish &amp; Chips", "caf&eacute; &#8211; open", "AT&T"))
+html_escape(c("Fish & Chips", "<b>bold</b>"))
+html_escape('say "hi"', attribute = TRUE)
 ```
 
 ## Clustering keys
@@ -969,6 +1034,27 @@ data.frame(x, statcan = statcan(x), lein = lein(x), phonex = phonex(x),
            roger_root = roger_root(x), onca = onca(x))
 ```
 
+### `daitch_mokotoff()`
+
+The Daitch-Mokotoff Soundex, six digits from whole letter sequences
+(`"SCH"`, `"SZCZ"`, `"RZ"`) rather than single consonants, for the Slavic
+and Germanic spellings American Soundex separates. A spelling that could be
+said more than one way gets a code for each reading, which `simplify =
+TRUE` returns as a matrix: one blocking pass per column. The coding rules
+are Apache Commons Codec's, and the codes match that implementation,
+except that a value with no letter to code is `NA` here rather than
+`000000`.
+
+```r
+daitch_mokotoff(x, simplify = FALSE, nthreads = NULL)
+```
+
+```{r}
+daitch_mokotoff(c("Moskowitz", "Moskovitz"))
+daitch_mokotoff(c("Auerbach", "Ohrbach"))   # two readings of "ch"
+daitch_mokotoff(c("Peters", "Waszkiewicz"), simplify = TRUE)
+```
+
 ## Fuzzy string similarity
 
 ### `jaro_winkler()`
@@ -1206,6 +1292,84 @@ cluster_pairs(i, j = NULL, n = NULL)
 
 ```{r}
 cluster_pairs(c(1, 2, 5), c(2, 4, 6))
+```
+
+### `rLink()`
+
+Blocking, comparison and assembly in one call: finds candidate pairs with
+`block_pairs()` (or `sorted_neighbourhood()`), scores them with any number of
+comparators, and returns one `data.table` of pairs, the columns of both
+inputs and the scores. Blocking keys and comparison columns are written as
+expressions evaluated against the data, so a phonetic code or a substring
+goes in the call rather than into a prepared column. Pass `data_2 = NULL` to
+deduplicate one file instead.
+
+```r
+rLink(data_1, data_2 = NULL, block = NULL, block_2 = NULL, compare = NULL,
+      pairs = NULL, block_method = c("exact", "sorted_neighbourhood"),
+      window = 3L, max_block_size = Inf, match_missing = FALSE,
+      na_strings = "", force_upper_case = TRUE, normalise = TRUE,
+      keep = NULL, block_key = TRUE, suffixes = c("_1", "_2"),
+      score_position = c("grouped", "end"), nthreads = NULL,
+      verbose = FALSE)
+```
+
+| Argument | Description |
+|---|---|
+| `data_1`, `data_2` | The inputs, never modified. `data_2 = NULL` deduplicates within `data_1`. |
+| `block` | Blocking passes. A top-level `list()` separates passes; `list()` or `c()` within a pass separates the terms joined into one key. |
+| `block_2` | Blocking expressions for `data_2`, when the two inputs name or store the same thing differently. A `NULL` pass reuses `block`'s. |
+| `compare` | Comparator calls whose first argument is the column, e.g. `jaro_winkler(surname)`. Write `a \| b` for columns named differently. |
+| `pairs` | Candidate pairs to score instead of blocking, such as a `minhash_pairs()` result. |
+| `block_method`, `window` | Exact key agreement, or the sorted neighbourhood with this window. |
+| `max_block_size` | Skip blocks larger than this, with a warning. |
+| `match_missing`, `na_strings` | Whether records missing a key term pair with each other, and what counts as missing. |
+| `force_upper_case` | Upper-case keys and comparison values. Affects the scores, never the columns returned. |
+| `normalise` | Convert each comparator's score so that 1 means an exact match. |
+| `keep`, `suffixes`, `score_position` | Which columns to carry (`character()` for none), how to distinguish the two sides, and where the scores sit. A column only one input has still takes its side's suffix. |
+| `block_key` | Add the readable `block_key` column, a copy of the key that paired each record. Diagnostic only; `FALSE` saves one string per pair. |
+| `verbose` | Print per-stage timings. They are returned as `attr(out, "timings")` either way, alongside `attr(out, "compare")`, which records what each comparator was found to return. |
+
+```{r}
+enrol <- data.frame(
+    surname = c("SMITH", "JONES", "BROWN", "SMYTH"),
+    given   = c("JOHN", "MARY", "ROB", "JON"),
+    dob     = as.Date(c("1980-01-02", "1975-06-30", "1990-12-01",
+                        "1980-01-02"))
+)
+claims <- data.frame(
+    surname = c("SMITH", "JONSE", "BROWNE"),
+    given   = c("JON", "MARY", "ROBERT"),
+    dob     = as.Date(c("1980-01-02", "1975-06-30", "1990-12-01"))
+)
+
+out <- rLink(
+    enrol, claims,
+    block   = list(list(soundex(surname), dob), fsubstr(given, 1, 2)),
+    compare = list(jaro_winkler(given), sn = jaro_winkler(surname))
+)
+as.data.frame(out[, c("index_1", "index_2", "pass", "surname_1", "surname_2",
+                      "sn", "given_jaro_winkler")])
+```
+
+Comparators disagree about which end of their scale is an exact match, so
+each is probed once and converted where needed: `jaro_winkler()` already
+returns 1, the edit distances return 0, and the `fuzz_*` scorers return 100.
+With `normalise = TRUE` (the default) 1 always means an exact match, and an
+unbounded edit distance is divided pairwise by the longer of the two strings.
+A comparator the probe cannot read is listed as `not detected` and passed
+through untouched.
+
+Comparison values reach a comparator as text, so a `Date` arrives as
+`"YYYY-MM-DD"`: exact agreement works as written, and a tolerance needs
+`fas.Date()` to read it back. @sec-uc-link is a full tour of the function,
+and @sec-workflow runs it over two messy files of people end to end.
+
+```{r}
+rLink(enrol, claims, block = list(soundex(surname)),
+      compare = list(lev = levenshtein(surname),
+                     jw  = jaro_winkler(surname),
+                     fz  = fuzz_ratio(surname)))$lev
 ```
 
 ## Edit distance

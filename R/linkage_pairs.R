@@ -124,11 +124,23 @@ sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
         stop("`x` and `y` must have the same number of keys.")
     x_codes <- y_codes <- vector("list", length(xs))
     n_codes <- integer(length(xs))
+    n_x <- length(xs[[1L]])
+    # Exact blocking only ever compares codes for equality, so any 1..K
+    # labelling of the distinct keys will do and the radix sort of what can
+    # be millions of distinct keys is skipped. The sorted neighbourhood does
+    # need the rank, because it pairs codes that are near each other.
+    ordered <- half_window > 0L
     for (k in seq_along(xs)) {
         all <- if (dedupe) xs[[k]] else c(xs[[k]], ys[[k]])
-        u <- sort(unique(all[!is.na(all)]), method = "radix")
-        x_codes[[k]] <- match(xs[[k]], u)
-        y_codes[[k]] <- if (dedupe) x_codes[[k]] else match(ys[[k]], u)
+        u <- unique(all[!is.na(all)])
+        if (ordered) u <- sort(u, method = "radix")
+        # One table built and probed once over both sides, rather than one
+        # per side; chmatch() hashes R's cached strings by address.
+        codes <- if (is.character(all) && is.character(u))
+            data.table::chmatch(all, u) else match(all, u)
+        x_codes[[k]] <- if (dedupe) codes else codes[seq_len(n_x)]
+        y_codes[[k]] <- if (dedupe) x_codes[[k]] else
+            codes[n_x + seq_along(ys[[k]])]
         n_codes[k] <- length(u)
     }
     res <- fast_candidate_pairs_impl(

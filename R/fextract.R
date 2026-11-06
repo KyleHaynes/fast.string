@@ -123,6 +123,90 @@ fsplit_field <- function(x, split, field, fixed = FALSE, perl = FALSE,
     ), x)
 }
 
+#' Fast parallel string splitting
+#'
+#' Splits every string at a separator, as [base::strsplit()] does, but
+#' finds the separators in parallel across CPU cores via Intel TBB. The
+#' separator is a literal string, a regular expression matched with PCRE2,
+#' or `""` to cut between characters. Use [fsplit_field()] instead when
+#' only one field is wanted: it does not build the other pieces at all.
+#'
+#' @section Where the time goes:
+#' Only the search is parallel. Creating the result strings is serial,
+#' because R's global string cache is -- the constraint [fsubstr()] also
+#' documents -- and it is most of the work. So for a literal separator of
+#' one or two characters the search is nearly free, base R is already at
+#' that floor, and this function is no faster (on a 400,000-string vector
+#' of short addresses it is about twice as slow). It pays off where the
+#' search is the expensive part, or where the list is: a regular
+#' expression separator runs about 2x faster than [base::strsplit()], and
+#' `simplify = TRUE` about 4x faster than `do.call(rbind, strsplit(...))`,
+#' which allocates every small vector before copying it away again.
+#'
+#' Fields are cut exactly where [base::strsplit()] cuts them, including the
+#' corners: a trailing empty field is dropped (`"a,b,"` gives two fields),
+#' a leading one is kept (`",a"` gives `""` and `"a"`), an empty string
+#' gives `character(0)`, and `NA` gives `NA_character_`. A `split` that can
+#' match the empty string -- `"x*"`, `"\\b"` -- is an error rather than
+#' silently doing something different from base R; `split = ""` is the one
+#' supported case, and it splits into characters, or into bytes under
+#' `useBytes = TRUE`.
+#'
+#' With `simplify = TRUE` the result is a character matrix with one row per
+#' string and one column per field, which is what `do.call(rbind, ...)` on
+#' the list would give, but without the copying. Rows with fewer fields are
+#' padded with `NA`, so a ragged split does not recycle silently as
+#' `rbind()` would.
+#'
+#' @param x Character vector. `NA` elements give `NA_character_`.
+#' @param split A single string: the separator. A literal string when
+#'   `fixed = TRUE`, otherwise a regular expression; `""` cuts between
+#'   characters.
+#' @param simplify Logical. Return a character matrix padded with `NA`
+#'   instead of a list.
+#' @param fixed,perl,ignore.case,useBytes As in [fgrepl()].
+#' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
+#'   RcppParallel default. `1` forces serial execution.
+#' @return A list of character vectors the same length as `x`, with
+#'   `names(x)` kept; or, with `simplify = TRUE`, a character matrix whose
+#'   rows are named by `names(x)`.
+#' @seealso [fsplit_field()] for one field, [base::strsplit()],
+#'   [freplace_tokens()] to rewrite whole words in place.
+#' @family string utilities
+#' @examples
+#' x <- c("12 Smith St", "4/7 Bay Rd", NA)
+#' fstrsplit(x, " ", fixed = TRUE)
+#' fstrsplit(x, " ", fixed = TRUE, simplify = TRUE)
+#'
+#' # Regular expressions, and splitting into characters.
+#' fstrsplit("a  b   c", "\\s+")
+#' fstrsplit("abc", "")
+#'
+#' # Base R's corner cases are kept.
+#' fstrsplit(c("a,b,", ",a", "", NA), ",", fixed = TRUE)
+#' @export
+fstrsplit <- function(x, split, simplify = FALSE, fixed = FALSE,
+                      perl = FALSE, ignore.case = FALSE, useBytes = FALSE,
+                      nthreads = NULL) {
+    split <- .na_as_character(split)
+    if (!is.character(split) || length(split) != 1L)
+        stop("`split` must be a single character string.")
+    x <- .character_x(x)
+    .check_flag(simplify, "simplify")
+    if (is.na(split))
+        stop("`split` must not be `NA`.")
+    spec <- .regex_spec(split, perl, fixed, useBytes)
+    result <- fast_strsplit_impl(
+        spec$pattern, x, isTRUE(ignore.case), spec$syntax, isTRUE(fixed),
+        spec$use_bytes, simplify, .as_nthreads(nthreads)
+    )
+    if (simplify) {
+        if (!is.null(names(x))) dimnames(result) <- list(names(x), NULL)
+        return(result)
+    }
+    .copy_names(result, x)
+}
+
 #' Fast whitespace squishing
 #'
 #' Removes whitespace from both ends of each string and collapses every

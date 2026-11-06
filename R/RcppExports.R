@@ -37,6 +37,10 @@ fast_edit_ops_impl <- function(a, b, opcodes, use_bytes) {
     .Call(`_fast_string_fast_edit_ops_impl`, a, b, opcodes, use_bytes)
 }
 
+fast_daitch_mokotoff_impl <- function(x, simplify, nthreads) {
+    .Call(`_fast_string_fast_daitch_mokotoff_impl`, x, simplify, nthreads)
+}
+
 fast_extract_impl <- function(pattern, x, ignore_case, syntax, fixed, use_bytes, group, nthreads) {
     .Call(`_fast_string_fast_extract_impl`, pattern, x, ignore_case, syntax, fixed, use_bytes, group, nthreads)
 }
@@ -51,6 +55,10 @@ fast_split_field_impl <- function(split, x, field, ignore_case, syntax, fixed, u
 
 fast_squish_impl <- function(x, nthreads) {
     .Call(`_fast_string_fast_squish_impl`, x, nthreads)
+}
+
+fast_strsplit_impl <- function(split, x, ignore_case, syntax, fixed, use_bytes, simplify, nthreads) {
+    .Call(`_fast_string_fast_strsplit_impl`, split, x, ignore_case, syntax, fixed, use_bytes, simplify, nthreads)
 }
 
 fast_grepl_impl <- function(pattern, x, ignore_case, syntax, use_bytes, nthreads) {
@@ -273,6 +281,50 @@ fast_levenshtein_within_impl <- function(a, b, max_distance, nthreads, use_bytes
     .Call(`_fast_string_fast_levenshtein_within_impl`, a, b, max_distance, nthreads, use_bytes)
 }
 
+fast_seq_metric_impl <- function(a, b, metric, use_bytes, nthreads) {
+    .Call(`_fast_string_fast_seq_metric_impl`, a, b, metric, use_bytes, nthreads)
+}
+
+fast_needleman_wunsch_impl <- function(a, b, match, mismatch, gap, normalise, use_bytes, nthreads) {
+    .Call(`_fast_string_fast_needleman_wunsch_impl`, a, b, match, mismatch, gap, normalise, use_bytes, nthreads)
+}
+
+fast_eudex_impl <- function(x, nthreads) {
+    .Call(`_fast_string_fast_eudex_impl`, x, nthreads)
+}
+
+fast_eudex_distance_impl <- function(a, b, graduated, nthreads) {
+    .Call(`_fast_string_fast_eudex_distance_impl`, a, b, graduated, nthreads)
+}
+
+fast_geo_distance_impl <- function(lat_1, lon_1, lat_2, lon_2, radius, nthreads) {
+    .Call(`_fast_string_fast_geo_distance_impl`, lat_1, lon_1, lat_2, lon_2, radius, nthreads)
+}
+
+fast_agreement_patterns_impl <- function(levels) {
+    .Call(`_fast_string_fast_agreement_patterns_impl`, levels)
+}
+
+fast_em_linkage_impl <- function(patterns, counts, n_levels, m_init, u_init, lambda, max_iter, tol, floor_prob) {
+    .Call(`_fast_string_fast_em_linkage_impl`, patterns, counts, n_levels, m_init, u_init, lambda, max_iter, tol, floor_prob)
+}
+
+fast_match_weight_impl <- function(patterns, m_flat, u_flat, n_levels, lambda) {
+    .Call(`_fast_string_fast_match_weight_impl`, patterns, m_flat, u_flat, n_levels, lambda)
+}
+
+fast_pair_overlap_impl <- function(i, j, other_i, other_j) {
+    .Call(`_fast_string_fast_pair_overlap_impl`, i, j, other_i, other_j)
+}
+
+fast_select_greedy_impl <- function(i, j, weight, n, m) {
+    .Call(`_fast_string_fast_select_greedy_impl`, i, j, weight, n, m)
+}
+
+fast_value_frequency_impl <- function(codes_x, codes_y, n_codes) {
+    .Call(`_fast_string_fast_value_frequency_impl`, codes_x, codes_y, n_codes)
+}
+
 fast_candidate_pairs_impl <- function(x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads) {
     .Call(`_fast_string_fast_candidate_pairs_impl`, x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads)
 }
@@ -323,6 +375,14 @@ fast_tversky_impl <- function(a, b, q, alpha, beta, nthreads, use_bytes) {
 
 fast_tversky_matrix_impl <- function(a, b, q, alpha, beta, nthreads, use_bytes) {
     .Call(`_fast_string_fast_tversky_matrix_impl`, a, b, q, alpha, beta, nthreads, use_bytes)
+}
+
+fast_overlap_coefficient_impl <- function(a, b, q, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_overlap_coefficient_impl`, a, b, q, nthreads, use_bytes)
+}
+
+fast_overlap_coefficient_matrix_impl <- function(a, b, q, nthreads, use_bytes) {
+    .Call(`_fast_string_fast_overlap_coefficient_matrix_impl`, a, b, q, nthreads, use_bytes)
 }
 
 fast_cosine_impl <- function(a, b, q, nthreads, use_bytes) {
@@ -379,6 +439,18 @@ fast_token_counts_impl <- function(x, ignore_case, nthreads) {
 
 fast_longest_affix_impl <- function(x, affixes, suffix, ignore_case, nthreads) {
     .Call(`_fast_string_fast_longest_affix_impl`, x, affixes, suffix, ignore_case, nthreads)
+}
+
+fast_html_escape_impl <- function(x, attribute, nthreads) {
+    .Call(`_fast_string_fast_html_escape_impl`, x, attribute, nthreads)
+}
+
+fast_case_impl <- function(x, upper, nthreads) {
+    .Call(`_fast_string_fast_case_impl`, x, upper, nthreads)
+}
+
+fast_title_case_impl <- function(x, particles, name_rules, nthreads) {
+    .Call(`_fast_string_fast_title_case_impl`, x, particles, name_rules, nthreads)
 }
 
 fast_tfidf_top_n_impl <- function(x, table, top_n, q, min_score, use_bytes, nthreads) {

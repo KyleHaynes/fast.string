@@ -314,6 +314,60 @@ sorted_neighbourhood(surname, window = 3)
 cluster_pairs(p, n = length(surname))
 ```
 
+## A whole linkage in one call: `rLink()`
+
+`rLink()` puts the blocking and the scoring together. It takes two data
+frames (or one, to deduplicate), a list of blocking *passes*, and a list
+of comparators, and returns one row per candidate pair with the compared
+columns side by side and one score column per comparator.
+
+```{r}
+#| label: rlink-quickstart
+people <- data.frame(
+    id       = c("A1", "A2", "A3", "A4"),
+    given    = c("JOHN", "MARY", "ROBERT", "PRIYA"),
+    surname  = c("O'BRIEN", "SMITH", "NGUYEN", "PATEL"),
+    dob      = as.Date(c("1985-03-14", "1990-07-22", "1975-12-01", "2001-05-30")),
+    postcode = c("3000", "3121", "3053", "3011"))
+
+other <- data.frame(
+    ref      = c("B1", "B2", "B3"),
+    given    = c("JON", "MARIE", "ROB"),
+    surname  = c("OBRIEN", "SMYTH", "NGUYEN"),
+    dob      = as.Date(c("1985-03-14", "1990-07-22", "1975-12-10")),
+    postcode = c("3000", "3121", "3053"))
+
+rLink(people, other,
+      block   = list(list(soundex(surname), dob),
+                     list(soundex(surname), postcode)),
+      compare = list(sn = jaro_winkler_tokens(surname),
+                     gn = jaro_winkler(given),
+                     pc = (function(a, b) as.numeric(a == b))(postcode)),
+      keep    = c("id", "ref", "surname", "given", "dob"))
+```
+
+Blocking keys and comparison fields are ordinary R expressions evaluated
+against the data, so the phonetic code is computed inside the call. The
+outer `list()` separates passes (a pair is a candidate if it agrees on any
+one of them, and `pass` records which found it); an inner `list()` joins
+terms into a single key. Every comparator is probed once and converted so
+that **1 always means an exact match**, whichever way its own scale runs
+— so an edit distance and a RapidFuzz score can sit in the same
+`compare` list as Jaro-Winkler and be weighted together.
+
+One data frame instead of two deduplicates it:
+
+```{r}
+#| label: rlink-dedupe-quickstart
+rLink(rbind(people, people[1:2, ]),
+      block   = list(soundex(surname)),
+      compare = list(gn = jaro_winkler(given)),
+      keep    = c("id", "surname", "given"))
+```
+
+@sec-uc-link is the full tour, and @sec-workflow runs it end to end on two
+messy files of people.
+
 ## Q-gram similarity
 
 `jaccard_index()`, `dice_coefficient()`, `tversky_index()`, and
@@ -391,14 +445,13 @@ fuzz_extract_one(c("cowboys", "falcon"), teams)
 
 ## Putting it together
 
-A typical pipeline profiles the input with `fcount()`, parses dates and
-load timestamps with `fas.Date()`/`fas.POSIXct()`, normalises with
-`fchartr()`/`ftrimws()`, builds blocking keys with
-`refined_soundex()`/`cologne()`/`format_date()`, scores candidates within
-each block with `jaro_winkler_tokens()` and `cosine_similarity()`, and
-stamps the result with `format_datetime()`. @sec-workflow walks through
-exactly that, end to end, on a small linkage example, and the use-case
-chapters (@sec-uc-clean to @sec-uc-privacy) take each stage further --
-including a deduplication of 100,000 records with `block_pairs()`,
-`jaro_winkler()` and `cluster_pairs()` in well under a second
-(@sec-uc-link).
+A typical pipeline profiles the input with `string_shape()` and
+`fcount()`, parses dates with `fas.Date()`, normalises names and addresses
+with `fupper()`/`fsquish()`/`freplace_tokens()`, and then hands the result
+to `rLink()`, which blocks on phonetic keys and date parts and scores each
+candidate pair field by field. @sec-workflow runs exactly that on two
+files of 50,000 and 37,500 people whose names, dates of birth, addresses
+and sex are all recorded differently — standardising, blocking,
+scoring, a review band, entity identifiers and a measurement of how well
+it worked. The use-case chapters (@sec-uc-clean to @sec-uc-privacy) take
+each stage further on its own.

@@ -33,14 +33,21 @@
         fnchar  = "nchar() equivalent",
         fchartr = "chartr() equivalent",
         fsquish      = "trim and collapse inner whitespace",
+        fstrsplit    = "strsplit() equivalent",
         fsplit_field = "one field of delimited text",
         ascii_fold   = "accents and symbols to ASCII",
         fpad            = "pad to a width, e.g. zero-pad",
         freplace_tokens = "replace whole words from a dictionary",
+        "Case" = list(
+            fupper      = "toupper(), parallel and Unicode",
+            flower      = "tolower(), parallel and Unicode",
+            ftitle_case = "one capital per word, for names"
+        ),
         "Web text" = list(
             url_encode    = "URLencode() equivalent",
             url_decode    = "URLdecode() equivalent",
-            html_unescape = "decode HTML character references"
+            html_unescape = "decode HTML character references",
+            html_escape   = "encode HTML character references"
         )
     ),
     "Tokens & affixes" = list(
@@ -89,7 +96,10 @@
         lein             = "Lein name code",
         phonex           = "Phonex (Soundex plus Phonix)",
         roger_root       = "Roger Root name code",
-        onca             = "ONCA (NYSIIS, then Soundex)"
+        onca             = "ONCA (NYSIIS, then Soundex)",
+        daitch_mokotoff  = "Daitch-Mokotoff (Eastern Europe)",
+        eudex            = "Eudex sound-alike bit hash",
+        eudex_distance   = "weighted difference of two hashes"
     ),
     "String similarity" = list(
         "Jaro-Winkler" = list(
@@ -127,7 +137,13 @@
             lcs_str            = "longest common substring",
             lcs_str_similarity = "its length over the longer length",
             smith_waterman     = "local alignment, affine gaps",
-            monge_elkan        = "mean best word-to-word similarity"
+            monge_elkan        = "mean best word-to-word similarity",
+            needleman_wunsch   = "global alignment score",
+            needleman_wunsch_similarity = "normalised 0-1 similarity",
+            ratcliff_obershelp = "gestalt pattern matching",
+            ratcliff_obershelp_distance = "1 minus the similarity",
+            bag_distance       = "character multiset difference",
+            bag_similarity     = "normalised 0-1 similarity"
         ),
         "Q-gram overlap" = list(
             jaccard_index     = "Jaccard set overlap",
@@ -136,6 +152,8 @@
             dice_matrix       = "all-pairs matrix",
             tversky_index     = "asymmetric set overlap",
             tversky_matrix    = "all-pairs matrix",
+            overlap_coefficient = "shared over the smaller set",
+            overlap_matrix      = "all-pairs matrix",
             cosine_similarity = "frequency-weighted overlap",
             cosine_matrix     = "all-pairs matrix"
         ),
@@ -166,10 +184,31 @@
         tfidf_match      = "best match by TF-IDF cosine",
         minhash_pairs    = "MinHash LSH candidate pairs"
     ),
-    "Blocking & clustering" = list(
-        block_pairs          = "pairs that share any key",
-        sorted_neighbourhood = "pairs with nearby sorted keys",
-        cluster_pairs        = "entity IDs from matched pairs"
+    "Record linkage" = list(
+        rLink                = "block, compare and score pairs",
+        "Candidate pairs" = list(
+            block_pairs          = "pairs that share any key",
+            sorted_neighbourhood = "pairs with nearby sorted keys"
+        ),
+        "Field comparators" = list(
+            numeric_compare = "0-1 score from a difference",
+            date_compare    = "dates, allowing day/month swaps",
+            geo_distance    = "great-circle km between coordinates"
+        ),
+        "Probabilistic model" = list(
+            compare_levels     = "cut a score into agreement levels",
+            agreement_patterns = "distinct patterns and their counts",
+            em_linkage         = "fit Fellegi-Sunter weights by EM",
+            match_weights      = "weight and probability per pair",
+            value_frequency    = "relative frequency of each value",
+            tf_adjust          = "weight a rare value more heavily"
+        ),
+        "Resolve & assess" = list(
+            select_greedy = "one-to-one links, best weight first",
+            cluster_pairs = "entity IDs from matched pairs",
+            linkage_eval  = "precision, recall and F-measure",
+            blocking_eval = "reduction ratio, pairs completeness"
+        )
     ),
     "Benchmarking" = list(
         run_benchmark_example = "interactive speed demo vs base R"

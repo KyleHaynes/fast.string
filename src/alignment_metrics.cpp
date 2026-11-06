@@ -123,22 +123,38 @@ void editex_prepare(const StringView& value, bool use_bytes,
 // The DP of textdistance's and abydos's Editex: both strings are prefixed
 // with a space, so starting a string costs d(' ', first letter) = 2.
 double editex_distance(const std::vector<cp_t>& a, const std::vector<cp_t>& b,
-                       std::vector<int>& row) {
+                       std::vector<int>& row, std::vector<int>& insert_cost,
+                       std::vector<std::uint16_t>& b_group) {
     const std::size_t n = a.size(), m = b.size();
     if (n == 0 || m == 0) return 2.0 * static_cast<double>(n + m);
+    // d(b[j - 1], b[j]) and the letter group of b[j] depend on j alone, so
+    // they come out of the cell loop: the DP is O(n * m) and recomputing
+    // them per cell was most of its work.
+    insert_cost.resize(m + 1);
+    b_group.resize(m + 1);
     row.resize(m + 1);
     row[0] = 0;
-    for (std::size_t j = 1; j <= m; ++j)
-        row[j] = row[j - 1] + editex_d(j == 1 ? ' ' : b[j - 2], b[j - 1]);
+    for (std::size_t j = 1; j <= m; ++j) {
+        insert_cost[j] = editex_d(j == 1 ? ' ' : b[j - 2], b[j - 1]);
+        b_group[j] = editex_group(b[j - 1]);
+        row[j] = row[j - 1] + insert_cost[j];
+    }
     for (std::size_t i = 1; i <= n; ++i) {
-        const int delete_cost = editex_d(i == 1 ? ' ' : a[i - 2], a[i - 1]);
+        const cp_t ai = a[i - 1];
+        const std::uint16_t a_group = editex_group(ai);
+        const int delete_cost = editex_d(i == 1 ? ' ' : a[i - 2], ai);
         int diagonal = row[0];
         row[0] += delete_cost;
         for (std::size_t j = 1; j <= m; ++j) {
             const int above = row[j];
+            const cp_t bj = b[j - 1];
+            const int substitute =
+                ai == bj ? 0 : ((a_group & b_group[j]) != 0 ? 1 : 2);
             int best = above + delete_cost;
-            best = (std::min)(best, row[j - 1] + editex_d(j == 1 ? ' ' : b[j - 2], b[j - 1]));
-            best = (std::min)(best, diagonal + editex_r(a[i - 1], b[j - 1]));
+            const int insert = row[j - 1] + insert_cost[j];
+            if (insert < best) best = insert;
+            const int diag = diagonal + substitute;
+            if (diag < best) best = diag;
             row[j] = best;
             diagonal = above;
         }
@@ -161,7 +177,8 @@ struct EditexWorker : public Worker {
     void operator()(std::size_t begin, std::size_t end) {
         std::string folded;
         std::vector<cp_t> sa, sb;
-        std::vector<int> row;
+        std::vector<int> row, insert_cost;
+        std::vector<std::uint16_t> b_group;
         for (std::size_t i = begin; i < end; ++i) {
             if (a[i].is_na() || b[i].is_na()) {
                 out[i] = NA_REAL;
@@ -169,7 +186,8 @@ struct EditexWorker : public Worker {
             }
             editex_prepare(a[i], use_bytes, folded, sa);
             editex_prepare(b[i], use_bytes, folded, sb);
-            const double d = editex_distance(sa, sb, row);
+            const double d =
+                editex_distance(sa, sb, row, insert_cost, b_group);
             if (!similarity) {
                 out[i] = d;
             } else {

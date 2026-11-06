@@ -2,17 +2,20 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.10.19">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>6&nbsp; Match, deduplicate and link records – fast.string</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -64,7 +67,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./uc-privacy.html" rel="next">
+<link href="./uc-metrics.html" rel="next">
 <link href="./uc-profile.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -72,14 +75,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-90da5b13ae942b47784375143f8d2ef3.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-25db13ffafacac8718dcb08e13c69784.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-90da5b13ae942b47784375143f8d2ef3.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-81839be11d7c0a433e0d81da47f36f61.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-6f0e10586235980e3f1c17895143fc2e.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-81839be11d7c0a433e0d81da47f36f61.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-adc770f3e85a40ed08f857da2325632e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-5da3d176e6a07b8a932cd584db14f99f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-adc770f3e85a40ed08f857da2325632e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light"><script id="quarto-search-options" type="application/json">{
+<link href="site_libs/bootstrap/bootstrap-d587337f1b67c02bc0fa53c7f6cf1ddf.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-5200ca5851dd7ad788d12405348fdff5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-d587337f1b67c02bc0fa53c7f6cf1ddf.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light"><script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
   "collapse-after": 3,
@@ -106,32 +109,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script><style>html{ scroll-behavior: smooth; }</style>
-<script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script><script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 </head>
 <body class="nav-sidebar docked quarto-light"><script id="quarto-html-before-body" type="application/javascript">
     const toggleBodyColorMode = (bsSheetEl) => {
@@ -396,8 +373,14 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./uc-metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
   </div>
 </li>
       </ul>
@@ -414,13 +397,13 @@ window.Quarto = {
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
   </div>
 </li>
       </ul>
@@ -437,19 +420,19 @@ window.Quarto = {
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
   </div>
 </li>
       </ul>
@@ -462,13 +445,24 @@ window.Quarto = {
         <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
    
   <ul>
-<li><a href="#candidate-pairs-by-blocking" id="toc-candidate-pairs-by-blocking" class="nav-link active" data-scroll-target="#candidate-pairs-by-blocking"><span class="header-section-number">6.1</span> Candidate pairs by blocking</a></li>
-  <li><a href="#the-sorted-neighbourhood-method" id="toc-the-sorted-neighbourhood-method" class="nav-link" data-scroll-target="#the-sorted-neighbourhood-method"><span class="header-section-number">6.2</span> The sorted neighbourhood method</a></li>
-  <li><a href="#choose-phonetic-keys-by-how-much-they-merge" id="toc-choose-phonetic-keys-by-how-much-they-merge" class="nav-link" data-scroll-target="#choose-phonetic-keys-by-how-much-they-merge"><span class="header-section-number">6.3</span> Choose phonetic keys by how much they merge</a></li>
-  <li><a href="#candidates-without-blocking-keys" id="toc-candidates-without-blocking-keys" class="nav-link" data-scroll-target="#candidates-without-blocking-keys"><span class="header-section-number">6.4</span> Candidates without blocking keys</a></li>
-  <li><a href="#score-with-the-comparison-that-fits-the-field" id="toc-score-with-the-comparison-that-fits-the-field" class="nav-link" data-scroll-target="#score-with-the-comparison-that-fits-the-field"><span class="header-section-number">6.5</span> Score with the comparison that fits the field</a></li>
-  <li><a href="#from-matched-pairs-to-entities" id="toc-from-matched-pairs-to-entities" class="nav-link" data-scroll-target="#from-matched-pairs-to-entities"><span class="header-section-number">6.6</span> From matched pairs to entities</a></li>
-  <li><a href="#end-to-end-deduplicating-100000-records" id="toc-end-to-end-deduplicating-100000-records" class="nav-link" data-scroll-target="#end-to-end-deduplicating-100000-records"><span class="header-section-number">6.7</span> End to end: deduplicating 100,000 records</a></li>
+<li><a href="#sec-uc-link-data" id="toc-sec-uc-link-data" class="nav-link active" data-scroll-target="#sec-uc-link-data"><span class="header-section-number">6.1</span> Two files of people</a></li>
+  <li>
+<a href="#sec-rlink-link" id="toc-sec-rlink-link" class="nav-link" data-scroll-target="#sec-rlink-link"><span class="header-section-number">6.2</span> Blocking and scoring in one call: <code>rLink()</code></a>
+  <ul class="collapse">
+<li><a href="#read-the-pass-table-before-you-trust-the-design" id="toc-read-the-pass-table-before-you-trust-the-design" class="nav-link" data-scroll-target="#read-the-pass-table-before-you-trust-the-design">Read the pass table before you trust the design</a></li>
+  <li><a href="#deciding-and-clustering" id="toc-deciding-and-clustering" class="nav-link" data-scroll-target="#deciding-and-clustering">Deciding, and clustering</a></li>
+  <li><a href="#deduplicating-one-file" id="toc-deduplicating-one-file" class="nav-link" data-scroll-target="#deduplicating-one-file">Deduplicating one file</a></li>
+  <li><a href="#scoring-pairs-you-found-some-other-way" id="toc-scoring-pairs-you-found-some-other-way" class="nav-link" data-scroll-target="#scoring-pairs-you-found-some-other-way">Scoring pairs you found some other way</a></li>
+  <li><a href="#columns-named-differently-in-the-two-files" id="toc-columns-named-differently-in-the-two-files" class="nav-link" data-scroll-target="#columns-named-differently-in-the-two-files">Columns named differently in the two files</a></li>
+  </ul>
+</li>
+  <li><a href="#candidate-pairs-by-blocking-by-hand" id="toc-candidate-pairs-by-blocking-by-hand" class="nav-link" data-scroll-target="#candidate-pairs-by-blocking-by-hand"><span class="header-section-number">6.3</span> Candidate pairs by blocking, by hand</a></li>
+  <li><a href="#the-sorted-neighbourhood-method" id="toc-the-sorted-neighbourhood-method" class="nav-link" data-scroll-target="#the-sorted-neighbourhood-method"><span class="header-section-number">6.4</span> The sorted neighbourhood method</a></li>
+  <li><a href="#choose-phonetic-keys-by-how-much-they-merge" id="toc-choose-phonetic-keys-by-how-much-they-merge" class="nav-link" data-scroll-target="#choose-phonetic-keys-by-how-much-they-merge"><span class="header-section-number">6.5</span> Choose phonetic keys by how much they merge</a></li>
+  <li><a href="#candidates-without-blocking-keys" id="toc-candidates-without-blocking-keys" class="nav-link" data-scroll-target="#candidates-without-blocking-keys"><span class="header-section-number">6.6</span> Candidates without blocking keys</a></li>
+  <li><a href="#score-with-the-comparison-that-fits-the-field" id="toc-score-with-the-comparison-that-fits-the-field" class="nav-link" data-scroll-target="#score-with-the-comparison-that-fits-the-field"><span class="header-section-number">6.7</span> Score with the comparison that fits the field</a></li>
+  <li><a href="#from-matched-pairs-to-entities" id="toc-from-matched-pairs-to-entities" class="nav-link" data-scroll-target="#from-matched-pairs-to-entities"><span class="header-section-number">6.8</span> From matched pairs to entities</a></li>
+  <li><a href="#at-scale" id="toc-at-scale" class="nav-link" data-scroll-target="#at-scale"><span class="header-section-number">6.9</span> At scale</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/uc-link.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
@@ -490,7 +484,7 @@ window.Quarto = {
 </header><p>Record linkage – finding the records that refer to the same person, business or address, within one file or across several – has the same shape whatever the data:</p>
 <ol type="1">
 <li>
-<strong>Standardise</strong> the fields you compare (<a href="uc-clean.html" class="quarto-xref"><span>Chapter 3</span></a>).</li>
+<strong>Standardise</strong> the fields you compare (<a href="#sec-uc-clean" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-clean</span></a>).</li>
 <li>
 <strong>Generate candidate pairs</strong> cheaply, so that only plausible pairs are compared in detail: blocking, the sorted neighbourhood method, or a similarity search.</li>
 <li>
@@ -500,7 +494,7 @@ window.Quarto = {
 <li>
 <strong>Cluster</strong> the matched pairs into entities.</li>
 </ol>
-<p><a href="04-record-linkage-workflow.html" class="quarto-xref"><span>Chapter 9</span></a> walks through a small linkage end to end. This chapter is the toolbox for each stage, and finishes by deduplicating 100,000 records.</p>
+<p><a href="#sec-rlink-link"><code>rLink()</code></a> does steps 2 and 3 in one call. The rest of this chapter is the toolbox underneath it, for the cases where you want to drive each stage yourself. <a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a> takes a messy pair of files all the way through, including the standardising and the decision.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 50%">
@@ -512,73 +506,420 @@ window.Quarto = {
 </tr></thead>
 <tbody>
 <tr class="odd">
+<td>Blocking <strong>and</strong> scoring in one call</td>
+<td><code>rLink()</code></td>
+</tr>
+<tr class="even">
 <td>Candidate pairs from keys</td>
 <td>
 <code>block_pairs()</code>, <code>sorted_neighbourhood()</code>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Phonetic keys</td>
 <td>
-<code>soundex()</code>, <code>nysiis()</code>, <code>metaphone()</code>, <code>double_metaphone()</code>, <code>statcan()</code>, <code>phonex()</code>, <code>onca()</code>, <code>mra_encode()</code>, …</td>
+<code>soundex()</code>, <code>nysiis()</code>, <code>metaphone()</code>, <code>double_metaphone()</code>, <code>daitch_mokotoff()</code>, <code>statcan()</code>, <code>phonex()</code>, <code>onca()</code>, <code>caverphone()</code>, …</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Candidates by similarity search</td>
 <td>
 <code>fuzzy_within()</code>, <code>tfidf_top_n()</code>, <code>tfidf_match()</code>, <code>minhash_pairs()</code>, <code>fuzzy_top_n()</code>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Scoring</td>
 <td>
-<code>jaro_winkler()</code>, <code>editex()</code>, <code>monge_elkan()</code>, <code>smith_waterman()</code>, <code>lcs_str()</code>, <code>levenshtein()</code>, <code>fuzz_*()</code>
+<code>jaro_winkler()</code>, <code>jaro_winkler_tokens()</code>, <code>editex()</code>, <code>monge_elkan()</code>, <code>smith_waterman()</code>, <code>lcs_str()</code>, <code>levenshtein()</code>, <code>fuzz_*()</code>
 </td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Explaining a score</td>
 <td><code>edit_ops()</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Entities from matches</td>
 <td><code>cluster_pairs()</code></td>
 </tr>
 </tbody>
 </table>
-<section id="candidate-pairs-by-blocking" class="level2" data-number="6.1"><h2 data-number="6.1" class="anchored" data-anchor-id="candidate-pairs-by-blocking">
-<span class="header-section-number">6.1</span> Candidate pairs by blocking</h2>
-<p>Comparing every record with every other is <span class="math inline">\(O(n^2)\)</span>: five billion pairs for 100,000 records. <strong>Blocking</strong> only pairs records that agree exactly on a key, such as the Soundex code of the surname plus the date of birth. One key misses every true match with an error in that key, so linkage projects run several <em>passes</em> with different keys and take the union. <code>block_pairs()</code> does that in one call, with one column per pass, and reports each pair once along with the first pass that found it:</p>
+<section id="sec-uc-link-data" class="level2" data-number="6.1"><h2 data-number="6.1" class="anchored" data-anchor-id="sec-uc-link-data">
+<span class="header-section-number">6.1</span> Two files of people</h2>
+<p>Everything below works on the same pair of files: an enrolment extract and a claims extract that hold the same people, recorded by two systems that agree about nothing except who those people are. <code>docs/_people.R</code> in the repository builds them, with a <code>person_id</code> kept aside so every claim in this chapter can be checked rather than asserted.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">people</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
-<span>    surname  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, <span class="st">"JONES"</span>, <span class="st">"SMITH"</span>, <span class="st">"JONSE"</span>, <span class="st">"BROWN"</span>, <span class="st">"SMITH-JONES"</span><span class="op">)</span>,</span>
-<span>    given    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN"</span>, <span class="st">"JON"</span>, <span class="st">"MARY"</span>, <span class="st">"JOHN"</span>, <span class="st">"MARY"</span>, <span class="st">"ROBERT"</span>, <span class="st">"MARY"</span><span class="op">)</span>,</span>
-<span>    dob      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1980-01-02"</span>, <span class="st">"1980-01-02"</span>, <span class="st">"1975-06-30"</span>, <span class="st">"1990-12-01"</span>,</span>
-<span>                         <span class="st">"1975-06-30"</span>, <span class="st">"1962-03-03"</span>, <span class="st">"1975-03-06"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    postcode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"4000"</span>, <span class="st">"4000"</span>, <span class="st">"2000"</span>, <span class="st">"4101"</span>, <span class="st">"2000"</span>, <span class="st">"3000"</span>, <span class="st">"2000"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">keys</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
-<span>    surname_dob <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">people</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>, <span class="va">people</span><span class="op">$</span><span class="va">dob</span><span class="op">)</span>,</span>
-<span>    dob         <span class="op">=</span> <span class="va">people</span><span class="op">$</span><span class="va">dob</span>,</span>
-<span>    initial_pc  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">people</span><span class="op">$</span><span class="va">given</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, <span class="va">people</span><span class="op">$</span><span class="va">postcode</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu">block_pairs</span><span class="op">(</span><span class="va">keys</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">files</span> <span class="op">&lt;-</span> <span class="fu">people_files</span><span class="op">(</span>n_enrol <span class="op">=</span> <span class="fl">20000</span>, overlap <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span></span>
+<span><span class="va">enrol</span>  <span class="op">&lt;-</span> <span class="va">files</span><span class="op">$</span><span class="va">enrol</span></span>
+<span><span class="va">claims</span> <span class="op">&lt;-</span> <span class="va">files</span><span class="op">$</span><span class="va">claims</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/str.html">str</a></span><span class="op">(</span><span class="va">enrol</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"enrol_id"</span>, <span class="st">"given_name"</span>, <span class="st">"surname"</span>, <span class="st">"dob"</span>, <span class="st">"sex"</span>,</span>
+<span>                 <span class="st">"number"</span>, <span class="st">"street"</span>, <span class="st">"street_type"</span>, <span class="st">"suburb"</span>, <span class="st">"postcode"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>    vec.len <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  x_index y_index pass
-1       1       2    1
-2       3       5    1
-3       3       7    3
-4       5       7    3</code></pre>
+<pre><code>'data.frame':   3 obs. of  10 variables:
+ $ enrol_id   : chr  "E000001" "E000002" ...
+ $ given_name : chr  "LI" "BARBARA" ...
+ $ surname    : chr  "KING" "WARD" ...
+ $ dob        : Date, format: "1962-12-15" "2014-01-07" ...
+ $ sex        : chr  "F" "F" ...
+ $ number     : int  7 104 392
+ $ street     : chr  "PARK" "SANDGATE" ...
+ $ street_type: chr  "PLACE" "DRIVE" ...
+ $ suburb     : chr  "CARLTON" "MOUNT WAVERLEY" ...
+ $ postcode   : chr  "3115" "3183" ...</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">claims</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, <span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  claim_id                patient_name date_of_birth gender
+1  C014234 Moore,  Dr Strodull Daclell    04/08/2011 Female
+2  C004667          Majan,  Wei Gaboll    30/03/2017   Male
+3  C004718       Sanor,  Holor Tekoson    20/09/1977 Female
+4  C013920       Thompspn, Maria Sarah    09/08/1989 Female
+                     address_line postcode
+1     399 Queen Ln, Footscray VIC     3093
+2  376 Flinders Ave, Richmond VIC      842
+3   85 King Street, Brunswick VIC     3193
+4 U15/433 Forest St, St Kilda VIC     3095</code></pre>
 </div>
 </div>
-<p>Record 7 – Mary Jones after a double-barrelled marriage, with day and month swapped in her date of birth – only shares the third key with records 3 and 5, and the <code>pass</code> column shows it. That makes a blocking design auditable: you can see which pass carries the recall, and drop the ones that only add noise. A missing key (<code>NA</code>) never pairs, and <code>max_block_size</code> skips blocks too big to be useful, such as the most common surname, with a warning.</p>
-<p>Linking two files instead of deduplicating one is the same call with a second set of keys: <code>block_pairs(keys_a, keys_b)</code> returns pairs with one record from each.</p>
-</section><section id="the-sorted-neighbourhood-method" class="level2" data-number="6.2"><h2 data-number="6.2" class="anchored" data-anchor-id="the-sorted-neighbourhood-method">
-<span class="header-section-number">6.2</span> The sorted neighbourhood method</h2>
+<p>The claims file is the awkward one, and awkward in all the usual ways: the whole name in one <code>"SURNAME, Title Given Middle"</code> field in title case with doubled and trailing spaces, the date of birth as <code>"DD/MM/YYYY"</code> text, sex spelled out (and sometimes blank), the address as one line with abbreviated street types and a unit prefix, and a <em>numeric</em> postcode, so <code>0823</code> arrived as <code>823</code>.</p>
+<p><a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a> standardises it field by field. For now, here it is in one block, so that the examples below have two files with the same column names and the same types:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">titles</span>        <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MR"</span>, <span class="st">"MRS"</span>, <span class="st">"MS"</span>, <span class="st">"MISS"</span>, <span class="st">"DR"</span>, <span class="st">"PROF"</span><span class="op">)</span></span>
+<span><span class="va">street_abbrev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ST"</span>, <span class="st">"RD"</span>, <span class="st">"AVE"</span>, <span class="st">"CT"</span>, <span class="st">"PL"</span>, <span class="st">"TCE"</span>, <span class="st">"PDE"</span>, <span class="st">"CRES"</span>, <span class="st">"DR"</span>, <span class="st">"LN"</span><span class="op">)</span></span>
+<span><span class="va">street_full</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"STREET"</span>, <span class="st">"ROAD"</span>, <span class="st">"AVENUE"</span>, <span class="st">"COURT"</span>, <span class="st">"PLACE"</span>, <span class="st">"TERRACE"</span>,</span>
+<span>                   <span class="st">"PARADE"</span>, <span class="st">"CRESCENT"</span>, <span class="st">"DRIVE"</span>, <span class="st">"LANE"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">name</span> <span class="op">&lt;-</span> <span class="fu">fsquish</span><span class="op">(</span><span class="fu">fupper</span><span class="op">(</span><span class="va">claims</span><span class="op">$</span><span class="va">patient_name</span><span class="op">)</span><span class="op">)</span>                  <span class="co"># one pass, no case left</span></span>
+<span><span class="va">rest</span> <span class="op">&lt;-</span> <span class="fu">fsquish</span><span class="op">(</span><span class="fu">freplace_tokens</span><span class="op">(</span><span class="fu">ftrimws</span><span class="op">(</span><span class="fu">fsplit_field</span><span class="op">(</span><span class="va">name</span>, <span class="st">","</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                                <span class="va">titles</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="st">""</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">titles</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">addr</span> <span class="op">&lt;-</span> <span class="fu">fgsub</span><span class="op">(</span><span class="st">"^U[0-9]+/"</span>, <span class="st">""</span>, <span class="fu">fupper</span><span class="op">(</span><span class="va">claims</span><span class="op">$</span><span class="va">address_line</span><span class="op">)</span><span class="op">)</span>   <span class="co"># drop the unit prefix</span></span>
+<span></span>
+<span><span class="va">claims_std</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    claim_id       <span class="op">=</span> <span class="va">claims</span><span class="op">$</span><span class="va">claim_id</span>,</span>
+<span>    given_name     <span class="op">=</span> <span class="fu">fsplit_field</span><span class="op">(</span><span class="va">rest</span>, <span class="st">" "</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>    middle_name    <span class="op">=</span> <span class="fu">fsplit_field</span><span class="op">(</span><span class="va">rest</span>, <span class="st">" "</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>    surname        <span class="op">=</span> <span class="fu">ftrimws</span><span class="op">(</span><span class="fu">fsplit_field</span><span class="op">(</span><span class="va">name</span>, <span class="st">","</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    dob            <span class="op">=</span> <span class="fu">fas.Date</span><span class="op">(</span><span class="va">claims</span><span class="op">$</span><span class="va">date_of_birth</span>, format <span class="op">=</span> <span class="st">"dmy"</span><span class="op">)</span>,</span>
+<span>    sex            <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>Male <span class="op">=</span> <span class="st">"M"</span>, Female <span class="op">=</span> <span class="st">"F"</span>, Unknown <span class="op">=</span> <span class="st">"U"</span><span class="op">)</span><span class="op">[</span><span class="va">claims</span><span class="op">$</span><span class="va">gender</span><span class="op">]</span>,</span>
+<span>    street_address <span class="op">=</span> <span class="fu">fsquish</span><span class="op">(</span><span class="fu">freplace_tokens</span><span class="op">(</span><span class="fu">ftrimws</span><span class="op">(</span><span class="fu">fsplit_field</span><span class="op">(</span><span class="va">addr</span>, <span class="st">","</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                                             <span class="va">street_abbrev</span>, <span class="va">street_full</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    suburb         <span class="op">=</span> <span class="fu">ftrimws</span><span class="op">(</span><span class="fu">fgsub</span><span class="op">(</span><span class="st">" VIC$"</span>, <span class="st">""</span>, <span class="fu">fsplit_field</span><span class="op">(</span><span class="va">addr</span>, <span class="st">","</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    postcode       <span class="op">=</span> <span class="fu">fpad</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">claims</span><span class="op">$</span><span class="va">postcode</span><span class="op">)</span>, <span class="fl">4</span>, pad <span class="op">=</span> <span class="st">"0"</span><span class="op">)</span>,</span>
+<span>    stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">claims_std</span><span class="op">$</span><span class="va">sex</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">claims_std</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">"U"</span></span>
+<span></span>
+<span><span class="co"># The enrolment file keeps its address in parts; join them the same way.</span></span>
+<span><span class="va">enrol</span><span class="op">$</span><span class="va">street_address</span> <span class="op">&lt;-</span> <span class="fu">fsquish</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="va">enrol</span><span class="op">$</span><span class="va">number</span>, <span class="va">enrol</span><span class="op">$</span><span class="va">street</span>,</span>
+<span>                                      <span class="va">enrol</span><span class="op">$</span><span class="va">street_type</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="va">claims_std</span>, <span class="fl">4</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  claim_id given_name middle_name  surname        dob sex      street_address
+1  C014234   STRODULL     DACLELL    MOORE 2011-08-04   F      399 QUEEN LANE
+2  C004667        WEI      GABOLL    MAJAN 2017-03-30   M 376 FLINDERS AVENUE
+3  C004718      HOLOR     TEKOSON    SANOR 1977-09-20   F      85 KING STREET
+4  C013920      MARIA       SARAH THOMPSPN 1989-08-09   F   433 FOREST STREET
+     suburb postcode
+1 FOOTSCRAY     3093
+2  RICHMOND     0842
+3 BRUNSWICK     3193
+4  ST KILDA     3095</code></pre>
+</div>
+</div>
+</section><section id="sec-rlink-link" class="level2" data-number="6.2"><h2 data-number="6.2" class="anchored" data-anchor-id="sec-rlink-link">
+<span class="header-section-number">6.2</span> Blocking and scoring in one call: <code>rLink()</code>
+</h2>
+<p><code>rLink()</code> takes the two data frames, a list of blocking <em>passes</em>, and a list of comparators, and returns one row per candidate pair with the compared columns side by side and a score column for each comparator. Blocking keys and comparison fields are written as ordinary R expressions evaluated against the data, so a phonetic code or a date part goes in the call rather than into a column prepared beforehand:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">cand</span> <span class="op">&lt;-</span> <span class="fu">rLink</span><span class="op">(</span></span>
+<span>    <span class="va">enrol</span>, <span class="va">claims_std</span>,</span>
+<span>    block <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span></span>
+<span>        surname_dob  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>, <span class="va">dob</span><span class="op">)</span>,</span>
+<span>        surname_year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>, <span class="fu">format_date</span><span class="op">(</span><span class="va">dob</span>, <span class="st">"y"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        given_dob    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">given_name</span><span class="op">)</span>, <span class="va">dob</span><span class="op">)</span>,</span>
+<span>        name_postcode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>, <span class="fu">fsubstr</span><span class="op">(</span><span class="va">given_name</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, <span class="va">postcode</span><span class="op">)</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span></span>
+<span>        surname  <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>        given    <span class="op">=</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">given_name</span><span class="op">)</span>,</span>
+<span>        dob      <span class="op">=</span> <span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="va">a</span> <span class="op">==</span> <span class="va">b</span><span class="op">)</span><span class="op">(</span><span class="va">dob</span><span class="op">)</span>,</span>
+<span>        sex      <span class="op">=</span> <span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="va">a</span> <span class="op">==</span> <span class="va">b</span> <span class="op">|</span> <span class="va">a</span> <span class="op">==</span> <span class="st">"U"</span> <span class="op">|</span> <span class="va">b</span> <span class="op">==</span> <span class="st">"U"</span><span class="op">)</span><span class="op">(</span><span class="va">sex</span><span class="op">)</span>,</span>
+<span>        address  <span class="op">=</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">street_address</span><span class="op">)</span>,</span>
+<span>        suburb   <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">suburb</span><span class="op">)</span>,</span>
+<span>        postcode <span class="op">=</span> <span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="va">a</span> <span class="op">==</span> <span class="va">b</span><span class="op">)</span><span class="op">(</span><span class="va">postcode</span><span class="op">)</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"enrol_id"</span>, <span class="st">"claim_id"</span>, <span class="st">"surname"</span>, <span class="st">"given_name"</span>, <span class="st">"dob"</span>, <span class="st">"sex"</span>,</span>
+<span>             <span class="st">"street_address"</span>, <span class="st">"postcode"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html">dim</a></span><span class="op">(</span><span class="va">cand</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 34282    26</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">cand</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">12</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   pair_id index_1 index_2  pass       block_key enrol_id_1 given_name_1
+     &lt;int&gt;   &lt;int&gt;   &lt;int&gt; &lt;int&gt;          &lt;char&gt;     &lt;char&gt;       &lt;char&gt;
+1:       1       2    8120     3 B616|2014-01-07    E000002      BARBARA
+2:       2       3     495     2       W452|1965    E000003       MEHAEZ
+3:       3       3    2946     1 W452|1965-12-25    E000003       MEHAEZ
+   given_name_2 given surname_1 surname_2   surname
+         &lt;char&gt; &lt;num&gt;    &lt;char&gt;    &lt;char&gt;     &lt;num&gt;
+1:      BARBARA  1.00      WARD DEPREGILL 0.4074074
+2:         MARY  0.65  WILLIAMS  WILLIAMS 1.0000000
+3:       MEHAEZ  1.00  WILLIAMS  WILLIAMS 1.0000000</code></pre>
+</div>
+</div>
+<p>The outer <code><a href="https://rdrr.io/r/base/list.html">list()</a></code> separates passes; a pair is a candidate if it agrees on <em>any</em> one pass, each pair is reported once, and <code>pass</code> records the first pass that found it. Inside a pass, <code><a href="https://rdrr.io/r/base/list.html">list()</a></code> joins terms into one key, so <code>list(soundex(surname), dob)</code> requires the same surname code <strong>and</strong> the same date of birth. A comparator’s first argument names the column to compare; anything else is its own options. Any function of two character vectors works, which is how <code>sex</code> and the exact <code>dob</code>/<code>postcode</code> comparisons above are written inline.</p>
+<p>Three things are worth knowing straight away.</p>
+<p><strong>Scores are oriented for you.</strong> Comparators disagree about which end of their scale means “identical”: <code>jaro_winkler()</code> returns 1, <code>levenshtein()</code> returns 0, the RapidFuzz <code>fuzz_*()</code> scorers return 100. <code>rLink()</code> probes each one on a calibration pair and converts, so <strong>1 always means an exact match</strong>. What it found is recorded, and is worth reading once:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/attr.html">attr</a></span><span class="op">(</span><span class="va">cand</span>, <span class="st">"compare"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     score          comparator       column_1       column_2      scale
+1  surname        jaro_winkler        surname        surname similarity
+2    given jaro_winkler_tokens     given_name     given_name similarity
+3      dob         &lt;anonymous&gt;            dob            dob similarity
+4      sex         &lt;anonymous&gt;            sex            sex similarity
+5  address jaro_winkler_tokens street_address street_address similarity
+6   suburb        jaro_winkler         suburb         suburb similarity
+7 postcode         &lt;anonymous&gt;       postcode       postcode similarity</code></pre>
+</div>
+</div>
+<p><strong>Comparators see text.</strong> Every comparison column is converted to character first, so a <code>Date</code> reaches the comparator as <code>"YYYY-MM-DD"</code>. Exact agreement therefore just works, but a <em>tolerance</em> needs the date back:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">near_dob</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">days</span> <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu">fas.Date</span><span class="op">(</span><span class="va">a</span><span class="op">)</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu">fas.Date</span><span class="op">(</span><span class="va">b</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;=</span> <span class="va">days</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="fu">rLink</span><span class="op">(</span><span class="va">enrol</span>, <span class="va">claims_std</span>,</span>
+<span>           block <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>, <span class="va">postcode</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>           compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>dob_within_1 <span class="op">=</span> <span class="fu">near_dob</span><span class="op">(</span><span class="va">dob</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>           keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"surname"</span>, <span class="st">"dob"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span>, <span class="op">-</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">4</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   index_1 index_2  pass block_key surname_1 surname_2      dob_1      dob_2
+     &lt;int&gt;   &lt;int&gt; &lt;int&gt;    &lt;char&gt;    &lt;char&gt;    &lt;char&gt;     &lt;Date&gt;     &lt;Date&gt;
+1:       1    9276     1 K520|3115      KING      KING 1962-12-15 1990-07-08
+2:       3    2946     1 W452|0811  WILLIAMS  WILLIAMS 1965-12-25 1965-12-25
+3:       3    8572     1 W452|0811  WILLIAMS  WILLIAMS 1965-12-25 1940-11-08
+4:       4    1570     1 S530|0884     SMITH     SMITH 1952-11-28 1952-11-28
+   dob_within_1
+         &lt;lgcl&gt;
+1:        FALSE
+2:         TRUE
+3:        FALSE
+4:         TRUE</code></pre>
+</div>
+</div>
+<p><strong>Where the time goes is on the object.</strong> <code>attr(cand, "timings")</code> breaks the call into stages, which is how you find the pass that is about to explode:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/attr.html">attr</a></span><span class="op">(</span><span class="va">cand</span>, <span class="st">"timings"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      stage      seconds
+1  validate 0.0001611710
+2      keys 0.0544037819
+3     pairs 0.0099649429
+4    attach 0.0612440109
+5   surname 0.0031449795
+6     given 0.0063190460
+7       dob 0.0052978992
+8       sex 0.0038709641
+9   address 0.0095129013
+10   suburb 0.0027101040
+11 postcode 0.0687429905
+12 assemble 0.0002880096
+13    total 0.2268030643</code></pre>
+</div>
+</div>
+<section id="read-the-pass-table-before-you-trust-the-design" class="level3"><h3 class="anchored" data-anchor-id="read-the-pass-table-before-you-trust-the-design">Read the pass table before you trust the design</h3>
+<p>Because <code>pass</code> records the pass that found each pair, and because these files come with a known truth, each pass can be audited for what it actually contributed:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu">same_person</span><span class="op">(</span><span class="va">files</span>, <span class="va">cand</span><span class="op">$</span><span class="va">index_1</span>, <span class="va">cand</span><span class="op">$</span><span class="va">index_2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span>candidates <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>pass <span class="op">=</span> <span class="va">cand</span><span class="op">$</span><span class="va">pass</span><span class="op">)</span>,</span>
+<span>      true_pairs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tapply.html">tapply</a></span><span class="op">(</span><span class="va">truth</span>, <span class="va">cand</span><span class="op">$</span><span class="va">pass</span>, <span class="va">sum</span><span class="op">)</span>,</span>
+<span>      yield      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tapply.html">tapply</a></span><span class="op">(</span><span class="va">truth</span>, <span class="va">cand</span><span class="op">$</span><span class="va">pass</span>, <span class="va">mean</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  candidates true_pairs yield
+1       9797       9736 0.994
+2      22251        590 0.027
+3       1354       1206 0.891
+4        880        468 0.532</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>true_pairs_in_data <span class="op">=</span> <span class="fu">true_pair_count</span><span class="op">(</span><span class="va">files</span><span class="op">)</span>,</span>
+<span>  found_by_blocking  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>,</span>
+<span>  pairs_compared     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">cand</span><span class="op">)</span>,</span>
+<span>  pairs_possible     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">enrol</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">claims_std</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>true_pairs_in_data  found_by_blocking     pairs_compared     pairs_possible 
+             12000              12000              34282          300000000 </code></pre>
+</div>
+</div>
+<p>Blocking found every true pair in the data while comparing 34,282 of the 300,000,000 possible ones. The pass table also shows what each pass costs: pass 2 (surname code plus year of birth) generates most of the candidates for a few hundred extra matches. It is the pass that survives a transposed day and month, so it earns its place – but it is the one to tighten first if the run gets too big, with <code>max_block_size</code> or a narrower key.</p>
+</section><section id="deciding-and-clustering" class="level3"><h3 class="anchored" data-anchor-id="deciding-and-clustering">Deciding, and clustering</h3>
+<p>Combine the score columns however your project justifies – hand weights here, a Fellegi-Sunter model in <code>fastLink</code> or <code>reclin2</code> on real data – and look at the two distributions before picking a threshold:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">cand</span><span class="op">$</span><span class="va">score</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html">with</a></span><span class="op">(</span><span class="va">cand</span>,</span>
+<span>    <span class="op">(</span><span class="fl">3</span> <span class="op">*</span> <span class="va">surname</span> <span class="op">+</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">given</span> <span class="op">+</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">dob</span> <span class="op">+</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="va">sex</span> <span class="op">+</span></span>
+<span>     <span class="va">address</span> <span class="op">+</span> <span class="va">suburb</span> <span class="op">+</span> <span class="va">postcode</span><span class="op">)</span> <span class="op">/</span> <span class="fl">10.5</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">qs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">0.05</span>, <span class="fl">0.5</span>, <span class="fl">0.95</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind</a></span><span class="op">(</span>same_person <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html">quantile</a></span><span class="op">(</span><span class="va">cand</span><span class="op">$</span><span class="va">score</span><span class="op">[</span><span class="va">truth</span><span class="op">]</span>, <span class="va">qs</span><span class="op">)</span>,</span>
+<span>            different   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html">quantile</a></span><span class="op">(</span><span class="va">cand</span><span class="op">$</span><span class="va">score</span><span class="op">[</span><span class="op">!</span><span class="va">truth</span><span class="op">]</span>, <span class="va">qs</span><span class="op">)</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>               1%    5%   50%   95%
+same_person 0.799 0.810 1.000 1.000
+different   0.289 0.358 0.477 0.577</code></pre>
+</div>
+</div>
+<p>The two are well separated: the weakest 1% of true pairs still score above the strongest 5% of false ones, so a threshold anywhere in the gap is defensible.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="kw">for</span> <span class="op">(</span><span class="va">t</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.75</span>, <span class="fl">0.78</span>, <span class="fl">0.82</span>, <span class="fl">0.85</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">keep</span> <span class="op">&lt;-</span> <span class="va">cand</span><span class="op">$</span><span class="va">score</span> <span class="op">&gt;=</span> <span class="va">t</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"%.2f  links %6s  precision %.4f  recall %.4f\n"</span>, <span class="va">t</span>,</span>
+<span>                <span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">keep</span><span class="op">)</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html">mean</a></span><span class="op">(</span><span class="va">truth</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>                <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">truth</span> <span class="op">&amp;</span> <span class="va">keep</span><span class="op">)</span> <span class="op">/</span> <span class="fu">true_pair_count</span><span class="op">(</span><span class="va">files</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>0.70  links 12,103  precision 0.9915  recall 1.0000
+0.75  links 11,940  precision 0.9985  recall 0.9935
+0.78  links 11,923  precision 0.9999  recall 0.9935
+0.82  links 10,312  precision 1.0000  recall 0.8593
+0.85  links  9,589  precision 1.0000  recall 0.7991</code></pre>
+</div>
+</div>
+<p>Then turn the accepted pairs into entity identifiers. <code>cluster_pairs()</code> joins records connected by any chain of matches (the connected components of the match graph); offset the second file’s indices so the two files share one numbering:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">links</span> <span class="op">&lt;-</span> <span class="va">cand</span><span class="op">[</span><span class="va">cand</span><span class="op">$</span><span class="va">score</span> <span class="op">&gt;=</span> <span class="fl">0.78</span>, <span class="op">]</span></span>
+<span><span class="va">entity</span> <span class="op">&lt;-</span> <span class="fu">cluster_pairs</span><span class="op">(</span><span class="va">links</span><span class="op">$</span><span class="va">index_1</span>, <span class="va">links</span><span class="op">$</span><span class="va">index_2</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">enrol</span><span class="op">)</span>,</span>
+<span>                        n <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">enrol</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">claims_std</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>cluster_size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tabulate.html">tabulate</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>cluster_size
+    1     2     3 
+11155 11921     1 </code></pre>
+</div>
+</div>
+<p>Chaining is also the risk: if A and C do not match directly, their cluster rests on B. Look at the largest clusters before trusting them, or raise the threshold for pairs that would join two already-large clusters.</p>
+</section><section id="deduplicating-one-file" class="level3"><h3 class="anchored" data-anchor-id="deduplicating-one-file">Deduplicating one file</h3>
+<p>With one data frame, <code>rLink()</code> deduplicates it: pairs come back with <code>index_1 &lt; index_2</code> and no record paired with itself. Here the two files arrive stacked, as a single extract, and the job is to find the people who appear twice:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">shared</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"given_name"</span>, <span class="st">"surname"</span>, <span class="st">"dob"</span>, <span class="st">"sex"</span>, <span class="st">"street_address"</span>,</span>
+<span>            <span class="st">"suburb"</span>, <span class="st">"postcode"</span><span class="op">)</span></span>
+<span><span class="va">combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span>source <span class="op">=</span> <span class="st">"enrol"</span>, <span class="va">enrol</span><span class="op">[</span>, <span class="va">shared</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>                  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span>source <span class="op">=</span> <span class="st">"claims"</span>, <span class="va">claims_std</span><span class="op">[</span>, <span class="va">shared</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dup</span> <span class="op">&lt;-</span> <span class="fu">rLink</span><span class="op">(</span><span class="va">combined</span>,</span>
+<span>             block <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>, <span class="va">dob</span><span class="op">)</span>,</span>
+<span>                          <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">given_name</span><span class="op">)</span>, <span class="va">dob</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>             compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>given   <span class="op">=</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">given_name</span><span class="op">)</span>,</span>
+<span>                            surname <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>                            addr    <span class="op">=</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">street_address</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>             keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"source"</span>, <span class="st">"surname"</span>, <span class="st">"given_name"</span>, <span class="st">"dob"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">dup</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11384</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">dup</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">dup</span><span class="op">$</span><span class="va">given</span> <span class="op">-</span> <span class="va">dup</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>, <span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"source_1"</span>, <span class="st">"source_2"</span>, <span class="st">"surname_1"</span>, <span class="st">"surname_2"</span>,</span>
+<span>      <span class="st">"given_name_1"</span>, <span class="st">"given_name_2"</span>, <span class="st">"dob_1"</span>, <span class="st">"given"</span>, <span class="st">"surname"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   source_1 source_2 surname_1 surname_2 given_name_1 given_name_2      dob_1
+     &lt;char&gt;   &lt;char&gt;    &lt;char&gt;    &lt;char&gt;       &lt;char&gt;       &lt;char&gt;     &lt;Date&gt;
+1:    enrol   claims  WILLIAMS  WILLIAMS       MEHAEZ       MEHAEZ 1965-12-25
+2:    enrol   claims     SMITH     SMITH        PETER        PETER 1952-11-28
+3:    enrol   claims   MOTIFES   MOTIFES         TRIS         TRIS 1973-11-10
+4:    enrol   claims  THOMPSON  THOMPSON        FELER        FELER 1992-09-14
+   given surname
+   &lt;num&gt;   &lt;num&gt;
+1:     1       1
+2:     1       1
+3:     1       1
+4:     1       1</code></pre>
+</div>
+</div>
+</section><section id="scoring-pairs-you-found-some-other-way" class="level3"><h3 class="anchored" data-anchor-id="scoring-pairs-you-found-some-other-way">Scoring pairs you found some other way</h3>
+<p><code>pairs</code> takes candidate pairs from anywhere instead of blocking – any data frame with <code>x_index</code> and <code>y_index</code>, which is the shape <code>minhash_pairs()</code>, <code>fuzzy_within()</code> and <code>tfidf_top_n()</code> all return:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">candidates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>x_index <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, y_index <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">7L</span>, <span class="fl">7L</span>, <span class="fl">9L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">rLink</span><span class="op">(</span><span class="va">enrol</span>, <span class="va">claims_std</span>, pairs <span class="op">=</span> <span class="va">candidates</span>,</span>
+<span>      compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>surname <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"surname"</span>, <span class="st">"dob"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   pair_id index_1 index_2  pass surname_1 surname_2   surname      dob_1
+     &lt;int&gt;   &lt;int&gt;   &lt;int&gt; &lt;int&gt;    &lt;char&gt;    &lt;char&gt;     &lt;num&gt;     &lt;Date&gt;
+1:       1       1       7    NA      KING    TAYLOR 0.0000000 1962-12-15
+2:       2       2       7    NA      WARD    TAYLOR 0.4722222 2014-01-07
+3:       3       3       9    NA  WILLIAMS MACDONALD 0.4120370 1965-12-25
+        dob_2
+       &lt;Date&gt;
+1: 1968-11-10
+2: 1968-11-10
+3: 1986-05-26</code></pre>
+</div>
+</div>
+</section><section id="columns-named-differently-in-the-two-files" class="level3"><h3 class="anchored" data-anchor-id="columns-named-differently-in-the-two-files">Columns named differently in the two files</h3>
+<p><code>compare</code> takes <code>column_1 | column_2</code> when the two files call the same thing by different names, and <code>block_2</code> gives the second file its own blocking expressions, pass for pass:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">raw</span> <span class="op">&lt;-</span> <span class="va">claims</span>                       <span class="co"># the unstandardised claims file</span></span>
+<span><span class="va">raw</span><span class="op">$</span><span class="va">surname_raw</span> <span class="op">&lt;-</span> <span class="fu">ftrimws</span><span class="op">(</span><span class="fu">fsplit_field</span><span class="op">(</span><span class="fu">fsquish</span><span class="op">(</span><span class="fu">fupper</span><span class="op">(</span><span class="va">raw</span><span class="op">$</span><span class="va">patient_name</span><span class="op">)</span><span class="op">)</span>, <span class="st">","</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="fu">rLink</span><span class="op">(</span><span class="va">enrol</span>, <span class="va">raw</span>,</span>
+<span>           block   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>           block_2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname_raw</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>           compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>sn <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">surname</span> <span class="op">|</span> <span class="va">surname_raw</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>           keep    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"surname"</span>, <span class="st">"surname_raw"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span>, <span class="op">-</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   index_1 index_2  pass block_key surname_1 surname_raw_2    sn
+     &lt;int&gt;   &lt;int&gt; &lt;int&gt;    &lt;char&gt;    &lt;char&gt;        &lt;char&gt; &lt;num&gt;
+1:       1     333     1      K520      KING          KING     1
+2:       1     398     1      K520      KING          KING     1
+3:       1     433     1      K520      KING          KING     1</code></pre>
+</div>
+</div>
+</section></section><section id="candidate-pairs-by-blocking-by-hand" class="level2" data-number="6.3"><h2 data-number="6.3" class="anchored" data-anchor-id="candidate-pairs-by-blocking-by-hand">
+<span class="header-section-number">6.3</span> Candidate pairs by blocking, by hand</h2>
+<p><code>block_pairs()</code> is the blocking engine <code>rLink()</code> calls, and is what to reach for when you want the pairs without the scoring – to count them first, or to feed them somewhere else. It takes one column per pass:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">block_keys</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    surname_dob <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>, <span class="va">d</span><span class="op">$</span><span class="va">dob</span><span class="op">)</span>,</span>
+<span>    dob         <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">dob</span><span class="op">)</span>,</span>
+<span>    initial_pc  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu">fsubstr</span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">given_name</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, <span class="va">d</span><span class="op">$</span><span class="va">postcode</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">block_pairs</span><span class="op">(</span><span class="fu">block_keys</span><span class="op">(</span><span class="va">enrol</span><span class="op">)</span>, <span class="fu">block_keys</span><span class="op">(</span><span class="va">claims_std</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 86714</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>pass <span class="op">=</span> <span class="va">p</span><span class="op">$</span><span class="va">pass</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>pass
+    1     2     3 
+ 9797 10759 66158 </code></pre>
+</div>
+</div>
+<p>A missing key (<code>NA</code>) never pairs with anything, which is what makes blocking on an incomplete field safe: the records with no date of birth simply do not appear in the passes that use it.</p>
+<p><code>max_block_size</code> skips blocks too big to be worth comparing – the commonest surname code, or the 1 January placeholder date – and warns with how many it dropped. How big a block gets is worth measuring before you decide:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">sizes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">enrol</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>blocks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">sizes</span><span class="op">)</span>, largest <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">sizes</span><span class="op">)</span>, over_400 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">sizes</span> <span class="op">&gt;</span> <span class="fl">400</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  blocks  largest over_400 
+    1625      582        5 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># A surname-only pass, capped. A handful of codes go, and with them more</span></span>
+<span><span class="co"># than half the pairs the pass would have produced.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="fu">block_pairs</span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">enrol</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>, <span class="fu">soundex</span><span class="op">(</span><span class="va">claims_std</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1865586</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="fu">block_pairs</span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">enrol</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>, <span class="fu">soundex</span><span class="op">(</span><span class="va">claims_std</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>                 max_block_size <span class="op">=</span> <span class="fl">400</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 755271</code></pre>
+</div>
+</div>
+</section><section id="the-sorted-neighbourhood-method" class="level2" data-number="6.4"><h2 data-number="6.4" class="anchored" data-anchor-id="the-sorted-neighbourhood-method">
+<span class="header-section-number">6.4</span> The sorted neighbourhood method</h2>
 <p>Exact keys miss pairs whose keys differ in the last characters (<code>SMITH</code> and <code>SMITHE</code>). <code>sorted_neighbourhood()</code> sorts the distinct key values and pairs records whose values are within <code>(window - 1) / 2</code> places of each other, as well as records with equal values. A second pass on the <em>reversed</em> key catches errors at the start of the string:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">surname</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMITHE"</span>, <span class="st">"SMYTH"</span>, <span class="st">"JONES"</span>, <span class="st">"JONSON"</span>, <span class="st">"XMITH"</span><span class="op">)</span></span>
-<span><span class="va">rev_str</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/strsplit.html">strsplit</a></span><span class="op">(</span><span class="va">s</span>, <span class="cn">NULL</span><span class="op">)</span>,</span>
-<span>                              <span class="kw">function</span><span class="op">(</span><span class="va">ch</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rev.html">rev</a></span><span class="op">(</span><span class="va">ch</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">""</span><span class="op">)</span>, <span class="st">""</span><span class="op">)</span></span>
-<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">sorted_neighbourhood</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">surname</span>, <span class="fu">rev_str</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span><span class="op">)</span>, window <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">surname</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMITHE"</span>, <span class="st">"SMYTH"</span>, <span class="st">"JONES"</span>, <span class="st">"JONSON"</span>, <span class="st">"XMITH"</span><span class="op">)</span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">sorted_neighbourhood</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">surname</span>, <span class="fu">freverse</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span><span class="op">)</span>, window <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>a <span class="op">=</span> <span class="va">surname</span><span class="op">[</span><span class="va">p</span><span class="op">$</span><span class="va">x_index</span><span class="op">]</span>, b <span class="op">=</span> <span class="va">surname</span><span class="op">[</span><span class="va">p</span><span class="op">$</span><span class="va">y_index</span><span class="op">]</span>, pass <span class="op">=</span> <span class="va">p</span><span class="op">$</span><span class="va">pass</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>       a      b pass
@@ -591,82 +932,120 @@ window.Quarto = {
 7  JONES JONSON    1</code></pre>
 </div>
 </div>
-<p><code>XMITH</code> only meets <code>SMITH</code> in the reversed pass. The window moves over distinct values, as in Python’s <code>recordlinkage</code> package, so the pairs do not depend on the order of the records and every tie is paired. Keys can be dates or numbers too: a date of birth with <code>window = 3</code> pairs dates one day apart.</p>
-</section><section id="choose-phonetic-keys-by-how-much-they-merge" class="level2" data-number="6.3"><h2 data-number="6.3" class="anchored" data-anchor-id="choose-phonetic-keys-by-how-much-they-merge">
-<span class="header-section-number">6.3</span> Choose phonetic keys by how much they merge</h2>
-<p>Every phonetic code merges some spellings and separates others, and the trade-off is block size against recall. Comparing codes on a list of known variants shows the differences quickly:</p>
+<p><code>XMITH</code> only meets <code>SMITH</code> in the reversed pass. Note what else the window pairs: <code>SMITH</code> with <code>JONSON</code>, because they are alphabetical neighbours, not because they are alike. The method trades precision for recall by design, so it belongs in a pass whose candidates are then scored, never on its own. The window moves over distinct values, as in Python’s <code>recordlinkage</code> package, so the pairs do not depend on the order of the records and every tie is paired. Keys can be dates or numbers too: a date of birth with <code>window = 3</code> pairs dates one day apart, which is exactly the transcription error that <code>format_date(dob, "y")</code> above needed a whole extra pass to survive.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">surn</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, <span class="st">"SCHMIDT"</span>, <span class="st">"MEYER"</span>, <span class="st">"MEIER"</span>, <span class="st">"MCDONALD"</span>,</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1985-03-14"</span>, <span class="st">"1985-03-15"</span>, <span class="st">"1985-03-16"</span>, <span class="st">"1990-01-01"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">sorted_neighbourhood</span><span class="op">(</span><span class="va">d</span>, window <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  x_index y_index pass
+1       1       2    1
+2       2       3    1
+3       3       4    1</code></pre>
+</div>
+</div>
+<p><code>rLink(block_method = "sorted_neighbourhood", window = 3)</code> uses it for every pass of a linkage.</p>
+</section><section id="choose-phonetic-keys-by-how-much-they-merge" class="level2" data-number="6.5"><h2 data-number="6.5" class="anchored" data-anchor-id="choose-phonetic-keys-by-how-much-they-merge">
+<span class="header-section-number">6.5</span> Choose phonetic keys by how much they merge</h2>
+<p>Every phonetic code merges some spellings and separates others, and the trade-off is block size against recall. Comparing codes on the name variants you actually expect shows the differences quickly:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">surn</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"SMYTH"</span>, <span class="st">"SCHMIDT"</span>, <span class="st">"MEYER"</span>, <span class="st">"MEIER"</span>, <span class="st">"MCDONALD"</span>,</span>
 <span>          <span class="st">"MACDONALD"</span>, <span class="st">"THOMPSON"</span>, <span class="st">"TOMSON"</span>, <span class="st">"NGUYEN"</span>, <span class="st">"NGYUEN"</span>, <span class="st">"PHILLIPS"</span>,</span>
-<span>          <span class="st">"FILLIPS"</span><span class="op">)</span></span>
+<span>          <span class="st">"FILLIPS"</span>, <span class="st">"O'BRIEN"</span>, <span class="st">"OBRIEN"</span>, <span class="st">"BRIEN"</span><span class="op">)</span></span>
 <span><span class="va">codes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>name <span class="op">=</span> <span class="va">surn</span>, soundex <span class="op">=</span> <span class="fu">soundex</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>, nysiis <span class="op">=</span> <span class="fu">nysiis</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>,</span>
 <span>                    metaphone <span class="op">=</span> <span class="fu">metaphone</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>, statcan <span class="op">=</span> <span class="fu">statcan</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>,</span>
 <span>                    phonex <span class="op">=</span> <span class="fu">phonex</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>, onca <span class="op">=</span> <span class="fu">onca</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span>,</span>
-<span>                    mra <span class="op">=</span> <span class="fu">mra_encode</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span><span class="op">)</span></span>
+<span>                    caverphone <span class="op">=</span> <span class="fu">caverphone</span><span class="op">(</span><span class="va">surn</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">codes</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>        name soundex nysiis metaphone statcan phonex onca    mra
-1      SMITH    S530   SNAT       SM0    SMTH   S530 S530   SMTH
-2      SMYTH    S530   SNYT       SM0    SMTH   S530 S530  SMYTH
-3    SCHMIDT    S530   SNAD      SKMT    SCHM   S253 S530 SCHMDT
-4      MEYER    M600  MAYAR       MYR      MR   M600 M600    MYR
-5      MEIER    M600    MAR        MR      MR   M600 M600     MR
-6   MCDONALD    M235 MCDANA      MKTN    MCDN   M235 M235 MCDNLD
-7  MACDONALD    M235 MCDANA      MKTN    MCDN   M235 M235 MCDNLD
-8   THOMPSON    T512 TANPSA      0MPS    THMP   T512 T512 THMPSN
-9     TOMSON    T525 TANSAN      TMSN    TMSN   T525 T525   TMSN
-10    NGUYEN    N250 NGAYAN      NKYN     NGN   N250 N250   NGYN
-11    NGYUEN    N250  NGYAN      NJYN     NGN   N250 N250   NGYN
-12  PHILLIPS    P412  FALAP      FLPS    PHLP   F410 F410  PHLPS
-13   FILLIPS    F412  FALAP      FLPS    FLPS   F410 F410   FLPS</code></pre>
+<pre><code>        name soundex nysiis metaphone statcan phonex onca caverphone
+1      SMITH    S530   SNAT       SM0    SMTH   S530 S530 SMT1111111
+2      SMYTH    S530   SNYT       SM0    SMTH   S530 S530 SMT1111111
+3    SCHMIDT    S530   SNAD      SKMT    SCHM   S253 S530 SKMT111111
+4      MEYER    M600  MAYAR       MYR      MR   M600 M600 MA11111111
+5      MEIER    M600    MAR        MR      MR   M600 M600 MA11111111
+6   MCDONALD    M235 MCDANA      MKTN    MCDN   M235 M235 MKTNT11111
+7  MACDONALD    M235 MCDANA      MKTN    MCDN   M235 M235 MKTNT11111
+8   THOMPSON    T512 TANPSA      0MPS    THMP   T512 T512 TMPSN11111
+9     TOMSON    T525 TANSAN      TMSN    TMSN   T525 T525 TMSN111111
+10    NGUYEN    N250 NGAYAN      NKYN     NGN   N250 N250 NKN1111111
+11    NGYUEN    N250  NGYAN      NJYN     NGN   N250 N250 NKN1111111
+12  PHILLIPS    P412  FALAP      FLPS    PHLP   F410 F410 FLPS111111
+13   FILLIPS    F412  FALAP      FLPS    FLPS   F410 F410 FLPS111111
+14   O'BRIEN    O165  OBRAN      OBRN    OBRN   A165 O165 APRN111111
+15    OBRIEN    O165  OBRAN      OBRN    OBRN   A165 O165 APRN111111
+16     BRIEN    B650   BRAN       BRN     BRN   B650 B650 PRN1111111</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">codes</span><span class="op">[</span><span class="op">-</span><span class="fl">1</span><span class="op">]</span>, <span class="kw">function</span><span class="op">(</span><span class="va">k</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">k</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>   <span class="co"># fewer = coarser blocks</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">codes</span><span class="op">[</span><span class="op">-</span><span class="fl">1</span><span class="op">]</span>, <span class="kw">function</span><span class="op">(</span><span class="va">k</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">k</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>   <span class="co"># fewer = coarser blocks</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>  soundex    nysiis metaphone   statcan    phonex      onca       mra 
-        8        11        10         9         8         7        11 </code></pre>
+<pre><code>   soundex     nysiis  metaphone    statcan     phonex       onca caverphone 
+        10         13         12         11         10          9         10 </code></pre>
 </div>
 </div>
-<p>Soundex merges <code>SCHMIDT</code> with <code>SMITH</code> but separates <code>PHILLIPS</code> from <code>FILLIPS</code>; Phonex and ONCA join the latter pair; NYSIIS and Metaphone separate more spellings, which makes smaller blocks and needs more passes. The Match Rating Approach is designed as a comparison rather than a key: <code>mra_compare()</code> says whether two names match under its rules.</p>
+<p>Soundex merges <code>SCHMIDT</code> with <code>SMITH</code> but separates <code>PHILLIPS</code> from <code>FILLIPS</code>; Phonex and ONCA join the latter pair. NYSIIS and Metaphone separate more spellings, which makes smaller blocks and needs more passes. Caverphone was designed for New Zealand and Australian electoral-roll names.</p>
+<p>The same comparison on your own file, rather than on a list of variants, says how big the blocks will be:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">mra_compare</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"BYRNE"</span>, <span class="st">"CATHERINE"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMYTH"</span>, <span class="st">"BOERN"</span>, <span class="st">"KATHRYN"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb53"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">sizes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>exact <span class="op">=</span> <span class="va">enrol</span><span class="op">$</span><span class="va">surname</span>, soundex <span class="op">=</span> <span class="fu">soundex</span><span class="op">(</span><span class="va">enrol</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>                     nysiis <span class="op">=</span> <span class="fu">nysiis</span><span class="op">(</span><span class="va">enrol</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>, phonex <span class="op">=</span> <span class="fu">phonex</span><span class="op">(</span><span class="va">enrol</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>                     dmetaphone <span class="op">=</span> <span class="fu">double_metaphone</span><span class="op">(</span><span class="va">enrol</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span><span class="op">$</span><span class="va">primary</span><span class="op">)</span>,</span>
+<span>                <span class="kw">function</span><span class="op">(</span><span class="va">k</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>blocks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">k</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                              largest <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tabulate.html">tabulate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/match.html">match</a></span><span class="op">(</span><span class="va">k</span>, <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">k</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                              pairs_per_1k <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tabulate.html">tabulate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/match.html">match</a></span><span class="op">(</span><span class="va">k</span>, <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">k</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">/</span></span>
+<span>                                                   <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">k</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1000</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">sizes</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              exact soundex nysiis phonex dmetaphone
+blocks       4108.0  1625.0 2644.0 1057.0     2422.0
+largest       569.0   582.0  583.0  615.0      569.0
+pairs_per_1k    0.1     0.1    0.1    0.2        0.1</code></pre>
+</div>
+</div>
+<p><code>pairs_per_1k</code> is the number of candidate pairs, in thousands, that the key alone would generate against a file of the same size – the number that decides whether a pass is affordable.</p>
+<p>Names from more than one language tradition need more than one code. <code>daitch_mokotoff()</code> returns up to several codes per name, so a name with an ambiguous pronunciation lands in every block it might belong to:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb55"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">daitch_mokotoff</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SCHWARZ"</span>, <span class="st">"SHVARTZ"</span>, <span class="st">"MOSKOWITZ"</span>, <span class="st">"MOSKOVITZ"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[[1]]
+[1] "474000" "479400"
+
+[[2]]
+[1] "479400"
+
+[[3]]
+[1] "645740"
+
+[[4]]
+[1] "645740"</code></pre>
+</div>
+</div>
+<p>The Match Rating Approach is designed as a comparison rather than a key: <code>mra_compare()</code> says whether two names match under its rules.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb57"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">mra_compare</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"BYRNE"</span>, <span class="st">"CATHERINE"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMYTH"</span>, <span class="st">"BOERN"</span>, <span class="st">"KATHRYN"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] TRUE TRUE TRUE</code></pre>
 </div>
 </div>
-</section><section id="candidates-without-blocking-keys" class="level2" data-number="6.4"><h2 data-number="6.4" class="anchored" data-anchor-id="candidates-without-blocking-keys">
-<span class="header-section-number">6.4</span> Candidates without blocking keys</h2>
+</section><section id="candidates-without-blocking-keys" class="level2" data-number="6.6"><h2 data-number="6.6" class="anchored" data-anchor-id="candidates-without-blocking-keys">
+<span class="header-section-number">6.6</span> Candidates without blocking keys</h2>
 <p>When there is no good key, search for similar strings directly; none of these functions builds the full comparison matrix.</p>
-<p><code>fuzzy_within()</code> returns every table entry within <code>k</code> edits of each query, using SymSpell’s symmetric-delete index – the right tool for checking typed values against a reference list such as a street gazetteer:</p>
+<p><code>fuzzy_within()</code> returns every table entry within <code>k</code> edits of each query, using SymSpell’s symmetric-delete index – the right tool for checking typed values against a reference list such as a street or suburb gazetteer:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span>
-<span><span class="va">streets</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"KING"</span>, <span class="st">"QUEEN"</span>, <span class="st">"GEORGE"</span>, <span class="st">"ELIZABETH"</span>, <span class="st">"ANN"</span>, <span class="st">"ADELAIDE"</span>, <span class="st">"WICKHAM"</span>,</span>
-<span>             <span class="st">"BRUNSWICK"</span>, <span class="st">"LOGAN"</span>, <span class="st">"IPSWICH"</span>, <span class="st">"OXLEY"</span>, <span class="st">"SANDGATE"</span>, <span class="st">"GYMPIE"</span>,</span>
-<span>             <span class="st">"STANLEY"</span>, <span class="st">"MAIN"</span>, <span class="st">"CHURCH"</span>, <span class="st">"STATION"</span>, <span class="st">"RIVER"</span><span class="op">)</span>, <span class="fl">4000</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ST"</span>, <span class="st">"RD"</span>, <span class="st">"AVE"</span>, <span class="st">"TCE"</span>, <span class="st">"PDE"</span>, <span class="st">"LANE"</span>, <span class="st">"CT"</span>, <span class="st">"CRES"</span><span class="op">)</span>, <span class="fl">4000</span>, <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">q</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"KIGN ST"</span>, <span class="st">"QUEEN SRT"</span>, <span class="st">"WICKAM TCE"</span>, <span class="st">"LOGAN RD"</span><span class="op">)</span></span>
-<span><span class="va">w</span> <span class="op">&lt;-</span> <span class="fu">fuzzy_within</span><span class="op">(</span><span class="va">q</span>, <span class="va">streets</span>, max_distance <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>query <span class="op">=</span> <span class="va">q</span><span class="op">[</span><span class="va">w</span><span class="op">$</span><span class="va">query_index</span><span class="op">]</span>, match <span class="op">=</span> <span class="va">streets</span><span class="op">[</span><span class="va">w</span><span class="op">$</span><span class="va">table_index</span><span class="op">]</span>,</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb59"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">gazetteer</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">enrol</span><span class="op">$</span><span class="va">suburb</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">typed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"RICHMOND"</span>, <span class="st">"FITZROI"</span>, <span class="st">"ST KILDAA"</span>, <span class="st">"CAMBERWEL"</span>, <span class="st">"NOWHERE"</span><span class="op">)</span></span>
+<span><span class="va">w</span> <span class="op">&lt;-</span> <span class="fu">fuzzy_within</span><span class="op">(</span><span class="va">typed</span>, <span class="va">gazetteer</span>, max_distance <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>typed <span class="op">=</span> <span class="va">typed</span><span class="op">[</span><span class="va">w</span><span class="op">$</span><span class="va">query_index</span><span class="op">]</span>, suburb <span class="op">=</span> <span class="va">gazetteer</span><span class="op">[</span><span class="va">w</span><span class="op">$</span><span class="va">table_index</span><span class="op">]</span>,</span>
 <span>           distance <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">distance</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>        query       match distance
-1     KIGN ST     KING ST        1
-2     KIGN ST     KING CT        2
-3   QUEEN SRT    QUEEN ST        1
-4   QUEEN SRT    QUEEN CT        2
-5   QUEEN SRT    QUEEN RD        2
-6  WICKAM TCE WICKHAM TCE        1
-7    LOGAN RD    LOGAN RD        0
-8    LOGAN RD   LOGAN PDE        2
-9    LOGAN RD    LOGAN ST        2
-10   LOGAN RD    LOGAN CT        2</code></pre>
+<pre><code>      typed     suburb distance
+1  RICHMOND   RICHMOND        0
+2   FITZROI    FITZROY        1
+3 ST KILDAA   ST KILDA        1
+4 CAMBERWEL CAMBERWELL        1</code></pre>
 </div>
 </div>
-<p>Results come ordered by distance, so the first row per query is the best. The result is exact – the same pairs as filtering a full <code>osa_distance_matrix()</code> – at a fraction of the cost for large tables.</p>
-<p>For names that differ by whole words – organisations with and without <code>THE</code>, <code>UNI</code> for <code>UNIVERSITY</code>, an extra department – edit distance is the wrong measure. <code>tfidf_match()</code> compares TF-IDF-weighted character n-grams, so rare, informative words dominate and common ones barely count:</p>
+<p>Results come ordered by distance, so the first row per query is the best, and <code>NOWHERE</code> returns nothing rather than a wrong answer. The result is exact – the same pairs as filtering a full <code>osa_distance_matrix()</code> – at a fraction of the cost for large tables.</p>
+<p>For names that differ by whole words – an organisation with and without <code>THE</code>, <code>UNI</code> for <code>UNIVERSITY</code>, an extra department – edit distance is the wrong measure. <code>tfidf_match()</code> compares TF-IDF-weighted character n-grams, so rare, informative words dominate and common ones barely count:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">orgs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"UNIVERSITY OF QUEENSLAND"</span>, <span class="st">"QUEENSLAND UNIVERSITY OF TECHNOLOGY"</span>,</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb61"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">orgs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"UNIVERSITY OF QUEENSLAND"</span>, <span class="st">"QUEENSLAND UNIVERSITY OF TECHNOLOGY"</span>,</span>
 <span>          <span class="st">"GRIFFITH UNIVERSITY"</span>, <span class="st">"QUEENSLAND HEALTH"</span>, <span class="st">"BRISBANE CITY COUNCIL"</span>,</span>
 <span>          <span class="st">"LOGAN CITY COUNCIL"</span>, <span class="st">"UNIVERSITY OF SYDNEY"</span><span class="op">)</span></span>
 <span><span class="va">qs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"THE UNIVERSITY OF QUEENSLAND"</span>, <span class="st">"QLD UNIVERSITY OF TECHNOLOGY"</span>,</span>
@@ -680,7 +1059,7 @@ window.Quarto = {
 4                    GRIFFITH UNI                 GRIFFITH UNIVERSITY
 5               SYDNEY UNIVERSITY                UNIVERSITY OF SYDNEY</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">tfidf_top_n</span><span class="op">(</span><span class="st">"QLD UNIVERSITY OF TECHNOLOGY"</span>, <span class="va">orgs</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb63"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">tfidf_top_n</span><span class="op">(</span><span class="st">"QLD UNIVERSITY OF TECHNOLOGY"</span>, <span class="va">orgs</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  query_index table_index     score rank
 1           1           2 0.8001508    1
@@ -688,72 +1067,90 @@ window.Quarto = {
 3           1           1 0.3249688    3</code></pre>
 </div>
 </div>
-<p>For long text – product descriptions, case notes, addresses with free-text additions – <code>minhash_pairs()</code> finds pairs whose q-gram sets probably overlap by at least <code>threshold</code> (Jaccard), using locality-sensitive hashing, and verifies each candidate exactly:</p>
+<p>For long text – product descriptions, case notes, addresses with free-text additions – <code>minhash_pairs()</code> finds pairs whose q-gram sets probably overlap by at least <code>threshold</code> (Jaccard), using locality-sensitive hashing, and verifies each candidate exactly.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">descr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Stainless steel kettle 1.7 litre with auto shut-off and boil-dry protection"</span>,</span>
-<span>           <span class="st">"Stainless steel kettle 1.7L with auto shut off and boil dry protection"</span>,</span>
-<span>           <span class="st">"Cordless stick vacuum cleaner with HEPA filter and wall mount"</span>,</span>
-<span>           <span class="st">"Cordless stick vacuum with HEPA filter, wall mount included"</span>,</span>
-<span>           <span class="st">"Cast iron frying pan 28cm pre-seasoned"</span><span class="op">)</span></span>
-<span><span class="fu">minhash_pairs</span><span class="op">(</span><span class="va">descr</span>, threshold <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb65"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">notes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Unit 4, 9 King St Brisbane - deliver to rear entrance"</span>,</span>
+<span>           <span class="st">"U4 9 King Street, Brisbane (rear entrance delivery)"</span>,</span>
+<span>           <span class="st">"12 Logan Road Woolloongabba, upstairs office"</span>,</span>
+<span>           <span class="st">"12 Logan Rd, Woolloongabba - upstairs office suite"</span>,</span>
+<span>           <span class="st">"88 Gympie Road Chermside"</span><span class="op">)</span></span>
+<span><span class="fu">minhash_pairs</span><span class="op">(</span><span class="va">notes</span>, threshold <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  x_index y_index   jaccard
-1       1       2 0.7195122
-2       3       4 0.6197183</code></pre>
+1       1       2 0.4925373
+2       3       4 0.6071429</code></pre>
 </div>
 </div>
-</section><section id="score-with-the-comparison-that-fits-the-field" class="level2" data-number="6.5"><h2 data-number="6.5" class="anchored" data-anchor-id="score-with-the-comparison-that-fits-the-field">
-<span class="header-section-number">6.5</span> Score with the comparison that fits the field</h2>
-<p>Jaro-Winkler is the standard for short names, but each kind of field has its own kind of difference:</p>
-<ul>
-<li>
+</section><section id="score-with-the-comparison-that-fits-the-field" class="level2" data-number="6.7"><h2 data-number="6.7" class="anchored" data-anchor-id="score-with-the-comparison-that-fits-the-field">
+<span class="header-section-number">6.7</span> Score with the comparison that fits the field</h2>
+<p>Jaro-Winkler is the standard for short names, but each kind of field has its own kind of difference. <a href="#sec-uc-metrics" class="quarto-xref"><span class="quarto-unresolved-ref">sec-uc-metrics</span></a> measures every comparator in the package against labelled name and address pairs and says which to reach for when; the short version is below.</p>
 <p><strong>Phonetic misspellings</strong> (<code>PH</code>/<code>F</code>, <code>C</code>/<code>K</code>) cost less under <code>editex()</code>, an edit distance whose substitution cost depends on whether the letters sound alike:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"PHILIP"</span>, <span class="st">"CATHERINE"</span>, <span class="st">"SHEPHERD"</span><span class="op">)</span></span>
-<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"FILIP"</span>, <span class="st">"KATHRYN"</span>, <span class="st">"SHEPPARD"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, levenshtein <span class="op">=</span> <span class="fu">levenshtein_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
-<span>           editex <span class="op">=</span> <span class="fu">editex_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb67"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"PHILIP"</span>, <span class="st">"CATHERINE"</span>, <span class="st">"SHEPHERD"</span>, <span class="st">"STEPHEN"</span><span class="op">)</span></span>
+<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"FILIP"</span>, <span class="st">"KATHRYN"</span>, <span class="st">"SHEPPARD"</span>, <span class="st">"STEVEN"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, levenshtein <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">levenshtein_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>           editex <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">editex_similarity</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>          a        b levenshtein    editex
-1    PHILIP    FILIP   0.6666667 0.7500000
-2 CATHERINE  KATHRYN   0.5555556 0.7222222
-3  SHEPHERD SHEPPARD   0.7500000 0.8125000</code></pre>
+<pre><code>          a        b levenshtein editex
+1    PHILIP    FILIP       0.667  0.750
+2 CATHERINE  KATHRYN       0.556  0.722
+3  SHEPHERD SHEPPARD       0.750  0.812
+4   STEPHEN   STEVEN       0.714  0.786</code></pre>
 </div>
 </div>
-</li>
-<li>
-<p><strong>Multi-word names</strong> with reordered, missing or extra words suit <code>monge_elkan()</code> (the mean best match of each word) or <code>jaro_winkler_tokens()</code>:</p>
+<p><strong>Multi-word names</strong> with reordered, missing or extra words suit <code>monge_elkan()</code> (the mean best match of each word) or <code>jaro_winkler_tokens()</code>. This is the comparison to use on a name field that was never split:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN PAUL SMITH"</span>, <span class="st">"MARY JANE O BRIEN"</span>, <span class="st">"ROBERT JONES"</span><span class="op">)</span></span>
-<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH JOHN"</span>, <span class="st">"OBRIEN MARY"</span>, <span class="st">"BOB JONES"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, jaro_winkler <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>,</span>
-<span>           monge_elkan <span class="op">=</span> <span class="fu">monge_elkan</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>, tokens <span class="op">=</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb69"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN PAUL SMITH"</span>, <span class="st">"MARY JANE O BRIEN"</span>, <span class="st">"ROBERT JONES"</span>, <span class="st">"LI WEI CHEN"</span><span class="op">)</span></span>
+<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH JOHN"</span>, <span class="st">"OBRIEN MARY"</span>, <span class="st">"BOB JONES"</span>, <span class="st">"CHEN LI WEI"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>,</span>
+<span>           jaro_winkler <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>           monge_elkan  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">monge_elkan</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>           tokens       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>                  a           b jaro_winkler monge_elkan    tokens
-1   JOHN PAUL SMITH  SMITH JOHN    0.5000000   0.6666667 0.6666667
-2 MARY JANE O BRIEN OBRIEN MARY    0.5659537   0.7986111 0.5666667
-3      ROBERT JONES   BOB JONES    0.7060185   0.7888889 0.7500000</code></pre>
+<pre><code>                  a           b jaro_winkler monge_elkan tokens
+1   JOHN PAUL SMITH  SMITH JOHN        0.500       0.667  0.667
+2 MARY JANE O BRIEN OBRIEN MARY        0.566       0.799  0.567
+3      ROBERT JONES   BOB JONES        0.706       0.789  0.750
+4       LI WEI CHEN CHEN LI WEI        0.570       1.000  1.000</code></pre>
 </div>
 </div>
-</li>
-<li>
+<p>Plain Jaro-Winkler is the wrong tool on every row here. <code>monge_elkan()</code> holds up best when a word is <em>missing</em> (<code>JOHN PAUL SMITH</code> against <code>SMITH JOHN</code>) or replaced by a nickname (<code>ROBERT</code> / <code>BOB</code>), because it scores each word against its own best partner and averages; <code>jaro_winkler_tokens()</code> is the stronger of the two on a clean reordering, and it also folds punctuation and spacing, which is what rescues <code>O BRIEN</code> / <code>OBRIEN</code>. Neither recovers a name whose words were both reordered <em>and</em> split differently — row 2 — which is the case for comparing the parsed <code>surname</code> and <code>given_name</code> fields separately instead.</p>
 <p><strong>One string inside another</strong> – a street address inside a full address line – is local alignment: <code>smith_waterman()</code> scores the best-matching substring, and <code>lcs_str()</code> returns the longest common substring:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">smith_waterman</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"9 KING ST"</span>, <span class="st">"9 KING ST"</span><span class="op">)</span>,</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb71"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">smith_waterman</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"9 KING ST"</span>, <span class="st">"9 KING ST"</span><span class="op">)</span>,</span>
 <span>               <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"UNIT 4 9 KING ST BRISBANE"</span>, <span class="st">"19 KINGS ST"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 1.0000000 0.9444444</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">lcs_str</span><span class="op">(</span><span class="st">"9 KING ST"</span>, <span class="st">"UNIT 4 9 KING ST BRISBANE"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb73"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">lcs_str</span><span class="op">(</span><span class="st">"9 KING ST"</span>, <span class="st">"UNIT 4 9 KING ST BRISBANE"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "9 KING ST"</code></pre>
 </div>
 </div>
-</li>
-</ul>
+<p><strong>A date of birth</strong> is not a string: compare the day numbers, so that 2 January and 1 January are one apart rather than two characters apart.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb75"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">d1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1985-03-14"</span>, <span class="st">"1985-03-05"</span>, <span class="st">"1985-03-15"</span>, <span class="st">"1985-03-15"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1985-03-15"</span>, <span class="st">"1985-05-03"</span>, <span class="st">"1986-03-15"</span>, <span class="st">"1985-03-15"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># date_parts() splits both sides in one pass, which is cheaper than</span></span>
+<span><span class="co"># formatting them and much cheaper than three format() calls each.</span></span>
+<span><span class="va">pa</span> <span class="op">&lt;-</span> <span class="fu">date_parts</span><span class="op">(</span><span class="va">d1</span><span class="op">)</span></span>
+<span><span class="va">pb</span> <span class="op">&lt;-</span> <span class="fu">date_parts</span><span class="op">(</span><span class="va">d2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">d1</span>, <span class="va">d2</span>,</span>
+<span>           days_apart <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">d1</span> <span class="op">-</span> <span class="va">d2</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>           transposed <span class="op">=</span> <span class="va">pa</span><span class="op">$</span><span class="va">year</span> <span class="op">==</span> <span class="va">pb</span><span class="op">$</span><span class="va">year</span> <span class="op">&amp;</span> <span class="va">pa</span><span class="op">$</span><span class="va">day</span> <span class="op">==</span> <span class="va">pb</span><span class="op">$</span><span class="va">month</span> <span class="op">&amp;</span></span>
+<span>                        <span class="va">pa</span><span class="op">$</span><span class="va">month</span> <span class="op">==</span> <span class="va">pb</span><span class="op">$</span><span class="va">day</span> <span class="op">&amp;</span> <span class="va">pa</span><span class="op">$</span><span class="va">day</span> <span class="op">!=</span> <span class="va">pa</span><span class="op">$</span><span class="va">month</span>,</span>
+<span>           same_year_month <span class="op">=</span> <span class="va">pa</span><span class="op">$</span><span class="va">year</span> <span class="op">==</span> <span class="va">pb</span><span class="op">$</span><span class="va">year</span> <span class="op">&amp;</span> <span class="va">pa</span><span class="op">$</span><span class="va">month</span> <span class="op">==</span> <span class="va">pb</span><span class="op">$</span><span class="va">month</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          d1         d2 days_apart transposed same_year_month
+1 1985-03-14 1985-03-15          1      FALSE            TRUE
+2 1985-03-05 1985-05-03         59       TRUE           FALSE
+3 1985-03-15 1986-03-15        365      FALSE           FALSE
+4 1985-03-15 1985-03-15          0      FALSE            TRUE</code></pre>
+</div>
+</div>
 <p>When a pair goes to clerical review, <code>edit_ops()</code> explains a distance as the edits themselves:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">edit_ops</span><span class="op">(</span><span class="st">"JONATHAN"</span>, <span class="st">"JONHATAN"</span>, type <span class="op">=</span> <span class="st">"opcodes"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb77"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">edit_ops</span><span class="op">(</span><span class="st">"JONATHAN"</span>, <span class="st">"JONHATAN"</span>, type <span class="op">=</span> <span class="st">"opcodes"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  pair   type a_start a_end b_start b_end
 1    1  equal       1     3       1     3
@@ -763,151 +1160,82 @@ window.Quarto = {
 5    1  equal       7     8       7     8</code></pre>
 </div>
 </div>
-</section><section id="from-matched-pairs-to-entities" class="level2" data-number="6.6"><h2 data-number="6.6" class="anchored" data-anchor-id="from-matched-pairs-to-entities">
-<span class="header-section-number">6.6</span> From matched pairs to entities</h2>
-<p>Deduplication needs one identifier per entity, not a list of pairs. <code>cluster_pairs()</code> joins records connected by any chain of matches (the connected components of the match graph):</p>
+</section><section id="from-matched-pairs-to-entities" class="level2" data-number="6.8"><h2 data-number="6.8" class="anchored" data-anchor-id="from-matched-pairs-to-entities">
+<span class="header-section-number">6.8</span> From matched pairs to entities</h2>
+<p>Deduplication needs one identifier per entity, not a list of pairs. <code>cluster_pairs()</code> joins records connected by any chain of matches:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># 1 matches 2, 2 matches 3, 4 matches 5; record 6 matches nothing</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb79"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># 1 matches 2, 2 matches 3, 4 matches 5; record 6 matches nothing</span></span>
 <span><span class="fu">cluster_pairs</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">5</span><span class="op">)</span>, n <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 1 1 1 2 2 3</code></pre>
 </div>
 </div>
-<p>Chaining is also the risk: if 1 and 3 do not match directly, the cluster rests on record 2. Look at the largest clusters before trusting them, or raise the threshold for pairs that join large clusters.</p>
-</section><section id="end-to-end-deduplicating-100000-records" class="level2" data-number="6.7"><h2 data-number="6.7" class="anchored" data-anchor-id="end-to-end-deduplicating-100000-records">
-<span class="header-section-number">6.7</span> End to end: deduplicating 100,000 records</h2>
-<p>To see the whole pipeline at a useful scale, build a file of 80,000 people in which a quarter appear a second time with one error each: a typo in the surname or given name, a date of birth one day out, or a missing postcode.</p>
+<p>It takes the pair table directly, so the usual last line of a deduplication is one call. On the stacked extract above:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
-<span><span class="va">surnames</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SMITH"</span>, <span class="st">"JONES"</span>, <span class="st">"WILLIAMS"</span>, <span class="st">"BROWN"</span>, <span class="st">"WILSON"</span>, <span class="st">"TAYLOR"</span>, <span class="st">"JOHNSON"</span>,</span>
-<span>    <span class="st">"WHITE"</span>, <span class="st">"MARTIN"</span>, <span class="st">"ANDERSON"</span>, <span class="st">"THOMPSON"</span>, <span class="st">"NGUYEN"</span>, <span class="st">"THOMAS"</span>, <span class="st">"WALKER"</span>, <span class="st">"HARRIS"</span>,</span>
-<span>    <span class="st">"LEE"</span>, <span class="st">"RYAN"</span>, <span class="st">"ROBINSON"</span>, <span class="st">"KELLY"</span>, <span class="st">"KING"</span>, <span class="st">"DAVIS"</span>, <span class="st">"WRIGHT"</span>, <span class="st">"EVANS"</span>, <span class="st">"ROBERTS"</span>,</span>
-<span>    <span class="st">"GREEN"</span>, <span class="st">"HALL"</span>, <span class="st">"WOOD"</span>, <span class="st">"JACKSON"</span>, <span class="st">"CLARKE"</span>, <span class="st">"PATEL"</span>, <span class="st">"KHAN"</span>, <span class="st">"LEWIS"</span>, <span class="st">"JAMES"</span>,</span>
-<span>    <span class="st">"PHILLIPS"</span>, <span class="st">"MITCHELL"</span>, <span class="st">"CAMPBELL"</span>, <span class="st">"MORRIS"</span>, <span class="st">"YOUNG"</span>, <span class="st">"SCOTT"</span>, <span class="st">"MURPHY"</span>, <span class="st">"COOK"</span>,</span>
-<span>    <span class="st">"BAKER"</span>, <span class="st">"TURNER"</span>, <span class="st">"COOPER"</span>, <span class="st">"HILL"</span>, <span class="st">"WARD"</span>, <span class="st">"HUGHES"</span>, <span class="st">"MOORE"</span>, <span class="st">"CHEN"</span>, <span class="st">"WANG"</span>,</span>
-<span>    <span class="st">"SINGH"</span>, <span class="st">"OBRIEN"</span>, <span class="st">"MCDONALD"</span>, <span class="st">"STEWART"</span>, <span class="st">"MACDONALD"</span>, <span class="st">"SULLIVAN"</span>, <span class="st">"MURRAY"</span>,</span>
-<span>    <span class="st">"WATSON"</span>, <span class="st">"PRICE"</span>, <span class="st">"BELL"</span>, <span class="st">"ALLEN"</span><span class="op">)</span></span>
-<span><span class="va">given</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"JOHN"</span>, <span class="st">"MARY"</span>, <span class="st">"ROBERT"</span>, <span class="st">"JENNIFER"</span>, <span class="st">"MICHAEL"</span>, <span class="st">"LINDA"</span>, <span class="st">"WILLIAM"</span>,</span>
-<span>    <span class="st">"ELIZABETH"</span>, <span class="st">"DAVID"</span>, <span class="st">"SUSAN"</span>, <span class="st">"JAMES"</span>, <span class="st">"MARGARET"</span>, <span class="st">"PETER"</span>, <span class="st">"SARAH"</span>, <span class="st">"ANDREW"</span>,</span>
-<span>    <span class="st">"JESSICA"</span>, <span class="st">"DANIEL"</span>, <span class="st">"EMILY"</span>, <span class="st">"MATTHEW"</span>, <span class="st">"CHLOE"</span>, <span class="st">"THOMAS"</span>, <span class="st">"OLIVIA"</span>, <span class="st">"JOSHUA"</span>,</span>
-<span>    <span class="st">"EMMA"</span>, <span class="st">"RYAN"</span>, <span class="st">"GRACE"</span>, <span class="st">"BENJAMIN"</span>, <span class="st">"SOPHIE"</span>, <span class="st">"LUKE"</span>, <span class="st">"HANNAH"</span>, <span class="st">"KYLE"</span>, <span class="st">"ZOE"</span>,</span>
-<span>    <span class="st">"NATHAN"</span>, <span class="st">"AMY"</span>, <span class="st">"SAMUEL"</span>, <span class="st">"LUCY"</span><span class="op">)</span></span>
-<span><span class="va">n_people</span> <span class="op">&lt;-</span> <span class="fl">80000</span></span>
-<span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
-<span>    person   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq_len</a></span><span class="op">(</span><span class="va">n_people</span><span class="op">)</span>,</span>
-<span>    surname  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">surnames</span>, <span class="va">n_people</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>    given    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">given</span>, <span class="va">n_people</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>    dob      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="st">"1940-01-01"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">25000</span>, <span class="va">n_people</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>    postcode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"%04d"</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">800</span><span class="op">:</span><span class="fl">899</span>, <span class="fl">2000</span><span class="op">:</span><span class="fl">4999</span><span class="op">)</span>, <span class="va">n_people</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># One random substitution, deletion or transposition per string</span></span>
-<span><span class="va">typo</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">k</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nchar.html">nchar</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span></span>
-<span>    <span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">floor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html">runif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="va">k</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span></span>
-<span>    <span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html">runif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="va">out</span> <span class="op">&lt;-</span> <span class="va">s</span></span>
-<span>    <span class="va">sub_</span> <span class="op">&lt;-</span> <span class="va">r</span> <span class="op">&lt;</span> <span class="fl">0.4</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">out</span><span class="op">[</span><span class="va">sub_</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">sub_</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">sub_</span><span class="op">]</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">LETTERS</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">sub_</span><span class="op">)</span>, <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>    <span class="va">del</span> <span class="op">&lt;-</span> <span class="va">r</span> <span class="op">&gt;=</span> <span class="fl">0.4</span> <span class="op">&amp;</span> <span class="va">r</span> <span class="op">&lt;</span> <span class="fl">0.7</span></span>
-<span>    <span class="va">out</span><span class="op">[</span><span class="va">del</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">del</span><span class="op">]</span>, <span class="fl">1</span>, <span class="va">i</span><span class="op">[</span><span class="va">del</span><span class="op">]</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">del</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">del</span><span class="op">]</span> <span class="op">+</span> <span class="fl">1</span>, <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="va">tr</span> <span class="op">&lt;-</span> <span class="va">r</span> <span class="op">&gt;=</span> <span class="fl">0.7</span> <span class="op">&amp;</span> <span class="va">i</span> <span class="op">&lt;</span> <span class="va">k</span></span>
-<span>    <span class="va">out</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="fl">1</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">+</span> <span class="fl">1</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span>,</span>
-<span>                      <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">s</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span>, <span class="va">i</span><span class="op">[</span><span class="va">tr</span><span class="op">]</span> <span class="op">+</span> <span class="fl">2</span>, <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="va">out</span></span>
-<span><span class="op">}</span></span>
-<span><span class="va">copies</span> <span class="op">&lt;-</span> <span class="va">truth</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="va">n_people</span>, <span class="va">n_people</span> <span class="op">/</span> <span class="fl">4</span><span class="op">)</span>, <span class="op">]</span></span>
-<span><span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html">runif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">copies</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">copies</span><span class="op">$</span><span class="va">surname</span><span class="op">[</span><span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.3</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">typo</span><span class="op">(</span><span class="va">copies</span><span class="op">$</span><span class="va">surname</span><span class="op">[</span><span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.3</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="va">copies</span><span class="op">$</span><span class="va">given</span><span class="op">[</span><span class="va">e</span> <span class="op">&gt;=</span> <span class="fl">0.3</span> <span class="op">&amp;</span> <span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.5</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">typo</span><span class="op">(</span><span class="va">copies</span><span class="op">$</span><span class="va">given</span><span class="op">[</span><span class="va">e</span> <span class="op">&gt;=</span> <span class="fl">0.3</span> <span class="op">&amp;</span> <span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.5</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="va">off</span> <span class="op">&lt;-</span> <span class="va">e</span> <span class="op">&gt;=</span> <span class="fl">0.5</span> <span class="op">&amp;</span> <span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.65</span></span>
-<span><span class="va">copies</span><span class="op">$</span><span class="va">dob</span><span class="op">[</span><span class="va">off</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">copies</span><span class="op">$</span><span class="va">dob</span><span class="op">[</span><span class="va">off</span><span class="op">]</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">off</span><span class="op">)</span>, <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">copies</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">e</span> <span class="op">&gt;=</span> <span class="fl">0.65</span> <span class="op">&amp;</span> <span class="va">e</span> <span class="op">&lt;</span> <span class="fl">0.8</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA</span></span>
-<span></span>
-<span><span class="va">records</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind</a></span><span class="op">(</span><span class="va">truth</span>, <span class="va">copies</span><span class="op">)</span></span>
-<span><span class="va">records</span> <span class="op">&lt;-</span> <span class="va">records</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">records</span><span class="op">)</span><span class="op">)</span>, <span class="op">]</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">records</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb81"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="va">dup</span><span class="op">[</span><span class="va">dup</span><span class="op">$</span><span class="va">given</span> <span class="op">&gt;</span> <span class="fl">0.85</span> <span class="op">&amp;</span> <span class="va">dup</span><span class="op">$</span><span class="va">surname</span> <span class="op">&gt;</span> <span class="fl">0.85</span>, <span class="op">]</span></span>
+<span><span class="va">entity</span> <span class="op">&lt;-</span> <span class="fu">cluster_pairs</span><span class="op">(</span><span class="va">accepted</span>, n <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">combined</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>records <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span>, entities <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span>,</span>
+<span>  merged <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 100000</code></pre>
+<pre><code> records entities   merged 
+   35000    24767    10233 </code></pre>
 </div>
-</div>
-<p>Three blocking passes, each robust to a different kind of error: a phonetic surname with the date of birth (survives most surname typos), the given name with the date of birth (survives any surname change), and the exact names with the postcode (survives date errors):</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span></span>
-<span>    <span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu">block_pairs</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
-<span>        surname_dob <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">surname</span><span class="op">)</span>, <span class="va">records</span><span class="op">$</span><span class="va">dob</span><span class="op">)</span>,</span>
-<span>        given_dob   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">given</span>, <span class="va">records</span><span class="op">$</span><span class="va">dob</span><span class="op">)</span>,</span>
-<span>        names_pc    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">surname</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html">substr</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">given</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
-<span>                            <span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">)</span></span>
-<span>    <span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>   user  system elapsed 
-   0.39    0.11    0.48 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 35763</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>pass <span class="op">=</span> <span class="va">pairs</span><span class="op">$</span><span class="va">pass</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>pass
-    1     2     3 
-17395  8201 10167 </code></pre>
-</div>
-</div>
-<p>Score each candidate on every field, weight them, and keep pairs above a threshold:</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="va">i</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">$</span><span class="va">x_index</span></span>
-<span>    <span class="va">j</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">$</span><span class="va">y_index</span></span>
-<span>    <span class="va">surname_sim</span> <span class="op">&lt;-</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">surname</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="va">records</span><span class="op">$</span><span class="va">surname</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span></span>
-<span>    <span class="va">given_sim</span>   <span class="op">&lt;-</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">given</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="va">records</span><span class="op">$</span><span class="va">given</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span></span>
-<span>    <span class="va">dob_agree</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">abs</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">dob</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">-</span> <span class="va">records</span><span class="op">$</span><span class="va">dob</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span> <span class="op">&lt;=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span>    <span class="va">pc_agree</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span>, <span class="fl">0.5</span>,</span>
-<span>                          <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">==</span> <span class="va">records</span><span class="op">$</span><span class="va">postcode</span><span class="op">[</span><span class="va">j</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="va">pairs</span><span class="op">$</span><span class="va">score</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">surname_sim</span> <span class="op">+</span> <span class="va">given_sim</span> <span class="op">+</span> <span class="va">dob_agree</span> <span class="op">+</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="va">pc_agree</span><span class="op">)</span> <span class="op">/</span> <span class="fl">4.5</span></span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>   user  system elapsed 
-      0       0       0 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">matches</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">[</span><span class="va">pairs</span><span class="op">$</span><span class="va">score</span> <span class="op">&gt;=</span> <span class="fl">0.9</span>, <span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<p>Then cluster the matches into entities:</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span><span class="va">entity</span> <span class="op">&lt;-</span> <span class="fu">cluster_pairs</span><span class="op">(</span><span class="va">matches</span>, n <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">records</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>   user  system elapsed 
-      0       0       0 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>entities <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span>, true_people <span class="op">=</span> <span class="va">n_people</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>   entities true_people 
-      80045       80000 </code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>cluster_size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tabulate.html">tabulate</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb83"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>cluster_size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tabulate.html">tabulate</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>cluster_size
-    1     2     3     4 
-60094 19948     2     1 </code></pre>
+    1     2     3     4     5     6     7     8     9    10    11    12    13 
+19713  2485  1248   676   325   158    83    33    29     8     3     1     5 </code></pre>
 </div>
 </div>
-<p>Because the data are synthetic we know the truth, so we can measure how well each stage did:</p>
+<p>Chaining is the risk, and it is visible right there. The stacked extract holds each shared person exactly twice, so a perfect deduplication would leave clusters of size 1 and 2 only. The clusters of eight and thirteen are not people recorded thirteen times; they are chains, where A matched B, B matched C, and nothing ever compared A with C. Three defences, in order of how much work they are:</p>
+<ul>
+<li>resolve the pairs one-to-one before clustering, keeping each record’s single best partner (<a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a> does this);</li>
+<li>raise the threshold for a pair that would join two already-large clusters;</li>
+<li>review the largest clusters by hand. There are few of them, and they are where the wrong merges live.</li>
+</ul>
+<p>A cluster is only as sound as its weakest accepted pair, so it is the <em>minimum</em> pair score inside a large cluster that is worth looking at, not the average.</p>
+</section><section id="at-scale" class="level2" data-number="6.9"><h2 data-number="6.9" class="anchored" data-anchor-id="at-scale">
+<span class="header-section-number">6.9</span> At scale</h2>
+<p>The whole of the linkage above – four blocking passes and seven comparators over 20,000 enrolment records and 15,000 claims – is one <code>rLink()</code> call. The same call on ten times the data:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb48"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">same_person</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="va">records</span><span class="op">$</span><span class="va">person</span><span class="op">[</span><span class="va">a</span><span class="op">]</span> <span class="op">==</span> <span class="va">records</span><span class="op">$</span><span class="va">person</span><span class="op">[</span><span class="va">b</span><span class="op">]</span></span>
-<span><span class="va">true_pairs</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Special.html">choose</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">person</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span></span>
-<span>    blocking_recall <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu">same_person</span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">x_index</span>, <span class="va">pairs</span><span class="op">$</span><span class="va">y_index</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="va">true_pairs</span>,</span>
-<span>    precision       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html">mean</a></span><span class="op">(</span><span class="fu">same_person</span><span class="op">(</span><span class="va">matches</span><span class="op">$</span><span class="va">x_index</span>, <span class="va">matches</span><span class="op">$</span><span class="va">y_index</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    recall          <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu">same_person</span><span class="op">(</span><span class="va">matches</span><span class="op">$</span><span class="va">x_index</span>, <span class="va">matches</span><span class="op">$</span><span class="va">y_index</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="va">true_pairs</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb85"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">big</span> <span class="op">&lt;-</span> <span class="fu">people_files</span><span class="op">(</span>n_enrol <span class="op">=</span> <span class="fl">200000</span>, overlap <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span></span>
+<span><span class="va">big_claims</span> <span class="op">&lt;-</span> <span class="va">big</span><span class="op">$</span><span class="va">claims</span></span>
+<span><span class="va">nm</span> <span class="op">&lt;-</span> <span class="fu">fsquish</span><span class="op">(</span><span class="fu">fupper</span><span class="op">(</span><span class="va">big_claims</span><span class="op">$</span><span class="va">patient_name</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">rs</span> <span class="op">&lt;-</span> <span class="fu">fsquish</span><span class="op">(</span><span class="fu">freplace_tokens</span><span class="op">(</span><span class="fu">ftrimws</span><span class="op">(</span><span class="fu">fsplit_field</span><span class="op">(</span><span class="va">nm</span>, <span class="st">","</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                              <span class="va">titles</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="st">""</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">titles</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">big_std</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    given_name <span class="op">=</span> <span class="fu">fsplit_field</span><span class="op">(</span><span class="va">rs</span>, <span class="st">" "</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>    surname    <span class="op">=</span> <span class="fu">ftrimws</span><span class="op">(</span><span class="fu">fsplit_field</span><span class="op">(</span><span class="va">nm</span>, <span class="st">","</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    dob        <span class="op">=</span> <span class="fu">fas.Date</span><span class="op">(</span><span class="va">big_claims</span><span class="op">$</span><span class="va">date_of_birth</span>, format <span class="op">=</span> <span class="st">"dmy"</span><span class="op">)</span>,</span>
+<span>    postcode   <span class="op">=</span> <span class="fu">fpad</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">big_claims</span><span class="op">$</span><span class="va">postcode</span><span class="op">)</span>, <span class="fl">4</span>, pad <span class="op">=</span> <span class="st">"0"</span><span class="op">)</span>,</span>
+<span>    stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">big_enrol</span> <span class="op">&lt;-</span> <span class="va">big</span><span class="op">$</span><span class="va">enrol</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html">system.time</a></span><span class="op">(</span></span>
+<span>    <span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">rLink</span><span class="op">(</span><span class="va">big_enrol</span>, <span class="va">big_std</span>,</span>
+<span>        block <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>, <span class="va">dob</span><span class="op">)</span>,</span>
+<span>                     <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">given_name</span><span class="op">)</span>, <span class="va">dob</span><span class="op">)</span>,</span>
+<span>                     <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>, <span class="fu">fsubstr</span><span class="op">(</span><span class="va">given_name</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, <span class="va">postcode</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>surname <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>                       given   <span class="op">=</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">given_name</span><span class="op">)</span>,</span>
+<span>                       dob     <span class="op">=</span> <span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="va">a</span> <span class="op">==</span> <span class="va">b</span><span class="op">)</span><span class="op">(</span><span class="va">dob</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>blocking_recall       precision          recall 
-      1.0000000       0.9997996       0.9976000 </code></pre>
+<pre><code>   user  system elapsed 
+   1.30    0.04    1.07 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb87"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>records_a <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">big_enrol</span><span class="op">)</span>, records_b <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">big_std</span><span class="op">)</span>,</span>
+<span>  pairs_possible <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">big_enrol</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">big_std</span><span class="op">)</span>,</span>
+<span>  pairs_compared <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span>,</span>
+<span>  blocking_recall <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu">same_person</span><span class="op">(</span><span class="va">big</span>, <span class="va">out</span><span class="op">$</span><span class="va">index_1</span>, <span class="va">out</span><span class="op">$</span><span class="va">index_2</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span></span>
+<span>                          <span class="fu">true_pair_count</span><span class="op">(</span><span class="va">big</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      records_a       records_b  pairs_possible  pairs_compared blocking_recall 
+         200000          150000     30000000000          179127               1 </code></pre>
 </div>
 </div>
-<p>Blocking reduced five billion possible pairs to a few tens of thousands without losing a true match, and the whole run takes well under a second. The weights and threshold here are picked by hand; on real data, tune them against a labelled sample, or estimate them with a probabilistic model (the <code>fastLink</code> and <code>reclin2</code> packages fit Fellegi-Sunter weights) and use <code>fast.string</code> for the steps around it.</p>
+<p><code>keep = character()</code> carries none of the input columns onto the output, which is what you want once the pipeline is no longer being read by eye: the indices and the scores are enough to join back.</p>
 
 
 </section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
@@ -1328,8 +1656,8 @@ window.Quarto = {
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./uc-privacy.html" class="pagination-link" aria-label="Pseudonymise identifiers">
-        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./uc-metrics.html" class="pagination-link" aria-label="Choose a string metric">
+        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

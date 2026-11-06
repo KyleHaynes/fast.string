@@ -53,6 +53,7 @@ mra_compare(c("Byrne", "Smith", "Michael"), c("Boern", "Smyth", "Mike"))
 Other phonetic codes:
 \code{\link[=caverphone]{caverphone()}},
 \code{\link[=cologne]{cologne()}},
+\code{\link[=daitch_mokotoff]{daitch_mokotoff()}},
 \code{\link[=double_metaphone]{double_metaphone()}},
 \code{\link[=metaphone]{metaphone()}},
 \code{\link{name_codes}},

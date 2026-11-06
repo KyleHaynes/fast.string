@@ -5,10 +5,10 @@
 \title{Concatenate separate year/month/day fields into a formatted date string.}
 \usage{
 format_date_parts(
-  year,
-  month,
-  day,
-  format = c("iso", "compact", "dmy", "ymd_slash"),
+  year = 1970L,
+  month = 1L,
+  day = 1L,
+  format = c("iso", "compact", "dmy", "ymd_slash", "y", "m", "d", "y-m", "m-d"),
   nthreads = NULL
 )
 }
@@ -17,17 +17,22 @@ format_date_parts(
 \code{NA}, non-integer-coercible, or out-of-width values (year outside
 0-9999, or month/day outside 0-99) produce \code{NA} for that element.
 There is no calendar validation — \code{month = 13} or \code{day = 99} are
-formatted as given, as long as they fit the field width.}
+formatted as given, as long as they fit the field width. A partial
+\code{format} only reads, recycles and checks the fields it writes, so
+those are the only ones that have to be supplied.}
 
-\item{format}{One of \code{"iso"} (YYYY-MM-DD), \code{"compact"} (YYYYMMDD),
-\code{"dmy"} (DD/MM/YYYY), or \code{"ymd_slash"} (YYYY/MM/DD).}
+\item{format}{One of nine fixed layouts: the full dates \code{"iso"}
+(YYYY-MM-DD), \code{"compact"} (YYYYMMDD), \code{"dmy"} (DD/MM/YYYY) and
+\code{"ymd_slash"} (YYYY/MM/DD), or the partial \code{"y"} (YYYY), \code{"m"} (MM),
+\code{"d"} (DD), \code{"y-m"} (YYYY-MM) and \code{"m-d"} (MM-DD). Every field is
+zero-padded to a fixed width, so March is always \code{"03"}.}
 
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
 }
 \value{
-Character vector recycled to the common length of \code{year},
-\code{month}, and \code{day}.
+Character vector recycled to the common length of the fields
+\code{format} writes.
 }
 \description{
 Pure string-building (zero-padding plus punctuation): no calendar math
@@ -39,6 +44,9 @@ columns.
 \examples{
 format_date_parts(c(2024, 1999), c(6, 12), c(18, 31))
 format_date_parts(2024, 6, 18, format = "dmy")
+
+# A partial layout needs only its own fields.
+format_date_parts(month = c(6, 12), day = c(18, 31), format = "m-d")
 }
 \seealso{
 \code{\link[=date_parts]{date_parts()}} for the reverse direction.

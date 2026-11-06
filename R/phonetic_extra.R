@@ -123,8 +123,10 @@ mra_compare <- function(a, b, nthreads = NULL) {
 #'
 #' `statcan()`, `lein()`, `phonex()` and `roger_root()` reproduce the
 #' `phonics` package's implementations (James P. Howard II, BSD-2-Clause)
-#' rule for rule, quirks included: a name whose Phonex or Roger Root code
-#' would be all zeros gets `""`. Unlike `phonics`, they ignore characters
+#' rule for rule, quirks included: a name whose Phonex code would be all
+#' zeros gets `""`, and `roger_root()` reads the name left to right taking
+#' the longest rule that starts at each position, so `"SCHMIDT"` is `"SCH"`
+#' rather than the `"CH"` inside it. Unlike `phonics`, they ignore characters
 #' other than letters instead of returning `NA` for them, fold accented
 #' letters (`phonics` folds only some upper-case ones), and pad `lein()` to
 #' the full `max_length`. `onca()` uses this package's [nysiis()], which

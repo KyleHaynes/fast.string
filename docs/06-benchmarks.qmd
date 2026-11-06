@@ -609,11 +609,14 @@ record_new("fextract_all", "stringi::stri_extract_all_regex", t_stri, t_fast)
 
 amounts <- sprintf("$%s.%02d", formatC(sample.int(1e6, n_new, TRUE), big.mark = ",",
                                        format = "d"), sample.int(99, n_new, TRUE))
-t_readr <- system.time(readr::parse_number(amounts))["elapsed"]
 t_base  <- system.time(as.numeric(gsub("[^0-9.]", "", amounts)))["elapsed"]
 t_fast  <- system.time(fparse_number(amounts))["elapsed"]
-record_new("fparse_number", "readr::parse_number", t_readr, t_fast)
 record_new("fparse_number", "as.numeric(gsub())", t_base, t_fast)
+# readr is not a dependency; benchmark against it only where it is present.
+if (requireNamespace("readr", quietly = TRUE)) {
+    t_readr <- system.time(readr::parse_number(amounts))["elapsed"]
+    record_new("fparse_number", "readr::parse_number", t_readr, t_fast)
+}
 
 phone <- sprintf("04%02d %03d %03d", sample.int(99, n_new, TRUE),
                  sample.int(999, n_new, TRUE), sample.int(999, n_new, TRUE))

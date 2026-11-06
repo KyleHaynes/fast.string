@@ -46,6 +46,7 @@ double_metaphone(c("Smith", "Schmidt", "Catherine", "Kathryn"))
 Other phonetic codes:
 \code{\link[=caverphone]{caverphone()}},
 \code{\link[=cologne]{cologne()}},
+\code{\link[=daitch_mokotoff]{daitch_mokotoff()}},
 \code{\link[=metaphone]{metaphone()}},
 \code{\link[=mra_encode]{mra_encode()}},
 \code{\link{name_codes}},

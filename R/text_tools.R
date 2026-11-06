@@ -209,7 +209,7 @@ url_decode <- function(x, plus = FALSE, nthreads = NULL) {
     .copy_names(fast_url_decode_impl(x, plus, .as_nthreads(nthreads)), x)
 }
 
-#' Fast HTML entity decoding
+#' Fast HTML entity decoding and escaping
 #'
 #' Replaces HTML character references -- named ones such as `&amp;`,
 #' `&eacute;` and `&nbsp;`, and numeric ones such as `&#233;` and `&#xE9;`
@@ -230,7 +230,16 @@ url_decode <- function(x, plus = FALSE, nthreads = NULL) {
 #' are dropped. Anything that is not a reference is left alone. The result
 #' is UTF-8.
 #'
+#' `html_escape()` is the other direction, for putting a value R produced
+#' into an HTML page: `&`, `<` and `>` become `&amp;`, `&lt;` and `&gt;`.
+#' With `attribute = TRUE` the quotes and the line breaks are escaped as
+#' well (`&quot;`, `&#39;`, `&#13;`, `&#10;`), which is what a value placed
+#' inside an HTML attribute needs. It escapes exactly what
+#' `htmltools::htmlEscape()` does, without the dependency, and in parallel.
+#'
 #' @param x Character vector. `NA` elements return `NA`.
+#' @param attribute Logical. Escape the quotes and the line breaks too, for
+#'   a value that goes inside an HTML attribute.
 #' @param nthreads Positive integer per-call thread cap, or `NULL` to use the
 #'   RcppParallel default. `1` forces serial execution.
 #' @return Character vector the same length as `x`, with `names(x)` kept.
@@ -239,10 +248,26 @@ url_decode <- function(x, plus = FALSE, nthreads = NULL) {
 #' @examples
 #' html_unescape(c("Fish &amp; Chips", "caf&eacute; &#8211; open",
 #'                 "&lt;b&gt;bold&lt;/b&gt;", "AT&T", NA))
+#'
+#' html_escape(c("Fish & Chips", "<b>bold</b>", NA))
+#' html_escape("say \"hi\"", attribute = TRUE)
+#'
+#' # The two are inverses for the characters html_escape() writes.
+#' html_unescape(html_escape("1 < 2 & 3 > 2"))
 #' @export
 html_unescape <- function(x, nthreads = NULL) {
     x <- .character_x(x)
     .copy_names(fast_html_unescape_impl(x, .as_nthreads(nthreads)), x)
+}
+
+#' @rdname html_unescape
+#' @export
+html_escape <- function(x, attribute = FALSE, nthreads = NULL) {
+    x <- .character_x(x)
+    .check_flag(attribute, "attribute")
+    .copy_names(
+        fast_html_escape_impl(x, attribute, .as_nthreads(nthreads)), x
+    )
 }
 
 .check_flag <- function(value, name) {
