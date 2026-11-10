@@ -1,6 +1,6 @@
 # The review artifact: a durable, human-readable record of the judgements an
 # analyst made over a set of candidate pairs, written by rLink_inspect() and
-# read back by rLink_review().
+# read back by read_decisions().
 #
 # The decision log is append-only. It is an array of decision *events*, not a
 # map from pair to verdict, and that is the whole design. A map could not show
@@ -13,7 +13,7 @@
 # function of plain data, so the audit trail is testable without a browser and
 # usable from the console by someone who never opens the app.
 
-.review_schema <- "fast.string/rLink_review"
+.review_schema <- "fast.string/decisions"
 .review_format <- 1L
 .review_sep <- "\u001f"
 
@@ -54,11 +54,19 @@
 # pairs but need not change them -- is not reported as a change.
 .review_fingerprints <- function(x, scores, pair_id) {
     ids <- as.character(x[[pair_id]])
-    o <- order(ids)
+    # Radix, for two reasons. It is ~50x faster than the default on a few
+    # hundred thousand ids, and it sorts by bytes rather than by the session's
+    # collation -- so the same pairs fingerprint the same on every machine. A
+    # locale-sensitive sort would have told a reviewer on a differently
+    # configured machine that the data had changed when it had not.
+    o <- order(ids, method = "radix")
+    # as.character() renders a double to 15 significant digits and is some
+    # three orders of magnitude faster here than formatC() or sprintf(); two
+    # scores differing only beyond that are not a change any linkage decision
+    # could turn on.
     score_text <- if (!length(scores)) character() else
         do.call(paste, c(lapply(scores, function(s)
-            formatC(as.double(x[[s]]), format = "g", digits = 15)),
-            list(sep = .review_sep)))
+            as.character(as.double(x[[s]]))), list(sep = .review_sep)))
     list(pair_set = .review_fingerprint(ids[o]),
          scores = .review_fingerprint(score_text[o]),
          columns = .review_fingerprint(paste0(names(x), collapse = .review_sep)))
@@ -114,7 +122,7 @@
 
 .review_read_file <- function(path) {
     if (!file.exists(path))
-        stop(sprintf("There is no review artifact at `%s`.", path),
+        stop(sprintf("There is no decisions file at `%s`.", path),
              call. = FALSE)
     size <- file.info(path)$size
     txt <- rawToChar(readBin(path, "raw", n = size))
@@ -124,7 +132,7 @@
                      conditionMessage(cnd)), call. = FALSE))
     if (!identical(obj$schema, .review_schema))
         stop(sprintf(paste0(
-            "`%s` is not a fast.string review artifact (its schema is %s)."),
+            "`%s` is not a fast.string decisions file (its schema is %s)."),
             path, if (is.null(obj$schema)) "absent" else
                 paste0("`", obj$schema, "`")), call. = FALSE)
     version <- obj$format_version
@@ -255,18 +263,38 @@
 }
 
 
-#' Read a saved pair review
+# The R the reviewer should paste into their script so that the next run --
+# theirs or a QA reviewer's -- reproduces what they just decided by hand. A
+# review that cannot be replayed is a note in a drawer.
+.decisions_code <- function(file, expression = NULL) {
+    # Only a bare variable name is safe to put back into generated code; an
+    # expression like `pairs[review_order(pairs)]` described the subset that
+    # was on screen, not the object to apply the decisions to.
+    object <- if (!is.null(expression) && length(expression) == 1L &&
+                  !is.na(expression) &&
+                  grepl("^[.A-Za-z][._A-Za-z0-9]*$", expression))
+        expression else "pairs"
+    shown <- gsub("\\\\", "/", file)
+    c(sprintf("# Re-open this review, decisions and all:"),
+      sprintf('rLink_inspect(%s, decisions = "%s")', object, shown),
+      "",
+      "# Apply it, adding `link` and `link_reason` columns:",
+      sprintf('%s <- apply_decisions(%s, "%s")', object, object, shown))
+}
+
+
+#' Read saved pair decisions
 #'
-#' Reads the artifact that [rLink_inspect()] writes, so the judgements an
-#' analyst made can be checked, reported on, or applied to a fresh set of pairs.
-#' This is the function a second reviewer runs: it shows which thresholds were
+#' Reads the file that [rLink_inspect()] writes, so the judgements an analyst
+#' made can be checked, reported on, or applied to a fresh set of pairs. This
+#' is the function a second reviewer runs: it shows which thresholds were
 #' accepted and why, every per-pair decision and its comment, and --- where two
 #' people have reviewed the same pairs --- exactly where they disagree.
 #'
-#' The artifact's decision log is append-only, so nothing a previous reviewer
-#' recorded is ever overwritten. `$decisions` collapses that log to the current
-#' verdict per reviewer and pair, with `n_changes` counting the revisions behind
-#' it; `$events` is the log itself, which is the actual audit record.
+#' The decision log is append-only, so nothing a previous reviewer recorded is
+#' ever overwritten. `$decisions` collapses that log to the current verdict per
+#' reviewer and pair, with `n_changes` counting the revisions behind it;
+#' `$events` is the log itself, which is the actual audit record.
 #'
 #' Supplying `x` additionally answers the question a reviewer most needs
 #' answered --- *has the data moved since this review was done?* --- by
@@ -274,12 +302,13 @@
 #' reporting how many reviewed pairs have since disappeared and how many new
 #' ones have arrived undecided.
 #'
-#' @param file Path to the artifact written by [rLink_inspect()].
+#' @param file Path to the file written by [rLink_inspect()].
 #' @param x Optional candidate pairs, normally a fresh [rLink()] result, to
-#'   check the review against. Adds `$status`.
+#'   check the decisions against. Adds `$status`.
 #' @param reviewer Optional reviewer to restrict `$decisions` and `$events` to.
 #'   `$disagreements` is always computed across everyone.
-#' @return A list of class `fs_review`, with a `print()` method:
+#' @return A list of class `fs_decisions`, with a `print()` method that ends
+#'   with the R needed to reproduce and apply it:
 #'
 #'   * `file`, `format_version`, `created`, `updated`.
 #'   * `runs`: one row per [rLink_inspect()] session, with who ran it, when,
@@ -292,27 +321,36 @@
 #'   * `events`: the full append-only log.
 #'   * `disagreements`: pairs two reviewers judged differently.
 #'   * `agreement`: one row counting the pairs decided, agreed and disputed.
-#'   * `status`: present only when `x` was given.
-#' @seealso [rLink_inspect()] to make a review, and [rLink_apply()] to turn one
-#'   into a vector of links.
+#'   * `code`: the lines `print()` shows, as a character vector.
+#'   * `status`: present only when `x` was given. `n_orphaned` counts decided
+#'     pairs that are no longer in `x`, and `n_undecided` the pairs in `x` that
+#'     nobody has judged --- which is as much as the file can say, because it
+#'     keeps the decisions and a fingerprint rather than the whole pair set it
+#'     was made from.
+#' @seealso [rLink_inspect()] to make the decisions, and [apply_decisions()] to
+#'   apply them.
 #' @family record linkage review functions
-#' @examples
-#' # rLink_inspect() normally writes this file; here is one by hand.
-#' path <- tempfile(fileext = ".json")
-#' pairs <- data.frame(pair_id = c("A|X", "B|Y", "C|Z"),
-#'                     index_1 = 1:3, index_2 = 1:3,
-#'                     score = c(0.97, 0.74, 0.31))
-#' rLink_inspect(pairs, artifact = path, reviewer = "analyst",
-#'               launch = FALSE)
+#' @examplesIf requireNamespace("jsonlite", quietly = TRUE)
+#' # A review of four pairs by two people, who disagreed about one of them.
+#' path <- system.file("extdata", "example_decisions.json",
+#'                     package = "fast.string")
+#' d <- read_decisions(path)
+#' d
 #'
-#' review <- rLink_review(path)
-#' review
-#' review$runs$reviewer
+#' # The threshold that was accepted, with the operator it was cut with
+#' d$cuts
 #'
-#' # Checked against the pairs it was made from
-#' rLink_review(path, x = pairs)$status
+#' # Where the two reviewers parted company, and what each of them wrote
+#' d$disagreements
+#' d$events[, c("reviewer", "pair_id", "decision", "comment")]
+#'
+#' # Checked against the pairs it was made on
+#' pairs <- data.frame(pair_id = c("A|X", "B|Y", "C|Z", "D|W"),
+#'                     index_1 = 1:4, index_2 = 1:4,
+#'                     score = c(0.97, 0.74, 0.44, 0.31))
+#' read_decisions(path, x = pairs)$status
 #' @export
-rLink_review <- function(file, x = NULL, reviewer = NULL) {
+read_decisions <- function(file, x = NULL, reviewer = NULL) {
     .review_require("jsonlite")
     if (!is.character(file) || length(file) != 1L || is.na(file))
         stop("`file` must be a single path.")
@@ -362,6 +400,7 @@ rLink_review <- function(file, x = NULL, reviewer = NULL) {
         at = .review_column(th, "at", NA_character_),
         status = .review_column(th, "status", NA_character_),
         rule = .review_column(th, "rule", NA_character_),
+        expr = .review_column(th, "expr", NA_character_),
         n_pairs = .review_column(th, "n_pairs", NA_integer_),
         n_one_to_one = .review_column(th, "n_one_to_one", NA_integer_),
         n_conflict_1 = .review_column(th, "n_conflict_1", NA_integer_),
@@ -408,7 +447,7 @@ rLink_review <- function(file, x = NULL, reviewer = NULL) {
     if (!is.null(x)) {
         if (!is.data.frame(x)) stop("`x` must be a data frame, or NULL.")
         if (!"pair_id" %in% names(x))
-            stop("`x` must have a `pair_id` column to check a review against.")
+            stop("`x` must have a `pair_id` column to check decisions against.")
         present <- as.character(x[["pair_id"]])
         fp <- .review_fingerprints(
             x, intersect(scores_df$score, names(x)), "pair_id")
@@ -421,11 +460,23 @@ rLink_review <- function(file, x = NULL, reviewer = NULL) {
                                       runs_df$fp_columns[nrow(runs_df)]),
             n_decided_present = sum(decided %in% present),
             n_orphaned = sum(!decided %in% present),
-            n_new = sum(!present %in% effective$pair_id))
+            # Not "new": the file keeps the decisions and a fingerprint, not
+            # the whole pair set it was made from, so a pair nobody judged
+            # cannot be told from one that arrived afterwards.
+            #
+            # Counted against `decided` -- the pairs somebody reached a
+            # verdict on -- and not against every pair that appears in the
+            # log. A reviewer who opens a pair and leaves it undecided, or
+            # who marks one and then reverts it, files an event for it; that
+            # pair has still not been judged, and counting it as judged
+            # understated the work left in exactly the case where somebody
+            # had been through the queue once already.
+            n_undecided = sum(!present %in% decided))
     }
 
+    path <- normalizePath(file, winslash = "/", mustWork = FALSE)
     structure(list(
-        file = normalizePath(file, winslash = "/", mustWork = FALSE),
+        file = path,
         format_version = as.integer(obj$format_version),
         created = .review_one(obj, "created", NA_character_),
         updated = .review_one(obj, "updated", NA_character_),
@@ -433,16 +484,18 @@ rLink_review <- function(file, x = NULL, reviewer = NULL) {
         thresholds = thresholds_df, cuts = cuts_df,
         decisions = shown_effective, events = shown_events,
         disagreements = disagreements, agreement = agreement,
+        code = .decisions_code(path, if (nrow(runs_df))
+            runs_df$expression[nrow(runs_df)] else NULL),
         status = status
-    ), class = "fs_review")
+    ), class = "fs_decisions")
 }
 
 #' @export
-print.fs_review <- function(x, ...) {
+print.fs_decisions <- function(x, ...) {
     # cat_rule()/cat_line() go to stdout. A print method is output, not a
     # message, and cli_h3() would send it to stderr where capture.output()
     # and a pipe cannot see it.
-    cli::cat_rule("Pair review")
+    cli::cat_rule("Pair decisions")
     cat(sprintf("File: %s\n", x$file))
     cat(sprintf("%d session%s, %d decision event%s\n",
                 nrow(x$runs), if (nrow(x$runs) == 1L) "" else "s",
@@ -459,20 +512,23 @@ print.fs_review <- function(x, ...) {
         for (k in seq_len(nrow(accepted))) {
             at <- x$cuts[x$cuts$event_id == accepted$event_id[k], ,
                          drop = FALSE]
-            cat(sprintf("  %s by %s (rule: %s): %s\n",
-                        accepted$at[k], accepted$reviewer[k],
-                        accepted$rule[k],
-                        paste(sprintf("%s %s %g", at$score, at$operator,
-                                      at$value), collapse = ", ")))
+            spelled <- if (!is.na(accepted$expr[k]) &&
+                           nzchar(accepted$expr[k])) accepted$expr[k]
+                       else paste(sprintf("%s %s %g", at$score, at$operator,
+                                          at$value),
+                                  collapse = if (identical(accepted$rule[k],
+                                                           "any")) " | "
+                                             else " & ")
+            cat(sprintf("  %s by %s: %s\n", accepted$at[k],
+                        accepted$reviewer[k], spelled))
             if (!is.na(accepted$note[k]) && nzchar(accepted$note[k]))
                 cat(sprintf("      %s\n", accepted$note[k]))
         }
     }
     if (nrow(x$decisions)) {
         cat("\nDecisions\n")
-        tally <- table(reviewer = x$decisions$reviewer,
-                       decision = x$decisions$decision)
-        print(tally)
+        print(table(reviewer = x$decisions$reviewer,
+                    decision = x$decisions$decision))
         cat(sprintf("With a comment: %d\n",
                     sum(!is.na(x$decisions$comment) &
                         nzchar(x$decisions$comment))))
@@ -492,86 +548,113 @@ print.fs_review <- function(x, ...) {
         else
             cat(sprintf(paste0(
                 "! The data has changed since the review: %s reviewed pair%s ",
-                "no longer present, %s new pair%s undecided.\n"),
+                "no longer present, %s pair%s undecided.\n"),
                 format(x$status$n_orphaned, big.mark = ","),
                 if (x$status$n_orphaned == 1L) "" else "s",
-                format(x$status$n_new, big.mark = ","),
-                if (x$status$n_new == 1L) "" else "s"))
+                format(x$status$n_undecided, big.mark = ","),
+                if (x$status$n_undecided == 1L) "" else "s"))
     }
+    cat("\n")
+    cli::cat_rule("Put this in your script")
+    cat(paste0(x$code, collapse = "\n"), "\n", sep = "")
     invisible(x)
 }
 
 
-#' Apply a saved review to candidate pairs
+#' Apply saved decisions to candidate pairs
 #'
-#' Turns a review into the thing it was made to produce: one logical per pair
-#' saying whether it is a link. The accepted threshold decides the pairs nobody
-#' looked at individually, and the per-pair verdicts override it, which is the
-#' order a clerical review is meant to work in.
+#' Adds the columns a review was made to produce: `link`, saying whether each
+#' pair is in scope, and `link_reason`, saying which rule decided it. The
+#' accepted threshold decides the pairs nobody looked at individually, and the
+#' per-pair verdicts override it, which is the order a clerical review is meant
+#' to work in.
 #'
 #' Doing this by hand is where a review goes wrong. The threshold has to be
 #' applied with the operator it was recorded with --- a score left on its own
 #' scale by `normalise = FALSE` is cut with `<=`, not `>=` --- and pairs that
 #' were reviewed but have since vanished have to be noticed rather than
-#' silently dropped. This does both, and `attr(, "reason")` says which rule
-#' decided every pair, so a surprising link can be traced to the judgement
-#' behind it.
+#' silently dropped. This does both, reports what it did, and records in
+#' `link_reason` which judgement produced every row, so a surprising link can
+#' be traced back to the person who made it.
 #'
 #' @param x Candidate pairs with a `pair_id` column, normally an [rLink()]
-#'   result.
-#' @param review An [rLink_review()] result, or a path to an artifact.
+#'   result. Never modified; a copy is returned.
+#' @param decisions A [read_decisions()] result, or a path to a decisions file.
 #' @param reviewer Optional reviewer whose verdicts to use. `NULL` uses
 #'   everyone's, resolved by `rule`.
 #' @param rule How to resolve two reviewers judging one pair differently:
 #'   `"last"` takes the most recent verdict, `"unanimous"` takes a verdict only
 #'   where every reviewer agrees and otherwise leaves the threshold to decide.
 #' @param thresholds Whether to apply the most recently accepted threshold.
-#'   `FALSE` starts every pair at "not a link", so only the pairs explicitly
+#'   `FALSE` starts every pair out of scope, so only the pairs explicitly
 #'   included come back `TRUE`.
-#' @return Logical vector, one per row of `x`, with `attr(, "reason")` giving
-#'   each pair's deciding rule: `"threshold"`, `"below threshold"`,
-#'   `"included"`, `"excluded"`, `"disputed"` or `"no threshold"`.
-#' @seealso [rLink_review()] to read the artifact, and [rLink_inspect()] to
-#'   make one.
+#' @param column Name for the logical column. Its reason column is that name
+#'   with `_reason` appended.
+#' @param quiet Whether to skip the summary of what was applied.
+#' @return A copy of `x` with two columns added: `link` (logical) and
+#'   `link_reason`, one of `"threshold"`, `"below threshold"`, `"included"`,
+#'   `"excluded"`, `"disputed"` or `"no threshold"`.
+#' @seealso [read_decisions()] to read the file, and [rLink_inspect()] to make
+#'   the decisions.
 #' @family record linkage review functions
-#' @examples
-#' path <- tempfile(fileext = ".json")
-#' pairs <- data.frame(pair_id = c("A|X", "B|Y", "C|Z"),
-#'                     index_1 = 1:3, index_2 = 1:3,
-#'                     score = c(0.97, 0.74, 0.31))
-#' rLink_inspect(pairs, artifact = path, reviewer = "analyst", launch = FALSE)
-#' links <- rLink_apply(pairs, path)
-#' data.frame(pair_id = pairs$pair_id, link = links,
-#'            reason = attr(links, "reason"))
+#' @examplesIf requireNamespace("jsonlite", quietly = TRUE)
+#' path <- system.file("extdata", "example_decisions.json",
+#'                     package = "fast.string")
+#' pairs <- data.frame(pair_id = c("A|X", "B|Y", "C|Z", "D|W"),
+#'                     index_1 = 1:4, index_2 = 1:4,
+#'                     score = c(0.97, 0.74, 0.44, 0.31))
+#'
+#' # `B|Y` clears the recorded cut but was excluded by hand, and `link_reason`
+#' # says so rather than leaving you to wonder why it is not a link.
+#' out <- apply_decisions(pairs, path)
+#' out[, c("pair_id", "score", "link", "link_reason")]
+#'
+#' # The two reviewers disagree about `C|Z`: the analyst included it and the
+#' # QA reviewer later excluded it, so the default takes the later verdict.
+#' apply_decisions(pairs, path, reviewer = "analyst", quiet = TRUE)$link[3]
+#' apply_decisions(pairs, path, reviewer = "qa", quiet = TRUE)$link[3]
+#'
+#' # "unanimous" declines to pick a side, leaving the threshold to decide.
+#' apply_decisions(pairs, path, rule = "unanimous", quiet = TRUE)$link_reason
+#'
+#' # Only what somebody explicitly included
+#' apply_decisions(pairs, path, thresholds = FALSE, quiet = TRUE)$link
 #' @export
-rLink_apply <- function(x, review, reviewer = NULL,
-                        rule = c("last", "unanimous"), thresholds = TRUE) {
+apply_decisions <- function(x, decisions, reviewer = NULL,
+                            rule = c("last", "unanimous"), thresholds = TRUE,
+                            column = "link", quiet = FALSE) {
     rule <- match.arg(rule)
     .check_flag(thresholds, "thresholds")
+    .check_flag(quiet, "quiet")
     if (!is.data.frame(x)) stop("`x` must be a data frame.")
     if (!"pair_id" %in% names(x))
-        stop("`x` must have a `pair_id` column to apply a review to it.")
-    if (is.character(review)) review <- rLink_review(review)
-    if (!inherits(review, "fs_review"))
-        stop("`review` must be an rLink_review() result or a path to one.")
+        stop("`x` must have a `pair_id` column to apply decisions to it.")
+    if (!is.character(column) || length(column) != 1L || is.na(column) ||
+        !nzchar(column))
+        stop("`column` must be a single column name.")
+    if (is.character(decisions)) decisions <- read_decisions(decisions)
+    if (!inherits(decisions, "fs_decisions"))
+        stop(paste0("`decisions` must be a read_decisions() result or a path ",
+                    "to a decisions file."), call. = FALSE)
 
     ids <- as.character(x[["pair_id"]])
     link <- rep(FALSE, length(ids))
     reason <- rep("no threshold", length(ids))
 
-    accepted <- review$thresholds[!is.na(review$thresholds$status) &
-                                  review$thresholds$status == "accepted", ,
-                                  drop = FALSE]
+    accepted <- decisions$thresholds[
+        !is.na(decisions$thresholds$status) &
+        decisions$thresholds$status == "accepted", , drop = FALSE]
+    combined <- NULL
     if (thresholds && nrow(accepted)) {
         last <- accepted[nrow(accepted), ]
-        at <- review$cuts[review$cuts$event_id == last$event_id, , drop = FALSE]
-        missing_cols <- setdiff(at$score, names(x))
-        if (length(missing_cols))
+        at <- decisions$cuts[decisions$cuts$event_id == last$event_id, ,
+                             drop = FALSE]
+        gone <- setdiff(at$score, names(x))
+        if (length(gone))
             stop(sprintf(paste0(
-                "The review was cut on %s, which `x` does not have. Score the ",
-                "pairs with the same comparators first."),
-                paste0("`", missing_cols, "`", collapse = ", ")),
-                call. = FALSE)
+                "The decisions were cut on %s, which `x` does not have. Score ",
+                "the pairs with the same comparators first."),
+                paste0("`", gone, "`", collapse = ", ")), call. = FALSE)
         passes <- lapply(seq_len(nrow(at)), function(k) {
             v <- as.double(x[[at$score[k]]])
             ok <- if (identical(at$operator[k], "<=")) v <= at$value[k]
@@ -579,17 +662,22 @@ rLink_apply <- function(x, review, reviewer = NULL,
             # A pair with no score passes no cut.
             ok & !is.na(v)
         })
-        combined <- if (identical(last$rule, "any")) Reduce(`|`, passes)
-                    else Reduce(`&`, passes)
+        # A recorded rule expression replaces the plain all/any combination
+        # rather than refining it; a malformed one falls back to it.
+        combined <- .decisions_rule_eval(last$expr, x)
+        if (is.null(combined))
+            combined <- if (identical(last$rule, "any")) Reduce(`|`, passes)
+                        else Reduce(`&`, passes)
         link <- combined
         reason <- ifelse(combined, "threshold", "below threshold")
     }
 
-    held <- review$decisions
+    held <- decisions$decisions
     if (!is.null(reviewer))
         held <- held[held$reviewer %in% reviewer, , drop = FALSE]
     held <- held[!is.na(held$decision) & held$decision != "undecided", ,
                  drop = FALSE]
+    n_override <- 0L
     if (nrow(held)) {
         verdict <- .review_verdict(held, rule)
         at <- match(ids, verdict$pair_id)
@@ -599,15 +687,40 @@ rLink_apply <- function(x, review, reviewer = NULL,
         reason[hit] <- ifelse(chosen == "include", "included",
                               ifelse(chosen == "exclude", "excluded",
                                      "disputed"))
-        # Under "unanimous" a disputed pair keeps whatever the threshold said.
         disputed <- hit
         disputed[hit] <- chosen == "disputed"
-        if (any(disputed)) {
-            link[disputed] <- if (thresholds && nrow(accepted))
-                combined[disputed] else FALSE
-        }
+        if (any(disputed))
+            link[disputed] <- if (!is.null(combined)) combined[disputed]
+                              else FALSE
+        n_override <- sum(hit)
     }
-    structure(link, reason = reason)
+
+    out <- if (data.table::is.data.table(x)) data.table::copy(x) else x
+    out[[column]] <- link
+    out[[paste0(column, "_reason")]] <- reason
+
+    if (!quiet) {
+        orphaned <- setdiff(held$pair_id, ids)
+        cli::cli_alert_info(sprintf(
+            "%s of %s pairs in scope (%s by threshold, %s judged by hand).",
+            format(sum(link), big.mark = ","),
+            format(length(ids), big.mark = ","),
+            format(sum(reason == "threshold"), big.mark = ","),
+            format(n_override, big.mark = ",")))
+        if (length(orphaned))
+            cli::cli_alert_warning(sprintf(paste0(
+                "%s reviewed pair%s not in `x` at all, so %s judgement%s was ",
+                "not applied."), format(length(orphaned), big.mark = ","),
+                if (length(orphaned) == 1L) " is" else "s are",
+                if (length(orphaned) == 1L) "that" else "those",
+                if (length(orphaned) == 1L) "" else "s"))
+        if (sum(reason == "disputed"))
+            cli::cli_alert_warning(sprintf(
+                "%s pair%s disputed between reviewers; the threshold decided.",
+                format(sum(reason == "disputed"), big.mark = ","),
+                if (sum(reason == "disputed") == 1L) " is" else "s are"))
+    }
+    out
 }
 
 # One verdict per pair out of possibly several reviewers'.
@@ -643,4 +756,115 @@ rLink_apply <- function(x, review, reviewer = NULL,
         if (length(missing) == 1L) paste0('"', missing, '"')
         else paste0('c("', paste(missing, collapse = '", "'), '")')),
         call. = FALSE)
+}
+
+
+# --- the rule expression ---------------------------------------------------
+#
+# `all` and `any` cover most linkages, but not the shape that actually turns up
+# once a reviewer looks at the data: "a strong surname on its own, or a weaker
+# one backed by an exact date of birth". That is an expression, so the app lets
+# one be written and stores its text in the decisions file.
+#
+# A decisions file may arrive from someone else, and eval() on text from a file
+# is a code-execution path. So the parsed expression is walked and checked
+# against a whitelist before it runs, and it is then evaluated against the
+# score columns alone, in an environment holding only the operators below --
+# `system` and friends are not reachable even if the check were bypassed.
+
+.decisions_rule_ops <- c("(", "{", "&", "|", "&&", "||", "!", "==", "!=",
+                         "<", "<=", ">", ">=", "+", "-", "*", "/", "^",
+                         "is.na", "!is.na", "xor", "abs", "round",
+                         "pmin", "pmax", "ifelse")
+
+# R syntax is canonical; the words are accepted because that is how the rule
+# reads out loud and how a reviewer is likely to type it.
+.decisions_rule_words <- function(text) {
+    text <- gsub("\\bAND\\b", "&", text)
+    text <- gsub("\\bOR\\b", "|", text)
+    gsub("\\bNOT\\b", "!", text)
+}
+
+.decisions_rule_check <- function(e, allowed) {
+    if (is.name(e)) {
+        nm <- as.character(e)
+        if (!nm %in% allowed)
+            stop(sprintf(paste0(
+                "`%s` is not a column a rule may use. Available: %s."),
+                nm, paste0("`", allowed, "`", collapse = ", ")),
+                call. = FALSE)
+        return(invisible(TRUE))
+    }
+    if (is.call(e)) {
+        fn <- e[[1L]]
+        if (!is.name(fn) || !as.character(fn) %in% .decisions_rule_ops)
+            stop(sprintf(paste0(
+                "A rule may only compare and combine columns. `%s` is not ",
+                "allowed; the permitted operators are %s."),
+                paste(deparse(fn), collapse = " "),
+                paste0("`", setdiff(.decisions_rule_ops, c("(", "{")), "`",
+                       collapse = ", ")), call. = FALSE)
+        for (k in seq_along(e)[-1L]) .decisions_rule_check(e[[k]], allowed)
+        return(invisible(TRUE))
+    }
+    if (is.numeric(e) || is.logical(e) || is.character(e) || is.null(e))
+        return(invisible(TRUE))
+    stop("A rule may only hold columns, numbers and comparisons.",
+         call. = FALSE)
+}
+
+# Columns a rule may name: the numeric and logical ones, which is what there is
+# to compare. A carried surname is not something to threshold on.
+.decisions_rule_columns <- function(x)
+    names(x)[vapply(names(x), function(nm) {
+        v <- x[[nm]]
+        (is.numeric(v) || is.logical(v)) && is.null(dim(v))
+    }, logical(1L))]
+
+# Returns a logical per row, or NULL when the rule cannot be used -- the caller
+# then falls back to the plain all/any combination rather than failing a whole
+# linkage over one malformed rule.
+.decisions_rule_eval <- function(text, x) {
+    if (is.null(text) || !length(text) || is.na(text) || !nzchar(text))
+        return(NULL)
+    parsed <- tryCatch(parse(text = .decisions_rule_words(text))[[1L]],
+                       error = function(cnd) NULL)
+    if (is.null(parsed)) {
+        warning(sprintf(paste0("The recorded rule `%s` does not parse; using ",
+                               "the threshold instead."), text),
+                call. = FALSE)
+        return(NULL)
+    }
+    allowed <- .decisions_rule_columns(x)
+    checked <- tryCatch({
+        .decisions_rule_check(parsed, allowed)
+        TRUE
+    }, error = function(cnd) conditionMessage(cnd))
+    if (!isTRUE(checked)) {
+        warning(sprintf("The recorded rule `%s` was refused: %s", text,
+                        checked), call. = FALSE)
+        return(NULL)
+    }
+    # Only the whitelisted operators are reachable, and the mask holds only the
+    # comparable columns. Built column by column with [[: `x[allowed]` on a
+    # data.table is a join, not a column selection.
+    env <- list2env(mget(setdiff(.decisions_rule_ops, "!is.na"),
+                         envir = baseenv()), parent = emptyenv())
+    mask <- lapply(allowed, function(nm) x[[nm]])
+    names(mask) <- allowed
+    out <- tryCatch(eval(parsed, mask, env), error = function(cnd) cnd)
+    if (inherits(out, "condition")) {
+        warning(sprintf("The recorded rule `%s` failed: %s", text,
+                        conditionMessage(out)), call. = FALSE)
+        return(NULL)
+    }
+    if (!is.logical(out) || length(out) != nrow(x)) {
+        warning(sprintf(paste0(
+            "The recorded rule `%s` gave %s of length %s, not one logical per ",
+            "pair (%s); using the threshold instead."), text, class(out)[1L],
+            format(length(out)), format(nrow(x))), call. = FALSE)
+        return(NULL)
+    }
+    # A pair a rule cannot judge is not in scope.
+    out & !is.na(out)
 }

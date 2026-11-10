@@ -48,11 +48,11 @@ Equivalent to \code{\link[base:grep]{base::grep()}}, using PCRE2 and Intel TBB. 
 \code{x} never match (and are never returned, unless \code{invert = TRUE}).
 }
 \examples{
-x <- c("apple pie", "banana split", NA, "cherry tart")
+x <- c("Unit 4, 12 Smith St", "12 SMITH STREET", NA, "PO Box 219")
 
-fgrep("an", x)                  # positions
-fgrep("an", x, value = TRUE)    # the matching strings
-fgrep("an", x, invert = TRUE)   # everything else, including the NA
+fgrep("Smith", x, ignore.case = TRUE)                # positions
+fgrep("Smith", x, ignore.case = TRUE, value = TRUE)  # the strings
+fgrep("Smith", x, ignore.case = TRUE, invert = TRUE) # the rest, with NA
 }
 \seealso{
 \code{\link[base:grep]{base::grep()}}

@@ -48,10 +48,13 @@ latter with \code{perl = FALSE} too, unlike base R). See \code{\link[=fgrepl]{fg
 \code{perl = FALSE} patterns are interpreted.
 }
 \examples{
-x <- c("apple pie", "banana split", NA, "cherry tart")
+# "SURNAME, GIVEN" in one file and "GIVEN SURNAME" in the other is the
+# commonest shape mismatch in a name field, and one substitution fixes
+# it: only the first comma, so a middle name is left alone.
+x <- c("SMITH, JOHN", "NGUYEN, THI MINH", NA, "DE LA CRUZ, JUAN")
+fsub("^([^,]+), (.*)$", "\\\\2 \\\\1", x)
 
-fsub("a", "_", x, fixed = TRUE)          # first "a" only
-fsub("(\\\\w+) (\\\\w+)", "\\\\2 \\\\1", x)      # swap the two words
+fsub("-", " ", c("SMITH-JONES", "A-B-C", NA), fixed = TRUE)
 }
 \seealso{
 \code{\link[base:sub]{base::sub()}}

@@ -35,11 +35,17 @@
 #' @seealso [base::grepl()]
 #' @family matching and substitution functions
 #' @examples
-#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#' # Address lines as they arrive, before anything is standardised.
+#' x <- c("Unit 4, 12 Smith St", "12 SMITH STREET", NA, "PO Box 219")
 #'
-#' fgrepl("an", x)                 # NA in, NA out
-#' fgrepl("^[ab]", x)              # regular expression (PCRE2)
-#' fgrepl("APPLE", x, fixed = TRUE, ignore.case = TRUE)
+#' fgrepl("Smith", x)              # NA in, NA out
+#' fgrepl("^(Unit|U|Apt)\\b", x)    # regular expression (PCRE2)
+#' fgrepl("PO BOX", x, fixed = TRUE, ignore.case = TRUE)
+#'
+#' # The common reason to reach for this in linkage: find the records a
+#' # comparator should never see, because a PO box is not a dwelling and
+#' # scoring it against a street address invents agreement.
+#' x[!is.na(x) & fgrepl("^P\\.?O\\.? ?BOX", x, ignore.case = TRUE)]
 #' @export
 fgrepl <-function(pattern, x, ignore.case = FALSE, perl = FALSE,
                   fixed = FALSE, useBytes = FALSE, nthreads = NULL) {
@@ -78,10 +84,14 @@ fgrepl <-function(pattern, x, ignore.case = FALSE, perl = FALSE,
 #' @seealso [base::gregexpr()]
 #' @family matching and substitution functions
 #' @examples
-#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#' x <- c("Unit 4, 12 Smith St", "12 SMITH STREET", NA, "PO Box 219")
 #'
-#' fcount("a", x, fixed = TRUE)
-#' fcount("[aeiou]", x)            # vowels per string
+#' fcount(",", x, fixed = TRUE)
+#' fcount("[0-9]", x)              # digits per line
+#'
+#' # How many words a name field holds, which is what decides whether a
+#' # token-based comparator or a plain one is the right choice for it.
+#' fcount("\\S+", c("NGUYEN THI MINH", "SMITH", "DE LA CRUZ JUAN"))
 #' @export
 fcount <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
                    fixed = FALSE, useBytes = FALSE, nthreads = NULL) {

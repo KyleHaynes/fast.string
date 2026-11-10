@@ -37,6 +37,12 @@
 #' x <- c("  hi  ", "\tthere\n", NA)
 #' ftrimws(x)
 #' ftrimws(x, which = "left")
+#'
+#' # The first thing to do to a name field from a source that pads or
+#' # tab-delimits it: untrimmed whitespace makes "SMITH " and "SMITH"
+#' # disagree on an exact-match blocking key, and silently halves the
+#' # block.
+#' ftrimws(c("SMITH ", " SMITH", "SMITH"))
 #' @export
 ftrimws <- function(x, which = c("both", "left", "right"),
                    whitespace = "[ \t\r\n]") {
@@ -76,6 +82,12 @@ ftrimws <- function(x, which = c("both", "left", "right"),
 #' @family string utilities
 #' @examples
 #' fsubstr(c("abcdef", "xyz", NA), 2, 4)   # out-of-range stops are clamped
+#'
+#' # Fixed-position slices are the cheapest blocking keys there are: the
+#' # first letter of a surname, the postcode's state digit, the birth year
+#' # out of a "YYYYMMDD" string.
+#' fsubstr(c("NGUYEN", "OBRIEN", "SMITH"), 1, 1)
+#' fsubstr(c("19620314", "19481102"), 1, 4)
 #' @export
 fsubstr <- function(x, start, stop, nthreads = NULL) {
     if (!is.character(x)) {

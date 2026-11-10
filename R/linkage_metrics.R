@@ -31,8 +31,9 @@
 #' @family record linkage comparators
 #' @examples
 #' ratcliff_obershelp("GEORGE SMITH", "SMITH GEORGE")
-#' ratcliff_obershelp("Pennsylvania", "Pencilvaneya")
-#' ratcliff_obershelp_distance("kitten", "sitting")
+#' ratcliff_obershelp("INDOOROOPILLY", "INDOOROPILLY")
+#' ratcliff_obershelp_distance(c("MACDONALD", "CHOWDHURY"),
+#'                             c("MCDONALD", "CHOUDHURY"))
 #' @name ratcliff_obershelp
 NULL
 
@@ -76,9 +77,15 @@ ratcliff_obershelp_distance <- function(a, b, nthreads = NULL,
 #'   [levenshtein_within()] for an exact early-exit test.
 #' @family record linkage comparators
 #' @examples
+#' # The multiset of characters, so any reordering is free: useful as a
+#' # cheap pre-filter, useless as a verdict -- "SMITH" and "HTIMS" are not
+#' # the same surname.
 #' bag_distance("SMITH", "HTIMS")
-#' bag_distance("kitten", "sitting")
-#' levenshtein("kitten", "sitting")   # never smaller
+#'
+#' # It is a lower bound on the Levenshtein distance, which is what makes
+#' # it a filter: a pair bag distance rules out, Levenshtein would too.
+#' bag_distance("MACDONALD", "MCDONALD")
+#' levenshtein("MACDONALD", "MCDONALD")   # never smaller
 #' bag_similarity(c("JOHNSON", "ROBERT"), c("JONSON", "ROBERTA"))
 #' @name bag_distance
 NULL
@@ -130,7 +137,7 @@ bag_similarity <- function(a, b, nthreads = NULL, use_bytes = FALSE) {
 #'   `mismatch = gap = -1`, minimised instead of maximised.
 #' @family record linkage comparators
 #' @examples
-#' needleman_wunsch("GATTACA", "GCATGCU")
+#' needleman_wunsch("MACDONALD", "MCDONALD")
 #' needleman_wunsch_similarity("MACDONALD", "MCDONALD")
 #'
 #' # A gap costs less than a mismatch, so abbreviations align through
@@ -211,13 +218,21 @@ needleman_wunsch_similarity <- function(a, b, match = 1, mismatch = -1,
 #'   keys that match exactly, and [editex()] for a phonetic edit distance.
 #' @family record linkage comparators
 #' @examples
+#' # A blocking key that puts sound-alikes in the same block without the
+#' # information loss of a four-character Soundex code.
 #' eudex(c("JOHN", "JON", "SMITH", "SMYTH"))
 #'
 #' # Sound-alikes are a short distance apart, unrelated names a long one
 #' eudex_distance(c("JOHN", "SMITH", "JOHN"), c("JON", "SMYTH", "MARGARET"))
 #'
-#' # Under 15 is the crate's own threshold for "similar"
-#' eudex_distance("lulz", "lol") < 15
+#' # Under 15 is the crate's own threshold for "similar". Note where it
+#' # breaks down: the first letter gets its own byte and the smallest
+#' # positional weight is spent on the last sound, so a name that varies at
+#' # the *front* -- CATHERINE against KATHRYN -- is scored as far apart
+#' # however alike the rest of it sounds. Block on eudex by all means, but
+#' # pair it with a comparator that does not privilege the first letter.
+#' eudex_distance(c("CATHERINE", "SIOBHAN"), c("KATHRYN", "SHIVAUN"))
+#' eudex_distance(c("CATHERINE", "SIOBHAN"), c("KATHRYN", "SHIVAUN")) < 15
 #' @name eudex
 NULL
 

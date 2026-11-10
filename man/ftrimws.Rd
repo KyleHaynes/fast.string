@@ -32,6 +32,12 @@ result when adjacent trimmed strings are identical.
 x <- c("  hi  ", "\tthere\n", NA)
 ftrimws(x)
 ftrimws(x, which = "left")
+
+# The first thing to do to a name field from a source that pads or
+# tab-delimits it: untrimmed whitespace makes "SMITH " and "SMITH"
+# disagree on an exact-match blocking key, and silently halves the
+# block.
+ftrimws(c("SMITH ", " SMITH", "SMITH"))
 }
 \seealso{
 \code{\link[base:trimws]{base::trimws()}}

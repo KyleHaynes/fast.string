@@ -72,15 +72,41 @@ cost of the most expensive way to do the job (RapidFuzz's
 \code{levenshtein_maximum}).
 }
 \examples{
-levenshtein("kitten", "sitting")
-levenshtein("kitten", "sitting", weights = c(1, 1, 2))  # substitution costs 2
+# Surnames as they actually arrive in two files: a keying slip, a dropped
+# letter, an anglicised spelling, a transposition.
+file_1 <- c("NGUYEN", "OBRIEN",  "MACDONALD", "SCHMIDT", "CHOWDHURY")
+file_2 <- c("NGUYNE", "O'BRIEN", "MCDONALD",  "SCHMITT", "CHOUDHURY")
+levenshtein(file_1, file_2)
+
+# A substitution is usually a worse sign than an insertion in a name: an
+# apostrophe or a missing vowel is a recording convention, a different
+# letter is a different name. Weighting it says so.
+levenshtein(file_1, file_2, weights = c(1, 1, 2))
+
+# Normalised, so one cut-off works across names of different lengths --
+# 2 edits in "NGUYEN" is a long way, 2 in "CHOWDHURY" is not.
+round(levenshtein_similarity(file_1, file_2), 3)
+
+# Transpositions are the commonest typing error, and plain Levenshtein
+# charges two edits for one slip. OSA charges one.
+levenshtein("NGUYEN", "NGUYNE")
+osa_distance("NGUYEN", "NGUYNE")
+round(osa_similarity("NGUYEN", "NGUYNE"), 3)
+
+# OSA allows each character only one transposition; the unrestricted form
+# allows a further edit inside a transposed block. On real name typos the
+# two almost always agree -- it takes two *overlapping* transpositions to
+# separate them, which a hand slipping on a keyboard does not produce --
+# so OSA is the one to reach for, and this is the pair that shows the
+# difference at all:
 osa_distance("ca", "abc")
 damerau_levenshtein("ca", "abc")
-levenshtein_similarity("kitten", "sitting")
-osa_similarity("ca", "abc")
-damerau_levenshtein_similarity("ca", "abc")
-hamming("karolin", "kathrin")
-hamming("abc", "abcd")   # unequal lengths are never within Hamming range
+round(damerau_levenshtein_similarity("ca", "abc"), 3)
+
+# Hamming compares position by position, which suits fixed-width codes --
+# a Medicare number, an ICD-10 code, a postcode -- and nothing else.
+hamming(c("4000", "E66.9"), c("4001", "E66.0"))
+hamming("4000", "04000")   # unequal lengths are never within range
 }
 \seealso{
 \code{\link[=fuzzy_match]{fuzzy_match()}} and \code{\link[=fuzzy_top_n]{fuzzy_top_n()}} to search a table with these

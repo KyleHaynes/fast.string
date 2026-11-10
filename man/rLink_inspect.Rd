@@ -6,7 +6,7 @@
 \usage{
 rLink_inspect(
   x,
-  artifact = "rLink_review.json",
+  decisions = "rLink_decisions.json",
   reviewer = NULL,
   scores = NULL,
   threshold = NULL,
@@ -21,9 +21,9 @@ rLink_inspect(
 \item{x}{Candidate pairs: an \code{\link[=rLink]{rLink()}} result, or any data frame with
 \code{index_1}/\code{index_2} or \code{x_index}/\code{y_index} columns.}
 
-\item{artifact}{Path to the JSON review file. Read and appended to when it
-exists, created when it does not. Written as soon as the app is built, so
-an unwritable path fails now rather than after an hour of review.}
+\item{decisions}{Path to the JSON decisions file. Read and appended to when
+it exists, created when it does not. Written as soon as the app is built,
+so an unwritable path fails now rather than after an hour of review.}
 
 \item{reviewer}{Who is reviewing. Defaults to the logged-in user, and is the
 name every decision is attributed to.}
@@ -32,10 +32,12 @@ name every decision is attributed to.}
 \code{attr(x, "compare")}, falling back to the numeric columns that are neither
 indices nor carried values.}
 
-\item{threshold}{Optional named numeric vector of starting cuts, one per
-score, as \code{c(surname_jw = 0.88)}. Recorded in the artifact as an accepted
-threshold, so a scripted cut-off is logged in the same format as a
-hand-chosen one.}
+\item{threshold}{Optional named numeric vector of starting cuts, as
+\code{c(surname_jw = 0.88)}. Scores it does not name keep their default cut.
+Recorded in the file as an accepted threshold --- all of the cuts in
+force, not only the ones named --- so a scripted cut-off is logged in the
+same format as a hand-chosen one and \code{\link[=apply_decisions]{apply_decisions()}} reproduces what
+was on screen.}
 
 \item{max_pairs}{Most rows to put on screen, \code{20000} by default.}
 
@@ -43,85 +45,205 @@ hand-chosen one.}
 
 \item{font_size}{Base font in pixels, adjustable in the app.}
 
-\item{order_by}{Initial row order: \code{"review"} puts the most undecided pairs
-first, \code{"score"} the highest-scoring, \code{"input"} leaves them as given.}
+\item{order_by}{Initial row order: \code{"review"} puts the pairs nearest the
+cut --- the ones a threshold cannot settle --- first, \code{"score"} puts the
+most match-like first (which for a score where low is the match is
+ascending), and \code{"input"} leaves them as given.}
 
 \item{launch}{Whether to run the app. Defaults to \code{\link[=interactive]{interactive()}}, so the
-artifact is still prepared when this is called from a script or a test.}
+file is still written when this is called from a script or a test.}
 }
 \value{
-The \code{shiny.appobj}, invisibly, so it can be run later or inspected.
+An \code{\link[=read_decisions]{read_decisions()}} object of class \code{fs_decisions}, holding the
+review and the R needed to reproduce it. Returned when the app closes; with
+\code{launch = FALSE} the \code{shiny.appobj} is returned invisibly instead, so it
+can be run or inspected later.
 }
 \description{
 Opens an interactive table of candidate pairs for choosing a threshold and
 accepting or rejecting individual pairs, and records every judgement --- with
-a comment --- in a JSON artifact that someone else can later read with
-\code{\link[=rLink_review]{rLink_review()}}. It is the step between scoring pairs and believing the
-result, and the artifact is what turns an analyst's afternoon of judgement
-calls into something a second person can check.
+a comment --- in a JSON file that someone else can later read with
+\code{\link[=read_decisions]{read_decisions()}}. It is the step between scoring pairs and believing the
+result, and that file is what turns an analyst's afternoon of judgement
+calls into something a second person can check and replay.
 }
 \details{
 The workflow it is built for:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{pairs <- rLink(enrol, claims, block_1 = ..., compare = ...)
-rLink_inspect(pairs)                      # choose a cut, mark exceptions
-review <- rLink_review("rLink_review.json")  # the QA pass reads this
-links <- rLink_apply(pairs, review)       # and this applies it
+out <- rLink_inspect(pairs)          # choose a cut, mark the exceptions
+out                                  # prints the R to reproduce and apply
+pairs <- apply_decisions(pairs, "rLink_decisions.json")
 }\if{html}{\out{</div>}}
+
+Closing the app with \strong{Finish and close} returns the \code{\link[=read_decisions]{read_decisions()}}
+object, so \code{out} holds the whole review; printing it ends with the two lines
+to paste into the script so the next run --- a colleague's QA pass, or yours
+in six months --- reproduces exactly these decisions.
+}
+\section{What you see}{
 
 Score columns are filled with a colour gradient, dark meaning more like a
 match --- reversed automatically for a score where low is the match, so a
-distance left unnormalised still reads the right way round. One slider per
-score sets the cut, and pairs failing it are dimmed rather than hidden,
-because a false negative you cannot see is a false negative you will not
-find. Every count in the header and in the sweep is computed over \emph{all} the
-pairs, not only the ones on screen.
+distance left unnormalised still reads the right way round. The table is
+grouped into \strong{in scope} and \strong{out of scope} blocks, so the consequence of
+the current cut is the first thing visible, and out-of-scope rows are dimmed
+rather than hidden, because a false negative you cannot see is a false
+negative you will not find.
+
+Clicking a row puts that pair in the sidebar field by field --- the value
+each input held on each side, beside the score it earned --- because what a
+clerical decision is actually made on is \code{SMITH / JOHN / 1980-01-02}
+against \code{SMYTHE / JON / 1980-01-02}, and a row of numbers is a summary of
+that rather than a substitute for it.
+
+Every count in the header, the sweep and the panels is computed over \emph{all}
+the pairs, not only the ones on screen.
 }
+
+\section{Choosing the cut}{
+
+One slider and one numeric box per score, kept in step, so a cut can be
+dragged or typed exactly.
+
+The \strong{Threshold sweep} panel shows what every cut-off of one score would
+do, and which score that is can be chosen --- it is the second and third
+fields, not the first, where a reviewer has least idea where the cut
+belongs. \strong{Suggest a cut} reads that sweep and proposes the last cut-off
+that buys more clean one-to-one links than it does contested records, and
+says so in a sentence. Clicking a row of the sweep table moves that
+score's cut there, so the evidence and the control are the same object.
+
+Beyond \code{all} and \code{any}, a rule such as
+\code{sn >= 0.9 | (sn >= 0.8 & gn >= 0.95)} can be written out; it is checked as
+you type, stored with the threshold, and re-applied by
+\code{\link[=apply_decisions]{apply_decisions()}}.
+}
+
+\section{Judging pairs, and overriding the cut}{
+
+Three buttons and a comment box on every row, and the same three in the
+sidebar for the pair being read. \code{y}, \code{n} and \code{u} judge from the keyboard.
+Ctrl-click (cmd-click) marks rows and shift-click marks a range, and the
+marked set can then be judged in one action --- which is how a block of
+obvious links gets dealt with without 200 clicks. Marks follow the pair,
+not the row position, so they survive sorting, filtering and paging.
+
+\strong{A judgement beats the threshold, both ways.} The cut decides the pairs
+nobody looks at; marking a pair a link brings it into scope even though its
+scores failed, and marking one not a link takes it out even though they
+passed. That is what the threshold is for --- it is a way of not having to
+look at a million pairs, not a verdict --- and it is the order
+\code{\link[=apply_decisions]{apply_decisions()}} resolves them in, so the numbers on screen are the
+numbers the next run produces.
+
+Because an override is a decision somebody has to be able to defend, it is
+reported as one rather than folded into the total. The scope cell says
+\strong{forced in} or \strong{forced out} where the judgement contradicts the cut and
+\strong{confirmed} where it agrees; those rows carry a marker down their left
+edge; the header breaks the total into what the cut gave and what was forced
+either way; \strong{What this cut does} shows the cut's counts beside the
+reviewed ones; and \emph{Show > overriding the cut} lists exactly that set,
+which is the page to re-read before a linkage is signed off.
+}
+
 \section{What is written}{
 
-The artifact is append-only. A second reviewer's session is added to it, not
-written over it, so a disagreement between two reviewers is preserved and
-visible --- which is the point of having the file at all. Decisions are
-filed against \code{pair_id}, so they still find their pairs after \code{rLink()} is
-re-run with different blocking, provided \code{pair_id} was built from record
-identifiers rather than row numbers. See \emph{Pair identifiers} in \code{\link[=rLink]{rLink()}}.
+The decisions file is append-only. A second reviewer's session is added to
+it, not written over it, so a disagreement between two reviewers is
+preserved and visible --- which is the point of having the file at all.
+Decisions are filed against \code{pair_id}, so they still find their pairs after
+\code{rLink()} is re-run with different blocking, provided \code{pair_id} was built
+from record identifiers rather than row numbers. See \emph{Pair identifiers} in
+\code{\link[=rLink]{rLink()}}.
+
+Reopening a file restores \strong{your own} verdicts and comments. Another
+reviewer's are shown against each pair but never filled in for you: a QA
+pass that opens pre-answered is not a check. Who else judged what, and
+where you and they disagree, is then in \code{\link[=read_decisions]{read_decisions()}}\verb{$disagreements}.
 }
 
 \section{Limits}{
 
-At most \code{max_pairs} rows are put on screen; the rest of the analysis still
-reads every pair, and the app says so. reactable draws every row of a page,
-so \code{page_size} is capped at 1000 --- there is no "show all rows", because at
-these sizes it would lock the browser tab rather than show you anything.
-Columns can be reordered and hidden from the sidebar; dragging a table
-\emph{header} is not something reactable can do.
+At most \code{max_pairs} rows are put on screen, chosen by \code{\link[=review_order]{review_order()}}; the
+rest of the analysis still reads every pair, and the app says so. reactable
+draws every row of a page, so \code{page_size} is capped at 1000 --- there is no
+"show all rows", because at these sizes it would lock the browser tab rather
+than show you anything. Columns are reordered and hidden by dragging them
+between the Shown and Hidden lists in the sidebar; reactable cannot drag a
+table \emph{header}.
 }
 
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-enrol <- data.frame(
-    frame_id = c("E1", "E2", "E3", "E4"),
-    surname  = c("SMITH", "JONES", "BROWN", "SMYTH"),
-    given    = c("JOHN", "MARY", "ROB", "JON")
+# A hospital admissions extract and a cancer registry notification file,
+# to be linked on name and date of birth. The hard pairs are the ones no
+# threshold settles: a married name against a maiden name, a transposed
+# date of birth, a nickname, and two different people who happen to share
+# a common surname and a birth year.
+admissions <- data.frame(
+    frame_id = c("ADM-1001", "ADM-1002", "ADM-1003", "ADM-1004",
+                 "ADM-1005", "ADM-1006"),
+    surname  = c("NGUYEN", "OBRIEN", "SMITH", "PAPADOPOULOS",
+                 "SMITH", "WILLIAMS"),
+    given    = c("THI MINH", "MARGARET", "ROBERT", "ELENI",
+                 "ROBERT", "WILLIAM"),
+    dob      = as.Date(c("1962-03-14", "1948-11-02", "1979-07-23",
+                         "1955-01-30", "1979-12-23", "1990-06-08")),
+    sex      = c("F", "F", "M", "F", "M", "M"),
+    postcode = c("3121", "2035", "4000", "5061", "4001", "6000")
 )
-claims <- data.frame(
-    frame_id = c("C1", "C2", "C3"),
-    surname  = c("SMITH", "JONSE", "BROWNE"),
-    given    = c("JON", "MARY", "ROBERT")
+registry <- data.frame(
+    frame_id = c("REG-77", "REG-78", "REG-79", "REG-80", "REG-81"),
+    surname  = c("NGUYEN", "O BRIEN", "SMITH", "PAPADOPOULOS", "SMYTH"),
+    given    = c("MINH", "MARGARET MARY", "BOB", "HELEN", "ROBERT"),
+    dob      = as.Date(c("1962-03-14", "1948-11-02", "1979-07-23",
+                         "1955-01-30", "1979-07-23")),
+    sex      = c("F", "F", "M", "F", "M"),
+    postcode = c("3121", "2035", "4000", "5061", "4000")
 )
-pairs <- rLink(enrol, claims, block_1 = list(fsubstr(surname, 1, 1)),
-               compare = list(sn = jaro_winkler(surname),
-                              gn = jaro_winkler(given)))
-rLink_inspect(pairs, artifact = file.path(tempdir(), "review.json"))
+
+# Block on the year of birth so that a wrong day or month cannot hide a
+# pair, then score the names, the date and the postcode separately: a
+# clerical reviewer needs to see which field disagreed, not one number.
+pairs <- rLink(
+    admissions, registry,
+    block_1 = list(format_date(dob, "y")),
+    compare = list(
+        surname  = jaro_winkler(surname),
+        given    = jaro_winkler_tokens(given),
+        dob      = date_compare(dob),
+        postcode = (function(a, b) as.numeric(a == b))(postcode)
+    )
+)
+
+# Open the review at a deliberately strict cut. Everything above it is a
+# link without anyone looking; the review is about the pairs below it.
+out <- rLink_inspect(
+    pairs, threshold = c(surname = 0.92, given = 0.85),
+    decisions = file.path(tempdir(), "cancer_registry_review.json")
+)
+
+# In the app: click the ADM-1002 / REG-78 row to see "OBRIEN / MARGARET"
+# against "O BRIEN / MARGARET MARY", and mark it a link -- it comes into
+# scope even though the surname score fell short of 0.92. Then click the
+# ADM-1005 / REG-81 row, see that the dates of birth are five months apart
+# in different postcodes, and mark it not a link even though both names
+# score above the cut. Each override is reported as one rather than
+# disappearing into the total, and each survives into:
+out
+pairs <- apply_decisions(
+    pairs, file.path(tempdir(), "cancer_registry_review.json"))
+pairs[, c("pair_id", "link", "link_reason")]
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=rLink_review]{rLink_review()}} to read the artifact, \code{\link[=rLink_apply]{rLink_apply()}} to apply it,
-\code{\link[=threshold_sweep]{threshold_sweep()}} for the same evidence at the console, and
+\code{\link[=read_decisions]{read_decisions()}} to read the file back, \code{\link[=apply_decisions]{apply_decisions()}} to
+apply it, \code{\link[=threshold_sweep]{threshold_sweep()}} for the same evidence at the console, and
 \code{\link[=review_order]{review_order()}} for the ordering the queue uses.
 
 Other record linkage review functions:
-\code{\link[=rLink_apply]{rLink_apply()}},
-\code{\link[=rLink_review]{rLink_review()}}
+\code{\link[=apply_decisions]{apply_decisions()}},
+\code{\link[=read_decisions]{read_decisions()}}
 }
 \concept{record linkage review functions}

@@ -32,9 +32,17 @@ write_events <- function(path, events) {
     path
 }
 
-new_artifact <- function(x = scored(), ...) {
+spec_for <- function(x, ...) {
+    args <- list(x = x, file = tempfile(), reviewer = "a", scores = NULL,
+                 threshold = NULL, max_pairs = 100, page_size = 50,
+                 font_size = 11,
+                 order_by = c("review", "input", "score"), expression = "x")
+    do.call(fast.string:::.inspect_spec, utils::modifyList(args, list(...)))
+}
+
+new_decisions <- function(x = scored(), ...) {
     path <- tempfile(fileext = ".json")
-    rLink_inspect(x, artifact = path, reviewer = "analyst", launch = FALSE,
+    rLink_inspect(x, decisions = path, reviewer = "analyst", launch = FALSE,
                   ...)
     path
 }
@@ -188,9 +196,13 @@ test_that("the generated JavaScript reads the contract the meta provides", {
     expect_true(grepl("state.meta.comments",
                       as.character(fast.string:::.inspect_js_comment()),
                       fixed = TRUE))
-    expect_true(grepl("state.meta.cuts",
-                      as.character(fast.string:::.inspect_js_rowclass()),
-                      fixed = TRUE))
+    # Dimming reads the scope R computed, not a cut recomputed in the
+    # browser: under a rule expression the cuts no longer decide scope, and a
+    # browser-side recompute would dim the wrong rows.
+    rowclass <- as.character(fast.string:::.inspect_js_rowclass())
+    expect_true(grepl("_scope", rowclass, fixed = TRUE))
+    expect_true(grepl("state.meta.decisions", rowclass, fixed = TRUE))
+    expect_false(grepl("state.meta.cuts", rowclass, fixed = TRUE))
     js <- fast.string:::.inspect_js_bindings()
     expect_true(grepl("fs_decision", js, fixed = TRUE))
     expect_true(grepl("fs_comment", js, fixed = TRUE))
@@ -200,19 +212,24 @@ test_that("the generated JavaScript reads the contract the meta provides", {
 
 test_that("every column gets a colDef, with the identity ones pinned", {
     skip_if_not_installed("reactable")
-    spec <- fast.string:::.inspect_spec(
-        scored(), artifact = tempfile(), reviewer = "a", scores = NULL,
-        threshold = NULL, max_pairs = 100, page_size = 50, font_size = 11,
-        order_by = c("review", "input", "score"), expression = "x")
+    spec <- spec_for(scored())
     cols <- fast.string:::.inspect_columns(spec, names(spec$view))
     expect_true(all(vapply(cols, inherits, logical(1L), "colDef")))
-    expect_true(all(c("_decision", "_comment") %in% names(cols)))
+    expect_true(all(c("_scope", "_decision", "_comment") %in% names(cols)))
+    # The identity and scope columns stay put when the table scrolls sideways.
     expect_identical(cols$pair_id$sticky, "left")
+    expect_identical(cols[["_scope"]]$sticky, "left")
+    expect_identical(cols[["_decision"]]$sticky, "left")
     expect_false(cols[["_decision"]]$sortable)
-    # Asking for fewer columns gets fewer, plus the two controls.
+    expect_false(cols[["_comment"]]$sortable)
+    # `_threshold` carries the cut's own verdict for the scope cell to
+    # compare a judgement against, and is never drawn.
+    expect_false(cols[["_threshold"]]$show)
+    # Asking for fewer columns gets fewer, plus the control columns.
     few <- fast.string:::.inspect_columns(spec, c("pair_id", "sn"))
     expect_identical(sort(names(few)),
-                     sort(c("pair_id", "sn", "_decision", "_comment")))
+                     sort(c("pair_id", "sn", "_scope", "_threshold",
+                            "_decision", "_comment")))
 })
 
 test_that("the CSS is scoped and carries the font size", {
@@ -228,13 +245,6 @@ test_that("the CSS is scoped and carries the font size", {
 
 # --- the prepared specification -------------------------------------------
 
-spec_for <- function(x, ...) {
-    args <- list(x = x, artifact = tempfile(), reviewer = "a", scores = NULL,
-                 threshold = NULL, max_pairs = 100, page_size = 50,
-                 font_size = 11,
-                 order_by = c("review", "input", "score"), expression = "x")
-    do.call(fast.string:::.inspect_spec, utils::modifyList(args, list(...)))
-}
 
 test_that("the table is capped but the analysis is not", {
     out <- scored()
@@ -321,19 +331,19 @@ test_that("the effect of a cut is computed over every pair", {
 })
 
 
-# --- the artifact ----------------------------------------------------------
+# --- the decisions file ----------------------------------------------------------
 
-test_that("the artifact is written as soon as the app is built", {
+test_that("the decisions file is written as soon as the app is built", {
     skip_if_not_installed("shiny")
     skip_if_not_installed("reactable")
     skip_if_not_installed("jsonlite")
     path <- tempfile(fileext = ".json")
-    app <- rLink_inspect(scored(), artifact = path, reviewer = "analyst",
+    app <- rLink_inspect(scored(), decisions = path, reviewer = "analyst",
                          launch = FALSE)
     expect_s3_class(app, "shiny.appobj")
     expect_true(file.exists(path))
-    review <- rLink_review(path)
-    expect_s3_class(review, "fs_review")
+    review <- read_decisions(path)
+    expect_s3_class(review, "fs_decisions")
     expect_identical(nrow(review$runs), 1L)
     expect_identical(review$runs$reviewer, "analyst")
     expect_identical(review$runs$n_pairs, nrow(scored()))
@@ -344,21 +354,24 @@ test_that("the artifact is written as soon as the app is built", {
 test_that("an unwritable path fails before any review is done", {
     skip_if_not_installed("shiny")
     expect_error(
-        rLink_inspect(scored(), artifact = file.path(tempdir(), "nope", "a.json"),
+        rLink_inspect(scored(), decisions = file.path(tempdir(), "nope", "a.json"),
                       launch = FALSE),
         "no directory")
-    expect_error(rLink_inspect(scored(), artifact = ""), "single path")
+    expect_error(rLink_inspect(scored(), decisions = ""), "single path")
 })
 
 test_that("a stated threshold is recorded as an accepted one, with its operator", {
     skip_if_not_installed("shiny")
-    path <- new_artifact(threshold = c(sn = 0.8))
-    review <- rLink_review(path)
+    path <- new_decisions(threshold = c(sn = 0.8))
+    review <- read_decisions(path)
     expect_identical(nrow(review$thresholds), 1L)
     expect_identical(review$thresholds$status, "accepted")
-    expect_identical(review$cuts$score, "sn")
-    expect_identical(review$cuts$operator, ">=")
-    expect_equal(review$cuts$value, 0.8)
+    # Every cut in force is recorded, not only the one the caller named:
+    # `gn` was left at its default, that default was what the reviewer saw,
+    # and apply_decisions() has to cut on it too or it widens the scope.
+    expect_identical(review$cuts$score, c("sn", "gn"))
+    expect_identical(review$cuts$operator, c(">=", ">="))
+    expect_equal(review$cuts$value[review$cuts$score == "sn"], 0.8)
     # The consequence of the cut is snapshotted, so a reader need not re-run it.
     expect_false(is.na(review$thresholds$n_pairs))
 })
@@ -366,16 +379,17 @@ test_that("a stated threshold is recorded as an accepted one, with its operator"
 test_that("full precision survives the round trip", {
     skip_if_not_installed("shiny")
     # jsonlite rounds to 4 significant digits by default, which would silently
-    # round the very numbers the artifact exists to record.
-    path <- new_artifact(threshold = c(sn = 0.881234567890123))
-    expect_equal(rLink_review(path)$cuts$value, 0.881234567890123,
+    # round the very numbers the file exists to record.
+    path <- new_decisions(threshold = c(sn = 0.881234567890123))
+    cuts <- read_decisions(path)$cuts
+    expect_equal(cuts$value[cuts$score == "sn"], 0.881234567890123,
                  tolerance = 0)
 })
 
 test_that("a review reports the current verdict, the log, and the revisions", {
     skip_if_not_installed("shiny")
     out <- scored()
-    path <- new_artifact(out)
+    path <- new_decisions(out)
     write_events(path, list(
         event("analyst", out$pair_id[1L], "exclude", "father and son", 1L,
               "2026-11-06T09:00:00.000Z"),
@@ -385,7 +399,7 @@ test_that("a review reports the current verdict, the log, and the revisions", {
               "2026-11-07T10:00:00.000Z"),
         event("qa", out$pair_id[2L], "include", "fine élève", 1L,
               "2026-11-07T10:01:00.000Z")))
-    review <- rLink_review(path)
+    review <- read_decisions(path)
     expect_identical(nrow(review$events), 4L)
     expect_identical(nrow(review$decisions), 3L)
     mine <- review$decisions[review$decisions$reviewer == "analyst" &
@@ -393,13 +407,13 @@ test_that("a review reports the current verdict, the log, and the revisions", {
     expect_identical(mine$decision, "include")
     expect_identical(mine$n_changes, 2L)
     expect_true(any(grepl("élève", review$events$comment)))
-    expect_identical(nrow(rLink_review(path, reviewer = "qa")$decisions), 2L)
+    expect_identical(nrow(read_decisions(path, reviewer = "qa")$decisions), 2L)
 })
 
 test_that("a review surfaces where two reviewers disagree", {
     skip_if_not_installed("shiny")
     out <- scored()
-    path <- new_artifact(out)
+    path <- new_decisions(out)
     write_events(path, list(
         event("analyst", out$pair_id[1L], "include", "same person", 1L,
               "2026-11-06T09:00:00.000Z"),
@@ -407,26 +421,26 @@ test_that("a review surfaces where two reviewers disagree", {
               "2026-11-07T10:00:00.000Z"),
         event("qa", out$pair_id[2L], "include", "agreed", 2L,
               "2026-11-07T10:01:00.000Z")))
-    review <- rLink_review(path)
+    review <- read_decisions(path)
     expect_identical(nrow(review$disagreements), 1L)
     expect_identical(review$disagreements$pair_id, out$pair_id[1L])
     expect_identical(review$disagreements$reviewers, "analyst, qa")
     expect_identical(review$agreement$n_reviewers, 2L)
     expect_identical(review$agreement$n_disagreed, 1L)
     expect_output(print(review), "judged differently")
-    expect_output(print(review), "Pair review")
+    expect_output(print(review), "Pair decisions")
 })
 
 test_that("an appended session never overwrites the one before it", {
     skip_if_not_installed("shiny")
     out <- scored()
-    path <- new_artifact(out)
+    path <- new_decisions(out)
     write_events(path, list(
         event("analyst", out$pair_id[1L], "exclude", "mine", 1L,
               "2026-11-06T09:00:00.000Z")))
     # A second person opens the same file.
-    rLink_inspect(out, artifact = path, reviewer = "qa", launch = FALSE)
-    review <- rLink_review(path)
+    rLink_inspect(out, decisions = path, reviewer = "qa", launch = FALSE)
+    review <- read_decisions(path)
     expect_identical(nrow(review$runs), 2L)
     expect_identical(review$runs$reviewer, c("analyst", "qa"))
     # And the first person's decision is still there.
@@ -437,31 +451,49 @@ test_that("an appended session never overwrites the one before it", {
 test_that("a changed input is reported rather than ignored", {
     skip_if_not_installed("shiny")
     out <- scored()
-    path <- new_artifact(out)
-    expect_true(rLink_review(path, x = out)$status$pair_set_match)
-    fewer <- rLink_review(path, x = out[-1L, ])$status
+    path <- new_decisions(out)
+    expect_true(read_decisions(path, x = out)$status$pair_set_match)
+    fewer <- read_decisions(path, x = out[-1L, ])$status
     expect_false(fewer$pair_set_match)
-    expect_output(print(rLink_review(path, x = out[-1L, ])), "has changed")
-    expect_output(print(rLink_review(path, x = out)), "match the ones")
+    expect_output(print(read_decisions(path, x = out[-1L, ])), "has changed")
+    expect_output(print(read_decisions(path, x = out)), "match the ones")
 })
 
-test_that("a damaged or foreign artifact is refused by name", {
+test_that("`n_undecided` counts the pairs nobody has reached a verdict on", {
+    skip_if_not_installed("shiny")
+    out <- scored()
+    path <- new_decisions(out)
+    ids <- out$pair_id
+    # One pair judged, one opened and left undecided, the rest untouched.
+    write_events(path, list(
+        event("a", ids[1L], "include", "same person", 1L,
+              "2024-01-01T00:00:00.000Z"),
+        event("a", ids[2L], "undecided", "not sure", 2L,
+              "2024-01-01T00:00:01.000Z")))
+    status <- read_decisions(path, x = out)$status
+    # Leaving a pair undecided files an event for it, but it has still not
+    # been judged, so it is still work remaining.
+    expect_identical(status$n_undecided, nrow(out) - 1L)
+    expect_identical(status$n_decided_present, 1L)
+})
+
+test_that("a damaged or foreign file is refused by name", {
     skip_if_not_installed("jsonlite")
     path <- tempfile(fileext = ".json")
     writeLines("{ not json", path)
-    expect_error(rLink_review(path), "not readable as JSON")
+    expect_error(read_decisions(path), "not readable as JSON")
     writeLines('{"schema":"something/else","format_version":1}', path)
-    expect_error(rLink_review(path), "not a fast.string review artifact")
+    expect_error(read_decisions(path), "not a fast.string decisions file")
     writeLines(sprintf('{"schema":"%s","format_version":99}',
                        fast.string:::.review_schema), path)
-    expect_error(rLink_review(path), "reads up to")
-    expect_error(rLink_review(tempfile()), "no review artifact")
-    expect_error(rLink_review(1), "single path")
+    expect_error(read_decisions(path), "reads up to")
+    expect_error(read_decisions(tempfile()), "no decisions file")
+    expect_error(read_decisions(1), "single path")
 })
 
-test_that("the previous version is kept beside a rewritten artifact", {
+test_that("the previous version is kept beside a rewritten file", {
     skip_if_not_installed("shiny")
-    path <- new_artifact()
+    path <- new_decisions()
     obj <- fast.string:::.review_read_file(path)
     fast.string:::.review_write(obj, path)
     expect_true(file.exists(paste0(path, ".bak")))
@@ -476,89 +508,183 @@ test_that("a path with spaces and unicode round-trips", {
     obj$decisions <- list(event("a", "p1", "include", "café — yes",
                                 1L, "2026-11-06T09:00:00.000Z"))
     fast.string:::.review_write(obj, path)
-    expect_identical(rLink_review(path)$events$comment, "café — yes")
+    expect_identical(read_decisions(path)$events$comment, "café — yes")
 })
 
 
-# --- applying a review ----------------------------------------------------
+# --- applying decisions ----------------------------------------------------
 
-test_that("rLink_apply() applies the recorded threshold with its operator", {
+applied <- function(...) suppressMessages(apply_decisions(...))
+
+test_that("apply_decisions() adds the scope columns to a copy", {
     skip_if_not_installed("shiny")
     out <- scored()
-    path <- new_artifact(out, threshold = c(sn = 0.9))
-    links <- rLink_apply(out, path)
-    expect_identical(as.vector(links), out$sn >= 0.9)
-    expect_true(all(attr(links, "reason") %in%
-                    c("threshold", "below threshold")))
+    path <- new_decisions(out, threshold = c(sn = 0.9))
+    got <- applied(out, path)
+    expect_true(all(c("link", "link_reason") %in% names(got)))
+    expect_identical(got$link, out$sn >= 0.9)
+    expect_true(all(got$link_reason %in% c("threshold", "below threshold")))
+    # The input is untouched.
+    expect_false("link" %in% names(out))
+    # The rest of the table comes through unchanged.
+    expect_identical(got$pair_id, out$pair_id)
+    expect_identical(nrow(got), nrow(out))
+    # A different column name, with its reason beside it.
+    named <- applied(out, path, column = "in_scope")
+    expect_true(all(c("in_scope", "in_scope_reason") %in% names(named)))
+    expect_identical(named$in_scope, got$link)
+})
 
-    # A score left on its own scale is cut the other way, and applying it the
-    # wrong way round would invert the whole linkage.
+test_that("apply_decisions() cuts an unnormalised distance the right way", {
+    skip_if_not_installed("shiny")
+    # Applying it the wrong way round would invert the whole linkage.
     raw <- rLink(enrol(), claims(), block_1 = list(fsubstr(surname, 1, 1)),
                  compare = list(d = levenshtein(surname)), normalise = FALSE)
-    raw_path <- tempfile(fileext = ".json")
-    rLink_inspect(raw, artifact = raw_path, reviewer = "a", launch = FALSE,
+    path <- tempfile(fileext = ".json")
+    rLink_inspect(raw, decisions = path, reviewer = "a", launch = FALSE,
                   threshold = c(d = 2))
-    expect_identical(rLink_review(raw_path)$cuts$operator, "<=")
-    expect_identical(as.vector(rLink_apply(raw, raw_path)), raw$d <= 2)
+    expect_identical(read_decisions(path)$cuts$operator, "<=")
+    expect_identical(applied(raw, path)$link, raw$d <= 2)
 })
 
-test_that("rLink_apply() lets a per-pair verdict override the threshold", {
+test_that("apply_decisions() lets a per-pair verdict override the threshold", {
     skip_if_not_installed("shiny")
     out <- scored()
-    path <- new_artifact(out, threshold = c(sn = 0.9))
+    path <- new_decisions(out, threshold = c(sn = 0.9))
+    low <- which.min(out$sn)
+    high <- which.max(out$sn)
     write_events(path, list(
         # Included although it fails the cut, and excluded although it passes.
-        event("a", out$pair_id[which.min(out$sn)], "include", "checked", 1L,
+        event("a", out$pair_id[low], "include", "checked", 1L,
               "2026-11-06T09:00:00.000Z"),
-        event("a", out$pair_id[which.max(out$sn)], "exclude", "twins", 2L,
+        event("a", out$pair_id[high], "exclude", "twins", 2L,
               "2026-11-06T09:01:00.000Z")))
-    links <- rLink_apply(out, path)
-    reason <- attr(links, "reason")
-    expect_true(links[which.min(out$sn)])
-    expect_identical(reason[which.min(out$sn)], "included")
-    expect_false(links[which.max(out$sn)])
-    expect_identical(reason[which.max(out$sn)], "excluded")
+    got <- applied(out, path)
+    expect_true(got$link[low])
+    expect_identical(got$link_reason[low], "included")
+    expect_false(got$link[high])
+    expect_identical(got$link_reason[high], "excluded")
 })
 
-test_that("rLink_apply() resolves two reviewers by its rule", {
+test_that("apply_decisions() resolves two reviewers by its rule", {
     skip_if_not_installed("shiny")
     out <- scored()
-    path <- new_artifact(out, threshold = c(sn = 0.9))
+    path <- new_decisions(out, threshold = c(sn = 0.9))
     write_events(path, list(
         event("analyst", out$pair_id[1L], "include", "same", 1L,
               "2026-11-06T09:00:00.000Z"),
         event("qa", out$pair_id[1L], "exclude", "not same", 1L,
               "2026-11-07T10:00:00.000Z")))
-    expect_identical(attr(rLink_apply(out, path, rule = "last"),
-                          "reason")[1L], "excluded")
-    expect_identical(attr(rLink_apply(out, path, rule = "unanimous"),
-                          "reason")[1L], "disputed")
-    expect_identical(attr(rLink_apply(out, path, reviewer = "analyst"),
-                          "reason")[1L], "included")
+    expect_identical(applied(out, path, rule = "last")$link_reason[1L],
+                     "excluded")
+    expect_identical(applied(out, path, rule = "unanimous")$link_reason[1L],
+                     "disputed")
+    expect_identical(applied(out, path, reviewer = "analyst")$link_reason[1L],
+                     "included")
     # Under "unanimous" a disputed pair keeps whatever the threshold said.
-    expect_identical(unname(rLink_apply(out, path, rule = "unanimous")[1L]),
+    expect_identical(applied(out, path, rule = "unanimous")$link[1L],
                      out$sn[1L] >= 0.9)
 })
 
-test_that("rLink_apply() with no threshold links only what was included", {
+test_that("apply_decisions() with no threshold keeps only what was included", {
     skip_if_not_installed("shiny")
     out <- scored()
-    path <- new_artifact(out)
-    links <- rLink_apply(out, path)
-    expect_false(any(links))
-    expect_true(all(attr(links, "reason") == "no threshold"))
+    path <- new_decisions(out)
+    got <- applied(out, path)
+    expect_false(any(got$link))
+    expect_true(all(got$link_reason == "no threshold"))
+    # thresholds = FALSE does the same even when one was recorded.
+    with_cut <- new_decisions(out, threshold = c(sn = 0))
+    expect_true(all(applied(out, with_cut)$link))
+    expect_false(any(applied(out, with_cut, thresholds = FALSE)$link))
 })
 
-test_that("rLink_apply() refuses pairs it cannot cut", {
+test_that("apply_decisions() reports what it did", {
     skip_if_not_installed("shiny")
     out <- scored()
-    path <- new_artifact(out, threshold = c(sn = 0.9))
-    expect_error(rLink_apply(as.data.frame(out)[, c("pair_id", "gn")], path),
+    path <- new_decisions(out, threshold = c(sn = 0.9))
+    expect_message(apply_decisions(out, path), "in scope")
+    expect_silent(apply_decisions(out, path, quiet = TRUE))
+    # A decision about a pair that is not here is called out, not dropped
+    # silently.
+    write_events(path, list(
+        event("a", "not-a-pair-at-all", "include", "stale", 1L,
+              "2026-11-06T09:00:00.000Z")))
+    expect_message(apply_decisions(out, path), "not in `x` at all")
+})
+
+test_that("apply_decisions() refuses pairs it cannot cut", {
+    skip_if_not_installed("shiny")
+    out <- scored()
+    path <- new_decisions(out, threshold = c(sn = 0.9))
+    expect_error(applied(as.data.frame(out)[, c("pair_id", "gn")], path),
                  "which `x` does not have")
-    expect_error(rLink_apply(as.data.frame(out)[, c("sn", "gn")], path),
+    expect_error(applied(as.data.frame(out)[, c("sn", "gn")], path),
                  "`pair_id` column")
-    expect_error(rLink_apply(out, 1), "must be an rLink_review")
-    expect_error(rLink_apply(list(), path), "must be a data frame")
+    expect_error(applied(out, 1), "must be a read_decisions")
+    expect_error(applied(list(), path), "must be a data frame")
+    expect_error(applied(out, path, column = ""), "single column name")
+})
+
+test_that("a decisions object prints the R that reproduces it", {
+    skip_if_not_installed("shiny")
+    out <- scored()
+    path <- new_decisions(out, threshold = c(sn = 0.9))
+    d <- read_decisions(path)
+    expect_type(d$code, "character")
+    expect_true(any(grepl("rLink_inspect(", d$code, fixed = TRUE)))
+    expect_true(any(grepl("apply_decisions(", d$code, fixed = TRUE)))
+    # The path is in the generated code, with forward slashes so it pastes
+    # into a script on any platform.
+    expect_true(any(grepl(gsub("\\\\", "/", path), d$code, fixed = TRUE)))
+    expect_output(print(d), "Put this in your script")
+    expect_output(print(d), "apply_decisions")
+})
+
+
+# --- rule expressions ------------------------------------------------------
+
+test_that("a rule expression is evaluated over the score columns", {
+    frame <- data.frame(sn = c(0.95, 0.85, 0.85, 0.40),
+                        gn = c(0.10, 0.99, 0.10, 0.99))
+    got <- fast.string:::.decisions_rule_eval("sn >= 0.9 | (sn >= 0.8 & gn >= 0.95)",
+                                              frame)
+    expect_identical(got, c(TRUE, TRUE, FALSE, FALSE))
+    # The spoken words work too, because that is how the rule reads.
+    expect_identical(
+        fast.string:::.decisions_rule_eval("sn >= 0.9 OR (sn >= 0.8 AND gn >= 0.95)",
+                                           frame),
+        got)
+})
+
+test_that("a rule expression may only compare columns", {
+    frame <- data.frame(sn = c(1, 0))
+    refuse <- function(text)
+        expect_warning(
+            expect_null(fast.string:::.decisions_rule_eval(text, frame)))
+    # Not a column of the data.
+    refuse("nope >= 1")
+    # Not an operator a rule may use: this is the path that would otherwise
+    # make a decisions file from someone else an arbitrary-code channel.
+    refuse("system('echo hi')")
+    refuse("sn >= 1 & eval(parse(text = 'Sys.setenv(X = 1)'))")
+    refuse("Recall(sn)")
+    # Does not parse, and does not give one logical per row.
+    refuse("sn >= ")
+    refuse("sum(sn)")
+})
+
+test_that("a rule expression that cannot run falls back to the threshold", {
+    skip_if_not_installed("shiny")
+    out <- scored()
+    path <- new_decisions(out, threshold = c(sn = 0.9))
+    # Plant a rule naming a column that is not there.
+    obj <- fast.string:::.review_read_file(path)
+    obj$thresholds[[1L]]$expr <- "not_a_column >= 1"
+    fast.string:::.review_write(obj, path)
+    # Assigned inside, because expect_warning() returns the condition.
+    expect_warning(got <- applied(out, path), "refused")
+    expect_identical(got$link, out$sn >= 0.9)
 })
 
 
@@ -569,7 +695,7 @@ test_that("a decision is recorded, kept, and saved", {
     skip_if_not_installed("reactable")
     out <- scored()
     path <- tempfile(fileext = ".json")
-    app <- rLink_inspect(out, artifact = path, reviewer = "analyst",
+    app <- rLink_inspect(out, decisions = path, reviewer = "analyst",
                          launch = FALSE)
     shiny::testServer(app, {
         session$setInputs(fs_decision = list(
@@ -602,7 +728,7 @@ test_that("a decision is recorded, kept, and saved", {
 
         session$setInputs(save = 1)
     })
-    review <- rLink_review(path)
+    review <- read_decisions(path)
     expect_identical(nrow(review$events), 3L)
     expect_identical(review$decisions$decision[
         review$decisions$pair_id == out$pair_id[1L]], "include")
@@ -616,7 +742,7 @@ test_that("moving a slider changes what passes, over every pair", {
     skip_if_not_installed("shiny")
     skip_if_not_installed("reactable")
     out <- scored()
-    app <- rLink_inspect(out, artifact = tempfile(), reviewer = "a",
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
                          launch = FALSE)
     shiny::testServer(app, {
         session$setInputs(cut_1 = 0, cut_2 = 0, rule = "all")
@@ -643,7 +769,7 @@ test_that("recording a threshold writes it with its effect", {
     skip_if_not_installed("reactable")
     out <- scored()
     path <- tempfile(fileext = ".json")
-    app <- rLink_inspect(out, artifact = path, reviewer = "a", launch = FALSE)
+    app <- rLink_inspect(out, decisions = path, reviewer = "a", launch = FALSE)
     shiny::testServer(app, {
         session$setInputs(cut_1 = 0, cut_2 = 0, rule = "all",
                           note = "everything passes here")
@@ -651,7 +777,7 @@ test_that("recording a threshold writes it with its effect", {
         session$setInputs(accept = 1)
         expect_length(rv_thresholds(), 1L)
     })
-    review <- rLink_review(path)
+    review <- read_decisions(path)
     expect_identical(nrow(review$thresholds), 1L)
     expect_identical(review$thresholds$note, "everything passes here")
     expect_identical(review$thresholds$n_pairs, nrow(out))
@@ -662,11 +788,11 @@ test_that("reopening a review shows the earlier decisions", {
     skip_if_not_installed("shiny")
     skip_if_not_installed("reactable")
     out <- scored()
-    path <- new_artifact(out)
+    path <- new_decisions(out)
     write_events(path, list(
         event("analyst", out$pair_id[1L], "exclude", "earlier call", 1L,
               "2026-11-06T09:00:00.000Z")))
-    app <- rLink_inspect(out, artifact = path, reviewer = "analyst",
+    app <- rLink_inspect(out, decisions = path, reviewer = "analyst",
                          launch = FALSE)
     shiny::testServer(app, {
         expect_identical(rv_decisions()[[out$pair_id[1L]]], "exclude")
@@ -678,7 +804,7 @@ test_that("the table renders and carries the decision state", {
     skip_if_not_installed("shiny")
     skip_if_not_installed("reactable")
     out <- scored()
-    app <- rLink_inspect(out, artifact = tempfile(), reviewer = "a",
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
                          launch = FALSE)
     shiny::testServer(app, {
         session$setInputs(cut_1 = 0.5, cut_2 = 0.5, rule = "all",
@@ -703,4 +829,574 @@ test_that("the table renders and carries the decision state", {
         session$elapse(300)
         expect_identical(nrow(table_data()), 0L)
     })
+})
+
+
+
+
+# --- the app shell ---------------------------------------------------------
+#
+# testServer() evaluates its expression inside the server function's own
+# environment, which can see the named reactives but not `spec` -- that is the
+# enclosing closure's argument. So these reach for `out` and the public
+# surface, which is the better thing to assert against anyway.
+
+test_that("the UI renders, with the sidebar, panels and controls in it", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    skip_if_not_installed("bslib")
+    skip_if_not_installed("sortable")
+    html <- as.character(htmltools::renderTags(
+        fast.string:::.inspect_ui(spec_for(scored())))$html)
+    expect_true(nchar(html) > 2000)
+    # A collapsible sidebar and collapsible panels, so the table gets the width.
+    expect_true(grepl("sidebar", html))
+    expect_true(grepl("accordion", html))
+    # Both ways of setting a cut, and the rule box.
+    expect_true(grepl("cut_1", html, fixed = TRUE))
+    expect_true(grepl("num_1", html, fixed = TRUE))
+    expect_true(grepl("Suggest a cut", html, fixed = TRUE))
+    # Bulk marking and the way out.
+    expect_true(grepl("Ctrl-click", html, fixed = TRUE))
+    expect_true(grepl("Finish and close", html, fixed = TRUE))
+})
+
+test_that("the column picker degrades rather than blanking the table", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    skip_if_not_installed("sortable")
+    out <- scored()
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        # Nothing reported yet -- which is also what happens when sortable
+        # cannot report at all -- and the table still shows every column.
+        expect_true(all(c("pair_id", "sn", "gn") %in% col_order()))
+        expect_true(length(col_order()) > 3L)
+        # A reported order is honoured, and dragging a column to Hidden drops
+        # it.
+        session$setInputs(cols_shown = c("sn", "pair_id"))
+        expect_identical(col_order(), c("sn", "pair_id"))
+        expect_true(all(c("sn", "pair_id") %in% names(table_data())))
+        expect_false("gn" %in% names(table_data()))
+        # Nonsense from the widget does not empty the table.
+        session$setInputs(cols_shown = "not_a_column")
+        expect_true(length(col_order()) > 3L)
+    })
+})
+
+
+# --- choosing the cut ------------------------------------------------------
+
+test_that("the slider and the numeric box stay in step", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    app <- rLink_inspect(scored(), decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0.9, cut_2 = 0.9, rule = "all")
+        session$elapse(400)
+        expect_equal(unname(cuts()[1L]), 0.9)
+        # Typing an exact value into the box moves the cut too, which is the
+        # point of having the box: 0.8832 is not findable with a slider.
+        session$setInputs(num_1 = 0.8832)
+        session$elapse(400)
+        expect_equal(unname(cuts()[1L]), 0.8832)
+    })
+})
+
+test_that("a suggested cut lands in range and explains itself", {
+    out <- scored()
+    sw <- threshold_sweep(
+        data.frame(index_1 = out$index_1, index_2 = out$index_2), out$sn)
+    got <- fast.string:::.inspect_suggest(sw)
+    expect_false(is.null(got))
+    expect_true(got$threshold >= min(sw$threshold))
+    expect_true(got$threshold <= max(sw$threshold))
+    expect_true(nzchar(got$why))
+    # A number a reviewer cannot justify is barely better than a guess, so the
+    # reasoning is part of the answer.
+    expect_true(grepl("one-to-one", got$why))
+    one <- threshold_sweep(data.frame(index_1 = 1L, index_2 = 1L), 0.5)
+    expect_false(is.null(fast.string:::.inspect_suggest(one)))
+    expect_null(fast.string:::.inspect_suggest(one[0L, ]))
+})
+
+test_that("a rule expression drives the cut, and a broken one does not", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0, cut_2 = 0, rule = "expr",
+                          expr = "sn >= 0.99 | gn >= 0.99")
+        session$elapse(600)
+        expect_identical(pass_all(), out$sn >= 0.99 | out$gn >= 0.99)
+        # Nonsense falls back to the sliders rather than failing the session.
+        session$setInputs(expr = "this is not a rule")
+        session$elapse(600)
+        expect_true(all(pass_all()))
+    })
+})
+
+test_that("a recorded threshold keeps the rule it was written with", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    path <- tempfile(fileext = ".json")
+    app <- rLink_inspect(out, decisions = path, reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0, cut_2 = 0, rule = "expr",
+                          expr = "sn >= 0.99", note = "strict surnames only")
+        session$elapse(600)
+        session$setInputs(accept = 1)
+        expect_length(rv_thresholds(), 1L)
+        expect_identical(rv_thresholds()[[1L]]$expr, "sn >= 0.99")
+    })
+    d <- read_decisions(path)
+    expect_identical(d$thresholds$expr, "sn >= 0.99")
+    expect_identical(d$thresholds$note, "strict surnames only")
+    # The rule is what prints, not the slider positions behind it.
+    expect_output(print(d), "sn >= 0.99")
+    # And the rule is what gets applied, not the cuts stored beside it.
+    expect_identical(suppressMessages(apply_decisions(out, path))$link,
+                     out$sn >= 0.99)
+})
+
+
+# --- scope, marking and bulk judgement -------------------------------------
+
+test_that("the table carries a scope column the threshold drives", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0, cut_2 = 0, rule = "all", filter = "all",
+                          mode = "flag", group_scope = TRUE)
+        session$elapse(400)
+        d <- table_data()
+        expect_true("_scope" %in% names(d))
+        expect_true(all(d[["_scope"]] == "in scope"))
+        # Moving the cut regroups, because the blocks are what it decided.
+        session$setInputs(cut_1 = 2, cut_2 = 2)
+        session$elapse(400)
+        expect_true(all(table_data()[["_scope"]] == "out of scope"))
+    })
+})
+
+test_that("a judgement reaches the scope cell without regrouping", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    low <- out$pair_id[which.min(out$sn)]
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 2, cut_2 = 2, rule = "all", filter = "all",
+                          mode = "flag", group_scope = TRUE)
+        session$elapse(400)
+        expect_true(all(table_data()[["_scope"]] == "out of scope"))
+        session$setInputs(fs_decision = list(pair_id = low,
+                                             decision = "include", nonce = 1))
+        # The grouping blocks are untouched: re-rendering the table on every
+        # click would cost the reviewer their sort, filter and page position.
+        d <- table_data()
+        expect_identical(d[["_scope"]][match(low, d$pair_id)], "out of scope")
+        # The judgement is in the live state the scope cell reads instead.
+        expect_identical(rv_touched()$decisions[[low]], "include")
+    })
+    # And the renderer really does read it from there, saying whether the
+    # judgement confirmed the cut or overruled it.
+    js <- as.character(fast.string:::.inspect_js_scope())
+    expect_true(grepl("state.meta.decisions", js, fixed = TRUE))
+    expect_true(grepl("forced in", js, fixed = TRUE))
+    expect_true(grepl("forced out", js, fixed = TRUE))
+    expect_true(grepl("confirmed", js, fixed = TRUE))
+    expect_true(grepl("_threshold", js, fixed = TRUE))
+})
+
+# --- a judgement overrides the threshold -----------------------------------
+
+test_that("a judgement overrides the cut in both directions", {
+    scope <- fast.string:::.inspect_scope
+    ids <- c("a", "b", "c", "d")
+    pass <- c(TRUE, TRUE, FALSE, FALSE)
+    # Nothing judged leaves the cut alone.
+    expect_identical(scope(pass, ids, list()), pass)
+    # Included pulls a failing pair in; excluded pushes a passing one out.
+    expect_identical(
+        scope(pass, ids, list(c = "include", a = "exclude")),
+        c(FALSE, TRUE, TRUE, FALSE))
+    # "undecided" is the absence of a verdict, not a verdict of its own.
+    expect_identical(scope(pass, ids, list(a = "undecided")), pass)
+    # A decision about a pair that is not here cannot move anything.
+    expect_identical(scope(pass, ids, list(zz = "include")), pass)
+})
+
+test_that("the override counts separate the cut from the judgement", {
+    counts <- fast.string:::.inspect_scope_counts(
+        pass  = c(TRUE, TRUE, FALSE, FALSE),
+        scope = c(FALSE, TRUE, TRUE, FALSE))
+    expect_identical(counts$n_threshold, 2L)
+    expect_identical(counts$n_scope, 2L)
+    expect_identical(counts$n_forced_in, 1L)
+    expect_identical(counts$n_forced_out, 1L)
+})
+
+test_that("an override moves the counts the app reports, not only the cell", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    low <- out$pair_id[which.min(out$sn)]
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        # A cut nothing clears, so every pair starts out of scope.
+        session$setInputs(cut_1 = 2, cut_2 = 2, rule = "all", filter = "all",
+                          mode = "flag", group_scope = TRUE)
+        session$elapse(400)
+        expect_identical(effect()$n_pairs, 0L)
+        expect_identical(overrides()$n_forced_in, 0L)
+        session$setInputs(fs_decision = list(pair_id = low,
+                                             decision = "include", nonce = 1))
+        # The header, the effect panel and the override tally all move: the
+        # scope the app reports is the scope apply_decisions() will produce.
+        expect_identical(effect()$n_pairs, 1L)
+        expect_identical(overrides()$n_threshold, 0L)
+        expect_identical(overrides()$n_forced_in, 1L)
+        expect_true(scope_all()[match(low, out$pair_id)])
+        # And the other way: a cut everything clears, minus one excluded.
+        session$setInputs(cut_1 = 0, cut_2 = 0)
+        session$elapse(400)
+        session$setInputs(fs_decision = list(pair_id = low,
+                                             decision = "exclude", nonce = 2))
+        expect_identical(overrides()$n_forced_out, 1L)
+        expect_identical(effect()$n_pairs, nrow(out) - 1L)
+    })
+})
+
+test_that("the app's scope is the scope apply_decisions() produces", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    path <- tempfile(fileext = ".json")
+    low <- out$pair_id[which.min(out$sn)]
+    high <- out$pair_id[which.max(out$sn)]
+    app <- rLink_inspect(out, decisions = path, reviewer = "a",
+                         launch = FALSE)
+    # testServer() does not hand back the value of its block, so the scope
+    # the app reported is carried out in a variable.
+    seen <- NULL
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0.9, cut_2 = 0, rule = "all",
+                          filter = "all", mode = "flag", group_scope = TRUE)
+        session$elapse(400)
+        session$setInputs(fs_decision = list(pair_id = low,
+                                             decision = "include", nonce = 1))
+        session$setInputs(fs_decision = list(pair_id = high,
+                                             decision = "exclude", nonce = 2))
+        session$setInputs(note = "cut recorded with the overrides in place")
+        session$setInputs(accept = 1)
+        seen <<- scope_all()
+    })
+    expect_length(seen, nrow(out))
+    applied <- suppressMessages(apply_decisions(out, path))
+    expect_identical(applied$link, seen)
+    # And the reasons name which rule decided each one.
+    expect_identical(applied$link_reason[match(low, out$pair_id)], "included")
+    expect_identical(applied$link_reason[match(high, out$pair_id)], "excluded")
+})
+
+test_that("a recorded threshold snapshots the cut, not the review so far", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    path <- tempfile(fileext = ".json")
+    low <- out$pair_id[which.min(out$sn)]
+    app <- rLink_inspect(out, decisions = path, reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        # A cut nothing clears, then one pair forced in by hand.
+        session$setInputs(cut_1 = 2, cut_2 = 2, rule = "all", filter = "all",
+                          mode = "flag", group_scope = TRUE)
+        session$elapse(400)
+        session$setInputs(fs_decision = list(pair_id = low,
+                                             decision = "include", nonce = 1))
+        expect_identical(effect()$n_pairs, 1L)      # what is in scope
+        expect_identical(cut_effect()$n_pairs, 0L)  # what the cut did
+        session$setInputs(note = "nothing clears this")
+        session$setInputs(accept = 1)
+    })
+    # The event is a record of the threshold, so its counts describe the
+    # threshold. Storing the reviewed total would make the number depend on
+    # how far through the review the button was pressed.
+    th <- read_decisions(path)$thresholds
+    accepted <- th[th$status == "accepted", , drop = FALSE]
+    expect_identical(accepted$n_pairs[nrow(accepted)], 0L)
+})
+
+test_that("hiding out-of-scope rows keeps a pair included by hand", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    low <- out$pair_id[which.min(out$sn)]
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 2, cut_2 = 2, rule = "all",
+                          filter = "all", mode = "filter",
+                          group_scope = TRUE)
+        session$elapse(400)
+        expect_identical(nrow(table_data()), 0L)
+        session$setInputs(fs_decision = list(pair_id = low,
+                                             decision = "include", nonce = 1))
+        # Judging a pair a link and watching it vanish is how a reviewer
+        # stops believing the tool recorded what they said.
+        session$setInputs(mode = "flag")
+        session$setInputs(mode = "filter")
+        d <- table_data()
+        expect_identical(d$pair_id, low)
+    })
+})
+
+test_that("showing the overrides lists just the contested pairs", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    low <- out$pair_id[which.min(out$sn)]
+    high <- out$pair_id[which.max(out$sn)]
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0.9, cut_2 = 0, rule = "all",
+                          filter = "all", mode = "flag", group_scope = TRUE)
+        session$elapse(400)
+        # `low` fails the cut and is forced in; `high` passes it and is
+        # confirmed, not overridden, so only `low` should be listed.
+        session$setInputs(fs_decision = list(pair_id = low,
+                                             decision = "include", nonce = 1))
+        session$setInputs(fs_decision = list(pair_id = high,
+                                             decision = "include", nonce = 2))
+        session$setInputs(filter = "override")
+        expect_identical(table_data()$pair_id, low)
+        session$setInputs(filter = "in_scope")
+        expect_true(low %in% table_data()$pair_id)
+        session$setInputs(filter = "out_scope")
+        expect_false(low %in% table_data()$pair_id)
+    })
+})
+
+
+# --- the pair under review -------------------------------------------------
+
+test_that("clicking a row puts that pair in the sidebar", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    id <- out$pair_id[1L]
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0.9, cut_2 = 0.9, rule = "all",
+                          filter = "all", mode = "flag", group_scope = TRUE)
+        session$elapse(400)
+        expect_null(rv_focus())
+        session$setInputs(fs_focus = list(pair_id = id, nonce = 1))
+        expect_identical(rv_focus(), id)
+        # An identifier that is not one of these pairs is ignored rather than
+        # left to fail inside the renderer.
+        session$setInputs(fs_focus = list(pair_id = "nope", nonce = 2))
+        expect_identical(rv_focus(), id)
+        # Judging from the sidebar is the same decision as judging from the
+        # row, so the event log cannot tell them apart.
+        session$setInputs(focus_exclude = 1)
+        expect_identical(rv_decisions()[[id]], "exclude")
+    })
+})
+
+test_that("a missing value and an empty one read differently", {
+    shown <- fast.string:::.inspect_shown
+    expect_identical(shown(NA_character_), fast.string:::.inspect_na_label)
+    expect_identical(shown(""), "(empty)")
+    expect_identical(shown("SMITH"), "SMITH")
+})
+
+test_that("y, n and u judge from the keyboard", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    ids <- out$pair_id[1:2]
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0.9, cut_2 = 0.9, rule = "all",
+                          filter = "all", mode = "flag", group_scope = TRUE)
+        session$elapse(400)
+        session$setInputs(fs_keyjudge = list(pair_ids = as.list(ids),
+                                             decision = "include",
+                                             nonce = 1))
+        expect_identical(rv_decisions()[[ids[1L]]], "include")
+        expect_identical(rv_decisions()[[ids[2L]]], "include")
+        # One event each, same as a click.
+        expect_identical(length(rv_events()), 2L)
+        # Anything that is not one of the three verdicts is ignored.
+        session$setInputs(fs_keyjudge = list(pair_ids = as.list(ids),
+                                             decision = "delete",
+                                             nonce = 2))
+        expect_identical(length(rv_events()), 2L)
+    })
+    js <- fast.string:::.inspect_js_bindings()
+    expect_true(grepl("fs_keyjudge", js, fixed = TRUE))
+    # Typing 'n' in a comment box must stay typing.
+    expect_true(grepl("TEXTAREA", js, fixed = TRUE))
+})
+
+
+# --- a second reviewer's pass ----------------------------------------------
+
+test_that("reopening does not pre-fill another reviewer's verdicts", {
+    skip_if_not_installed("shiny")
+    out <- scored()
+    path <- new_decisions(out)
+    id <- out$pair_id[1L]
+    write_events(path, list(event(
+        "analyst", id, "include", "same person", 1L,
+        "2024-01-01T00:00:00.000Z")))
+    # The analyst reopening their own file finds their own work waiting.
+    mine <- fast.string:::.inspect_seed(spec_for(out, file = path,
+                                                reviewer = "analyst"))
+    expect_identical(mine$decisions[[id]], "include")
+    expect_identical(mine$comments[[id]], "same person")
+    expect_identical(nrow(mine$others), 0L)
+    # A QA reviewer does not: a check that opens pre-answered is not a check.
+    theirs <- fast.string:::.inspect_seed(spec_for(out, file = path,
+                                                  reviewer = "qa"))
+    expect_identical(length(theirs$decisions), 0L)
+    # It is shown to them instead, attributed.
+    expect_identical(theirs$others$reviewer, "analyst")
+    expect_identical(theirs$others$pair_id, id)
+    expect_identical(theirs$others$decision, "include")
+})
+
+
+test_that("ctrl and shift marking is keyed on the pair, not the row", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    # reactable's own `selected` indices mean position in the data, which stops
+    # matching the screen as soon as anything is sorted, filtered or paged. The
+    # bindings send pair ids instead, so this is the contract worth pinning.
+    js <- fast.string:::.inspect_js_bindings()
+    for (token in c("data-fs-id", "shiftKey", "ctrlKey", "metaKey",
+                    "fs_marked", "mousedown"))
+        expect_true(grepl(token, js, fixed = TRUE))
+
+    out <- scored()
+    ids <- out$pair_id[1:3]
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(fs_marked = list(pair_ids = ids, nonce = 1))
+        expect_identical(sort(rv_marked()), sort(ids))
+        # A mark for something that is not one of these pairs is dropped.
+        session$setInputs(fs_marked = list(pair_ids = c(ids, "bogus"),
+                                           nonce = 2))
+        expect_identical(sort(rv_marked()), sort(ids))
+    })
+})
+
+test_that("a bulk judgement writes one event per marked pair", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    ids <- out$pair_id[1:3]
+    path <- tempfile(fileext = ".json")
+    app <- rLink_inspect(out, decisions = path, reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(fs_marked = list(pair_ids = ids, nonce = 1))
+        session$setInputs(mark_include = 1)
+        expect_length(rv_events(), 3L)
+        expect_true(all(vapply(ids, function(i)
+            identical(rv_decisions()[[i]], "include"), logical(1L))))
+        # The marks are cleared, so the next bulk action cannot repeat them.
+        expect_length(rv_marked(), 0L)
+
+        session$setInputs(fs_marked = list(pair_ids = out$pair_id[4],
+                                           nonce = 2))
+        session$setInputs(mark_exclude = 1)
+        expect_identical(rv_decisions()[[out$pair_id[4]]], "exclude")
+        expect_length(rv_events(), 4L)
+
+        # Clearing marks judges nothing.
+        session$setInputs(fs_marked = list(pair_ids = ids, nonce = 3))
+        session$setInputs(mark_clear = 1)
+        expect_length(rv_marked(), 0L)
+        expect_length(rv_events(), 4L)
+        # Autosave is throttled, so ask for the write explicitly.
+        session$setInputs(save = 1)
+    })
+    expect_identical(nrow(read_decisions(path)$events), 4L)
+})
+
+
+# --- finishing -------------------------------------------------------------
+
+test_that("finishing saves, and the decisions carry the code to replay them", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    path <- tempfile(fileext = ".json")
+    app <- rLink_inspect(out, decisions = path, reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(fs_decision = list(pair_id = out$pair_id[1L],
+                                             decision = "exclude", nonce = 1))
+        session$setInputs(exit = 1)
+    })
+    handed <- read_decisions(path, x = out)
+    expect_s3_class(handed, "fs_decisions")
+    expect_identical(nrow(handed$events), 1L)
+    # The object knows how to be replayed, which is what makes a review
+    # reproducible rather than a note in a drawer.
+    code <- paste(handed$code, collapse = "\n")
+    expect_true(grepl("rLink_inspect(", code, fixed = TRUE))
+    expect_true(grepl("apply_decisions(", code, fixed = TRUE))
+    expect_true(grepl(gsub("\\\\", "/", path), code, fixed = TRUE))
+    # And it checks itself against the pairs it was made on.
+    expect_true(handed$status$pair_set_match)
+})
+
+
+# --- the shipped example file ----------------------------------------------
+
+test_that("the example decisions file matches the current format", {
+    skip_if_not_installed("jsonlite")
+    path <- system.file("extdata", "example_decisions.json",
+                        package = "fast.string")
+    expect_true(nzchar(path))
+    pairs <- data.frame(pair_id = c("A|X", "B|Y", "C|Z", "D|W"),
+                        index_1 = 1:4, index_2 = 1:4,
+                        score = c(0.97, 0.74, 0.44, 0.31))
+    d <- read_decisions(path, x = pairs)
+    # The whole point of shipping it is that the examples on read_decisions()
+    # and apply_decisions() run against it, so it has to stay in step with the
+    # format and with the fingerprinting -- a change to either would otherwise
+    # leave the documented output quietly wrong.
+    expect_identical(d$format_version, fast.string:::.review_format)
+    expect_true(d$status$pair_set_match)
+    expect_true(d$status$scores_match)
+    expect_true(d$status$columns_match)
+    # And that it still shows every part of the format worth showing.
+    expect_identical(nrow(d$runs), 2L)
+    expect_identical(sort(unique(d$events$reviewer)), c("analyst", "qa"))
+    expect_identical(nrow(d$events), 3L)
+    expect_identical(nrow(d$disagreements), 1L)
+    expect_identical(d$disagreements$pair_id, "C|Z")
+    expect_identical(nrow(d$cuts), 1L)
+    expect_identical(d$cuts$operator, ">=")
+    expect_true(all(nzchar(d$events$comment)))
 })

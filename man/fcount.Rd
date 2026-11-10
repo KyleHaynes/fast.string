@@ -49,10 +49,14 @@ match the empty string in non-ASCII text it reports extra empty matches
 inside multi-byte characters, which \code{fcount()} does not count.
 }
 \examples{
-x <- c("apple pie", "banana split", NA, "cherry tart")
+x <- c("Unit 4, 12 Smith St", "12 SMITH STREET", NA, "PO Box 219")
 
-fcount("a", x, fixed = TRUE)
-fcount("[aeiou]", x)            # vowels per string
+fcount(",", x, fixed = TRUE)
+fcount("[0-9]", x)              # digits per line
+
+# How many words a name field holds, which is what decides whether a
+# token-based comparator or a plain one is the right choice for it.
+fcount("\\\\S+", c("NGUYEN THI MINH", "SMITH", "DE LA CRUZ JUAN"))
 }
 \seealso{
 \code{\link[base:gregexpr]{base::gregexpr()}}

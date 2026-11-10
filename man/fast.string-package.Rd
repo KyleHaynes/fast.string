@@ -276,8 +276,8 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \emph{Clerical review}
 \itemize{
 \item \code{\link[=rLink_inspect]{rLink_inspect()}} - review pairs in a browser
-\item \code{\link[=rLink_review]{rLink_review()}} - read a saved pair review
-\item \code{\link[=rLink_apply]{rLink_apply()}} - apply a review to pairs
+\item \code{\link[=read_decisions]{read_decisions()}} - read saved pair decisions
+\item \code{\link[=apply_decisions]{apply_decisions()}} - add in-scope columns from a review
 }
 }
 \item \strong{Benchmarking}

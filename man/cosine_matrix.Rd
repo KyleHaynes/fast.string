@@ -28,7 +28,8 @@ with \code{names(a)} and \code{names(b)} as row and column names when present.
 Q-gram cosine all-pairs similarity matrix
 }
 \examples{
-cosine_matrix(c("night", "nacht"), c("night", "nacht", "day"))
+cosine_matrix(c("SMITH JOHN", "NGUYEN THI MINH"),
+              c("JOHN SMITH", "NGUYEN MINH", "TRAN VAN NAM"))
 }
 \seealso{
 Other q-gram similarity functions:

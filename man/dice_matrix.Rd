@@ -28,7 +28,8 @@ with \code{names(a)} and \code{names(b)} as row and column names when present.
 Q-gram Sorensen-Dice all-pairs similarity matrix
 }
 \examples{
-dice_matrix(c("night", "nacht"), c("night", "nacht", "day"))
+dice_matrix(c("SMITH JOHN", "NGUYEN THI MINH"),
+            c("JOHN SMITH", "NGUYEN MINH", "TRAN VAN NAM"))
 }
 \seealso{
 Other q-gram similarity functions:

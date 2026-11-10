@@ -105,8 +105,18 @@ lcs_str_similarity <- function(a, b, nthreads = NULL, use_bytes = FALSE) {
 #' @examples
 #' smith_waterman("Dept of Health", "Queensland Health")
 #' smith_waterman("Dept of Health", "Queensland Health", normalize = FALSE)
-#' smith_waterman("GATTACA", "GCATGCU", mismatch = -1, gap_open = -2,
-#'                gap_extend = -1, normalize = FALSE)
+#'
+#' # Local alignment finds the longest stretch that agrees and ignores the
+#' # rest, which is what an address field needs: the same dwelling written
+#' # with and without a unit number, a postcode, a state.
+#' smith_waterman("12 SMITH STREET TOOWONG",
+#'                "UNIT 4, 12 SMITH ST, TOOWONG QLD 4066")
+#'
+#' # A cheap gap relative to a mismatch is what lets an abbreviation align
+#' # through: the scores are the knob for "how much is a missing word worth".
+#' smith_waterman("DEPT OF TRANSPORT AND MAIN ROADS",
+#'                "TRANSPORT AND MAIN ROADS",
+#'                gap_open = -1, gap_extend = -0.2)
 #' @export
 smith_waterman <- function(a, b, match = 1, mismatch = -2, gap_open = -0.5,
                            gap_extend = gap_open, normalize = TRUE,

@@ -14,3 +14,4 @@ fast.string_*.tar.gz
 .test-lib/
 .codex-verify-lib/
 .Rhistory
+*.d

@@ -42,8 +42,9 @@ cores via Intel TBB.
 }
 \examples{
 ratcliff_obershelp("GEORGE SMITH", "SMITH GEORGE")
-ratcliff_obershelp("Pennsylvania", "Pencilvaneya")
-ratcliff_obershelp_distance("kitten", "sitting")
+ratcliff_obershelp("INDOOROOPILLY", "INDOOROPILLY")
+ratcliff_obershelp_distance(c("MACDONALD", "CHOWDHURY"),
+                            c("MCDONALD", "CHOUDHURY"))
 }
 \references{
 Ratcliff, J. W. and Metzener, D. E. (1988). Pattern matching:

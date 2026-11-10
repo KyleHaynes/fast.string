@@ -77,8 +77,17 @@ an exact match. New lookup APIs compare UTF-8 code points by default; set
 perform Unicode normalization or grapheme-cluster segmentation.
 }
 \examples{
+# One file's surnames against the other's, best match only: this is the
+# candidate-search step, done without ever building the n x m matrix.
 fuzzy_match(c("SMITH", "JONES"), c("SMYTH", "JONAS", "JONES"))
-fuzzy_top_n("kitten", c("sitting", "mitten", "cat"), top_n = 2)
+
+# Several candidates per record instead of one, which is what a clerical
+# review wants: a single best match hides the case where two records are
+# almost equally good and the choice between them is a judgement call.
+fuzzy_top_n("NGUYEN THI MINH",
+            c("NGUYEN THI MINH", "NGUYEN MINH THI", "NGUYEN THI MAI",
+              "TRAN THI MINH"),
+            top_n = 3)
 }
 \seealso{
 \code{\link[=jaro_winkler]{jaro_winkler()}} and \link{edit_distance} for the scoring metrics, and

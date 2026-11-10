@@ -551,3 +551,63 @@ test_that("the probabilistic pipeline runs end to end from rLink()", {
     expect_gt(blocking$reduction_ratio, 0)
     expect_equal(blocking$pairs_completeness, 1)
 })
+
+
+# --- level codes must be in range before anything indexes by them ----------
+#
+# `m` and `u` are indexed as offset[comparison] + level, so a level outside
+# 0..n_levels-1 was an out-of-bounds write into the heap: it did not fail
+# where it happened, it corrupted an unrelated allocation and brought the
+# session down later with no message. Reachable from R, because
+# agreement_patterns() keeps the level count in an attribute that survives
+# edits to the table which invalidate it.
+
+test_that("em_linkage() re-reads the levels rather than trusting the attribute", {
+    levels <- data.frame(surname = c(1L, 1L, 0L, 1L, NA),
+                         given   = c(1L, 0L, 0L, 1L, 1L))
+    p <- agreement_patterns(levels)
+    expect_identical(unname(attr(p, "n_levels")), c(2L, 2L))
+    # A level the attribute does not cover. The attribute is now a floor, so
+    # the model grows to fit the data instead of writing past its own
+    # parameter vectors.
+    p$surname[1L] <- 4L
+    fit <- suppressWarnings(em_linkage(p))
+    expect_identical(unname(fit$n_levels[["surname"]]), 5L)
+    expect_length(fit$m$surname, 5L)
+    expect_length(fit$u$surname, 5L)
+    # Still every probability, and still probabilities.
+    expect_true(all(fit$m$surname > 0 & fit$m$surname < 1))
+})
+
+test_that("a negative level is refused rather than indexed with", {
+    levels <- data.frame(surname = c(1L, 0L), given = c(1L, 0L))
+    p <- agreement_patterns(levels)
+    p$surname[1L] <- -1L
+    expect_error(em_linkage(p), "whole numbers from 0 up")
+})
+
+test_that("the EM kernel itself refuses an out-of-range level", {
+    impl <- fast.string:::fast_em_linkage_impl
+    # Called directly, bypassing the R-side check: the kernel must not trust
+    # its caller, because it is the one doing the indexing.
+    pattern <- matrix(c(0L, 1L, 7L, 0L), 2L, 2L)
+    expect_error(
+        impl(pattern, c(1, 1), c(2L, 2L), rep(0.5, 4), rep(0.5, 4),
+             0.1, 10L, 1e-8, 1e-10),
+        "only 2 level")
+    expect_error(
+        impl(pattern, c(1, 1), c(NA_integer_, 2L), rep(0.5, 4), rep(0.5, 4),
+             0.1, 10L, 1e-8, 1e-10),
+        "at least one level")
+    # A well-formed call still fits.
+    ok <- impl(matrix(c(0L, 1L, 1L, 0L), 2L, 2L), c(1, 1), c(2L, 2L),
+               rep(0.5, 4), rep(0.5, 4), 0.1, 10L, 1e-8, 1e-10)
+    expect_length(ok$m, 4L)
+})
+
+test_that("a pattern table with nothing to fit is refused by name", {
+    levels <- data.frame(surname = c(1L, 0L))
+    p <- agreement_patterns(levels)
+    p$n <- NULL
+    expect_error(em_linkage(p), "no `n` column")
+})

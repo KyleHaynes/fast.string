@@ -55,11 +55,11 @@
 #' @seealso [base::grep()]
 #' @family matching and substitution functions
 #' @examples
-#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#' x <- c("Unit 4, 12 Smith St", "12 SMITH STREET", NA, "PO Box 219")
 #'
-#' fgrep("an", x)                  # positions
-#' fgrep("an", x, value = TRUE)    # the matching strings
-#' fgrep("an", x, invert = TRUE)   # everything else, including the NA
+#' fgrep("Smith", x, ignore.case = TRUE)                # positions
+#' fgrep("Smith", x, ignore.case = TRUE, value = TRUE)  # the strings
+#' fgrep("Smith", x, ignore.case = TRUE, invert = TRUE) # the rest, with NA
 #' @export
 fgrep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
                  value = FALSE, fixed = FALSE, useBytes = FALSE,
@@ -88,10 +88,13 @@ fgrep <- function(pattern, x, ignore.case = FALSE, perl = FALSE,
 #' @seealso [base::sub()]
 #' @family matching and substitution functions
 #' @examples
-#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#' # "SURNAME, GIVEN" in one file and "GIVEN SURNAME" in the other is the
+#' # commonest shape mismatch in a name field, and one substitution fixes
+#' # it: only the first comma, so a middle name is left alone.
+#' x <- c("SMITH, JOHN", "NGUYEN, THI MINH", NA, "DE LA CRUZ, JUAN")
+#' fsub("^([^,]+), (.*)$", "\\2 \\1", x)
 #'
-#' fsub("a", "_", x, fixed = TRUE)          # first "a" only
-#' fsub("(\\w+) (\\w+)", "\\2 \\1", x)      # swap the two words
+#' fsub("-", " ", c("SMITH-JONES", "A-B-C", NA), fixed = TRUE)
 #' @export
 fsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
                 fixed = FALSE, useBytes = FALSE, nthreads = NULL) {
@@ -111,10 +114,17 @@ fsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
 #' @seealso [base::gsub()]
 #' @family matching and substitution functions
 #' @examples
-#' x <- c("apple pie", "banana split", NA, "cherry tart")
+#' x <- c("O'Brien-Smith", "de la Cruz", NA, "MacDonald")
 #'
-#' fgsub("[aeiou]", "_", x)                 # every vowel
-#' fgsub("(^|\\s)(\\w)", "\\1\\U\\2", x)    # capitalise each word
+#' # Stripping punctuation from a name before comparing it: an apostrophe
+#' # and a hyphen are recording conventions, not information, and leaving
+#' # them in makes two spellings of one name disagree.
+#' fgsub("[^A-Za-z ]", "", x)
+#'
+#' # Upper-casing the first letter of each word. Note what this does to
+#' # "de la Cruz" and "MacDonald" -- which is why ftitle_case() exists and
+#' # is what you should reach for on a name field.
+#' fgsub("(^|\\s)(\\w)", "\\1\\U\\2", x)
 #' @export
 fgsub <- function(pattern, replacement, x, ignore.case = FALSE, perl = FALSE,
                  fixed = FALSE, useBytes = FALSE, nthreads = NULL) {

@@ -214,9 +214,9 @@
             review_order    = "order pairs by how undecided"
         ),
         "Clerical review" = list(
-            rLink_inspect = "review pairs in a browser",
-            rLink_review  = "read a saved pair review",
-            rLink_apply   = "apply a review to pairs"
+            rLink_inspect   = "review pairs in a browser",
+            read_decisions  = "read saved pair decisions",
+            apply_decisions = "add in-scope columns from a review"
         )
     ),
     "Benchmarking" = list(

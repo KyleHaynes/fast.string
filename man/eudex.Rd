@@ -56,13 +56,21 @@ letters are skipped, so pass names through \code{\link[=ascii_fold]{ascii_fold()
 may carry accents. Case does not matter.
 }
 \examples{
+# A blocking key that puts sound-alikes in the same block without the
+# information loss of a four-character Soundex code.
 eudex(c("JOHN", "JON", "SMITH", "SMYTH"))
 
 # Sound-alikes are a short distance apart, unrelated names a long one
 eudex_distance(c("JOHN", "SMITH", "JOHN"), c("JON", "SMYTH", "MARGARET"))
 
-# Under 15 is the crate's own threshold for "similar"
-eudex_distance("lulz", "lol") < 15
+# Under 15 is the crate's own threshold for "similar". Note where it
+# breaks down: the first letter gets its own byte and the smallest
+# positional weight is spent on the last sound, so a name that varies at
+# the *front* -- CATHERINE against KATHRYN -- is scored as far apart
+# however alike the rest of it sounds. Block on eudex by all means, but
+# pair it with a comparator that does not privilege the first letter.
+eudex_distance(c("CATHERINE", "SIOBHAN"), c("KATHRYN", "SHIVAUN"))
+eudex_distance(c("CATHERINE", "SIOBHAN"), c("KATHRYN", "SHIVAUN")) < 15
 }
 \seealso{
 \code{\link[=soundex]{soundex()}} and the other \link[=soundex]{phonetic codes} for blocking

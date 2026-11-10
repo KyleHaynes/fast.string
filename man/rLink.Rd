@@ -339,6 +339,26 @@ rLink(enrol, claims,
 invisible(rLink(enrol, claims, block_1 = list(soundex(surname)),
                 compare = list(jaro_winkler(given)), verbose = TRUE))
 
+# `pair_id` names the record identifier on each side, which is what
+# makes a pair identifiable rather than merely numbered. These two files
+# call it different things, so both names are given.
+ided <- rLink(enrol, claims,
+              block_1 = list(dob),
+              compare = list(sn = jaro_winkler(surname)),
+              pair_id = c("id", "ref"),
+              keep    = character())
+ided[, c("pair_id", "sn")]
+
+# Why it matters: re-run with different blocking and the same two records
+# give the same `pair_id`, so a judgement recorded against a pair is
+# still about that pair. A row number would not survive this.
+again <- rLink(enrol, claims,
+               block_1 = list(soundex(surname)),
+               compare = list(sn = jaro_winkler(surname)),
+               pair_id = c("id", "ref"),
+               keep    = character())
+intersect(ided$pair_id, again$pair_id)
+
 # Deduplicating one file, then turning the matches into entity IDs
 dup <- rLink(enrol, block_1 = list(soundex(surname)),
              compare = list(jaro_winkler(given)))

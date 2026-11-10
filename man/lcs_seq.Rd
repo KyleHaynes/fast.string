@@ -67,12 +67,22 @@ algorithm, so the results agree with \code{rapidfuzz.distance}'s
 \code{LCSseq}, \code{Indel}, \code{Prefix} and \code{Postfix}.
 }
 \examples{
-lcs_seq_distance("kitten", "sitting")
-lcs_seq_similarity("kitten", "sitting")
-indel_distance("kitten", "sitting")
-indel_similarity("kitten", "sitting")
-prefix_similarity(c("Johnson", "Johnston"), c("Johnston", "Jonson"))
-postfix_distance("Thompson", "Simpson")
+# Substitution-free distances suit a field that gains and loses whole
+# pieces rather than mistyping them: a middle name, a unit number, a
+# company suffix.
+lcs_seq_distance("MARY JANE SMITH", "MARY SMITH")
+round(lcs_seq_similarity("MARY JANE SMITH", "MARY SMITH"), 3)
+indel_distance("MARY JANE SMITH", "MARY SMITH")
+round(indel_similarity("MARY JANE SMITH", "MARY SMITH"), 3)
+
+# Agreement at the start is the stronger signal in a surname, because
+# that is the part a clerk hears correctly and a system truncates last.
+prefix_similarity(c("JOHNSON", "JOHNSTON"), c("JOHNSTON", "JONSON"))
+
+# Agreement at the end is the stronger signal in an address line or an
+# identifier that is left-padded inconsistently.
+postfix_distance(c("12 SMITH STREET", "0004821"),
+                 c("UNIT 4, 12 SMITH STREET", "4821"))
 }
 \seealso{
 \link{edit_distance} for Levenshtein and its relatives, and
