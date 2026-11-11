@@ -35,7 +35,31 @@
 # build a single enormous string. fhash() is vectorised -- it returns one hash
 # per element -- so the fold is the point: hash the elements, hash the hashes,
 # and repeat until one is left.
-.review_fingerprint <- function(keys, chunk = 100000L) {
+#
+# That is the definition, and .review_fingerprint_r() below is it written
+# out. What runs is fast_fold_digest_impl(), which hashes the same bytes in
+# the same order without making an R string per row: on two million pairs the
+# written-out form was twelve of the thirteen seconds it took to open a
+# review. The two give the same digest, so a file written by one reads as
+# unchanged under the other, and a test holds them together.
+#
+# `columns` may be several character vectors, which are hashed as if pasted
+# with U+001F between them, and `order` the order to take the rows in.
+.review_fingerprint <- function(keys, chunk = 100000L, order = integer(),
+                                pasted = FALSE) {
+    columns <- if (is.list(keys)) lapply(keys, as.character)
+               else list(as.character(keys))
+    if (!length(columns) || !length(columns[[1L]])) return("xxh64:none")
+    digest <- fast_fold_digest_impl(columns, as.integer(order), pasted,
+                                    chunk, -1L)
+    if (!is.na(digest)) return(paste0("xxh64:", digest))
+    # A missing key that was not pasted has no digest of its own; the
+    # written-out definition says what happens to it.
+    keys <- columns[[1L]]
+    .review_fingerprint_r(if (length(order)) keys[order] else keys, chunk)
+}
+
+.review_fingerprint_r <- function(keys, chunk = 100000L) {
     keys <- as.character(keys)
     if (!length(keys)) return("xxh64:none")
     h <- fhash(keys, algo = "xxh64")
@@ -64,11 +88,27 @@
     # three orders of magnitude faster here than formatC() or sprintf(); two
     # scores differing only beyond that are not a change any linkage decision
     # could turn on.
-    score_text <- if (!length(scores)) character() else
-        do.call(paste, c(lapply(scores, function(s)
-            as.character(as.double(x[[s]]))), list(sep = .review_sep)))
-    list(pair_set = .review_fingerprint(ids[o]),
-         scores = .review_fingerprint(score_text[o]),
+    #
+    # A score column holds far fewer distinct values than it has rows -- a
+    # comparator has only so many answers -- so each distinct value is
+    # rendered once and looked up, rather than every row being rendered.
+    #
+    # paste0() and not as.character(), though they write a number the same
+    # way. as.character() of a numeric vector is deferred: R hands back a
+    # promise to render each element when it is read, and indexing that
+    # promise gives another one -- so every row was still rendered, one at a
+    # time, the moment the digest read it. paste0() renders the distinct
+    # values now. It writes a missing value as "NA", which is what paste()
+    # made of it when the rows were joined anyway.
+    as_text <- function(v) {
+        v <- as.double(v)
+        u <- unique(v)
+        paste0(u)[match(v, u)]
+    }
+    list(pair_set = .review_fingerprint(ids, order = o),
+         scores = if (!length(scores)) .review_fingerprint(character()) else
+             .review_fingerprint(lapply(scores, function(s) as_text(x[[s]])),
+                                 order = o, pasted = TRUE),
          columns = .review_fingerprint(paste0(names(x), collapse = .review_sep)))
 }
 
@@ -405,6 +445,15 @@ read_decisions <- function(file, x = NULL, reviewer = NULL) {
         n_one_to_one = .review_column(th, "n_one_to_one", NA_integer_),
         n_conflict_1 = .review_column(th, "n_conflict_1", NA_integer_),
         n_conflict_2 = .review_column(th, "n_conflict_2", NA_integer_),
+        # What the threshold was accepted on, where the reviewer set a band
+        # or drew an audit sample. Missing from a file written before these
+        # existed, and from a threshold accepted without them.
+        band_score = .review_column(th, "band_score", NA_character_),
+        band_lower = .review_column(th, "band_lower", NA_real_),
+        band_upper = .review_column(th, "band_upper", NA_real_),
+        audit_sample = .review_column(th, "audit_sample", NA_integer_),
+        audit_judged = .review_column(th, "audit_judged", NA_integer_),
+        audit_not_link = .review_column(th, "audit_not_link", NA_integer_),
         note = .review_column(th, "note", NA_character_),
         stringsAsFactors = FALSE)
     cut_rows <- lapply(th, function(e) {

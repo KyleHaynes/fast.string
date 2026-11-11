@@ -200,6 +200,7 @@
             agreement_patterns = "distinct patterns and their counts",
             em_linkage         = "fit Fellegi-Sunter weights by EM",
             match_weights      = "weight and probability per pair",
+            rLink_weights      = "levels, model and weights in one call",
             value_frequency    = "relative frequency of each value",
             tf_adjust          = "weight a rare value more heavily"
         ),

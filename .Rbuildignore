@@ -26,3 +26,4 @@
 ^fast\.string-workspace\.code-workspace$
 ^tools$
 ^src/.*\.d$
+^rlink_example\.R$

@@ -124,6 +124,7 @@ Other record linkage model functions:
 \code{\link[=match_weights]{match_weights()}},
 \code{\link[=plot.fs_pairs]{plot.fs_pairs()}},
 \code{\link[=plot.fs_sweep]{plot.fs_sweep()}},
+\code{\link[=rLink_weights]{rLink_weights()}},
 \code{\link[=review_order]{review_order()}},
 \code{\link[=summary.fs_pairs]{summary.fs_pairs()}},
 \code{\link[=tf_adjust]{tf_adjust()}},

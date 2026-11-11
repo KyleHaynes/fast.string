@@ -258,6 +258,7 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=agreement_patterns]{agreement_patterns()}} - distinct patterns and their counts
 \item \code{\link[=em_linkage]{em_linkage()}} - fit Fellegi-Sunter weights by EM
 \item \code{\link[=match_weights]{match_weights()}} - weight and probability per pair
+\item \code{\link[=rLink_weights]{rLink_weights()}} - levels, model and weights in one call
 \item \code{\link[=value_frequency]{value_frequency()}} - relative frequency of each value
 \item \code{\link[=tf_adjust]{tf_adjust()}} - weight a rare value more heavily
 }

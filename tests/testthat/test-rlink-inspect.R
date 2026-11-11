@@ -66,6 +66,43 @@ test_that("a fingerprint is stable, and folds past the chunk boundary", {
     expect_identical(fp(character()), "xxh64:none")
 })
 
+test_that("the fast fingerprint is the written-out one, digest for digest", {
+    # A decisions file keeps the fingerprint of the pairs it was made on, so
+    # a faster way of computing it has to give the same answer or every
+    # existing review would open saying its data had changed.
+    fast <- fast.string:::.review_fingerprint
+    slow <- fast.string:::.review_fingerprint_r
+    set.seed(3)
+    keys <- c(sprintf("E%04d|C%04d", 1:450, sample(450)), "MÜLLER|x", "")
+    for (n in c(1L, 2L, 99L, 100L, 101L, 452L)) for (chunk in c(2L, 7L, 100L))
+        expect_identical(fast(keys[seq_len(n)], chunk = chunk),
+                         slow(keys[seq_len(n)], chunk = chunk))
+    # Taken in another order, it is the reordered keys' digest.
+    o <- order(keys, method = "radix")
+    expect_identical(fast(keys, chunk = 100L, order = o),
+                     slow(keys[o], chunk = 100L))
+    # Several columns are hashed as paste() would join them, missing values
+    # and all.
+    a <- as.character(c(0.5, NA, 1, 0.123456789012345, 1e-04, 1e+05))
+    b <- as.character(c(1, 0.25, NA, NaN, Inf, -1))
+    pasted <- paste(a, b, sep = "\u001f")
+    expect_identical(fast(list(a, b), chunk = 4L, pasted = TRUE),
+                     slow(pasted, chunk = 4L))
+    expect_identical(fast(list(a), chunk = 4L, pasted = TRUE),
+                     slow(paste(a), chunk = 4L))
+    # A missing key that was not pasted falls back to the definition.
+    expect_identical(fast(c("a", NA, "b")), slow(c("a", NA, "b")))
+
+    # And the fingerprints of a table are what they were.
+    out <- scored()
+    got <- fast.string:::.review_fingerprints(out, c("sn", "gn"), "pair_id")
+    ids <- as.character(out$pair_id)
+    o <- order(ids, method = "radix")
+    text <- paste(as.character(out$sn), as.character(out$gn), sep = "\u001f")
+    expect_identical(got$pair_set, slow(ids[o]))
+    expect_identical(got$scores, slow(text[o]))
+})
+
 test_that("the pair-set fingerprint ignores row order but not content", {
     out <- scored()
     fp <- function(x) fast.string:::.review_fingerprints(
@@ -1399,4 +1436,474 @@ test_that("the example decisions file matches the current format", {
     expect_identical(nrow(d$cuts), 1L)
     expect_identical(d$cuts$operator, ">=")
     expect_true(all(nzchar(d$events$comment)))
+})
+
+
+# --- the pair card ---------------------------------------------------------
+
+# Pairs with a column on each side that was never compared, one that only the
+# first input has and one that only the second has.
+carded <- function() {
+    a <- enrol()
+    b <- claims()
+    a$sex <- c("M", "F", "M", "M")
+    b$sex <- c("M", "F", "F")
+    a$street <- c("1 High St", "2 Park Rd", "3 Mill Ln", "4 Hill Ct")
+    b$ward <- c("A", "B", "C")
+    rLink(a, b, block_1 = list(fsubstr(surname, 1, 1)),
+          compare = list(sn = jaro_winkler(surname), gn = jaro_winkler(given),
+                         lev = levenshtein(surname)))
+}
+
+test_that("the card lists every field, compared ones first", {
+    out <- carded()
+    spec <- spec_for(out)
+    fields <- spec$card_fields
+    label <- vapply(fields, `[[`, "", "field")
+    kind <- vapply(fields, `[[`, "", "kind")
+    # Two scores of one column are one field, not two.
+    expect_identical(label[kind == "compared"], c("surname", "given"))
+    expect_identical(fields[[1L]]$scores, c("sn", "lev"))
+    # Everything carried is there, however many inputs have it.
+    expect_setequal(label[kind == "carried"],
+                    c("frame_id", "sex", "street", "ward"))
+    street <- fields[[match("street", label)]]
+    expect_identical(street$col_1, "street_1")
+    expect_true(is.na(street$col_2))
+    ward <- fields[[match("ward", label)]]
+    expect_true(is.na(ward$col_1))
+    # The columns the table leads with are not fields of the records.
+    expect_false(any(c("pair_id", "index_1", "pass", "block_key") %in% label))
+
+    card <- fast.string:::.inspect_card(spec, 2L)
+    expect_identical(card$pair_id, out$pair_id[2L])
+    expect_identical(card$rows[[1L]]$value_1, out$surname_1[2L])
+    expect_identical(card$rows[[1L]]$value_2, out$surname_2[2L])
+    expect_equal(unname(unlist(card$rows[[1L]]$scores)),
+                 c(out$sn[2L], out$lev[2L]))
+    expect_identical(names(card$lead), c("pass", "block_key"))
+    expect_null(card$bits)
+})
+
+test_that("what differs between two values is marked, and nothing else", {
+    diff <- fast.string:::.inspect_diff
+    d <- diff("MACDONALD", "MCDONALD")
+    expect_identical(d$a, "M<mark class=\"fs-diff\">A</mark>CDONALD")
+    expect_identical(d$b, "MCDONALD")
+    # Rebuilt from the pieces, each side is still its own value.
+    strip <- function(x) gsub("</?mark[^>]*>", "", x)
+    for (pair in list(c("CHOWDHURY", "CHOUDHARI"), c("OBRIEN", "O BRIEN"),
+                      c("SMITH", "SMYTHE"), c("A", "XYZ"))) {
+        d <- diff(pair[1L], pair[2L])
+        expect_identical(strip(d$a), pair[1L])
+        expect_identical(strip(d$b), pair[2L])
+        expect_true(grepl("fs-diff", paste(d$a, d$b)))
+    }
+    # Case is not a difference, as it is not one to rLink() either.
+    expect_false(grepl("mark", diff("Smith", "SMITH")$a))
+    expect_identical(diff("SMITH", "SMITH")$a, "SMITH")
+    # Markup in the data is text, not markup.
+    d <- diff("<b>A & B</b>", "<b>A & C</b>")
+    expect_false(grepl("<b>", d$a, fixed = TRUE))
+    expect_true(grepl("&lt;b&gt;A &amp; ", d$a, fixed = TRUE))
+    # A missing or an empty value has nothing to align, and says which it is.
+    expect_identical(diff(NA_character_, "X")$a, fast.string:::.inspect_na_label)
+    expect_identical(diff("", "X")$a, "(empty)")
+    # A long value is left alone.
+    long <- strrep("A", 200)
+    expect_false(grepl("mark", diff(long, paste0(long, "B"))$b))
+})
+
+test_that("the other candidates for the records of a pair are found", {
+    rivals <- fast.string:::.inspect_rivals
+    i <- c(1L, 1L, 2L, 3L, 3L)
+    j <- c(1L, 2L, 2L, 1L, 4L)
+    # Pair 1 is (1, 1): pair 2 shares its first record, pair 4 its second.
+    got <- rivals(i, j, 1L)
+    expect_identical(got$row, c(2L, 4L))
+    expect_identical(got$shares, c(1L, 2L))
+    expect_identical(nrow(rivals(i, j, 5L)), 1L)
+    # Linking two files, row 1 of one is not row 1 of the other; deduplicating
+    # one file, it is.
+    expect_false(3L %in% rivals(i, j, 4L)$row)
+    expect_true(all(c(1L, 2L, 5L) %in% rivals(i, j, 4L, dedupe = TRUE)$row))
+    # rLink() says which it was.
+    expect_true(attr(rLink(enrol(), block_1 = list(surname)), "dedupe"))
+    expect_false(attr(scored(), "dedupe"))
+    expect_true(spec_for(rLink(enrol(), block_1 = list(fsubstr(surname, 1, 1)),
+                               compare = list(g = jaro_winkler(given))))$dedupe)
+})
+
+
+# --- the band, the audit sample and the sweep ------------------------------
+
+test_that("the review band is the pairs scoring between its limits", {
+    band <- fast.string:::.inspect_in_band
+    v <- c(0.1, 0.5, 0.75, 0.9, NA)
+    expect_identical(band(v, c(0.5, 0.9)), c(FALSE, TRUE, TRUE, TRUE, FALSE))
+    expect_identical(band(v, c(0.9, 0.5)), band(v, c(0.5, 0.9)))
+    expect_false(any(band(v, NULL)))
+    expect_false(any(band(v, c(NA, 0.9))))
+    expect_error(spec_for(scored(), band = 0.5), "two different numbers")
+    expect_error(spec_for(scored(), band = c(0.5, 0.5)), "two different")
+    expect_identical(spec_for(scored(), band = c(0.9, 0.6))$band, c(0.6, 0.9))
+})
+
+test_that("the audit sample is fixed by the pairs, not by chance", {
+    rows <- fast.string:::.inspect_audit_rows
+    ids <- sprintf("E%03d|C%03d", 1:200, 200:1)
+    order_of <- function(ids) order(fhash(ids, algo = "xxh64"),
+                                    method = "radix")
+    pass <- rep(c(TRUE, FALSE), 100)
+    got <- rows(order_of(ids), pass, 20L)
+    expect_length(got, 20L)
+    expect_true(all(pass[got]))
+    # The same pairs whatever order they arrive in.
+    shuffle <- rev(seq_along(ids))
+    again <- rows(order_of(ids[shuffle]), pass[shuffle], 20L)
+    expect_setequal(ids[shuffle][again], ids[got])
+    # A bigger sample contains the smaller one.
+    expect_true(all(got %in% rows(order_of(ids), pass, 50L)))
+    # Asked for more than there is, it is all of them.
+    expect_length(rows(order_of(ids), pass, 500L), 100L)
+    expect_length(rows(order_of(ids), pass, 0L), 0L)
+})
+
+test_that("the audit estimate is the share judged wrong, with its interval", {
+    audit <- fast.string:::.inspect_audit
+    none <- audit(integer(40))
+    expect_identical(none$n_sample, 40L)
+    expect_identical(none$n_judged, 0L)
+    expect_true(is.na(none$rate))
+    # 3 wrong of 50 judged; undecided ones are not counted either way.
+    got <- audit(c(rep(1L, 47), rep(2L, 3), rep(3L, 5), rep(0L, 5)))
+    expect_identical(got$n_judged, 50L)
+    expect_identical(got$n_not_link, 3L)
+    expect_equal(got$rate, 0.06)
+    wilson <- stats::prop.test(3, 50, correct = FALSE)$conf.int
+    expect_equal(c(got$lower, got$upper), as.numeric(wilson), tolerance = 1e-6)
+    # None wrong is not proof of none: the interval does not collapse.
+    clean <- audit(rep(1L, 40))
+    expect_identical(clean$rate, 0)
+    expect_gt(clean$upper, 0.05)
+})
+
+test_that("a sweep of many distinct scores is taken at a grid", {
+    grid <- fast.string:::.inspect_sweep_grid
+    # Few enough to draw: every distinct value, as before.
+    expect_null(grid(c(0.1, 0.5, 0.5, 0.9, NA)))
+    expect_null(grid(rep(seq(0, 1, length.out = 150), 20)))
+    set.seed(5)
+    v <- runif(50000)
+    g <- grid(v)
+    expect_lte(length(g), 200L)
+    expect_gt(length(g), 150L)
+    # At values the data actually holds, end to end.
+    expect_true(all(g %in% v))
+    expect_identical(range(g), range(v))
+    # And the sweep at those cut-offs agrees with the full sweep there.
+    pairs <- data.frame(index_1 = sample(5000, 50000, TRUE),
+                        index_2 = sample(5000, 50000, TRUE))
+    full <- threshold_sweep(pairs, v)
+    some <- threshold_sweep(pairs, v, thresholds = sort(g, decreasing = TRUE))
+    at <- match(some$threshold, full$threshold)
+    expect_false(anyNA(at))
+    expect_identical(some$n_one_to_one, full$n_one_to_one[at])
+    expect_identical(some$n_pairs, full$n_pairs[at])
+})
+
+test_that("verdicts held as codes give the scope the named ones did", {
+    pass <- c(TRUE, FALSE, TRUE, FALSE, TRUE)
+    ids <- letters[1:5]
+    named <- list(b = "include", c = "exclude", e = "undecided")
+    codes <- c(0L, 1L, 2L, 0L, 3L)
+    want <- fast.string:::.inspect_scope(pass, ids, named)
+    expect_identical(fast.string:::.inspect_scope_at(pass, codes), want)
+    expect_identical(
+        fast.string:::.inspect_scope_at(pass, codes, judged = c(2L, 3L, 5L)),
+        want)
+    expect_identical(fast.string:::.inspect_scope_at(pass, codes, integer()),
+                     pass)
+})
+
+
+# --- the review flow -------------------------------------------------------
+
+test_that("the JavaScript has the keys, and keeps a text box for typing", {
+    js <- fast.string:::.inspect_js_bindings()
+    for (token in c("fs_undo", "fs_reason", "fs_help", "fs_set_focus",
+                    "fs_options", "MutationObserver", "arrowdown", "fs-focus",
+                    "rt-next-button", "fs_card_comment", "live"))
+        expect_true(grepl(token, js, fixed = TRUE), label = token)
+    # No double quote, which would end the R string the script is held in.
+    expect_false(grepl("\"", js, fixed = TRUE))
+    css <- fast.string:::.inspect_css(11L)
+    # The sidebar is outside the wrapper, so its rules are written for it too.
+    expect_true(grepl(".fs-side .fs-note", css, fixed = TRUE))
+    expect_true(grepl("#fs-inspect .fs-note", css, fixed = TRUE))
+})
+
+test_that("many pairs judged at once are one batch, and undo takes it back", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    ids <- out$pair_id
+    path <- tempfile(fileext = ".json")
+    app <- rLink_inspect(out, decisions = path, reviewer = "a", launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(fs_decision = list(pair_id = ids[1L],
+                                             decision = "include", nonce = 1))
+        session$setInputs(fs_keyjudge = list(pair_ids = as.list(ids[1:3]),
+                                             decision = "exclude", nonce = 2))
+        expect_length(rv_events(), 4L)
+        expect_identical(unlist(rv_decisions()[ids[1:3]], use.names = FALSE),
+                         rep("exclude", 3L))
+
+        # Undo restores what each pair held before, as new events: the first
+        # was a link, the other two had never been judged.
+        session$setInputs(fs_undo = list(nonce = 3))
+        expect_identical(rv_decisions()[[ids[1L]]], "include")
+        expect_identical(rv_decisions()[[ids[2L]]], "undecided")
+        expect_identical(rv_decisions()[[ids[3L]]], "undecided")
+        expect_length(rv_events(), 7L)
+        # And again, back to nothing judged; then there is nothing to undo.
+        session$setInputs(undo = 1)
+        expect_identical(rv_decisions()[[ids[1L]]], "undecided")
+        expect_length(rv_events(), 8L)
+        session$setInputs(undo = 2)
+        expect_length(rv_events(), 8L)
+        session$setInputs(save = 1)
+    })
+    review <- read_decisions(path)
+    # The log kept all of it; the verdicts are where undo left them.
+    expect_identical(nrow(review$events), 8L)
+    expect_true(all(review$decisions$decision == "undecided"))
+    expect_false(any(suppressMessages(apply_decisions(out, path))$link_reason
+                     %in% c("included", "excluded")))
+})
+
+test_that("a stock reason is filed as the comment", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    ids <- out$pair_id
+    expect_error(spec_for(out, reasons = c("a", "a")), "nine different")
+    expect_error(spec_for(out, reasons = as.character(1:10)), "nine different")
+    app <- rLink_inspect(out, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE, reasons = c("married name", "twin"))
+    shiny::testServer(app, {
+        session$setInputs(fs_reason = list(pair_ids = as.list(ids[1:2]),
+                                           index = 2, nonce = 1))
+        expect_identical(rv_comments()[[ids[1L]]], "twin")
+        expect_identical(rv_comments()[[ids[2L]]], "twin")
+        # A reason is not a verdict.
+        expect_length(rv_decisions(), 0L)
+        # A key with no reason behind it does nothing.
+        session$setInputs(fs_reason = list(pair_ids = as.list(ids[1L]),
+                                           index = 7, nonce = 2))
+        expect_identical(rv_comments()[[ids[1L]]], "twin")
+        expect_length(rv_events(), 2L)
+    })
+})
+
+test_that("a comment still being typed is filed without redrawing", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    id <- out$pair_id[1L]
+    path <- tempfile(fileext = ".json")
+    app <- rLink_inspect(out, decisions = path, reviewer = "a", launch = FALSE)
+    shiny::testServer(app, {
+        tick <- rv_tick()
+        session$setInputs(fs_comment = list(pair_id = id, comment = "che",
+                                            live = TRUE, nonce = 1))
+        expect_identical(rv_comments()[[id]], "che")
+        expect_length(rv_events(), 1L)
+        # Nothing the screen draws from was told.
+        expect_identical(rv_tick(), tick)
+        session$setInputs(fs_comment = list(pair_id = id, comment = "checked",
+                                            live = FALSE, nonce = 2))
+        expect_gt(rv_tick(), tick)
+        session$setInputs(save = 1)
+    })
+    expect_identical(read_decisions(path)$decisions$comment, "checked")
+})
+
+test_that("the band counts the work left, and filters to it", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    inside <- out$sn >= 0.8 & out$sn <= 0.99
+    expect_gt(sum(inside), 0L)
+    path <- tempfile(fileext = ".json")
+    app <- rLink_inspect(out, decisions = path, reviewer = "a", launch = FALSE,
+                         band = c(0.8, 0.99))
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0.9, cut_2 = 0, rule = "all", mode = "flag",
+                          filter = "band")
+        session$elapse(400)
+        expect_identical(in_band(), inside)
+        expect_identical(band_counts()$n, sum(inside))
+        expect_identical(band_counts()$n_left, sum(inside))
+        expect_setequal(table_data()$pair_id, out$pair_id[inside])
+
+        session$setInputs(fs_decision = list(
+            pair_id = out$pair_id[which(inside)[1L]], decision = "include",
+            nonce = 1))
+        expect_identical(band_counts()$n_judged, 1L)
+        expect_identical(band_counts()$n_left, sum(inside) - 1L)
+
+        # Typed into the boxes, the band moves.
+        session$setInputs(band_lo = 0, band_hi = 2)
+        session$elapse(400)
+        expect_identical(band_counts()$n, nrow(out))
+        session$setInputs(note = "looked at the band", accept = 1)
+    })
+    th <- read_decisions(path)$thresholds
+    expect_identical(th$band_score, "sn")
+    expect_equal(c(th$band_lower, th$band_upper), c(0, 2))
+    expect_true(is.na(th$audit_judged))
+})
+
+test_that("the queue can be drawn again around the cut, or as an audit", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    path <- tempfile(fileext = ".json")
+    app <- rLink_inspect(out, decisions = path, reviewer = "a", launch = FALSE,
+                         max_pairs = 2)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0, cut_2 = 0, rule = "all", mode = "flag",
+                          filter = "all")
+        session$elapse(400)
+        first <- rv_queue()
+        expect_length(first, 2L)
+        # A pair judged stays on screen wherever the cut goes.
+        kept <- out$pair_id[first[1L]]
+        session$setInputs(fs_decision = list(pair_id = kept,
+                                             decision = "include", nonce = 1))
+        session$setInputs(cut_1 = 2)
+        session$elapse(400)
+        session$setInputs(queue_mode = "cut", rebuild = 1)
+        expect_length(rv_queue(), 2L)
+        expect_true(first[1L] %in% rv_queue())
+        expect_identical(rv_queue()[2L],
+                         setdiff(review_order(out$sn, threshold = 2),
+                                 first[1L])[1L])
+        expect_setequal(table_data()$pair_id, out$pair_id[rv_queue()])
+
+        # No estimate until a sample has been asked for.
+        expect_null(audit())
+        session$setInputs(cut_1 = 0)
+        session$elapse(400)
+        session$setInputs(queue_mode = "audit", audit_n = 2, rebuild = 2)
+        sample <- rv_queue()
+        expect_length(sample, 2L)
+        expect_identical(audit()$n_sample, 2L)
+        before <- audit()$n_not_link
+        target <- out$pair_id[sample[2L]]
+        session$setInputs(fs_decision = list(pair_id = target,
+                                             decision = "exclude", nonce = 2))
+        expect_identical(audit()$n_not_link, before + 1L)
+        session$setInputs(note = "audited", accept = 1)
+    })
+    th <- read_decisions(path)$thresholds
+    expect_identical(th$audit_sample, 2L)
+    expect_gte(th$audit_not_link, 1L)
+})
+
+test_that("with weights, the cut is on the probability and the rest is evidence", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    set.seed(2)
+    n <- 300
+    a <- data.frame(frame_id = sprintf("E%03d", 1:n),
+                    region = sample(20, n, TRUE),
+                    surname = sample(c("SMITH", "JONES", "BROWN", "NGUYEN",
+                                       "TAYLOR", "WILSON"), n, TRUE),
+                    given = sample(c("JOHN", "MARY", "ROBERT", "ANNA",
+                                     "DAVID", "LINDA"), n, TRUE),
+                    stringsAsFactors = FALSE)
+    b <- a[sample(n, 200), ]
+    b$frame_id <- sprintf("C%03d", 1:200)
+    b$surname[1:25] <- paste0(b$surname[1:25], "E")
+    pairs <- rLink(a, b, block_1 = list(region),
+                   compare = list(sn = jaro_winkler(surname),
+                                  gn = jaro_winkler(given)))
+    weighed <- suppressWarnings(rLink_weights(pairs))
+    spec <- spec_for(weighed)
+    expect_true(spec$modelled)
+    expect_identical(spec$score_spec$score, "probability")
+    expect_identical(spec$evidence_spec$score,
+                     c("sn", "gn", "weight", "probability"))
+    expect_equal(unname(spec$cuts), 0.5)
+    # Asked for by name, the field scores are cut as before.
+    expect_identical(spec_for(weighed, scores = c("sn", "gn"))$score_spec$score,
+                     c("sn", "gn"))
+    expect_false(spec_for(pairs)$modelled)
+
+    # The card says what each field was worth, and it adds up to the weight.
+    card <- fast.string:::.inspect_card(spec, 1L)
+    expect_named(card$bits, c("sn", "gn"))
+    expect_equal(sum(card$bits), weighed$weight[1L])
+
+    app <- rLink_inspect(weighed, decisions = tempfile(), reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(cut_1 = 0.5, rule = "all")
+        session$elapse(400)
+        expect_identical(pass_all(), weighed$probability >= 0.5)
+        # The sweep can say how many of the kept pairs should be right.
+        expect_true("est_precision" %in% names(sweep()))
+        # A rule may still name the field scores.
+        session$setInputs(rule = "expr", expr = "probability >= 0.5 & sn == 1")
+        session$elapse(600)
+        expect_identical(pass_all(),
+                         weighed$probability >= 0.5 & weighed$sn == 1)
+    })
+})
+
+test_that("saving remembers what it wrote, and still merges a second writer", {
+    out <- scored()
+    path <- new_decisions(out)
+    spec <- spec_for(out, file = path, reviewer = "analyst")
+    cache <- new.env()
+    one <- list(event("analyst", out$pair_id[1L], "include", "x", 1L,
+                      "2026-11-06T09:00:00.000Z", run_id = spec$run_id))
+    fast.string:::.inspect_save(spec, one, list(), cache = cache)
+    expect_false(is.null(cache$written))
+    expect_identical(cache$stamp$size, file.info(path)$size)
+    # Somebody else writes to the file in between.
+    other <- fast.string:::.review_read_file(path)
+    other$decisions <- c(other$decisions, list(
+        event("qa", out$pair_id[2L], "exclude", "y", 1L,
+              "2026-11-06T10:00:00.000Z")))
+    fast.string:::.review_write(other, path)
+    expect_false(identical(cache$stamp$size, file.info(path)$size))
+    two <- c(one, list(event("analyst", out$pair_id[3L], "include", "z", 2L,
+                             "2026-11-06T11:00:00.000Z",
+                             run_id = spec$run_id)))
+    fast.string:::.inspect_save(spec, two, list(), cache = cache)
+    review <- read_decisions(path)
+    expect_identical(nrow(review$events), 3L)
+    expect_setequal(review$events$reviewer, c("analyst", "qa"))
+    # With nobody else writing, what is remembered is what is on disk.
+    expect_identical(
+        length(cache$written$decisions),
+        length(fast.string:::.review_read_file(path)$decisions))
+    expect_identical(cache$stamp$size, file.info(path)$size)
+})
+
+test_that("a session is stamped with when it opened, not when it last saved", {
+    out <- scored()
+    path <- tempfile(fileext = ".json")
+    spec <- spec_for(out, file = path, reviewer = "analyst")
+    fast.string:::.inspect_save(spec, list(), list())
+    first <- read_decisions(path)$runs$started
+    Sys.sleep(0.05)
+    fast.string:::.inspect_save(spec, list(), list())
+    runs <- read_decisions(path)$runs
+    expect_identical(runs$started, first)
+    expect_identical(runs$started, spec$started)
+    expect_gt(runs$ended, runs$started)
 })

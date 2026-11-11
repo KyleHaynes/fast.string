@@ -25,6 +25,7 @@ rLink(
   score_position = c("grouped", "end"),
   nthreads = NULL,
   verbose = FALSE,
+  filter = NULL,
   block = NULL
 )
 }
@@ -103,6 +104,9 @@ RcppParallel default. \code{1} forces serial execution.}
 \item{verbose}{Whether to print per-stage timings and the pairs found.
 Timings are returned either way, as \code{attr(out, "timings")}.}
 
+\item{filter}{Optional rule saying which scored pairs to keep, such as
+\code{sn >= 0.85 & gn >= 0.8}. Needs \code{compare}. See \emph{Filtering while scoring}.}
+
 \item{block}{Former name of \code{block_1}, still accepted. Give one or the
 other, not both.}
 }
@@ -114,7 +118,7 @@ number), \code{index_1} and \code{index_2} (row numbers into \code{data_1} and \
 suffixed as \code{suffixes} says), \code{pass}, \code{block_key} (when blocking and
 \code{block_key = TRUE}), the carried columns under both suffixes, and one
 column per comparator. Attributes \code{timings} and \code{compare} describe the
-run.
+run, and \code{filter} what a \code{filter} removed.
 }
 \description{
 Finds candidate record pairs by blocking, scores each pair with any number
@@ -189,6 +193,26 @@ Either side may be any expression, not only a bare column name, so
 what \code{block_2} is to \code{block_1}. Such an element compares no single column on
 both sides, so it has no name to fall back on and must be given one.
 
+\strong{Numbers and dates.} A string comparator is handed text whatever the
+column holds, which is what lets \code{jaro_winkler(dob)} or
+\code{levenshtein(postcode)} work on a \code{Date} or a number. \code{\link[=numeric_compare]{numeric_compare()}}
+and \code{\link[=date_compare]{date_compare()}} are handed the column as it is stored instead, so
+\code{numeric_compare(age, scale = 2)} and \code{date_compare(dob)} compare numbers
+and dates rather than their spelling. A comparator of your own asks for the
+same by wrapping its column in \code{I()}:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{compare = list(
+    age   = numeric_compare(age, method = "step", offset = 1),
+    dob   = date_compare(dob),
+    years = (function(a, b) abs(as.numeric(a - b)) / 365.25)(I(dob))
+)
+}\if{html}{\out{</div>}}
+
+\code{na_strings} and \code{force_upper_case} are about text and do not touch a
+column passed this way. A distance between numbers or dates that has no
+upper limit, like \code{years} above, cannot be put on a 0--1 scale and is
+returned as it is, recorded as lower-is-a-match.
+
 Comparators disagree about which end of their scale means "identical":
 \code{\link[=jaro_winkler]{jaro_winkler()}} and the \verb{*_similarity()} family return 1, edit distances
 such as \code{\link[=levenshtein]{levenshtein()}} and \code{\link[=hamming]{hamming()}} return 0, and the RapidFuzz
@@ -199,6 +223,40 @@ exact match} --- an unbounded edit distance by
 in bytes when the comparator counts edits in bytes. \code{normalise = FALSE}
 leaves every comparator's own scale untouched. What was detected is
 recorded in \code{attr(out, "compare")} and printed when \code{verbose = TRUE}.
+}
+
+\section{Filtering while scoring}{
+
+Blocking is deliberately generous, so most candidate pairs are not matches
+and are thrown away as soon as they have been scored. \code{filter} does the
+throwing away inside \code{rLink()}:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{rLink(enrol, claims,
+      block_1 = list(dob, soundex(surname)),
+      compare = list(sn = jaro_winkler(surname), gn = jaro_winkler(given)),
+      filter  = sn >= 0.85 & gn >= 0.8)
+}\if{html}{\out{</div>}}
+
+The rule is an ordinary R expression giving \code{TRUE} for the pairs to keep.
+It can name any score, \code{pass}, and any column of either input under its
+suffix, so \code{sex_1 == sex_2} is as good a rule as one about a score. A pair
+for which it gives \code{NA} --- a score that could not be computed --- is
+dropped.
+
+The result is the same table as scoring everything and subsetting it, and
+is much cheaper to get. Candidates are generated, scored and thinned a
+slice of the records at a time, so the full candidate set never exists at
+once, and the expensive columns --- \code{pair_id} above all, then the carried
+ones --- are built only for the pairs that are left. It also lifts the
+limit of 2^31 candidate pairs: only the pairs kept have to fit in one
+table. A slice holds about ten million candidates; set
+\code{options(fast.string.rlink_slice_pairs = )} to trade memory for fewer
+slices.
+
+What was removed is recorded in \code{attr(out, "filter")}: the rule, the number
+of candidates scored and the number kept. A filtered table is no longer the
+candidate set, so \code{\link[=blocking_eval]{blocking_eval()}} on it measures the blocking and the
+filter together.
 }
 
 \section{Pair identifiers}{
@@ -219,6 +277,14 @@ them into one key.
 An identifier containing \code{"|"} is an error rather than an ambiguous key, and
 identifiers that are missing or repeated raise a warning saying how many,
 because a review cannot then tell those pairs apart.
+
+Building it is the slowest thing \code{rLink()} does on a large result: every
+pair gets a string of its own, and R takes about a second to make a million
+new strings whoever asks it to. On tens of millions of unfiltered pairs
+that is most of the run, and \code{attr(out, "timings")} reports it as its own
+stage so that it can be seen. \code{filter} avoids it for the pairs it drops;
+\code{pair_id = NULL} avoids it altogether, for a run whose pairs will be
+thresholded and clustered but never reviewed.
 }
 
 \examples{
@@ -333,6 +399,32 @@ rLink(enrol, claims,
       pairs   = data.frame(x_index = c(1L, 4L), y_index = c(1L, 1L)),
       compare = list(jaro_winkler(surname)),
       keep    = "surname")
+
+# `filter` keeps only the pairs worth having, and builds identifiers and
+# carried columns for those alone. The rule may name scores, `pass` and
+# any column of either input under its suffix.
+# Here every record is a candidate for every other (a key of one value
+# blocks nothing), and four of the twelve pairs are worth keeping.
+kept <- rLink(enrol, claims,
+              block_1 = list(1),
+              compare = list(sn = jaro_winkler(surname),
+                             gn = jaro_winkler(given)),
+              filter  = sn >= 0.85 & dob_1 == dob_2,
+              keep    = c("surname", "given"))
+kept[, c("surname_1", "surname_2", "sn", "gn")]
+unlist(attr(kept, "filter")[c("n_candidates", "n_kept")])
+
+# Numbers and dates are compared as numbers and dates: numeric_compare()
+# and date_compare() get the column as it is stored, and a comparator of
+# your own asks for the same with I().
+enrol5 <- cbind(enrol, age = c(44, 49, 34, 44))
+claims5 <- cbind(claims, age = c(45, 49, 30))
+rLink(enrol5, claims5,
+      block_1 = list(soundex(surname)),
+      compare = list(age   = numeric_compare(age, offset = 1, scale = 2),
+                     dob   = date_compare(dob),
+                     years = (function(a, b) abs(a - b))(I(age))),
+      keep = character())[, c("age", "dob", "years")]
 
 # `verbose = TRUE` reports the pairs expected, the timings and what each
 # comparator was found to return

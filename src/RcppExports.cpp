@@ -900,6 +900,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_fold_digest_impl
+CharacterVector fast_fold_digest_impl(const List& columns, const IntegerVector& order, bool na_as_text, double chunk_, int nthreads);
+RcppExport SEXP _fast_string_fast_fold_digest_impl(SEXP columnsSEXP, SEXP orderSEXP, SEXP na_as_textSEXP, SEXP chunk_SEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const List& >::type columns(columnsSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type order(orderSEXP);
+    Rcpp::traits::input_parameter< bool >::type na_as_text(na_as_textSEXP);
+    Rcpp::traits::input_parameter< double >::type chunk_(chunk_SEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_fold_digest_impl(columns, order, na_as_text, chunk_, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_levenshtein_impl
 NumericVector fast_levenshtein_impl(const StringVector& a, const StringVector& b, int nthreads, bool use_bytes);
 RcppExport SEXP _fast_string_fast_levenshtein_impl(SEXP aSEXP, SEXP bSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
@@ -1191,8 +1206,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // fast_candidate_pairs_impl
-List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes, const IntegerVector& n_codes, const IntegerVector& half_windows, bool dedupe, double max_block, int nthreads);
-RcppExport SEXP _fast_string_fast_candidate_pairs_impl(SEXP x_codesSEXP, SEXP y_codesSEXP, SEXP n_codesSEXP, SEXP half_windowsSEXP, SEXP dedupeSEXP, SEXP max_blockSEXP, SEXP nthreadsSEXP) {
+List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes, const IntegerVector& n_codes, const IntegerVector& half_windows, bool dedupe, double max_block, int nthreads, double x_from_, double x_to_);
+RcppExport SEXP _fast_string_fast_candidate_pairs_impl(SEXP x_codesSEXP, SEXP y_codesSEXP, SEXP n_codesSEXP, SEXP half_windowsSEXP, SEXP dedupeSEXP, SEXP max_blockSEXP, SEXP nthreadsSEXP, SEXP x_from_SEXP, SEXP x_to_SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -1203,7 +1218,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type dedupe(dedupeSEXP);
     Rcpp::traits::input_parameter< double >::type max_block(max_blockSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_candidate_pairs_impl(x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads));
+    Rcpp::traits::input_parameter< double >::type x_from_(x_from_SEXP);
+    Rcpp::traits::input_parameter< double >::type x_to_(x_to_SEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_candidate_pairs_impl(x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads, x_from_, x_to_));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1741,6 +1758,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_fuzz_extract_impl", (DL_FUNC) &_fast_string_fast_fuzz_extract_impl, 7},
     {"_fast_string_fast_fuzzy_top_n_impl", (DL_FUNC) &_fast_string_fast_fuzzy_top_n_impl, 10},
     {"_fast_string_fast_hash_impl", (DL_FUNC) &_fast_string_fast_hash_impl, 6},
+    {"_fast_string_fast_fold_digest_impl", (DL_FUNC) &_fast_string_fast_fold_digest_impl, 5},
     {"_fast_string_fast_levenshtein_impl", (DL_FUNC) &_fast_string_fast_levenshtein_impl, 4},
     {"_fast_string_fast_levenshtein_matrix_impl", (DL_FUNC) &_fast_string_fast_levenshtein_matrix_impl, 4},
     {"_fast_string_fast_osa_distance_impl", (DL_FUNC) &_fast_string_fast_osa_distance_impl, 4},
@@ -1761,7 +1779,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_pair_overlap_impl", (DL_FUNC) &_fast_string_fast_pair_overlap_impl, 4},
     {"_fast_string_fast_select_greedy_impl", (DL_FUNC) &_fast_string_fast_select_greedy_impl, 5},
     {"_fast_string_fast_value_frequency_impl", (DL_FUNC) &_fast_string_fast_value_frequency_impl, 3},
-    {"_fast_string_fast_candidate_pairs_impl", (DL_FUNC) &_fast_string_fast_candidate_pairs_impl, 7},
+    {"_fast_string_fast_candidate_pairs_impl", (DL_FUNC) &_fast_string_fast_candidate_pairs_impl, 9},
     {"_fast_string_fast_cluster_pairs_impl", (DL_FUNC) &_fast_string_fast_cluster_pairs_impl, 3},
     {"_fast_string_fast_minhash_pairs_impl", (DL_FUNC) &_fast_string_fast_minhash_pairs_impl, 11},
     {"_fast_string_fast_any_impl", (DL_FUNC) &_fast_string_fast_any_impl, 6},

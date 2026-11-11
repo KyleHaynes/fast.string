@@ -16,8 +16,9 @@ for the shapes accepted).}
 A list of class \code{summary_fs_pairs}, with a \code{print()} method:
 \code{n_pairs}, \code{n_distinct_1} and \code{n_distinct_2} (records reached on each
 side), \code{passes} (a table of pairs per blocking pass, or \code{NULL}),
-\code{pair_id} (\code{"identifier"} or \code{"number"}) and \code{scores}, a data frame with
-one row per score column.
+\code{pair_id} (\code{"identifier"} or \code{"number"}), \code{scores}, a data frame with
+one row per score column, and \code{filter}, what a \code{filter} in \code{\link[=rLink]{rLink()}}
+removed (or \code{NULL}).
 }
 \description{
 Reports what an \code{\link[=rLink]{rLink()}} result contains: how many pairs, how many records
@@ -61,6 +62,7 @@ Other record linkage model functions:
 \code{\link[=match_weights]{match_weights()}},
 \code{\link[=plot.fs_pairs]{plot.fs_pairs()}},
 \code{\link[=plot.fs_sweep]{plot.fs_sweep()}},
+\code{\link[=rLink_weights]{rLink_weights()}},
 \code{\link[=review_order]{review_order()}},
 \code{\link[=tf_adjust]{tf_adjust()}},
 \code{\link[=threshold_sweep]{threshold_sweep()}},

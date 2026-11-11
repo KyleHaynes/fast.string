@@ -320,8 +320,99 @@ reported as one rather than absorbed into the total:
   without it `threshold_sweep()` and `apply_decisions()` would cut an unnormalised
   edit distance upside down.
 
+### `rLink()`: filter while scoring, and comparators of numbers and dates
+
+* **`filter`** keeps only the scored pairs a rule says to keep, inside
+  `rLink()`: `filter = sn >= 0.85 & (gn >= 0.8 | dob_1 == dob_2)`. The rule can
+  name any score, `pass`, and any column of either input under its suffix. It
+  returns the same table as scoring everything and subsetting it, and is much
+  cheaper to get: candidates are generated, scored and thinned a slice of the
+  records at a time, so the whole candidate set never exists at once, and
+  `pair_id` and the carried columns are built only for the pairs that are
+  left. It also lifts the limit of 2^31 candidate pairs --- only the pairs kept
+  have to fit in one table. `attr(out, "filter")` records the rule, the
+  candidates scored and the pairs kept.
+* **`numeric_compare()` and `date_compare()` now work in `compare`.** They are
+  handed the column as it is stored. A comparator of your own asks for the
+  same by wrapping its column in `I()`, as in `my_cmp(I(age))`. An unbounded
+  distance between numbers or dates is left on its own scale and recorded as
+  lower-is-a-match, so `threshold_sweep()` and the review app cut it the right
+  way round.
+* `attr(out, "timings")` reports `pair_id` as its own stage. On a large
+  unfiltered result it is most of the run, and now it can be seen.
+* `attr(out, "dedupe")` says whether the pairs are within one file.
+
+### `rLink_weights()`: match weights in one call
+
+`rLink_weights(pairs)` cuts each score into agreement levels, fits the
+Fellegi-Sunter model by EM and adds `weight` and `probability` columns --- the
+four steps of the pipeline above, with the bookkeeping between them done.
+Levels are chosen automatically or given per score; `model =` applies an
+earlier fit, so a later run is weighed the same way; `tf =` makes agreement on
+a rare value worth more than agreement on a common one. The new columns are
+registered as scores, so `rLink_inspect()` thresholds the probability alone
+and shows the field scores as the evidence behind it.
+
+Its help says plainly what the model needs: **block on something you are not
+also scoring**. Blocked on surname and date of birth with both compared, the
+two populations EM finds are the two blocking passes.
+
+### `rLink_inspect()`: a review you can do from the keyboard
+
+* **The pair sits beside the table**, not in a panel of the settings sidebar.
+  It shows the compared fields with what differs between the two values
+  marked, every other column that was carried, and the other candidates for
+  the same two records, each a click away. With weights it also shows the bits
+  each field contributed.
+* **Keys.** `j`/`k` or the arrows move, `y`/`n` judge and move on to the next
+  undecided pair, `u` un-judges, `x` marks, `c` comments, `1`--`9` file a stock
+  reason (`reasons = c("married name", "twin")`), `Ctrl+Z` takes the last
+  action back, `?` lists them. Undo is recorded as new events, so the log
+  stays append-only.
+* **A review band.** `band = c(0.75, 0.95)`, or two boxes in the app, names
+  the scores a cut cannot be trusted on. The header counts the pairs in it
+  and how many are left.
+* **The queue follows the cut.** It used to be fixed when the review opened,
+  around the cut it opened with. *Rebuild the queue* draws it again around
+  the cut as it stands, as the review band, or as an audit sample.
+* **An audit sample.** A fixed, repeatable sample of the pairs the cut lets
+  through; judge it and the header estimates the false-link rate with a 95%
+  interval. The band and the audit are filed with a recorded threshold and
+  come back in `read_decisions()$thresholds`.
+* Moving a cut no longer redraws the table, so the sort, the filters and the
+  page are kept.
+
 ## Bug fixes
 
+* **`numeric_compare()` inside `rLink(compare = )` was an error**, and
+  `date_compare()` there was reported as "direction not detected". `rLink()`
+  turned every compared column into text before handing it over, so
+  `numeric_compare()` refused it, `date_compare()` parsed each string back
+  into the date it had just been, and the calibration probe --- two strings
+  of letters --- told `rLink()` nothing about either. See above.
+* **`rLink()` with a `pair_id` column and no candidate pairs was an error.**
+  `paste0()` of nothing and a separator is the separator, once, so an empty
+  result was handed one identifier and `setDT()` refused the ragged table.
+* **The verdict buttons in `rLink_inspect()` were off the right-hand edge.**
+  reactable draws columns in the order the data has them, and the `link?`
+  and comment columns were last --- behind every carried column, on any table
+  wider than the window. They are now first.
+* **A grouped table drew every row of a group, whatever the page size.** With
+  the default grouping by scope, two groups were two rows to the pager and
+  all 20,000 pairs were one page. Sub-rows are now paginated.
+* **The threshold sweep sent one row per distinct score to the browser.** On
+  a continuous score over millions of pairs that is millions of rows to draw
+  a curve. It is now swept at no more than 200 cut-offs.
+* **Marks survived being judged from the keyboard.** `y` on a marked set left
+  it marked, so the next key meant for one row was applied to all of them
+  again. They are cleared, as the buttons always cleared them.
+* **A comment being typed lost the cursor** when the debounced save redrew
+  the box it was being typed into.
+* **The sidebar of `rLink_inspect()` was unstyled.** Its CSS was scoped to a
+  wrapper the sidebar is not inside, so the font size, the compact spacing
+  and the note boxes never applied to the controls they were written for.
+* **A review session's `started` time was its last save.** The run header
+  was restamped on every write.
 * **Incremental builds no longer link stale object files.** `src/Makevars`
   and `src/Makevars.win` now generate header dependencies (`-MMD -MP`) and
   include them, so editing one of the headers in `src/` rebuilds the objects
@@ -434,6 +525,55 @@ machine and data.
   against one hash table instead of one each; and a single exact pass now
   writes its pairs straight out, as they are already in order and cannot
   repeat.
+* `rLink()` again, measured with `tools/bench_rlink.R` on two files of 500,000
+  records, each scenario in an R process of its own:
+
+  | scenario | pairs | before | after |
+  |---|---:|---:|---:|
+  | one exact pass, every column carried | 8.9M | 19.2s | 9.4s |
+  | three passes of two-term keys | 1.8M | 8.4s | 3.6s |
+  | deduplicating one file | 20.6M | 37.0s | 20.3s |
+  | one exact pass, keeping close names (`filter`) | 0.66M of 8.9M | 19.3s | 2.0s |
+  | `date_compare()` on a `Date` column | 1.6M | 23.2s | 2.1s |
+  | nothing carried, `pair_id = NULL` | 8.9M | 1.2s | 1.1s |
+
+  * `filter` scores before it builds anything, and builds `pair_id` and the
+    carried columns for the survivors alone. Peak memory in that row fell
+    from 2.7 Gb to 0.85 Gb.
+  * A typed comparator is no longer handed text to parse back.
+  * A key of several terms matched exactly is numbered rather than pasted:
+    each term's distinct values are coded over both files and the codes
+    combined, so no string is made per record. On two files of three million
+    records, three such passes went from 12.1s of keys and 6.8s of coding them
+    to 5.7s and 1.9s.
+  * The carried columns are gathered before `pair_id` is built rather than
+    after, which alone took that stage from 4.4s to 1.3s on 8.9M pairs: each
+    gather can trigger a collection, and a collection is cheaper before ten
+    million new strings exist than after.
+  * A single exact pass counts its pairs and then writes them straight into
+    the result in parallel, instead of growing a buffer per chunk and copying
+    out of it.
+
+  **What is left is `pair_id`.** Every pair gets a string of its own and R
+  takes about a second to make a million new strings, whoever asks: 6.8s of
+  the 9.4s above, and 52s of 81s on 53 million pairs. A hand-written C++
+  builder was measured at within 15% of `paste0()`, so it was not kept.
+  `filter` avoids the cost for the pairs it drops and `pair_id = NULL` avoids
+  it altogether.
+* `rLink_inspect()` on two million pairs:
+
+  | | before | after |
+  |---|---:|---:|
+  | opening the review | 20.4s | 1.7s |
+  | 500 marked rows judged at once | 12.3s | 0.1s |
+  | twenty verdicts, one at a time | 2.9s | 1.2s |
+  | moving a cut | 0.9s | 0.2s |
+
+  Opening was the fingerprint of the pair set, which made an R string per
+  pair and a factor to split them by; it is now computed in C++ over the same
+  bytes and gives the same digest, so an existing decisions file still reads
+  as unchanged. Verdicts are held as one code per pair rather than a named
+  list copied on every click.
 
 ## Documentation
 

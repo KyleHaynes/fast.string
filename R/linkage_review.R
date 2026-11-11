@@ -362,8 +362,9 @@ review_order <- function(x, threshold = 0.5, na_last = TRUE) {
 #' @return A list of class `summary_fs_pairs`, with a `print()` method:
 #'   `n_pairs`, `n_distinct_1` and `n_distinct_2` (records reached on each
 #'   side), `passes` (a table of pairs per blocking pass, or `NULL`),
-#'   `pair_id` (`"identifier"` or `"number"`) and `scores`, a data frame with
-#'   one row per score column.
+#'   `pair_id` (`"identifier"` or `"number"`), `scores`, a data frame with
+#'   one row per score column, and `filter`, what a `filter` in [rLink()]
+#'   removed (or `NULL`).
 #' @seealso [plot.fs_pairs()] for the distributions as histograms, and
 #'   [threshold_sweep()] for what a cut-off would do.
 #' @family record linkage model functions
@@ -418,7 +419,10 @@ summary.fs_pairs <- function(object, ...) {
         pair_id = if (!"pair_id" %in% nms) "none"
                   else if (is.character(object[["pair_id"]])) "identifier"
                   else "number",
-        scores = if (length(rows)) do.call(rbind, rows) else NULL
+        scores = if (length(rows)) do.call(rbind, rows) else NULL,
+        # What a `filter` in rLink() removed, when there was one: these are
+        # then the pairs that were kept, not the candidates.
+        filter = attr(object, "filter")
     ), class = "summary_fs_pairs")
 }
 
@@ -430,6 +434,11 @@ print.summary_fs_pairs <- function(x, ...) {
                 format(x$n_distinct_1, big.mark = ","),
                 format(x$n_distinct_2, big.mark = ",")))
     cat(sprintf("Pair identifier: %s\n", x$pair_id))
+    if (!is.null(x$filter))
+        cat(sprintf("Kept by `filter` (%s): %s of %s candidates\n",
+                    x$filter$rule, format(x$filter$n_kept, big.mark = ","),
+                    format(x$filter$n_candidates, big.mark = ",",
+                           scientific = FALSE)))
     if (!is.null(x$passes)) {
         cat("\nPairs per blocking pass\n")
         print(x$passes)

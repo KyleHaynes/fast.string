@@ -14,7 +14,9 @@ rLink_inspect(
   page_size = 100L,
   font_size = 11L,
   order_by = c("review", "input", "score"),
-  launch = interactive()
+  launch = interactive(),
+  band = NULL,
+  reasons = NULL
 )
 }
 \arguments{
@@ -52,6 +54,14 @@ ascending), and \code{"input"} leaves them as given.}
 
 \item{launch}{Whether to run the app. Defaults to \code{\link[=interactive]{interactive()}}, so the
 file is still written when this is called from a script or a test.}
+
+\item{band}{Optional review band: the lower and upper limit, on the first
+score, of the pairs to be looked at by hand. It can be set and changed
+in the app. See \emph{The review queue, the band and the audit sample}.}
+
+\item{reasons}{Optional character vector of up to nine stock reasons, such
+as \code{c("married name", "twin", "typing error")}. Each is offered on the
+pair and bound to its number key, and is filed as the comment.}
 }
 \value{
 An \code{\link[=read_decisions]{read_decisions()}} object of class \code{fs_decisions}, holding the
@@ -91,14 +101,25 @@ the current cut is the first thing visible, and out-of-scope rows are dimmed
 rather than hidden, because a false negative you cannot see is a false
 negative you will not find.
 
-Clicking a row puts that pair in the sidebar field by field --- the value
-each input held on each side, beside the score it earned --- because what a
-clerical decision is actually made on is \code{SMITH / JOHN / 1980-01-02}
-against \code{SMYTHE / JON / 1980-01-02}, and a row of numbers is a summary of
-that rather than a substitute for it.
+Beside the table is \strong{the pair}: the row in focus, field by field. The
+compared fields come first, each with the value either input held and the
+score it earned, and with what differs between the two values marked ---
+one dropped letter reads very differently from three substitutions. Then
+every other column that was carried, because a reviewer deciding whether
+two records are one person reads the address and the sex as well as the
+three fields somebody chose to score. Below that are the \strong{other
+candidates for the same two records}, each a click away: whether a pair is
+a link is rarely a question about that pair alone, but whether it is the
+best candidate its records have.
+
+With weights from \code{\link[=rLink_weights]{rLink_weights()}} the cut is on the match probability
+alone, the field scores are shown as the evidence behind it, and the pair
+also says how many bits each field contributed to the weight.
 
 Every count in the header, the sweep and the panels is computed over \emph{all}
-the pairs, not only the ones on screen.
+the pairs, not only the ones on screen. Moving a cut changes what is in the
+table without redrawing it, so the sort, the filters and the page you were
+on are kept.
 }
 
 \section{Choosing the cut}{
@@ -122,12 +143,31 @@ you type, stored with the threshold, and re-applied by
 
 \section{Judging pairs, and overriding the cut}{
 
-Three buttons and a comment box on every row, and the same three in the
-sidebar for the pair being read. \code{y}, \code{n} and \code{u} judge from the keyboard.
-Ctrl-click (cmd-click) marks rows and shift-click marks a range, and the
-marked set can then be judged in one action --- which is how a block of
-obvious links gets dealt with without 200 clicks. Marks follow the pair,
-not the row position, so they survive sorting, filtering and paging.
+Three buttons and a comment box on every row, and the same on the pair
+beside the table. Ctrl-click (cmd-click) marks rows and shift-click marks
+a range, and the marked set can then be judged in one action --- which is
+how a block of obvious links gets dealt with without 200 clicks. Marks
+follow the pair, not the row position, so they survive sorting, filtering
+and paging.
+
+The whole review can be done from the keyboard, which is most of what
+makes a few thousand verdicts bearable:\tabular{ll}{
+   Key \tab  \cr
+   \code{j} \code{k}, or the arrows \tab the next and the previous pair, turning the page at either end \cr
+   \code{y} \code{n} \tab a link, not a link --- then on to the next pair nobody has judged \cr
+   \code{u} \tab undecided again \cr
+   \code{x} \tab mark or unmark the pair in focus \cr
+   \code{c} \tab write a comment (\code{Esc} to come back) \cr
+   \code{1} to \code{9} \tab file one of the stock \code{reasons} as the comment \cr
+   \code{Ctrl+Z} \tab take the last action back \cr
+   \verb{?} \tab show this list \cr
+}
+
+
+Taking an action back is itself recorded: the log is append-only, and a
+verdict reached and then withdrawn is a different history from one never
+reached. A comment is saved as it is typed, so closing the tab loses
+nothing.
 
 \strong{A judgement beats the threshold, both ways.} The cut decides the pairs
 nobody looks at; marking a pair a link brings it into scope even though its
@@ -145,6 +185,32 @@ edge; the header breaks the total into what the cut gave and what was forced
 either way; \strong{What this cut does} shows the cut's counts beside the
 reviewed ones; and \emph{Show > overriding the cut} lists exactly that set,
 which is the page to re-read before a linkage is signed off.
+}
+
+\section{The review queue, the band and the audit sample}{
+
+A threshold is a way of not having to look at every pair, and these three
+are about which pairs to look at instead.
+
+The \strong{review band} is a range of one score --- \code{band = c(0.75, 0.95)}, or
+the two boxes in the sidebar --- inside which a cut cannot be trusted and
+a person has to look. The header counts the pairs in it, how many have
+been judged and how many are left, which is the review's progress bar; and
+\emph{Show > in the review band, undecided} lists what is left. The cut still
+decides any pair nobody judges.
+
+The \strong{queue} is the \code{max_pairs} pairs put on screen. It opens as the ones
+nearest the cut the review opened with, and \strong{Rebuild the queue} draws it
+again around the cut as it now stands --- or as the review band, or as an
+audit sample. Pairs already judged stay in it wherever the cut has gone.
+
+The \strong{audit sample} answers the other question a linkage is asked: of the
+pairs the cut lets through unseen, how many are wrong? It is a fixed
+sample of them --- the ones whose identifiers hash smallest, so it is the
+same sample whoever opens the review and does not disturb the random
+number stream. Judge it and the header estimates the false-link rate with
+a 95\% interval. The band and the audit are both filed with a recorded
+threshold, so the file says what the cut was accepted on.
 }
 
 \section{What is written}{
@@ -169,7 +235,9 @@ At most \code{max_pairs} rows are put on screen, chosen by \code{\link[=review_o
 rest of the analysis still reads every pair, and the app says so. reactable
 draws every row of a page, so \code{page_size} is capped at 1000 --- there is no
 "show all rows", because at these sizes it would lock the browser tab rather
-than show you anything. Columns are reordered and hidden by dragging them
+than show you anything. The threshold sweep is drawn over at most 200
+cut-offs, placed at quantiles of the score once it has more distinct values
+than that. Columns are reordered and hidden by dragging them
 between the Shown and Hidden lists in the sidebar; reactable cannot drag a
 table \emph{header}.
 }
@@ -219,8 +287,12 @@ pairs <- rLink(
 
 # Open the review at a deliberately strict cut. Everything above it is a
 # link without anyone looking; the review is about the pairs below it.
+# The band says which surnames are worth a person's time, and the stock
+# reasons are the ones this linkage keeps running into.
 out <- rLink_inspect(
     pairs, threshold = c(surname = 0.92, given = 0.85),
+    band = c(0.8, 0.95),
+    reasons = c("married name", "nickname", "transposed date"),
     decisions = file.path(tempdir(), "cancer_registry_review.json")
 )
 
