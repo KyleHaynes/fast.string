@@ -484,12 +484,32 @@ em_linkage <- function(x, lambda = 0.1, m_init = NULL, u_init = NULL,
     if (inherits(x, "agreement_patterns")) {
         table <- x
         nms <- setdiff(names(table), "n")
-        n_levels <- attr(table, "n_levels")
-        if (is.null(n_levels))
-            n_levels <- vapply(table[nms], function(v) {
-                top <- suppressWarnings(max(v, na.rm = TRUE))
-                if (is.finite(top)) as.integer(top) + 1L else 1L
-            }, integer(1))
+        if (!length(nms))
+            stop("`x` holds no comparisons, only counts.", call. = FALSE)
+        if (is.null(table$n))
+            stop(paste0("`x` has no `n` column, so there is nothing saying ",
+                        "how many pairs have each pattern."), call. = FALSE)
+        declared <- attr(table, "n_levels")
+        # The declared `n_levels` is taken as a floor, never as the truth. It
+        # is an attribute, so it survives edits to the table that invalidate
+        # it -- `p$surname[1] <- 3L` on a two-level comparison leaves it
+        # saying 2 -- and every downstream index is `offset + level`. Taking
+        # it literally was an out-of-bounds write into the heap, which does
+        # not fail where it happens; it corrupts some other allocation and
+        # takes the session down later with nothing to show for it. This is
+        # the same floor-and-observe rule .as_level_list() applies to raw
+        # level vectors, so the two entry points to the model now agree.
+        n_levels <- vapply(seq_along(nms), function(k) {
+            v <- table[[nms[k]]]
+            if (any(v < 0, na.rm = TRUE))
+                stop(sprintf(paste0(
+                    "Levels of `%s` must be whole numbers from 0 up; see ",
+                    "compare_levels()."), nms[k]), call. = FALSE)
+            top <- suppressWarnings(max(v, na.rm = TRUE))
+            top <- if (is.finite(top)) as.integer(top) + 1L else 1L
+            if (is.null(declared) || k > length(declared)) top
+            else max(as.integer(declared[k]), top)
+        }, integer(1))
         patterns <- as.matrix(as.data.frame(lapply(table[nms], as.integer)))
         return(list(patterns = patterns, n = table$n, n_levels = n_levels,
                     names = nms, table = as.data.frame(table[c(nms, "n")])))

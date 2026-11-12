@@ -32,7 +32,14 @@ with \code{names(a)} and \code{names(b)} as row and column names when present.
 Levenshtein all-pairs distance matrix
 }
 \examples{
-levenshtein_matrix(c("kitten", "flaw"), c("sitting", "lawn"))
+# Every suburb in one file against the reference list, in one call: the
+# smallest value in each row is the candidate to check.
+entered <- c("BRISBANE", "TOOWONG", "INDOOROOPILY")
+gazetteer <- c("BRISBANE", "TOOWONG", "INDOOROOPILLY", "TOOWOOMBA")
+m <- levenshtein_matrix(entered, gazetteer)
+dimnames(m) <- list(entered, gazetteer)
+m
+gazetteer[apply(m, 1, which.min)]
 }
 \seealso{
 Other edit distance functions:

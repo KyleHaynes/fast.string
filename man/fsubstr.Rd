@@ -34,6 +34,12 @@ first.
 }
 \examples{
 fsubstr(c("abcdef", "xyz", NA), 2, 4)   # out-of-range stops are clamped
+
+# Fixed-position slices are the cheapest blocking keys there are: the
+# first letter of a surname, the postcode's state digit, the birth year
+# out of a "YYYYMMDD" string.
+fsubstr(c("NGUYEN", "OBRIEN", "SMITH"), 1, 1)
+fsubstr(c("19620314", "19481102"), 1, 4)
 }
 \seealso{
 \code{\link[base:substr]{base::substr()}}

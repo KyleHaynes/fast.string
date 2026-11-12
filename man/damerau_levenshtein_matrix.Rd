@@ -23,8 +23,12 @@ with \code{names(a)} and \code{names(b)} as row and column names when present.
 Unrestricted Damerau-Levenshtein all-pairs distance matrix
 }
 \examples{
-# Unrestricted transposition scores "ca" -> "abc" as 2, OSA as 3.
+# Unrestricted transposition scores "ca" -> "abc" as 2, OSA as 3. Pairs
+# that separate the two need overlapping transpositions and so are rare
+# in practice: on name typos ([edit_distance()] shows a few) the two
+# agree, and OSA is the cheaper of them.
 damerau_levenshtein_matrix(c("ca", "abc"), c("abc", "ca"))
+osa_distance_matrix(c("ca", "abc"), c("abc", "ca"))
 }
 \seealso{
 Other edit distance functions:

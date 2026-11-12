@@ -45,34 +45,31 @@ struct PairChunk {
     std::vector<int> pass;
 };
 
+// Every worker below walks the x records of [x_from, x_to) in chunks of
+// rows_per_chunk, so that a caller can ask for the pairs of one slice of the
+// records at a time. rLink() does that when it filters while scoring: the
+// candidates of a slice are scored and thinned before the next slice is
+// generated, and the whole candidate set never has to exist at once.
 struct PairWorker : public Worker {
     const std::vector<Pass>& passes;
     bool dedupe;
     std::size_t rows_per_chunk;
-    std::size_t n_x;
+    std::size_t x_from;
+    std::size_t x_to;
     std::vector<PairChunk>& chunks;
 
     PairWorker(const std::vector<Pass>& passes_, bool dedupe_,
-               std::size_t rows_per_chunk_, std::size_t n_x_,
-               std::vector<PairChunk>& chunks_)
+               std::size_t rows_per_chunk_, std::size_t x_from_,
+               std::size_t x_to_, std::vector<PairChunk>& chunks_)
         : passes(passes_), dedupe(dedupe_), rows_per_chunk(rows_per_chunk_),
-          n_x(n_x_), chunks(chunks_) {}
+          x_from(x_from_), x_to(x_to_), chunks(chunks_) {}
 
     void operator()(std::size_t begin, std::size_t end) {
-        // One exact pass is the common case (block_pairs() on a single key).
-        // Its block's members are already in ascending record order and
-        // cannot repeat, so there is nothing to sort or de-duplicate and the
-        // pairs go straight out: for a record in a block of b partners that
-        // is b writes instead of b writes plus a b log b sort.
-        if (passes.size() == 1 && passes[0].half_window == 0) {
-            single_exact(begin, end);
-            return;
-        }
         std::vector<Candidate> found;
         for (std::size_t chunk = begin; chunk < end; ++chunk) {
             PairChunk& out = chunks[chunk];
-            const std::size_t first = chunk * rows_per_chunk;
-            const std::size_t last = (std::min)(n_x, first + rows_per_chunk);
+            const std::size_t first = x_from + chunk * rows_per_chunk;
+            const std::size_t last = (std::min)(x_to, first + rows_per_chunk);
             for (std::size_t i = first; i < last; ++i) {
                 found.clear();
                 // Several passes can report the same partner, and a window
@@ -125,36 +122,108 @@ struct PairWorker : public Worker {
             }
         }
     }
+};
 
-    void single_exact(std::size_t begin, std::size_t end) {
-        const Pass& pass = passes[0];
+// One exact pass is the common case (block_pairs() on a single key). A
+// block's members are already in ascending record order and cannot repeat,
+// so there is nothing to sort or de-duplicate -- and, unlike the general
+// case, the number of pairs each record contributes is known before any is
+// written: it is the size of its block, or of the part of the block above
+// it when deduplicating. So the pairs are counted first and then written
+// straight into the result, in parallel. That does away with the per-chunk
+// buffers the general case grows and then copies out of, which at tens of
+// millions of pairs is both the peak memory and a serial pass over all of
+// it.
+struct ExactRange {
+    const int* from;
+    const int* to;
+};
+
+inline ExactRange exact_partners(const Pass& pass, bool has_skipped,
+                                 bool dedupe, std::size_t i) {
+    const int code = pass.x_codes[i];
+    if (code == NA_INTEGER) return ExactRange{nullptr, nullptr};
+    if (has_skipped && pass.skipped[code]) return ExactRange{nullptr, nullptr};
+    const int* from = pass.members.data() + pass.offsets[code];
+    const int* to = pass.members.data() + pass.offsets[code + 1];
+    // members ascend within a block, so when deduplicating the partners
+    // above i are a suffix, found by binary search rather than by walking
+    // the whole block.
+    if (dedupe) from = std::upper_bound(from, to, static_cast<int>(i));
+    return ExactRange{from, to};
+}
+
+struct ExactCountWorker : public Worker {
+    const Pass& pass;
+    bool dedupe;
+    std::size_t rows_per_chunk;
+    std::size_t x_from;
+    std::size_t x_to;
+    std::vector<std::size_t>& counts;
+
+    ExactCountWorker(const Pass& pass_, bool dedupe_,
+                     std::size_t rows_per_chunk_, std::size_t x_from_,
+                     std::size_t x_to_, std::vector<std::size_t>& counts_)
+        : pass(pass_), dedupe(dedupe_), rows_per_chunk(rows_per_chunk_),
+          x_from(x_from_), x_to(x_to_), counts(counts_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
         const bool has_skipped = !pass.skipped.empty();
         for (std::size_t chunk = begin; chunk < end; ++chunk) {
-            PairChunk& out = chunks[chunk];
-            const std::size_t first = chunk * rows_per_chunk;
-            const std::size_t last = (std::min)(n_x, first + rows_per_chunk);
+            const std::size_t first = x_from + chunk * rows_per_chunk;
+            const std::size_t last = (std::min)(x_to, first + rows_per_chunk);
+            std::size_t n = 0;
             for (std::size_t i = first; i < last; ++i) {
-                const int code = pass.x_codes[i];
-                if (code == NA_INTEGER) continue;
-                if (has_skipped && pass.skipped[code]) continue;
-                const int* from = pass.members.data() + pass.offsets[code];
-                const int* to = pass.members.data() + pass.offsets[code + 1];
-                // members ascend within a block, so when deduplicating the
-                // partners above i are a suffix, found by binary search
-                // rather than by walking the whole block.
-                if (dedupe)
-                    from = std::upper_bound(from, to, static_cast<int>(i));
-                if (from == to) continue;
+                const ExactRange r =
+                    exact_partners(pass, has_skipped, dedupe, i);
+                n += static_cast<std::size_t>(r.to - r.from);
+            }
+            counts[chunk] = n;
+        }
+    }
+};
+
+struct ExactFillWorker : public Worker {
+    const Pass& pass;
+    bool dedupe;
+    std::size_t rows_per_chunk;
+    std::size_t x_from;
+    std::size_t x_to;
+    const std::vector<std::size_t>& starts;
+    int* out_x;
+    int* out_y;
+
+    ExactFillWorker(const Pass& pass_, bool dedupe_,
+                    std::size_t rows_per_chunk_, std::size_t x_from_,
+                    std::size_t x_to_, const std::vector<std::size_t>& starts_,
+                    int* out_x_, int* out_y_)
+        : pass(pass_), dedupe(dedupe_), rows_per_chunk(rows_per_chunk_),
+          x_from(x_from_), x_to(x_to_), starts(starts_), out_x(out_x_),
+          out_y(out_y_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        const bool has_skipped = !pass.skipped.empty();
+        for (std::size_t chunk = begin; chunk < end; ++chunk) {
+            const std::size_t first = x_from + chunk * rows_per_chunk;
+            const std::size_t last = (std::min)(x_to, first + rows_per_chunk);
+            std::size_t at = starts[chunk];
+            for (std::size_t i = first; i < last; ++i) {
+                const ExactRange r =
+                    exact_partners(pass, has_skipped, dedupe, i);
                 const int x = static_cast<int>(i) + 1;
-                for (const int* k = from; k != to; ++k) {
-                    out.x.push_back(x);
-                    out.y.push_back(*k + 1);
-                    out.pass.push_back(1);
+                for (const int* k = r.from; k != r.to; ++k) {
+                    out_x[at] = x;
+                    out_y[at] = *k + 1;
+                    ++at;
                 }
             }
         }
     }
 };
+
+const char* const too_many_pairs =
+    "These keys give more than 2^31 candidate pairs; block on more specific "
+    "keys or use a smaller window.";
 
 }  // namespace
 
@@ -162,7 +231,8 @@ struct PairWorker : public Worker {
 List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes,
                                const IntegerVector& n_codes,
                                const IntegerVector& half_windows, bool dedupe,
-                               double max_block, int nthreads) {
+                               double max_block, int nthreads,
+                               double x_from_, double x_to_) {
     const std::size_t n_passes = static_cast<std::size_t>(x_codes.size());
     if (n_passes == 0) stop("At least one key is needed.");
     std::vector<IntegerVector> xs, ys;
@@ -171,6 +241,12 @@ List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes,
         ys.push_back(as<IntegerVector>(y_codes[p]));
     }
     const std::size_t n_x = static_cast<std::size_t>(xs[0].size());
+    if (!(x_from_ >= 0) || !(x_to_ >= x_from_) ||
+        x_to_ > static_cast<double>(n_x))
+        stop("The range of records asked for is not within the keys.");
+    const std::size_t x_from = static_cast<std::size_t>(x_from_);
+    const std::size_t x_to = static_cast<std::size_t>(x_to_);
+    const bool whole = x_from == 0 && x_to == n_x;
 
     std::vector<Pass> passes(n_passes);
     double bound = 0;
@@ -197,11 +273,14 @@ List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes,
             if (yc[j] != NA_INTEGER)
                 pass.members[fill[yc[j]]++] = static_cast<int>(j);
         }
-        std::vector<double> x_count(codes + 1, 0);
-        for (std::size_t i = 0; i < n_x; ++i) {
-            if (pass.x_codes[i] != NA_INTEGER) ++x_count[pass.x_codes[i]];
-        }
+        // Which blocks are too big is a property of the keys, so it is
+        // decided over every x record whatever range was asked for: a block
+        // must not be skipped in one slice and kept in the next.
         if (pass.half_window == 0 && max_block < 1e18) {
+            std::vector<double> x_count(codes + 1, 0);
+            for (std::size_t i = 0; i < n_x; ++i) {
+                if (pass.x_codes[i] != NA_INTEGER) ++x_count[pass.x_codes[i]];
+            }
             pass.skipped.assign(codes + 1, 0);
             for (std::size_t c = 1; c <= codes; ++c) {
                 const double y_count = static_cast<double>(
@@ -213,28 +292,58 @@ List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes,
                 }
             }
         }
-        // An upper bound on the pairs this pass can produce.
-        for (std::size_t c = 1; c <= codes; ++c) {
-            if (x_count[c] == 0) continue;
-            if (!pass.skipped.empty() && pass.skipped[c]) continue;
-            const int lo = (std::max)(1, static_cast<int>(c) - pass.half_window);
-            const int hi = (std::min)(pass.n_codes,
-                                      static_cast<int>(c) + pass.half_window);
-            const double partners = static_cast<double>(
-                pass.offsets[hi + 1] - pass.offsets[lo]);
-            bound += x_count[c] * partners / (dedupe ? 2.0 : 1.0);
+        // An upper bound on the pairs this pass can produce from the records
+        // asked for.
+        double partners = 0;
+        for (std::size_t i = x_from; i < x_to; ++i) {
+            const int code = pass.x_codes[i];
+            if (code == NA_INTEGER) continue;
+            if (!pass.skipped.empty() && pass.skipped[code]) continue;
+            const int lo = (std::max)(1, code - pass.half_window);
+            const int hi = (std::min)(pass.n_codes, code + pass.half_window);
+            partners += static_cast<double>(pass.offsets[hi + 1] -
+                                            pass.offsets[lo]);
         }
+        // Deduplicating, each pair is counted from both of its records --
+        // but only over the whole file. The first slice of one holds the
+        // records with the most partners above them, so a slice keeps the
+        // whole count.
+        bound += partners / (dedupe && whole ? 2.0 : 1.0);
     }
-    if (bound > static_cast<double>((std::numeric_limits<int>::max)()))
-        stop("These keys give more than 2^31 candidate pairs; block on "
-             "more specific keys or use a smaller window.");
 
+    const double int_max =
+        static_cast<double>((std::numeric_limits<int>::max)());
     const std::size_t rows_per_chunk = 1024;
-    const std::size_t n_chunks = (n_x + rows_per_chunk - 1) / rows_per_chunk;
-    std::vector<PairChunk> chunks(n_chunks);
-    PairWorker worker(passes, dedupe, rows_per_chunk, n_x, chunks);
+    const std::size_t n_rows = x_to - x_from;
+    const std::size_t n_chunks = (n_rows + rows_per_chunk - 1) / rows_per_chunk;
     const std::size_t work = static_cast<std::size_t>(
-        (std::min)(bound + static_cast<double>(n_x), 1e18));
+        (std::min)(bound + static_cast<double>(n_rows), 1e18));
+
+    if (n_passes == 1 && passes[0].half_window == 0) {
+        std::vector<std::size_t> counts(n_chunks, 0);
+        ExactCountWorker counter(passes[0], dedupe, rows_per_chunk, x_from,
+                                 x_to, counts);
+        dispatch_for(0, n_chunks, counter, n_rows, 200000, nthreads, 1);
+        std::vector<std::size_t> starts(n_chunks + 1, 0);
+        for (std::size_t c = 0; c < n_chunks; ++c)
+            starts[c + 1] = starts[c] + counts[c];
+        const std::size_t total = starts[n_chunks];
+        if (static_cast<double>(total) > int_max) stop(too_many_pairs);
+        IntegerVector out_x(Rcpp::no_init(total)), out_y(Rcpp::no_init(total)),
+            out_pass(Rcpp::no_init(total));
+        ExactFillWorker filler(passes[0], dedupe, rows_per_chunk, x_from, x_to,
+                               starts, out_x.begin(), out_y.begin());
+        dispatch_for(0, n_chunks, filler, work, 200000, nthreads, 1);
+        std::fill(out_pass.begin(), out_pass.end(), 1);
+        return List::create(_["x_index"] = out_x, _["y_index"] = out_y,
+                            _["pass"] = out_pass,
+                            _["skipped_blocks"] =
+                                static_cast<double>(skipped_blocks));
+    }
+
+    if (bound > int_max) stop(too_many_pairs);
+    std::vector<PairChunk> chunks(n_chunks);
+    PairWorker worker(passes, dedupe, rows_per_chunk, x_from, x_to, chunks);
     dispatch_for(0, n_chunks, worker, work, 200000, nthreads, 1);
 
     std::size_t total = 0;

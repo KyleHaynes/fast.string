@@ -76,10 +76,21 @@ per-pair R-level dispatch, and the whole vector runs in parallel across
 CPU cores via Intel TBB (through RcppParallel).
 }
 \examples{
-jaccard_index("night", "nacht")
-dice_coefficient("night", "nacht")
-tversky_index("night", "nacht", alpha = 1, beta = 1) # == jaccard_index()
-jaccard_index(c("Kyle Haynes", "John Smith"), c("Kyle Haynes", "Jon Smith"))
+# Q-grams ignore word order, which is what makes them the tool for a
+# field where the same information arrives arranged differently: a name
+# given surname-first in one file, an address line, a business name.
+jaccard_index("SMITH JOHN ANDREW", "JOHN ANDREW SMITH")
+dice_coefficient("SMITH JOHN ANDREW", "JOHN ANDREW SMITH")
+
+# Tversky with alpha = beta = 1 is Jaccard; asymmetric weights ask a
+# different question -- "is a contained in b" rather than "do a and b
+# agree" -- which is the right one for a truncated field.
+tversky_index("12 SMITH ST", "UNIT 4, 12 SMITH ST", alpha = 1, beta = 1)
+tversky_index("12 SMITH ST", "UNIT 4, 12 SMITH ST", alpha = 1, beta = 0)
+
+# A whole-name comparison across two files
+jaccard_index(c("KYLE HAYNES", "JOHN SMITH"),
+              c("KYLE HAYNES", "JON SMITH"))
 }
 \seealso{
 \code{\link[=jaro_winkler]{jaro_winkler()}} for an order-sensitive alternative.

@@ -6,3 +6,33 @@ PKG_CXXFLAGS += -DRCPP_PARALLEL_USE_TBB=1
 endif
 PKG_LIBS += -lpcre2-8
 PKG_LIBS += $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" --vanilla -e "RcppParallel::RcppParallelLibs()")
+
+# Header dependency tracking. R's shlib rules only know that an object file
+# depends on its own .cpp, so without this an edit to one of the twenty-odd
+# headers in this directory rebuilds nothing: `make` reports "Nothing to be
+# done" and the stale objects are relinked. Most of those headers define
+# structs shared across translation units (StringView and StringSnapshot in
+# string_snapshot.h, SequenceSource in sequence_input.h, the Worker templates
+# in pairwise_worker.h), so a mixed build is one where some objects use the
+# old layout and some the new. That is undefined behaviour, and the way it
+# shows up is a corrupted heap and an R session that exits without a message
+# some time later -- never a compiler error. -MMD writes a .d file beside each
+# object listing the headers it actually included, and -MP adds a phony target
+# per header so a deleted or renamed one is not a hard make error.
+#
+# It does not cover a change to the defines above: switching
+# FAST_STRING_TINYTHREAD changes RCPP_PARALLEL_USE_TBB, and with it the layout
+# of RcppParallel's own classes, in every object that includes
+# RcppParallel.h. Nothing make can see has changed, so delete src/*.o by hand
+# when switching it. Clean builds -- R CMD build, R CMD check, and installing
+# from a tarball -- are unaffected either way, because they compile into a
+# fresh directory.
+#
+# `all` is named explicitly because an included .d file carries real targets,
+# and the first target make reads becomes the default goal. Makevars is the
+# first makefile R CMD SHLIB passes, so without this the goal would silently
+# become whichever object the first .d file happens to describe -- make would
+# report success having relinked nothing.
+.DEFAULT_GOAL := all
+PKG_CPPFLAGS += -MMD -MP
+-include $(wildcard *.d)

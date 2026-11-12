@@ -45,10 +45,21 @@
 #' @seealso [jaro_winkler()] for an order-sensitive alternative.
 #' @family q-gram similarity functions
 #' @examples
-#' jaccard_index("night", "nacht")
-#' dice_coefficient("night", "nacht")
-#' tversky_index("night", "nacht", alpha = 1, beta = 1) # == jaccard_index()
-#' jaccard_index(c("Kyle Haynes", "John Smith"), c("Kyle Haynes", "Jon Smith"))
+#' # Q-grams ignore word order, which is what makes them the tool for a
+#' # field where the same information arrives arranged differently: a name
+#' # given surname-first in one file, an address line, a business name.
+#' jaccard_index("SMITH JOHN ANDREW", "JOHN ANDREW SMITH")
+#' dice_coefficient("SMITH JOHN ANDREW", "JOHN ANDREW SMITH")
+#'
+#' # Tversky with alpha = beta = 1 is Jaccard; asymmetric weights ask a
+#' # different question -- "is a contained in b" rather than "do a and b
+#' # agree" -- which is the right one for a truncated field.
+#' tversky_index("12 SMITH ST", "UNIT 4, 12 SMITH ST", alpha = 1, beta = 1)
+#' tversky_index("12 SMITH ST", "UNIT 4, 12 SMITH ST", alpha = 1, beta = 0)
+#'
+#' # A whole-name comparison across two files
+#' jaccard_index(c("KYLE HAYNES", "JOHN SMITH"),
+#'               c("KYLE HAYNES", "JON SMITH"))
 #' @name qgram_metrics
 NULL
 
@@ -99,7 +110,8 @@ jaccard_index <- function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
 #'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family q-gram similarity functions
 #' @examples
-#' jaccard_matrix(c("night", "nacht"), c("night", "nacht", "day"))
+#' jaccard_matrix(c("SMITH JOHN", "NGUYEN THI MINH"),
+#'                c("JOHN SMITH", "NGUYEN MINH", "TRAN VAN NAM"))
 #' @export
 jaccard_matrix <-function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
     .qgram_validate_matrix(a, b, q, use_bytes)
@@ -120,7 +132,8 @@ dice_coefficient <- function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
 #'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family q-gram similarity functions
 #' @examples
-#' dice_matrix(c("night", "nacht"), c("night", "nacht", "day"))
+#' dice_matrix(c("SMITH JOHN", "NGUYEN THI MINH"),
+#'             c("JOHN SMITH", "NGUYEN MINH", "TRAN VAN NAM"))
 #' @export
 dice_matrix <-function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
     .qgram_validate_matrix(a, b, q, use_bytes)
@@ -147,7 +160,10 @@ tversky_index <- function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL,
 #'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family q-gram similarity functions
 #' @examples
-#' tversky_matrix(c("night", "nacht"), c("night", "nacht", "day"),
+#' # alpha = 1, beta = 0 asks "is the row contained in the column", so a
+#' # truncated address scores 1 against the full one it came from.
+#' tversky_matrix(c("12 SMITH ST", "9 BROWN RD"),
+#'                c("UNIT 4, 12 SMITH ST", "12 SMITH STREET"),
 #'                alpha = 1, beta = 0)
 #' @export
 tversky_matrix <-function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL, use_bytes = TRUE) {
@@ -173,8 +189,12 @@ tversky_matrix <-function(a, b, q = 2, alpha = 0.5, beta = 0.5, nthreads = NULL,
 #'   the similarity is `0` when either string has no q-gram.
 #' @family q-gram similarity functions
 #' @examples
-#' cosine_similarity("night", "nacht")
-#' cosine_similarity("aaaa", "aaab", q = 2)
+#' cosine_similarity("SMITH JOHN ANDREW", "JOHN ANDREW SMITH")
+#'
+#' # Cosine counts repeats, where Jaccard and Dice work on the q-gram *set*:
+#' # that matters for a field with doubled letters or a repeated token.
+#' cosine_similarity("ANNA MARIA", "ANA MARIA", q = 2)
+#' jaccard_index("ANNA MARIA", "ANA MARIA", q = 2)
 #' @export
 cosine_similarity <- function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
     .qgram_validate(a, b, q, use_bytes)
@@ -188,7 +208,8 @@ cosine_similarity <- function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
 #'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family q-gram similarity functions
 #' @examples
-#' cosine_matrix(c("night", "nacht"), c("night", "nacht", "day"))
+#' cosine_matrix(c("SMITH JOHN", "NGUYEN THI MINH"),
+#'               c("JOHN SMITH", "NGUYEN MINH", "TRAN VAN NAM"))
 #' @export
 cosine_matrix <-function(a, b, q = 2, nthreads = NULL, use_bytes = TRUE) {
     .qgram_validate_matrix(a, b, q, use_bytes)

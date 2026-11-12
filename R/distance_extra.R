@@ -32,12 +32,22 @@
 #'   [edit_ops()] for the edits themselves.
 #' @family edit distance functions
 #' @examples
-#' lcs_seq_distance("kitten", "sitting")
-#' lcs_seq_similarity("kitten", "sitting")
-#' indel_distance("kitten", "sitting")
-#' indel_similarity("kitten", "sitting")
-#' prefix_similarity(c("Johnson", "Johnston"), c("Johnston", "Jonson"))
-#' postfix_distance("Thompson", "Simpson")
+#' # Substitution-free distances suit a field that gains and loses whole
+#' # pieces rather than mistyping them: a middle name, a unit number, a
+#' # company suffix.
+#' lcs_seq_distance("MARY JANE SMITH", "MARY SMITH")
+#' round(lcs_seq_similarity("MARY JANE SMITH", "MARY SMITH"), 3)
+#' indel_distance("MARY JANE SMITH", "MARY SMITH")
+#' round(indel_similarity("MARY JANE SMITH", "MARY SMITH"), 3)
+#'
+#' # Agreement at the start is the stronger signal in a surname, because
+#' # that is the part a clerk hears correctly and a system truncates last.
+#' prefix_similarity(c("JOHNSON", "JOHNSTON"), c("JOHNSTON", "JONSON"))
+#'
+#' # Agreement at the end is the stronger signal in an address line or an
+#' # identifier that is left-padded inconsistently.
+#' postfix_distance(c("12 SMITH STREET", "0004821"),
+#'                  c("UNIT 4, 12 SMITH STREET", "4821"))
 #' @name lcs_seq
 NULL
 
@@ -113,8 +123,13 @@ postfix_similarity <- function(a, b, nthreads = NULL, use_bytes = FALSE)
 #' @seealso [levenshtein()] for the number of edits.
 #' @family edit distance functions
 #' @examples
-#' edit_ops("kitten", "sitting")
-#' edit_ops("kitten", "sitting", type = "opcodes")
+#' # What exactly differs between two spellings of a surname, which is the
+#' # question a reviewer asks of a pair they are unsure about. One dropped
+#' # letter reads very differently from the same distance spent on three
+#' # substitutions, and the distance alone cannot tell them apart.
+#' edit_ops("MACDONALD", "MCDONALD")
+#' edit_ops("MACDONALD", "MCDONALD", type = "opcodes")
+#' edit_ops("CHOWDHURY", "CHOUDHARI")
 #' @export
 edit_ops <- function(a, b, type = c("editops", "opcodes"), use_bytes = FALSE) {
     .editdist_validate(a, b, use_bytes)

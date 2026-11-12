@@ -1,0 +1,148 @@
+{
+  "schema": "fast.string/decisions",
+  "format_version": 1,
+  "created": "2026-11-06T17:58:13.064Z",
+  "updated": "2026-11-06T17:58:13.148Z",
+  "runs": [
+    {
+      "run_id": "20261106T175813Z-5001e6",
+      "reviewer": "analyst",
+      "started": "2026-11-06T17:58:13.064Z",
+      "ended": "2026-11-06T17:58:13.065Z",
+      "n_pairs": 4,
+      "n_shown": 4,
+      "truncated": false,
+      "order_by": "review",
+      "pair_id_source": "composite",
+      "expression": "pairs",
+      "package_version": "0.3.0",
+      "r_version": "R version 4.6.1 (2026-06-24 ucrt)",
+      "host": "KYLE-RIG",
+      "columns": [
+        "pair_id",
+        "index_1",
+        "index_2",
+        "score"
+      ],
+      "fp_pair_set": "xxh64:be9f1fb8269ad49a",
+      "fp_scores": "xxh64:f0ca1839f445f77e",
+      "fp_columns": "xxh64:a4f11f7cc7d16940",
+      "scores": [
+        {
+          "score": "score",
+          "comparator": null,
+          "column_1": null,
+          "column_2": null,
+          "scale": null,
+          "direction": "higher",
+          "direction_known": false,
+          "operator": ">=",
+          "observed_min": 0.31,
+          "observed_max": 0.97,
+          "n_missing": 0
+        }
+      ]
+    },
+    {
+      "run_id": "20261107T100000Z-qa0001",
+      "reviewer": "qa",
+      "started": "2026-11-07T10:00:00.000Z",
+      "ended": "2026-11-07T10:05:00.000Z",
+      "n_pairs": 4,
+      "n_shown": 4,
+      "truncated": false,
+      "order_by": "review",
+      "pair_id_source": "composite",
+      "expression": "pairs",
+      "package_version": "0.3.0",
+      "r_version": "R version 4.6.1 (2026-06-24 ucrt)",
+      "host": "KYLE-RIG",
+      "columns": [
+        "pair_id",
+        "index_1",
+        "index_2",
+        "score"
+      ],
+      "fp_pair_set": "xxh64:be9f1fb8269ad49a",
+      "fp_scores": "xxh64:f0ca1839f445f77e",
+      "fp_columns": "xxh64:a4f11f7cc7d16940",
+      "scores": [
+        {
+          "score": "score",
+          "comparator": null,
+          "column_1": null,
+          "column_2": null,
+          "scale": null,
+          "direction": "higher",
+          "direction_known": false,
+          "operator": ">=",
+          "observed_min": 0.31,
+          "observed_max": 0.97,
+          "n_missing": 0
+        }
+      ]
+    }
+  ],
+  "thresholds": [
+    {
+      "event_id": "20261106T175813Z-5001e6-t000000",
+      "seq": 0,
+      "run_id": "20261106T175813Z-5001e6",
+      "reviewer": "analyst",
+      "at": "2026-11-06T17:58:13.063Z",
+      "status": "accepted",
+      "rule": "all",
+      "expr": null,
+      "cuts": [
+        {
+          "score": "score",
+          "operator": ">=",
+          "value": 0.5
+        }
+      ],
+      "n_pairs": 2,
+      "n_one_to_one": 2,
+      "n_conflict_1": 0,
+      "n_conflict_2": 0,
+      "note": "Given to rLink_inspect() when the review was opened."
+    }
+  ],
+  "decisions": [
+    {
+      "event_id": "20261106T175813Z-5001e6-d000001",
+      "seq": 1,
+      "run_id": "20261106T175813Z-5001e6",
+      "reviewer": "analyst",
+      "at": "2026-11-06T09:22:10.000Z",
+      "pair_id": "C|Z",
+      "index_1": 1,
+      "index_2": 1,
+      "decision": "include",
+      "comment": "Same person: middle name differs only."
+    },
+    {
+      "event_id": "20261106T175813Z-5001e6-d000002",
+      "seq": 2,
+      "run_id": "20261106T175813Z-5001e6",
+      "reviewer": "analyst",
+      "at": "2026-11-06T09:25:41.000Z",
+      "pair_id": "B|Y",
+      "index_1": 1,
+      "index_2": 1,
+      "decision": "exclude",
+      "comment": "Father and son; DOB 11 years apart."
+    },
+    {
+      "event_id": "20261107T100000Z-qa0001-d000001",
+      "seq": 1,
+      "run_id": "20261107T100000Z-qa0001",
+      "reviewer": "qa",
+      "at": "2026-11-07T10:02:00.000Z",
+      "pair_id": "C|Z",
+      "index_1": 1,
+      "index_2": 1,
+      "decision": "exclude",
+      "comment": "Not convinced; no address in common."
+    }
+  ]
+}

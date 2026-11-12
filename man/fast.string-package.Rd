@@ -258,6 +258,7 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=agreement_patterns]{agreement_patterns()}} - distinct patterns and their counts
 \item \code{\link[=em_linkage]{em_linkage()}} - fit Fellegi-Sunter weights by EM
 \item \code{\link[=match_weights]{match_weights()}} - weight and probability per pair
+\item \code{\link[=rLink_weights]{rLink_weights()}} - levels, model and weights in one call
 \item \code{\link[=value_frequency]{value_frequency()}} - relative frequency of each value
 \item \code{\link[=tf_adjust]{tf_adjust()}} - weight a rare value more heavily
 }
@@ -267,6 +268,17 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \item \code{\link[=cluster_pairs]{cluster_pairs()}} - entity IDs from matched pairs
 \item \code{\link[=linkage_eval]{linkage_eval()}} - precision, recall and F-measure
 \item \code{\link[=blocking_eval]{blocking_eval()}} - reduction ratio, pairs completeness
+}
+\item \emph{Review & thresholds}
+\itemize{
+\item \code{\link[=threshold_sweep]{threshold_sweep()}} - links and conflicts by cut-off
+\item \code{\link[=review_order]{review_order()}} - order pairs by how undecided
+}
+\item \emph{Clerical review}
+\itemize{
+\item \code{\link[=rLink_inspect]{rLink_inspect()}} - review pairs in a browser
+\item \code{\link[=read_decisions]{read_decisions()}} - read saved pair decisions
+\item \code{\link[=apply_decisions]{apply_decisions()}} - add in-scope columns from a review
 }
 }
 \item \strong{Benchmarking}
@@ -341,6 +353,7 @@ Other contributors:
   \item Adam Cohen (Author of fuzzywuzzy, on which RapidFuzz's fuzz module builds) [copyright holder]
   \item James P. Howard (Author of phonics, whose Statistics Canada, Lein, Phonex and Roger Root rules are reproduced) [copyright holder]
   \item The Apache Software Foundation (Apache Commons Codec, whose Metaphone is ported and whose Daitch-Mokotoff Soundex rules are read by tools/gen_dm_table.py) [copyright holder]
+  \item ticki (Author of the Rust crate eudex, whose phone tables and distance weights eudex() and eudex_distance() reproduce) [copyright holder]
   \item OpenRefine contributors (Fingerprint keyers followed by fingerprint() and src/fingerprint_table.h) [copyright holder]
   \item Unicode, Inc. (CLDR Latin-ASCII data in src/ascii_fold_table.h and Unicode Character Database categories in src/shape_table.h) [copyright holder]
   \item WHATWG (HTML named character references in src/html_entities.h (CC BY 4.0)) [copyright holder]

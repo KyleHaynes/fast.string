@@ -26,7 +26,11 @@ Uses a banded dynamic program and returns early when the distance cannot be
 less than or equal to \code{max_distance}.
 }
 \examples{
-levenshtein_within(c("kitten", "kitten"), c("sitting", "kitchen"), 2)
+# "Within k edits" is the question a blocking pass asks, and answering it
+# without computing the distance is what makes it cheap over millions of
+# pairs: the bit-parallel search gives up as soon as k is exceeded.
+levenshtein_within(c("NGUYEN", "NGUYEN", "NGUYEN"),
+                   c("NGUYNE", "NGYUEN", "PHAM"), 2)
 }
 \seealso{
 Other edit distance functions:

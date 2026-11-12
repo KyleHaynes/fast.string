@@ -58,11 +58,17 @@ Text is matched as UTF-8 characters, translating \code{latin1}-marked input,
 unless \code{useBytes = TRUE}.
 }
 \examples{
-x <- c("apple pie", "banana split", NA, "cherry tart")
+# Address lines as they arrive, before anything is standardised.
+x <- c("Unit 4, 12 Smith St", "12 SMITH STREET", NA, "PO Box 219")
 
-fgrepl("an", x)                 # NA in, NA out
-fgrepl("^[ab]", x)              # regular expression (PCRE2)
-fgrepl("APPLE", x, fixed = TRUE, ignore.case = TRUE)
+fgrepl("Smith", x)              # NA in, NA out
+fgrepl("^(Unit|U|Apt)\\\\b", x)    # regular expression (PCRE2)
+fgrepl("PO BOX", x, fixed = TRUE, ignore.case = TRUE)
+
+# The common reason to reach for this in linkage: find the records a
+# comparator should never see, because a PO box is not a dwelling and
+# scoring it against a street address invents agreement.
+x[!is.na(x) & fgrepl("^P\\\\.?O\\\\.? ?BOX", x, ignore.case = TRUE)]
 }
 \seealso{
 \code{\link[base:grepl]{base::grepl()}}

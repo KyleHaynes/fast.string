@@ -46,10 +46,26 @@
 #' block_pairs(c("4000", "4101", NA), c("4101", "4000", "4000"))
 #' @export
 block_pairs <- function(x, y = NULL, max_block_size = Inf, nthreads = NULL) {
+    .check_max_block_size(max_block_size)
+    .candidate_pairs(x, y, 0L, max_block_size, nthreads)
+}
+
+.check_max_block_size <- function(max_block_size) {
     if (!is.numeric(max_block_size) || length(max_block_size) != 1L ||
         is.na(max_block_size) || max_block_size < 1)
-        stop("`max_block_size` must be a single number of at least 1.")
-    .candidate_pairs(x, y, 0L, max_block_size, nthreads)
+        stop("`max_block_size` must be a single number of at least 1.",
+             call. = FALSE)
+    invisible(max_block_size)
+}
+
+# The half-window of a sorted neighbourhood: how many distinct key values
+# either side of a record's own are paired with it.
+.half_window <- function(window) {
+    if (!is.numeric(window) || length(window) != 1L || is.na(window) ||
+        window < 1 || window != floor(window) || window %% 2 != 1 ||
+        window > .Machine$integer.max)
+        stop("`window` must be a single odd positive integer.", call. = FALSE)
+    as.integer((window - 1) %/% 2)
 }
 
 #' Candidate pairs by the sorted neighbourhood method
@@ -92,11 +108,7 @@ block_pairs <- function(x, y = NULL, max_block_size = Inf, nthreads = NULL) {
 #' sorted_neighbourhood(data.frame(surname, rev_str(surname)), window = 3)
 #' @export
 sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
-    if (!is.numeric(window) || length(window) != 1L || is.na(window) ||
-        window < 1 || window != floor(window) || window %% 2 != 1 ||
-        window > .Machine$integer.max)
-        stop("`window` must be a single odd positive integer.")
-    .candidate_pairs(x, y, as.integer((window - 1) %/% 2), Inf, nthreads)
+    .candidate_pairs(x, y, .half_window(window), Inf, nthreads)
 }
 
 .as_key_list <- function(keys, arg) {
@@ -117,6 +129,20 @@ sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
 }
 
 .candidate_pairs <- function(x, y, half_window, max_block_size, nthreads) {
+    codes <- .candidate_codes(x, y, half_window)
+    res <- .candidate_run(codes, max_block_size, nthreads)
+    data.frame(x_index = res$x_index, y_index = res$y_index, pass = res$pass)
+}
+
+# Finding the pairs is two steps, and they are separate so that the second
+# can be run on one slice of the records at a time. The first turns every key
+# into an integer code shared by both sides, which is the only part that
+# touches the keys themselves; the second pairs records by code.
+#
+# rLink() runs the second step slice by slice when it filters while scoring,
+# so that the candidates of one slice are scored and thinned before the next
+# slice is generated.
+.candidate_codes <- function(x, y, half_window) {
     xs <- .as_key_list(x, "x")
     dedupe <- is.null(y)
     ys <- if (dedupe) NULL else .as_key_list(y, "y")
@@ -143,18 +169,64 @@ sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
             codes[n_x + seq_along(ys[[k]])]
         n_codes[k] <- length(u)
     }
+    list(x = x_codes, y = y_codes, n = n_codes,
+         half = rep(as.integer(half_window), length(xs)), dedupe = dedupe,
+         n_x = n_x)
+}
+
+# The pairs of the x records in (from, to], which is all of them by default.
+# `warn = FALSE` is for a caller that runs several slices and wants the
+# skipped blocks reported once rather than once per slice; the count is the
+# same whichever slice is asked for, because it is a property of the keys.
+.candidate_run <- function(codes, max_block_size, nthreads, from = 0,
+                           to = codes$n_x, warn = TRUE) {
     res <- fast_candidate_pairs_impl(
-        x_codes, y_codes, n_codes, rep(half_window, length(xs)), dedupe,
+        codes$x, codes$y, codes$n, codes$half, codes$dedupe,
         if (is.finite(max_block_size)) max_block_size else 1e18,
-        .as_nthreads(nthreads)
+        .as_nthreads(nthreads), from, to
     )
-    if (res$skipped_blocks > 0)
+    if (warn && res$skipped_blocks > 0)
         warning(sprintf(
             "Skipped %s block%s larger than `max_block_size`.",
             format(res$skipped_blocks, big.mark = ","),
             if (res$skipped_blocks == 1) "" else "s"
         ), call. = FALSE)
-    data.frame(x_index = res$x_index, y_index = res$y_index, pass = res$pass)
+    res
+}
+
+# An upper bound on the partners each x record has, summed over the passes.
+# It is what the slices are cut by: cumulate it and a slice ends wherever the
+# running total crosses the next multiple of the target. A bound is enough --
+# a pair found by two passes is counted twice here and reported once -- as
+# long as it never falls short, because it is what stops a slice outgrowing
+# memory.
+.candidate_bound <- function(codes) {
+    bound <- numeric(codes$n_x)
+    for (k in seq_along(codes$x)) {
+        counts <- tabulate(codes$y[[k]], codes$n[k])
+        cum <- c(0, cumsum(as.numeric(counts)))
+        code <- codes$x[[k]]
+        lo <- pmax(1L, code - codes$half[k])
+        hi <- pmin(codes$n[k], code + codes$half[k])
+        partners <- cum[hi + 1L] - cum[lo]
+        partners[is.na(partners)] <- 0
+        bound <- bound + partners
+    }
+    bound
+}
+
+# Half-open (from, to] ranges of x records holding about `target` candidate
+# pairs each. A single record with more partners than that gets a slice of
+# its own rather than being split.
+.candidate_slices <- function(bound, target) {
+    n <- length(bound)
+    if (!n) return(list(from = 0, to = 0))
+    if (!is.finite(target) || sum(bound) <= target)
+        return(list(from = 0, to = n))
+    slice <- cumsum(bound) %/% target
+    to <- c(which(diff(slice) != 0), n)
+    to <- unique(to)
+    list(from = c(0, to[-length(to)]), to = to)
 }
 
 #' Entity clusters from matched pairs
@@ -174,10 +246,12 @@ sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
 #' second file's indices: `cluster_pairs(p$x_index, p$y_index + length(x),
 #' n = length(x) + length(y))`.
 #'
-#' @param i Integer vector of record indices (1-based), or a data frame whose
-#'   first two columns are the two indices of each pair (such as the result
-#'   of [block_pairs()], [fuzzy_within()] or [minhash_pairs()], filtered to
-#'   the matches).
+#' @param i Integer vector of record indices (1-based), or a data frame of
+#'   pairs, such as the result of [block_pairs()], [fuzzy_within()],
+#'   [minhash_pairs()] or [rLink()], filtered to the matches. A data frame's
+#'   `index_1` and `index_2` columns are used when it has them, then its
+#'   `x_index` and `y_index`, and its first two columns otherwise --- so an
+#'   [rLink()] result, whose first column is `pair_id`, goes straight in.
 #' @param j Integer vector of the other record of each pair; omit when `i`
 #'   is a data frame.
 #' @param n Number of records. Defaults to the largest index; records that
@@ -200,8 +274,12 @@ cluster_pairs <- function(i, j = NULL, n = NULL) {
     if (is.data.frame(i)) {
         if (!is.null(j)) stop("Give `j` only when `i` is a vector.")
         if (ncol(i) < 2L) stop("`i` must have at least two columns.")
-        j <- i[[2L]]
-        i <- i[[1L]]
+        # By name where the package's own pair functions provide one, as
+        # select_greedy() and linkage_eval() do. Position alone would read
+        # `pair_id` out of an rLink() result and cluster that.
+        at <- .pair_columns(names(i))
+        j <- i[[at[2L]]]
+        i <- i[[at[1L]]]
     }
     if (is.null(j)) stop("`j` is missing.")
     if (!is.numeric(i) || !is.numeric(j) || length(i) != length(j))

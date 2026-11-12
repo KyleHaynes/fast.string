@@ -38,7 +38,10 @@ with \code{names(a)} and \code{names(b)} as row and column names when present.
 Q-gram Tversky all-pairs similarity matrix
 }
 \examples{
-tversky_matrix(c("night", "nacht"), c("night", "nacht", "day"),
+# alpha = 1, beta = 0 asks "is the row contained in the column", so a
+# truncated address scores 1 against the full one it came from.
+tversky_matrix(c("12 SMITH ST", "9 BROWN RD"),
+               c("UNIT 4, 12 SMITH ST", "12 SMITH STREET"),
                alpha = 1, beta = 0)
 }
 \seealso{

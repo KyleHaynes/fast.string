@@ -37,9 +37,15 @@ distance (\code{levenshtein_within()} does the same job exactly, at more cost
 per pair). \code{bag_similarity()} is \code{1 - bag_distance / max(nchar(a), nchar(b))}; two empty strings score \code{1}.
 }
 \examples{
+# The multiset of characters, so any reordering is free: useful as a
+# cheap pre-filter, useless as a verdict -- "SMITH" and "HTIMS" are not
+# the same surname.
 bag_distance("SMITH", "HTIMS")
-bag_distance("kitten", "sitting")
-levenshtein("kitten", "sitting")   # never smaller
+
+# It is a lower bound on the Levenshtein distance, which is what makes
+# it a filter: a pair bag distance rules out, Levenshtein would too.
+bag_distance("MACDONALD", "MCDONALD")
+levenshtein("MACDONALD", "MCDONALD")   # never smaller
 bag_similarity(c("JOHNSON", "ROBERT"), c("JONSON", "ROBERTA"))
 }
 \references{

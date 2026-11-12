@@ -31,8 +31,12 @@ their multiplicity. Packed integer q-grams and parallel pairwise dispatch
 avoid constructing an R-level count table for each comparison.
 }
 \examples{
-cosine_similarity("night", "nacht")
-cosine_similarity("aaaa", "aaab", q = 2)
+cosine_similarity("SMITH JOHN ANDREW", "JOHN ANDREW SMITH")
+
+# Cosine counts repeats, where Jaccard and Dice work on the q-gram *set*:
+# that matters for a field with doubled letters or a repeated token.
+cosine_similarity("ANNA MARIA", "ANA MARIA", q = 2)
+jaccard_index("ANNA MARIA", "ANA MARIA", q = 2)
 }
 \seealso{
 Other q-gram similarity functions:

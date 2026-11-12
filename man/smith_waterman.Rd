@@ -58,8 +58,18 @@ possible one, \code{match} times the shorter length, giving a similarity in
 \examples{
 smith_waterman("Dept of Health", "Queensland Health")
 smith_waterman("Dept of Health", "Queensland Health", normalize = FALSE)
-smith_waterman("GATTACA", "GCATGCU", mismatch = -1, gap_open = -2,
-               gap_extend = -1, normalize = FALSE)
+
+# Local alignment finds the longest stretch that agrees and ignores the
+# rest, which is what an address field needs: the same dwelling written
+# with and without a unit number, a postcode, a state.
+smith_waterman("12 SMITH STREET TOOWONG",
+               "UNIT 4, 12 SMITH ST, TOOWONG QLD 4066")
+
+# A cheap gap relative to a mismatch is what lets an abbreviation align
+# through: the scores are the knob for "how much is a missing word worth".
+smith_waterman("DEPT OF TRANSPORT AND MAIN ROADS",
+               "TRANSPORT AND MAIN ROADS",
+               gap_open = -1, gap_extend = -0.2)
 }
 \references{
 Smith, T. F. and Waterman, M. S. (1981). Identification of

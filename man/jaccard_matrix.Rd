@@ -28,7 +28,8 @@ with \code{names(a)} and \code{names(b)} as row and column names when present.
 Q-gram Jaccard all-pairs similarity matrix
 }
 \examples{
-jaccard_matrix(c("night", "nacht"), c("night", "nacht", "day"))
+jaccard_matrix(c("SMITH JOHN", "NGUYEN THI MINH"),
+               c("JOHN SMITH", "NGUYEN MINH", "TRAN VAN NAM"))
 }
 \seealso{
 Other q-gram similarity functions:

@@ -85,6 +85,11 @@ freplace_tokens <- function(x, from, to, ignore_case = FALSE,
 #' @examples
 #' fpad(c("800", "4000", "2", NA), 4, pad = "0")
 #' fpad("abc", 7, side = "both", pad = "*")
+#'
+#' # Left-padding an identifier back to its fixed width, which is what one
+#' # file has usually lost by storing it as a number: "4821" and "0004821"
+#' # are the same record and will not block together until they agree.
+#' fpad(c("4821", "0004821", "12"), 7, pad = "0")
 #' @export
 fpad <- function(x, width, side = c("left", "right", "both"), pad = " ",
                  nthreads = NULL) {

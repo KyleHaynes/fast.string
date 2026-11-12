@@ -48,10 +48,17 @@ latter with \code{perl = FALSE} too, unlike base R). See \code{\link[=fgrepl]{fg
 \code{perl = FALSE} patterns are interpreted.
 }
 \examples{
-x <- c("apple pie", "banana split", NA, "cherry tart")
+x <- c("O'Brien-Smith", "de la Cruz", NA, "MacDonald")
 
-fgsub("[aeiou]", "_", x)                 # every vowel
-fgsub("(^|\\\\s)(\\\\w)", "\\\\1\\\\U\\\\2", x)    # capitalise each word
+# Stripping punctuation from a name before comparing it: an apostrophe
+# and a hyphen are recording conventions, not information, and leaving
+# them in makes two spellings of one name disagree.
+fgsub("[^A-Za-z ]", "", x)
+
+# Upper-casing the first letter of each word. Note what this does to
+# "de la Cruz" and "MacDonald" -- which is why ftitle_case() exists and
+# is what you should reach for on a name field.
+fgsub("(^|\\\\s)(\\\\w)", "\\\\1\\\\U\\\\2", x)
 }
 \seealso{
 \code{\link[base:gsub]{base::gsub()}}

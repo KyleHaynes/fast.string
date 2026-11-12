@@ -35,15 +35,41 @@
 #'   metrics without building a full matrix.
 #' @family edit distance functions
 #' @examples
-#' levenshtein("kitten", "sitting")
-#' levenshtein("kitten", "sitting", weights = c(1, 1, 2))  # substitution costs 2
+#' # Surnames as they actually arrive in two files: a keying slip, a dropped
+#' # letter, an anglicised spelling, a transposition.
+#' file_1 <- c("NGUYEN", "OBRIEN",  "MACDONALD", "SCHMIDT", "CHOWDHURY")
+#' file_2 <- c("NGUYNE", "O'BRIEN", "MCDONALD",  "SCHMITT", "CHOUDHURY")
+#' levenshtein(file_1, file_2)
+#'
+#' # A substitution is usually a worse sign than an insertion in a name: an
+#' # apostrophe or a missing vowel is a recording convention, a different
+#' # letter is a different name. Weighting it says so.
+#' levenshtein(file_1, file_2, weights = c(1, 1, 2))
+#'
+#' # Normalised, so one cut-off works across names of different lengths --
+#' # 2 edits in "NGUYEN" is a long way, 2 in "CHOWDHURY" is not.
+#' round(levenshtein_similarity(file_1, file_2), 3)
+#'
+#' # Transpositions are the commonest typing error, and plain Levenshtein
+#' # charges two edits for one slip. OSA charges one.
+#' levenshtein("NGUYEN", "NGUYNE")
+#' osa_distance("NGUYEN", "NGUYNE")
+#' round(osa_similarity("NGUYEN", "NGUYNE"), 3)
+#'
+#' # OSA allows each character only one transposition; the unrestricted form
+#' # allows a further edit inside a transposed block. On real name typos the
+#' # two almost always agree -- it takes two *overlapping* transpositions to
+#' # separate them, which a hand slipping on a keyboard does not produce --
+#' # so OSA is the one to reach for, and this is the pair that shows the
+#' # difference at all:
 #' osa_distance("ca", "abc")
 #' damerau_levenshtein("ca", "abc")
-#' levenshtein_similarity("kitten", "sitting")
-#' osa_similarity("ca", "abc")
-#' damerau_levenshtein_similarity("ca", "abc")
-#' hamming("karolin", "kathrin")
-#' hamming("abc", "abcd")   # unequal lengths are never within Hamming range
+#' round(damerau_levenshtein_similarity("ca", "abc"), 3)
+#'
+#' # Hamming compares position by position, which suits fixed-width codes --
+#' # a Medicare number, an ICD-10 code, a postcode -- and nothing else.
+#' hamming(c("4000", "E66.9"), c("4001", "E66.0"))
+#' hamming("4000", "04000")   # unequal lengths are never within range
 #' @name edit_distance
 NULL
 
@@ -111,7 +137,14 @@ levenshtein <- function(a, b, nthreads = NULL, use_bytes = TRUE,
 #'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family edit distance functions
 #' @examples
-#' levenshtein_matrix(c("kitten", "flaw"), c("sitting", "lawn"))
+#' # Every suburb in one file against the reference list, in one call: the
+#' # smallest value in each row is the candidate to check.
+#' entered <- c("BRISBANE", "TOOWONG", "INDOOROOPILY")
+#' gazetteer <- c("BRISBANE", "TOOWONG", "INDOOROOPILLY", "TOOWOOMBA")
+#' m <- levenshtein_matrix(entered, gazetteer)
+#' dimnames(m) <- list(entered, gazetteer)
+#' m
+#' gazetteer[apply(m, 1, which.min)]
 #' @export
 levenshtein_matrix <-function(a, b, nthreads = NULL, use_bytes = TRUE,
                               weights = c(1, 1, 1)) {
@@ -138,7 +171,10 @@ osa_distance <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 #'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family edit distance functions
 #' @examples
-#' osa_distance_matrix(c("ca", "abc"), c("abc", "ca"))
+#' # Transposed given names cost one edit here and two under Levenshtein,
+#' # which is why OSA is the usual default for name matching.
+#' osa_distance_matrix(c("MICHELLE", "STEPHANIE"),
+#'                     c("MICHEELE", "MICHELLE", "STPEHANIE"))
 #' @export
 osa_distance_matrix <-function(a, b, nthreads = NULL, use_bytes = TRUE) {
     .editdist_validate_matrix(a, b, use_bytes)
@@ -161,8 +197,12 @@ damerau_levenshtein <- function(a, b, nthreads = NULL, use_bytes = TRUE) {
 #'   with `names(a)` and `names(b)` as row and column names when present.
 #' @family edit distance functions
 #' @examples
-#' # Unrestricted transposition scores "ca" -> "abc" as 2, OSA as 3.
+#' # Unrestricted transposition scores "ca" -> "abc" as 2, OSA as 3. Pairs
+#' # that separate the two need overlapping transpositions and so are rare
+#' # in practice: on name typos ([edit_distance()] shows a few) the two
+#' # agree, and OSA is the cheaper of them.
 #' damerau_levenshtein_matrix(c("ca", "abc"), c("abc", "ca"))
+#' osa_distance_matrix(c("ca", "abc"), c("abc", "ca"))
 #' @export
 damerau_levenshtein_matrix <-function(a, b, nthreads = NULL,
                                        use_bytes = TRUE) {
@@ -224,7 +264,11 @@ damerau_levenshtein_similarity <- function(a, b, nthreads = NULL,
 #'   returned as `NA`.
 #' @family edit distance functions
 #' @examples
-#' levenshtein_within(c("kitten", "kitten"), c("sitting", "kitchen"), 2)
+#' # "Within k edits" is the question a blocking pass asks, and answering it
+#' # without computing the distance is what makes it cheap over millions of
+#' # pairs: the bit-parallel search gives up as soon as k is exceeded.
+#' levenshtein_within(c("NGUYEN", "NGUYEN", "NGUYEN"),
+#'                    c("NGUYNE", "NGYUEN", "PHAM"), 2)
 #' @export
 levenshtein_within <-function(a, b, max_distance, nthreads = NULL,
                                use_bytes = TRUE) {

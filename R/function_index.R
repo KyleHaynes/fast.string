@@ -200,6 +200,7 @@
             agreement_patterns = "distinct patterns and their counts",
             em_linkage         = "fit Fellegi-Sunter weights by EM",
             match_weights      = "weight and probability per pair",
+            rLink_weights      = "levels, model and weights in one call",
             value_frequency    = "relative frequency of each value",
             tf_adjust          = "weight a rare value more heavily"
         ),
@@ -208,6 +209,15 @@
             cluster_pairs = "entity IDs from matched pairs",
             linkage_eval  = "precision, recall and F-measure",
             blocking_eval = "reduction ratio, pairs completeness"
+        ),
+        "Review & thresholds" = list(
+            threshold_sweep = "links and conflicts by cut-off",
+            review_order    = "order pairs by how undecided"
+        ),
+        "Clerical review" = list(
+            rLink_inspect   = "review pairs in a browser",
+            read_decisions  = "read saved pair decisions",
+            apply_decisions = "add in-scope columns from a review"
         )
     ),
     "Benchmarking" = list(

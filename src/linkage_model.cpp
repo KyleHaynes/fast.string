@@ -171,6 +171,8 @@ List fast_em_linkage_impl(IntegerMatrix patterns, NumericVector counts,
     std::vector<std::size_t> offsets(width);
     std::size_t total_levels = 0;
     for (std::size_t k = 0; k < width; ++k) {
+        if (n_levels[k] == NA_INTEGER || n_levels[k] < 1)
+            stop("Every comparison must declare at least one level.");
         offsets[k] = total_levels;
         total_levels += static_cast<std::size_t>(n_levels[k]);
     }
@@ -181,9 +183,27 @@ List fast_em_linkage_impl(IntegerMatrix patterns, NumericVector counts,
     std::vector<double> m(m_init.begin(), m_init.end());
     std::vector<double> u(u_init.begin(), u_init.end());
     std::vector<int> flat(rows * width);
+    // Every level code is checked against its comparison's declared number of
+    // levels before anything indexes by it. `m`, `u` and the M step's
+    // accumulators are all indexed as offsets[k] + level, so a code outside
+    // 0..n_levels[k]-1 is an out-of-bounds write into the heap -- which does
+    // not fail here but corrupts an unrelated allocation and brings the
+    // session down later with no message. It is reachable from R: a
+    // hand-edited or hand-built agreement_patterns table carries an
+    // `n_levels` attribute that no longer describes its own columns, and
+    // em_linkage() trusts it. Erroring is the only safe answer, because
+    // unlike match_weights() -- which can return NA for the pair it cannot
+    // score -- EM has to pool every pattern to fit at all.
     for (std::size_t r = 0; r < rows; ++r)
         for (std::size_t k = 0; k < width; ++k) {
             const int value = patterns(static_cast<int>(r), static_cast<int>(k));
+            if (value != NA_INTEGER &&
+                (value < 0 || value >= n_levels[static_cast<R_xlen_t>(k)]))
+                stop("Comparison %d has a level of %d, but only %d level(s) "
+                     "are declared for it. Levels must run from 0 to one less "
+                     "than the declared number; see compare_levels().",
+                     static_cast<int>(k) + 1, value,
+                     n_levels[static_cast<R_xlen_t>(k)]);
             flat[r * width + k] = value == NA_INTEGER ? PATTERN_NA : value;
         }
 
@@ -309,6 +329,8 @@ List fast_match_weight_impl(IntegerMatrix patterns, NumericVector m_flat,
     std::vector<std::size_t> offsets(width);
     std::size_t total_levels = 0;
     for (std::size_t k = 0; k < width; ++k) {
+        if (n_levels[k] == NA_INTEGER || n_levels[k] < 1)
+            stop("Every comparison must declare at least one level.");
         offsets[k] = total_levels;
         total_levels += static_cast<std::size_t>(n_levels[k]);
     }

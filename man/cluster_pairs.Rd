@@ -7,10 +7,12 @@
 cluster_pairs(i, j = NULL, n = NULL)
 }
 \arguments{
-\item{i}{Integer vector of record indices (1-based), or a data frame whose
-first two columns are the two indices of each pair (such as the result
-of \code{\link[=block_pairs]{block_pairs()}}, \code{\link[=fuzzy_within]{fuzzy_within()}} or \code{\link[=minhash_pairs]{minhash_pairs()}}, filtered to
-the matches).}
+\item{i}{Integer vector of record indices (1-based), or a data frame of
+pairs, such as the result of \code{\link[=block_pairs]{block_pairs()}}, \code{\link[=fuzzy_within]{fuzzy_within()}},
+\code{\link[=minhash_pairs]{minhash_pairs()}} or \code{\link[=rLink]{rLink()}}, filtered to the matches. A data frame's
+\code{index_1} and \code{index_2} columns are used when it has them, then its
+\code{x_index} and \code{y_index}, and its first two columns otherwise --- so an
+\code{\link[=rLink]{rLink()}} result, whose first column is \code{pair_id}, goes straight in.}
 
 \item{j}{Integer vector of the other record of each pair; omit when \code{i}
 is a data frame.}

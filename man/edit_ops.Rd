@@ -37,8 +37,13 @@ are 1-based characters (bytes with \code{use_bytes = TRUE}); RapidFuzz's are
 0-based.
 }
 \examples{
-edit_ops("kitten", "sitting")
-edit_ops("kitten", "sitting", type = "opcodes")
+# What exactly differs between two spellings of a surname, which is the
+# question a reviewer asks of a pair they are unsure about. One dropped
+# letter reads very differently from the same distance spent on three
+# substitutions, and the distance alone cannot tell them apart.
+edit_ops("MACDONALD", "MCDONALD")
+edit_ops("MACDONALD", "MCDONALD", type = "opcodes")
+edit_ops("CHOWDHURY", "CHOUDHARI")
 }
 \seealso{
 \code{\link[=levenshtein]{levenshtein()}} for the number of edits.

@@ -23,7 +23,10 @@ with \code{names(a)} and \code{names(b)} as row and column names when present.
 Optimal String Alignment all-pairs distance matrix
 }
 \examples{
-osa_distance_matrix(c("ca", "abc"), c("abc", "ca"))
+# Transposed given names cost one edit here and two under Levenshtein,
+# which is why OSA is the usual default for name matching.
+osa_distance_matrix(c("MICHELLE", "STEPHANIE"),
+                    c("MICHEELE", "MICHELLE", "STPEHANIE"))
 }
 \seealso{
 Other edit distance functions:

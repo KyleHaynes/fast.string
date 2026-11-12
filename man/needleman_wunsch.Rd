@@ -64,7 +64,7 @@ and \code{worst} is the cheaper of aligning the two as mismatches and of gapping
 both away entirely. Two empty strings score \code{1}.
 }
 \examples{
-needleman_wunsch("GATTACA", "GCATGCU")
+needleman_wunsch("MACDONALD", "MCDONALD")
 needleman_wunsch_similarity("MACDONALD", "MCDONALD")
 
 # A gap costs less than a mismatch, so abbreviations align through
