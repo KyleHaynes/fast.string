@@ -231,7 +231,8 @@ const char* const too_many_pairs =
 List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes,
                                const IntegerVector& n_codes,
                                const IntegerVector& half_windows, bool dedupe,
-                               double max_block, int nthreads,
+                               const NumericVector& max_blocks,
+                               int nthreads,
                                double x_from_, double x_to_) {
     const std::size_t n_passes = static_cast<std::size_t>(x_codes.size());
     if (n_passes == 0) stop("At least one key is needed.");
@@ -240,6 +241,11 @@ List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes,
         xs.push_back(as<IntegerVector>(x_codes[p]));
         ys.push_back(as<IntegerVector>(y_codes[p]));
     }
+    // The largest block each pass keeps: one limit for every pass, or one
+    // each. Only an exact pass has blocks to skip.
+    if (max_blocks.size() != 1 &&
+        static_cast<std::size_t>(max_blocks.size()) != n_passes)
+        stop("There must be one block size limit, or one per key.");
     const std::size_t n_x = static_cast<std::size_t>(xs[0].size());
     if (!(x_from_ >= 0) || !(x_to_ >= x_from_) ||
         x_to_ > static_cast<double>(n_x))
@@ -276,6 +282,8 @@ List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes,
         // Which blocks are too big is a property of the keys, so it is
         // decided over every x record whatever range was asked for: a block
         // must not be skipped in one slice and kept in the next.
+        const double max_block =
+            max_blocks[max_blocks.size() == 1 ? 0 : static_cast<R_xlen_t>(p)];
         if (pass.half_window == 0 && max_block < 1e18) {
             std::vector<double> x_count(codes + 1, 0);
             for (std::size_t i = 0; i < n_x; ++i) {
@@ -393,5 +401,91 @@ IntegerVector fast_cluster_pairs_impl(const IntegerVector& i,
         if (label[root] == 0) label[root] = ++next;
         out[k] = label[root];
     }
+    return out;
+}
+
+// An edit distance as a similarity: 1 - distance / the longer of the two
+// strings, per pair. rLink() did this in R, which for every pair gathered
+// both lengths, took their maximum, divided, and then made three more passes
+// to settle the empty strings and clamp the ends -- a second and a half per
+// sixty million pairs, several times what the comparator itself took. Here
+// it is one pass, in parallel, giving the same numbers:
+//
+//   n <- pmax(len_a[xi], len_b[yi]);  v <- 1 - score / n
+//   v[n == 0] <- 1;  v[v < 0] <- 0;  v[v > 1] <- 1
+//
+// A length that is NA (a missing string, counted in characters) leaves the
+// pair NA, as dividing by it did.
+namespace {
+
+struct EditScaleWorker : public Worker {
+    const double* score;
+    const int* len_a;
+    const int* len_b;
+    const int* xi;
+    const int* yi;
+    std::size_t n_a;
+    std::size_t n_b;
+    double* out;
+
+    EditScaleWorker(const double* score_, const int* len_a_,
+                    const int* len_b_, const int* xi_, const int* yi_,
+                    std::size_t n_a_, std::size_t n_b_, double* out_)
+        : score(score_), len_a(len_a_), len_b(len_b_), xi(xi_), yi(yi_),
+          n_a(n_a_), n_b(n_b_), out(out_) {}
+
+    void operator()(std::size_t begin, std::size_t end) {
+        for (std::size_t i = begin; i < end; ++i) {
+            const int x = xi[i];
+            const int y = yi[i];
+            if (x == NA_INTEGER || y == NA_INTEGER || x < 1 || y < 1 ||
+                static_cast<std::size_t>(x) > n_a ||
+                static_cast<std::size_t>(y) > n_b) {
+                out[i] = NA_REAL;
+                continue;
+            }
+            const int a = len_a[x - 1];
+            const int b = len_b[y - 1];
+            if (a == NA_INTEGER || b == NA_INTEGER) {
+                out[i] = NA_REAL;
+                continue;
+            }
+            const int longer = (std::max)(a, b);
+            if (longer == 0) {
+                out[i] = 1.0;
+                continue;
+            }
+            const double s = score[i];
+            if (R_IsNA(s)) {
+                out[i] = NA_REAL;
+                continue;
+            }
+            double v = 1.0 - s / static_cast<double>(longer);
+            if (v < 0.0) v = 0.0;
+            else if (v > 1.0) v = 1.0;
+            out[i] = v;
+        }
+    }
+};
+
+}  // namespace
+
+// [[Rcpp::export]]
+NumericVector fast_edit_scale_impl(const NumericVector& score,
+                                   const IntegerVector& len_a,
+                                   const IntegerVector& len_b,
+                                   const IntegerVector& xi,
+                                   const IntegerVector& yi, int nthreads) {
+    const R_xlen_t n = score.size();
+    if (xi.size() != n || yi.size() != n)
+        stop("There must be one score per pair.");
+    NumericVector out(Rcpp::no_init(n));
+    EditScaleWorker worker(score.begin(), len_a.begin(), len_b.begin(),
+                           xi.begin(), yi.begin(),
+                           static_cast<std::size_t>(len_a.size()),
+                           static_cast<std::size_t>(len_b.size()),
+                           out.begin());
+    dispatch_for(0, static_cast<std::size_t>(n), worker,
+                 static_cast<std::size_t>(n), 200000, nthreads, 16384);
     return out;
 }

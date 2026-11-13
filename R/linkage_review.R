@@ -410,10 +410,36 @@ summary.fs_pairs <- function(object, ...) {
             stringsAsFactors = FALSE)
     })
 
+    # How many records there were to reach, and how much of the comparison
+    # space the blocking left. rLink() records both; the pairs alone cannot
+    # say, because a record that was never paired is in none of them. The
+    # candidates are counted where they were counted before anything thinned
+    # them, so the ratio is still about the blocking after a `filter`, an
+    # `exclude` or a subset on a score.
+    n_records <- attr(object, "n_records")
+    dedupe <- isTRUE(attr(object, "dedupe"))
+    blocking <- attr(object, "blocking")
+    filter <- attr(object, "filter")
+    n_candidates <- if (!is.null(blocking)) sum(blocking$passes$n_pairs)
+                    else if (!is.null(filter)) filter$n_candidates
+                    else nrow(object)
+    space <- if (is.null(n_records)) NA_real_
+             else if (dedupe) n_records[1L] * (n_records[1L] - 1) / 2
+             else as.numeric(n_records[1L]) * n_records[2L]
+
     structure(list(
         n_pairs = nrow(object),
         n_distinct_1 = length(unique(object[[idx[1L]]])),
         n_distinct_2 = length(unique(object[[idx[2L]]])),
+        n_records = n_records,
+        dedupe = dedupe,
+        n_reached = if (dedupe) length(unique(c(object[[idx[1L]]],
+                                                object[[idx[2L]]]))),
+        n_candidates = n_candidates,
+        reduction_ratio = if (is.na(space) || space <= 0) NA_real_
+                          else 1 - n_candidates / space,
+        blocking = blocking,
+        exclude = attr(object, "exclude"),
         passes = if ("pass" %in% nms && !all(is.na(object[["pass"]])))
             table(pass = object[["pass"]]) else NULL,
         pair_id = if (!"pair_id" %in% nms) "none"
@@ -422,25 +448,51 @@ summary.fs_pairs <- function(object, ...) {
         scores = if (length(rows)) do.call(rbind, rows) else NULL,
         # What a `filter` in rLink() removed, when there was one: these are
         # then the pairs that were kept, not the candidates.
-        filter = attr(object, "filter")
+        filter = filter
     ), class = "summary_fs_pairs")
 }
 
+.fs_big <- function(v) format(v, big.mark = ",", scientific = FALSE,
+                              trim = TRUE)
+
 #' @export
 print.summary_fs_pairs <- function(x, ...) {
-    cat(sprintf("%s candidate pair%s\n", format(x$n_pairs, big.mark = ","),
+    cat(sprintf("%s candidate pair%s\n", .fs_big(x$n_pairs),
                 if (x$n_pairs == 1L) "" else "s"))
-    cat(sprintf("Records reached: %s on side 1, %s on side 2\n",
-                format(x$n_distinct_1, big.mark = ","),
-                format(x$n_distinct_2, big.mark = ",")))
+    of <- function(side) if (is.null(x$n_records)) "" else
+        sprintf(" of %s", .fs_big(x$n_records[side]))
+    if (isTRUE(x$dedupe))
+        cat(sprintf("Records reached: %s%s\n", .fs_big(x$n_reached), of(1L)))
+    else
+        cat(sprintf("Records reached: %s%s on side 1, %s%s on side 2\n",
+                    .fs_big(x$n_distinct_1), of(1L),
+                    .fs_big(x$n_distinct_2), of(2L)))
+    if (!is.null(x$reduction_ratio) && !is.na(x$reduction_ratio))
+        cat(sprintf("Reduction ratio: %s (%s candidates)\n",
+                    format(x$reduction_ratio, digits = 6),
+                    .fs_big(x$n_candidates)))
     cat(sprintf("Pair identifier: %s\n", x$pair_id))
-    if (!is.null(x$filter))
+    if (!is.null(x$exclude))
+        cat(sprintf("Left out by `exclude`: %s candidates\n",
+                    .fs_big(x$exclude$n_excluded)))
+    if (!is.null(x$filter)) {
         cat(sprintf("Kept by `filter` (%s): %s of %s candidates\n",
-                    x$filter$rule, format(x$filter$n_kept, big.mark = ","),
-                    format(x$filter$n_candidates, big.mark = ",",
-                           scientific = FALSE)))
+                    x$filter$rule, .fs_big(x$filter$n_kept),
+                    .fs_big(x$filter$n_candidates)))
+        if (!is.null(x$filter$before_scoring) &&
+            !is.na(x$filter$before_scoring))
+            cat(sprintf("  Applied before scoring (%s): %s scored\n",
+                        x$filter$before_scoring, .fs_big(x$filter$n_scored)))
+    }
     if (!is.null(x$passes)) {
         cat("\nPairs per blocking pass\n")
+        labels <- x$blocking$passes$label
+        if (length(labels) && any(nzchar(labels))) {
+            at <- match(names(x$passes), as.character(x$blocking$passes$pass))
+            named <- !is.na(at) & nzchar(labels[at])
+            names(x$passes)[named] <- sprintf("%s (%s)", names(x$passes),
+                                              labels[at])[named]
+        }
         print(x$passes)
     }
     if (is.null(x$scores)) {
@@ -452,6 +504,75 @@ print.summary_fs_pairs <- function(x, ...) {
     for (nm in c("min", "q1", "median", "q3", "max"))
         shown[[nm]] <- signif(shown[[nm]], 3)
     print(shown, row.names = FALSE)
+    invisible(x)
+}
+
+# The blocking report of rLink(): `attr(out, "blocking")`, and what
+# `dry_run = TRUE` returns. Only the columns that say something are shown --
+# no `window` when every pass is exact, no `skipped` when nothing was -- and
+# the full tables stay in `x$passes` and `x$largest`.
+#' @export
+print.fs_blocking <- function(x, ...) {
+    n <- x$n_records
+    p <- x$passes
+    ran <- !all(is.na(p$n_pairs))
+    space <- if (x$dedupe) n[1L] * (n[1L] - 1) / 2 else
+        as.numeric(n[1L]) * n[2L]
+    cat(if (x$dedupe) sprintf("Blocking %s records against themselves",
+                              .fs_big(n[1L]))
+        else sprintf("Blocking %s x %s records", .fs_big(n[1L]),
+                     .fs_big(n[2L])),
+        sprintf(": %s possible pairs\n", .fs_big(space)), sep = "")
+
+    key <- ifelse(is.na(p$key_2) | p$key_2 == p$key_1, p$key_1,
+                  paste(p$key_1, "|", p$key_2))
+    shown <- data.frame(pass = p$pass, stringsAsFactors = FALSE)
+    if (any(nzchar(p$label))) shown$label <- p$label
+    shown$key <- key
+    if (any(p$method != "exact"))
+        shown$window <- ifelse(is.na(p$window), "exact",
+                               as.character(p$window))
+    shown$missing_1 <- .fs_big(p$n_missing_1)
+    if (!x$dedupe) shown$missing_2 <- .fs_big(p$n_missing_2)
+    shown$keys <- .fs_big(p$n_keys)
+    shown$largest <- .fs_big(p$largest_block)
+    if (any(p$n_skipped > 0)) shown$skipped <- .fs_big(p$n_skipped)
+    shown$expected <- .fs_big(p$n_expected)
+    if (ran) {
+        shown$found <- .fs_big(p$n_pairs)
+        if (any(p$n_kept != p$n_pairs)) shown$kept <- .fs_big(p$n_kept)
+    }
+    cat("\nPasses\n")
+    print(shown, row.names = FALSE)
+
+    # Before the run the passes can only be added up, and a pair that two of
+    # them find is in the total twice: an upper bound on the pairs, so a
+    # lower bound on the reduction.
+    total <- if (ran) sum(p$n_pairs) else sum(p$n_expected)
+    bound <- !ran && nrow(p) > 1L
+    cat(sprintf("\n%s %s candidate pairs%s\n",
+                if (ran) "Found" else if (bound) "Expected up to"
+                else "Expected", .fs_big(total),
+                if (space > 0) sprintf(
+                    ": a reduction ratio of %s%s",
+                    if (bound) "at least " else "",
+                    format(max(0, 1 - total / space), digits = 6)) else ""))
+    if (bound)
+        cat("(a pair that two passes find is counted in both)\n")
+
+    big <- x$largest
+    if (nrow(big)) {
+        cat("\nLargest blocks\n")
+        big$n_1 <- .fs_big(big$n_1)
+        if (x$dedupe) {
+            big$n_2 <- NULL
+            names(big)[names(big) == "n_1"] <- "records"
+        } else {
+            big$n_2 <- .fs_big(big$n_2)
+        }
+        big$pairs <- .fs_big(big$pairs)
+        print(big, row.names = FALSE)
+    }
     invisible(x)
 }
 

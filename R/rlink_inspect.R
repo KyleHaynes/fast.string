@@ -272,13 +272,19 @@ function(rowInfo, state) {
   return cls;
 }")
 
+# The identifier goes into an attribute, so it is escaped on the way: one
+# holding a double quote would otherwise end the attribute early, and the
+# verdict would be filed against the part of the name before the quote --
+# which is no pair, so it was dropped without a word.
 .inspect_js_decision <- function() reactable::JS("
 function(cellInfo, state) {
   var id = cellInfo.row['pair_id'];
   var d = state.meta.decisions[id] || cellInfo.row['_decision'] || 'undecided';
+  var safe = String(id).replace(/&/g, '&amp;').replace(/\"/g, '&quot;')
+                       .replace(/</g, '&lt;');
   function btn(v, label, title) {
     return '<button type=\"button\" class=\"fs-btn' +
-      (d === v ? ' fs-on-' + v : '') + '\" data-fs-id=\"' + id +
+      (d === v ? ' fs-on-' + v : '') + '\" data-fs-id=\"' + safe +
       '\" data-fs-value=\"' + v + '\" title=\"' + title + '\">' +
       label + '</button>';
   }
@@ -293,10 +299,13 @@ function(cellInfo, state) {
   var id = cellInfo.row['pair_id'];
   var txt = state.meta.comments[id];
   if (txt === undefined || txt === null) txt = cellInfo.row['_comment'] || '';
-  var esc = String(txt).replace(/&/g, '&amp;').replace(/\"/g, '&quot;')
-                       .replace(/</g, '&lt;');
-  return '<input type=\"text\" class=\"fs-comment\" data-fs-id=\"' + id +
-         '\" value=\"' + esc + '\" placeholder=\"why?\">';
+  function attr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/\"/g, '&quot;')
+                    .replace(/</g, '&lt;');
+  }
+  return '<input type=\"text\" class=\"fs-comment\" data-fs-id=\"' +
+         attr(id) + '\" value=\"' + attr(txt) +
+         '\" placeholder=\"why?\">';
 }")
 
 # One delegated listener on the whole document, added once. Delegation is what
@@ -1713,7 +1722,11 @@ function(cellInfo, state) {
     # Which pairs hold a verdict at all: a few thousand of however many
     # million, and the only ones whose scope can differ from the cut.
     st$judged <- integer()
-    st$save_cache <- new.env(parent = emptyenv())
+    # What was last written and the text of every event in it, begun when
+    # the review was opened, so the first save of the session encodes only
+    # what the session has added.
+    st$save_cache <- if (is.environment(spec$save_cache)) spec$save_cache
+                     else new.env(parent = emptyenv())
     if (length(seeded$decisions)) {
         at <- row_of(names(seeded$decisions))
         code <- match(unlist(seeded$decisions, use.names = FALSE),
@@ -1724,6 +1737,42 @@ function(cellInfo, state) {
     }
     if (length(seeded$comments))
         st$comments <- unlist(seeded$comments)
+
+    # --- a second look ----------------------------------------------------
+    # What anyone else has judged, as positions among the pairs. A review is
+    # checked by a second person going over the first one's verdicts, and
+    # the queue is the pairs nearest the cut -- which is where the first
+    # reviewer worked, but not a list of what they decided. So the second
+    # reviewer can ask for exactly those pairs, see how far through them
+    # they are, and list the ones the two of them disagree on. Their own
+    # verdicts still start blank: this says where to look, not what to say.
+    others_at <- row_of(seeded$others$pair_id)
+    others_said <- match(seeded$others$decision, .inspect_verdicts)
+    others_rows <- unique(others_at)
+    has_others <- length(others_rows) > 0L
+    disagreeing <- function() {
+        mine <- st$verdict[others_at]
+        unique(others_at[mine %in% c(1L, 2L) & mine != others_said])
+    }
+    if (has_others) {
+        shiny::updateRadioButtons(
+            session, "filter", selected = "all",
+            choices = c("all pairs" = "all", "in scope" = "in_scope",
+                        "out of scope" = "out_scope",
+                        "undecided" = "undecided",
+                        "in the review band, undecided" = "band",
+                        "marked a link" = "include",
+                        "marked not a link" = "exclude",
+                        "overriding the cut" = "override",
+                        "judged by another reviewer" = "others",
+                        "where I and another reviewer disagree" = "disagree"))
+        shiny::updateSelectInput(
+            session, "queue_mode", selected = "cut",
+            choices = c("the pairs nearest the cut" = "cut",
+                        "the review band" = "band",
+                        "an audit sample of the pairs in scope" = "audit",
+                        "the pairs another reviewer judged" = "others"))
+    }
 
     # Two counters. `rv_tick` says something changed that the screen has to
     # show; `rv_quiet` says something was filed that it need not -- a comment
@@ -2049,6 +2098,8 @@ function(cellInfo, state) {
                 in_scope = rows[scope_for_table()[rows]],
                 out_scope = rows[!scope_for_table()[rows]],
                 band = rows[in_band()[rows] & held == "undecided"],
+                others = rows[rows %in% others_rows],
+                disagree = rows[rows %in% disagreeing()],
                 rows[held == pick])
         }
         rows
@@ -2534,6 +2585,19 @@ function(cellInfo, state) {
                 "whoever opens this review."),
                 format(length(rows), big.mark = ","),
                 format(sum(pass_all()), big.mark = ","))
+        } else if (identical(mode, "others")) {
+            if (!has_others) {
+                rv_queue_note(paste0("Nobody else has judged any of these ",
+                                     "pairs."))
+                return()
+            }
+            rows <- utils::head(nearest(others_rows), spec$max_pairs)
+            note <- sprintf(paste0(
+                "The %s pair%s another reviewer judged, nearest the cut ",
+                "first. Their verdict is on each pair, beside the table; ",
+                "yours starts blank."),
+                format(length(rows), big.mark = ","),
+                if (length(rows) == 1L) "" else "s")
         } else if (identical(mode, "band")) {
             inside <- which(in_band())
             if (!length(inside)) {
@@ -2609,6 +2673,13 @@ function(cellInfo, state) {
         o <- overrides()
         b <- band_counts()
         a <- audit()
+        second <- if (has_others) {
+            mine <- st$verdict[others_at]
+            both <- mine %in% c(1L, 2L)
+            list(n = length(others_rows),
+                 n_judged = length(unique(others_at[both])),
+                 n_differ = length(disagreeing()))
+        }
         shiny::tagList(
             shiny::tags$span(class = "fs-kpi", sprintf(
                 "%s of %s in scope", format(e$n_pairs, big.mark = ","),
@@ -2647,7 +2718,16 @@ function(cellInfo, state) {
                     "%.1f%% of what the cut lets through (95%% interval ",
                     "%.1f to %.1f)"),
                     a$n_not_link, a$n_judged, 100 * a$rate, 100 * a$lower,
-                    100 * a$upper)))
+                    100 * a$upper)),
+            # A second look at somebody else's review: how much of it has
+            # been gone over, and where the two reviewers part company.
+            if (!is.null(second)) shiny::tags$span(
+                class = "fs-kpi-band",
+                sprintf(paste0("second look: %s of %s earlier verdicts gone ",
+                               "over, %s differing"),
+                        format(second$n_judged, big.mark = ","),
+                        format(second$n, big.mark = ","),
+                        format(second$n_differ, big.mark = ","))))
     })
 
     output$fs_changed <- shiny::renderUI({
@@ -2662,7 +2742,9 @@ function(cellInfo, state) {
                 class = "fs-note", sprintf(paste0(
                     "%s of these pairs have already been judged by %s. Those ",
                     "verdicts are shown against each pair but not filled in ",
-                    "for you, so your pass is recorded as your own."),
+                    "for you, so your pass is recorded as your own. To go ",
+                    "over exactly those pairs, rebuild the queue as \"the ",
+                    "pairs another reviewer judged\"."),
                     format(length(unique(seeded$others$pair_id)),
                            big.mark = ","),
                     paste(sort(unique(seeded$others$reviewer)),
@@ -2824,11 +2906,14 @@ function(cellInfo, state) {
     # instead, as something to weigh rather than something already decided.
     everyone <- held$decisions
     mine <- everyone[everyone$reviewer %in% spec$reviewer, , drop = FALSE]
-    for (k in seq_len(nrow(mine))) {
-        id <- mine$pair_id[k]
-        out$decisions[[id]] <- mine$decision[k]
-        if (!is.na(mine$comment[k])) out$comments[[id]] <- mine$comment[k]
-    }
+    # One verdict per pair, the last where a pair is somehow there twice.
+    # Built as vectors: a named list grown a pair at a time looks every name
+    # up among all the names before it, which on twenty thousand verdicts
+    # was most of the time it took to reopen a review.
+    mine <- mine[!duplicated(mine$pair_id, fromLast = TRUE), , drop = FALSE]
+    out$decisions <- .named(as.list(mine$decision), mine$pair_id)
+    noted <- !is.na(mine$comment)
+    out$comments <- .named(as.list(mine$comment[noted]), mine$pair_id[noted])
     others <- everyone[!everyone$reviewer %in% spec$reviewer &
                        !is.na(everyone$decision) &
                        everyone$decision != "undecided", , drop = FALSE]
@@ -2882,9 +2967,16 @@ function(cellInfo, state) {
             identical(cache$stamp, stamp())
         held <- if (unchanged) cache$written else
             tryCatch(.review_read_file(path), error = function(cnd) NULL)
+        # Somebody else has written to the file, and what they wrote is what
+        # is there now -- including, conceivably, an event this session
+        # remembers the text of differently. The remembered text is let go
+        # and the file encoded from what was read.
+        if (!unchanged && !is.null(cache)) cache$json <- NULL
     }
     merged <- if (is.null(held)) mine else .review_merge(held, mine)
-    .review_write(merged, path)
+    # The same environment remembers each event's text, so a save encodes
+    # only the events that are new since the last one.
+    .review_write(merged, path, cache)
     if (!is.null(cache)) {
         cache$written <- merged
         cache$stamp <- stamp()
@@ -3043,6 +3135,25 @@ function(cellInfo, state) {
 #' pass that opens pre-answered is not a check. Who else judged what, and
 #' where you and they disagree, is then in [read_decisions()]`$disagreements`.
 #'
+#' The file is saved two seconds after anything changes, and again when the
+#' app closes. A verdict is encoded once and its text kept, so a save costs
+#' what the new verdicts cost and not what the whole file does: the
+#' twenty-thousandth is saved as quickly as the first.
+#'
+#' @section A second look:
+#' The usual check on a review is a second person going over the first
+#' one's verdicts, and the queue --- the pairs nearest the cut --- is where
+#' the first reviewer worked without being a list of what they decided. When
+#' the file holds somebody else's verdicts on these pairs:
+#'
+#' * **Rebuild the queue** offers *the pairs another reviewer judged*, which
+#'   puts exactly those on screen. Their verdict and comment are on each
+#'   pair, beside the table; yours starts blank.
+#' * The header counts how many of those earlier verdicts you have gone over
+#'   and on how many the two of you differ.
+#' * *Show > judged by another reviewer* and *Show > where I and another
+#'   reviewer disagree* list them, the second being the pairs to talk about.
+#'
 #' @section Limits:
 #' At most `max_pairs` rows are put on screen, chosen by [review_order()]; the
 #' rest of the analysis still reads every pair, and the app says so. reactable
@@ -3193,7 +3304,8 @@ rLink_inspect <- function(x, decisions = "rLink_decisions.json",
             spec, spec$cuts, "all", "accepted",
             "Given to rLink_inspect() when the review was opened.", 0L,
             .inspect_effect(spec, spec$cuts, "all")))
-    .inspect_save(spec, list(), opening)
+    spec$save_cache <- new.env(parent = emptyenv())
+    .inspect_save(spec, list(), opening, cache = spec$save_cache)
 
     app <- shiny::shinyApp(ui = .inspect_ui(spec),
                            server = .inspect_server(spec))

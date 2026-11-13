@@ -249,6 +249,10 @@ fast_fold_digest_impl <- function(columns, order, na_as_text, chunk_, nthreads) 
     .Call(`_fast_string_fast_fold_digest_impl`, columns, order, na_as_text, chunk_, nthreads)
 }
 
+fast_indexed_strings_impl <- function(source, index, nthreads) {
+    .Call(`_fast_string_fast_indexed_strings_impl`, source, index, nthreads)
+}
+
 fast_levenshtein_impl <- function(a, b, nthreads, use_bytes) {
     .Call(`_fast_string_fast_levenshtein_impl`, a, b, nthreads, use_bytes)
 }
@@ -329,12 +333,16 @@ fast_value_frequency_impl <- function(codes_x, codes_y, n_codes) {
     .Call(`_fast_string_fast_value_frequency_impl`, codes_x, codes_y, n_codes)
 }
 
-fast_candidate_pairs_impl <- function(x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads, x_from_, x_to_) {
-    .Call(`_fast_string_fast_candidate_pairs_impl`, x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads, x_from_, x_to_)
+fast_candidate_pairs_impl <- function(x_codes, y_codes, n_codes, half_windows, dedupe, max_blocks, nthreads, x_from_, x_to_) {
+    .Call(`_fast_string_fast_candidate_pairs_impl`, x_codes, y_codes, n_codes, half_windows, dedupe, max_blocks, nthreads, x_from_, x_to_)
 }
 
 fast_cluster_pairs_impl <- function(i, j, n) {
     .Call(`_fast_string_fast_cluster_pairs_impl`, i, j, n)
+}
+
+fast_edit_scale_impl <- function(score, len_a, len_b, xi, yi, nthreads) {
+    .Call(`_fast_string_fast_edit_scale_impl`, score, len_a, len_b, xi, yi, nthreads)
 }
 
 fast_minhash_pairs_impl <- function(x, y, y_present, q, bands, rows, seed, threshold, verify, use_bytes, nthreads) {

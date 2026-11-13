@@ -381,3 +381,31 @@ test_that("cluster_pairs() takes an rLink() result straight in", {
     expect_silent(cl <- cluster_pairs(keep, n = 10L))
     expect_length(cl, 10L)
 })
+
+test_that("summary() reports the records there were and the reduction", {
+    out <- scored()
+    s <- summary(out)
+    expect_identical(s$n_records, c(4L, 3L))
+    expect_equal(s$n_candidates, nrow(out))
+    expect_equal(s$reduction_ratio, 1 - nrow(out) / 12)
+    expect_output(print(s), "Reduction ratio")
+    expect_output(print(s), "of 4 on side 1")
+    # It is a measure of the blocking, so a subset on a score leaves it be.
+    kept <- out[out$gn > 0.9, ]
+    expect_lt(nrow(kept), nrow(out))
+    expect_equal(summary(kept)$reduction_ratio, s$reduction_ratio)
+    # A pair table from elsewhere has no record counts to report.
+    plain <- structure(data.frame(index_1 = 1:2, index_2 = 1:2),
+                       class = c("fs_pairs", "data.frame"))
+    expect_true(is.na(summary(plain)$reduction_ratio))
+    expect_output(print(summary(plain)), "Records reached: 2 on side 1")
+})
+
+test_that("summary() names the passes that were named", {
+    enrol <- data.frame(surname = c("SMITH", "JONES"), yob = c(1980, 1975),
+                        stringsAsFactors = FALSE)
+    out <- rLink(enrol, enrol[2:1, ],
+                 block_1 = list(name = surname, born = yob))
+    expect_output(print(summary(out)), "1 (name)", fixed = TRUE)
+    expect_output(print(attr(out, "blocking")), "name")
+})

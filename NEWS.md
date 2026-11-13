@@ -342,6 +342,121 @@ reported as one rather than absorbed into the total:
   unfiltered result it is most of the run, and now it can be seen.
 * `attr(out, "dedupe")` says whether the pairs are within one file.
 
+### `rLink()`: see the blocking, mix the methods, stage the runs
+
+Blocking decides what a linkage costs and what it can find, and `rLink()`
+said almost nothing about it: an estimate printed under `verbose`, and a
+warning when a block was skipped. These changes are about everything around
+the scoring.
+
+* **A blocking report on every result**, `attr(out, "blocking")`, which
+  prints as a table. For each pass: the key as written, the records with no
+  key on each side, the distinct keys, the largest block, the blocks
+  `max_block_size` skipped, the pairs the pass was expected to give, the
+  candidates it was the first to find and how many of those are in the
+  result. Beside it, the five keys of each pass that make the most pairs ---
+  where a placeholder such as `"UNKNOWN"` that belongs in `na_strings`
+  shows up at once. It is read off the integer codes the keys have already
+  become, so it costs a `tabulate()` per pass.
+* **`dry_run = TRUE`** returns that report and stops. The keys are built and
+  every argument checked, and not one pair is generated, so a call can be
+  tried against the full files before paying for it.
+* **`max_pairs`** stops a run expected to give more candidates than that,
+  before it generates any, naming the pass and the block responsible.
+* **Passes can be named**, `block_1 = list(name = list(soundex(surname),
+  dob), born = dob)`, and the report and `summary()` then call them that.
+* **A method per pass.** `block_method` and `window` each take one value or
+  one per pass, so an exact pass and a sorted neighbourhood run in one call:
+  `block_method = c("exact", "sorted_neighbourhood")`. The pair generator
+  always took a window per pass; only the R side insisted on one.
+* **`filter` no longer needs `compare`.** `filter = sex_1 == sex_2`, or
+  `abs(yob_1 - yob_2) <= 1`, is a condition on the candidates that no
+  blocking key could express.
+* **The part of a rule that reads no score is applied before scoring.** A
+  rule is taken apart at its top-level `&`s, and in
+  `sn >= 0.85 & sex_1 == sex_2` the comparators only see the pairs whose sex
+  agrees. The result is the same table; `attr(out, "filter")` gains
+  `before_scoring` and `n_scored`.
+* **`exclude`** leaves out pairs already settled, before they are scored.
+  Given as `pair_id`s they are found again through the identifier columns,
+  so they survive the files being re-ordered or changed between runs; given
+  as a table they are read as row numbers, and a table made from files of a
+  different size is refused rather than applied to the wrong rows.
+* **`rLink_unmatched()`** returns the records no pair reaches --- the residue
+  a second, looser run is for.
+* `attr(out, "n_records")` records how many records each input had. With it
+  `summary()` reports the records reached *of how many* and the reduction
+  ratio, and `blocking_eval()` no longer needs `n_1` and `n_2` for an
+  `rLink()` result.
+* Under `verbose`, a run that a `filter` cuts into slices shows a progress
+  bar.
+
+Three things `rLink()` did silently, it now says:
+
+* `max_block_size` was dropped without a word under the sorted
+  neighbourhood. It applies to exact passes, including those of a mixed
+  run, and warns when there are none for it to act on.
+* The pairs each pass was expected to give were counted as if every pass
+  were exact, so the estimate printed for a sorted neighbourhood was too
+  low. It is now the number that pass gives when run alone.
+* The same data given as both `data_1` and `data_2` pairs every record with
+  itself, which is a warning unless `block_2` is there to say why --- one file
+  blocked on two different fields, a surname against a maiden name.
+
+### `rLink()`: faster scoring, and a `filter` that scores less
+
+Measured on two files of 500,000 records (16 threads, an installed build);
+every run returns exactly the table it did before.
+
+* **Comparators read each record once.** A pair is two record numbers, and a
+  comparator used to be handed `surname[index_1]` and `surname[index_2]` built
+  out in full, then resolve every one of those strings on the calling thread
+  before a worker could start. This package's comparators are now handed the
+  per-record column and the indices as one vector that is never built, and
+  resolve each record's string once. One exact pass of 8.9 million pairs
+  with two `jaro_winkler()` scores and nothing carried goes from 1.06s to
+  0.50s; a sorted neighbourhood of 64 million pairs with the same two from
+  7.7s to 3.2s. A comparator of your own is handed ordinary character
+  vectors, as before.
+* **Each `&` condition of a `filter` is applied as soon as its scores exist.**
+  In `filter = sn >= 0.85 & gn >= 0.8`, `gn` is scored only for the pairs
+  `sn` kept, and a comparator the rule does not name is scored only for the
+  pairs the whole rule kept. Comparators run in the order the rule asks for
+  them. One exact pass of 8.9 million candidates with four comparators and
+  that rule: 2.1s to 0.7s. `attr(out, "compare")` gains `n_scored`, the pairs
+  each comparator was run on. A condition that drops less than a third of
+  the pairs is held and settled with the next, since dropping pairs is
+  itself a pass over everything held for them.
+* An edit distance is put on the 0--1 scale in one parallel pass instead of
+  six passes in R.
+* A run that builds `pair_id` for millions of unfiltered pairs is no faster:
+  it is still the strings, as *Pair identifiers* in `?rLink` says.
+* `pairs` takes an earlier `rLink()` result, so a costly comparator can be
+  run over only the pairs a cheap run kept.
+* `max_block_size` takes one value per pass, as `block_method` and `window`
+  do.
+
+### `rLink_inspect()`: a long review stays quick, and a second look
+
+* **Saving no longer slows down as the review grows.** The app saves two
+  seconds after anything changes, and each save re-encoded every decision the
+  file had ever held: one second at 1,000 decisions, five at 5,000 and over
+  twenty at 20,000, with the app frozen meanwhile. A decision never changes
+  once filed, so each is now encoded once and its text reused, and the
+  events of the two sides of a merge are compared as vectors. A save at
+  20,000 decisions takes about a fifth of a second. The file is the same,
+  byte for byte.
+* Reading a long review back is faster too: disagreements are found over the
+  whole table at once, and a reviewer's own verdicts are restored as vectors.
+* **A second look.** When the file holds another reviewer's verdicts,
+  *Rebuild the queue* offers *the pairs another reviewer judged*, the header
+  counts how many of them have been gone over and how many differ, and *Show*
+  gains *judged by another reviewer* and *where I and another reviewer
+  disagree*. Nothing of theirs is filled in.
+* A `pair_id` holding a double quote was written unescaped into the table,
+  and a verdict on that row was dropped without a word. Identifiers are now
+  escaped.
+
 ### `rLink_weights()`: match weights in one call
 
 `rLink_weights(pairs)` cuts each score into agreement levels, fits the

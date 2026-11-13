@@ -611,3 +611,23 @@ test_that("a pattern table with nothing to fit is refused by name", {
     p$n <- NULL
     expect_error(em_linkage(p), "no `n` column")
 })
+
+test_that("blocking_eval() reads the record counts off an rLink() result", {
+    a <- data.frame(k = c("x", "x", "y", "z"), stringsAsFactors = FALSE)
+    b <- data.frame(k = c("x", "y", "q"), stringsAsFactors = FALSE)
+    truth <- data.frame(index_1 = c(1L, 3L, 4L), index_2 = c(1L, 2L, 3L))
+    out <- rLink(a, b, block_1 = list(k))
+    expect_identical(blocking_eval(out, truth),
+                     blocking_eval(out, truth, n_1 = 4, n_2 = 3))
+    expect_equal(blocking_eval(out, truth)$n_pairs, 12)
+    # One file: the comparison space is the unordered pairs.
+    dup <- rLink(a, block_1 = list(k))
+    expect_identical(blocking_eval(dup, truth[1L, ]),
+                     blocking_eval(dup, truth[1L, ], n_1 = 4))
+    expect_equal(blocking_eval(dup, truth[1L, ])$n_pairs, 6)
+    # A value given still wins over the one recorded.
+    expect_equal(blocking_eval(out, truth, n_1 = 10, n_2 = 10)$n_pairs, 100)
+    expect_error(
+        blocking_eval(data.frame(x_index = 1L, y_index = 1L), truth),
+        "`n_1` is needed")
+})

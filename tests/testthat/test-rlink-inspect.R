@@ -1907,3 +1907,232 @@ test_that("a session is stamped with when it opened, not when it last saved", {
     expect_identical(runs$started, spec$started)
     expect_gt(runs$ended, runs$started)
 })
+
+
+# --- saving a long review --------------------------------------------------
+
+test_that("a file encoded an event at a time is the file encoded whole", {
+    skip_if_not_installed("jsonlite")
+    whole <- fast.string:::.review_json
+    encode <- fast.string:::.review_encode
+    obj <- fast.string:::.review_new()
+    obj$runs <- list(list(run_id = "r1", columns = list("a", "b"),
+                          ended = NULL))
+    obj$thresholds <- list(list(event_id = "r1-t1", cuts = list(
+        list(score = "sn", operator = ">=", value = 0.85))))
+    obj$decisions <- list(
+        event("analyst", "E1|C1", "include", "same person", 1L,
+              "2026-11-06T09:00:00.000Z"),
+        # No comment, and one a browser would have something to say about.
+        event("analyst", "E2|C2", "exclude", NULL, 2L,
+              "2026-11-06T09:00:01.000Z"),
+        event("qa", "E3|C3", "include", "said \"twin\" <b> café \\ /",
+              1L, "2026-11-06T10:00:00.000Z"),
+        c(event("qa", "E4|C1", "undecided", "", 2L,
+                "2026-11-06T10:00:01.000Z"),
+          list(scores_at_decision = list(sn = 1 / 3, gn = 1, pc = 1e-12),
+               nested = list(list(1, "a"), list()))))
+    cache <- new.env()
+    cold <- encode(obj, cache)
+    expect_identical(cold, whole(obj))
+    # Every event is now remembered, and the text is the same from memory.
+    expect_setequal(ls(cache$json), vapply(obj$decisions, `[[`, "",
+                                           "event_id"))
+    expect_identical(encode(obj, cache), whole(obj))
+    # One more event, and one fewer.
+    obj$decisions <- c(obj$decisions, list(event(
+        "qa", "E1|C3", "exclude", "no", 3L, "2026-11-06T10:00:02.000Z")))
+    expect_identical(encode(obj, cache), whole(obj))
+    obj$decisions <- obj$decisions[-2L]
+    expect_identical(encode(obj, cache), whole(obj))
+    # It reads back as what went in.
+    back <- fast.string:::.review_decode(encode(obj, cache))
+    expect_identical(back$decisions[[2L]]$comment,
+                     "said \"twin\" <b> café \\ /")
+    expect_equal(back$decisions[[3L]]$scores_at_decision$sn, 1 / 3)
+
+    # Whatever cannot be laid out an event at a time is encoded whole: no
+    # events, events that are not objects, a key after `decisions`, the same
+    # identifier twice, and no identifier at all.
+    odd <- list(
+        utils::modifyList(obj, list(decisions = list())),
+        utils::modifyList(obj, list(decisions = list("just text", 7))),
+        c(obj, list(afterwards = list(a = 1))),
+        utils::modifyList(obj, list(decisions = obj$decisions[c(1L, 1L, 2L)])),
+        utils::modifyList(obj, list(decisions = list(
+            list(pair_id = "E1|C1", decision = "include"),
+            list(pair_id = "E2|C2", decision = "exclude")))))
+    for (x in odd) {
+        fresh <- new.env()
+        expect_identical(encode(x, fresh), whole(x))
+        expect_identical(encode(x, fresh), whole(x))
+    }
+    # Without anywhere to remember the text, it is encoded as it always was.
+    expect_identical(encode(obj), whole(obj))
+})
+
+test_that("a save encodes only the events that are new", {
+    out <- scored()
+    path <- new_decisions(out)
+    spec <- spec_for(out, file = path, reviewer = "analyst")
+    cache <- new.env()
+    at <- sprintf("2026-11-06T09:00:%02d.000Z", 1:6)
+    events <- lapply(1:6, function(i) event(
+        "analyst", out$pair_id[(i - 1L) %% nrow(out) + 1L], "include",
+        "x", i, at[i], run_id = spec$run_id))
+    fast.string:::.inspect_save(spec, events[1:4], list(), cache = cache)
+    expect_length(ls(cache$json), 4L)
+    remembered <- mget(ls(cache$json), envir = cache$json)
+    fast.string:::.inspect_save(spec, events, list(), cache = cache)
+    expect_length(ls(cache$json), 6L)
+    # What was remembered is reused, not made again.
+    expect_identical(mget(names(remembered), envir = cache$json), remembered)
+    expect_identical(nrow(read_decisions(path)$events), 6L)
+    # The file is what encoding all of it afresh would have written.
+    obj <- fast.string:::.review_read_file(path)
+    expect_identical(
+        readChar(path, file.info(path)$size, useBytes = TRUE),
+        enc2utf8(fast.string:::.review_json(obj)))
+
+    # Somebody else writes -- and changes an event this session remembers.
+    obj$decisions[[1L]]$comment <- "amended by hand"
+    fast.string:::.review_write(obj, path)
+    fast.string:::.inspect_save(spec, events, list(), cache = cache)
+    review <- read_decisions(path)
+    expect_true("amended by hand" %in% review$events$comment)
+    expect_identical(nrow(review$events), 6L)
+})
+
+test_that("merging keeps every event once, in the order it was filed", {
+    merge <- fast.string:::.review_merge
+    ev <- function(id) list(event_id = id, pair_id = id)
+    old <- fast.string:::.review_new()
+    old$decisions <- lapply(c("a", "b", "c"), ev)
+    old$runs <- list(list(run_id = "r1", ended = "1"),
+                     list(run_id = "r2", ended = "1"))
+    new <- fast.string:::.review_new()
+    new$decisions <- lapply(c("b", "d", "a", "e"), ev)
+    new$runs <- list(list(run_id = "r2", ended = "2"))
+    got <- merge(old, new)
+    expect_identical(vapply(got$decisions, `[[`, "", "event_id"),
+                     c("a", "b", "c", "d", "e"))
+    # A run already in the file is replaced, because its end moves.
+    expect_identical(vapply(got$runs, `[[`, "", "run_id"), c("r1", "r2"))
+    expect_identical(got$runs[[2L]]$ended, "2")
+    expect_identical(merge(old, fast.string:::.review_new())$decisions,
+                     old$decisions)
+})
+
+test_that("disagreements are found pair by pair, reviewers in order", {
+    eff <- data.frame(
+        pair_id = c("p2", "p1", "p2", "p3", "p1", "p3", "p2", "p4"),
+        reviewer = c("zed", "bea", "amy", "amy", "amy", "bea", "bea", "amy"),
+        decision = c("exclude", "include", "include", "include", "include",
+                     "undecided", "include", NA),
+        stringsAsFactors = FALSE)
+    got <- fast.string:::.review_disagreements(eff)
+    # p1 agrees, p3 has one verdict and one reviewer who has not decided,
+    # p4 has none: only p2 is a disagreement.
+    expect_identical(got$pair_id, "p2")
+    expect_identical(got$n_reviewers, 3L)
+    expect_identical(got$reviewers, "amy, bea, zed")
+    expect_identical(got$decisions, "include, include, exclude")
+    expect_identical(nrow(fast.string:::.review_disagreements(eff[0L, ])), 0L)
+    expect_identical(
+        nrow(fast.string:::.review_disagreements(eff[eff$pair_id == "p1", ])),
+        0L)
+})
+
+
+# --- going over somebody else's review -------------------------------------
+
+test_that("a second reviewer can call up the pairs the first one judged", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    path <- new_decisions(out)
+    theirs <- out$pair_id[c(2L, 4L)]
+    write_events(path, list(
+        event("analyst", theirs[1L], "include", "same person", 1L,
+              "2026-11-06T09:00:00.000Z"),
+        event("analyst", theirs[2L], "exclude", "", 2L,
+              "2026-11-06T09:00:01.000Z")))
+    at <- match(theirs, out$pair_id)
+    app <- rLink_inspect(out, decisions = path, reviewer = "qa",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        expect_true(has_others)
+        expect_setequal(others_rows, at)
+        # Nothing of theirs is filled in.
+        expect_length(rv_decisions(), 0L)
+        session$setInputs(mode = "flag", filter = "others")
+        expect_setequal(table_rows(), at)
+        # Nothing is disagreed about until this reviewer has said something.
+        session$setInputs(filter = "disagree")
+        expect_length(table_rows(), 0L)
+        expect_length(disagreeing(), 0L)
+
+        session$setInputs(fs_decision = list(
+            pair_id = theirs[1L], decision = "include", nonce = 1))
+        expect_length(disagreeing(), 0L)
+        session$setInputs(fs_decision = list(
+            pair_id = theirs[2L], decision = "include", nonce = 2))
+        expect_identical(disagreeing(), at[2L])
+        # The filter is read when it is chosen, like every other.
+        session$setInputs(filter = "all")
+        session$setInputs(filter = "disagree")
+        expect_identical(table_rows(), at[2L])
+
+        # The queue as exactly those pairs.
+        session$setInputs(filter = "all", queue_mode = "others", rebuild = 1)
+        expect_setequal(rv_queue(), at)
+        expect_match(rv_queue_note(), "2 pairs another reviewer judged")
+    })
+    # And the file says so afterwards.
+    review <- read_decisions(path)
+    expect_identical(review$disagreements$pair_id, theirs[2L])
+})
+
+test_that("with nobody else in the file there is no second look", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("reactable")
+    out <- scored()
+    app <- rLink_inspect(out, decisions = tempfile(fileext = ".json"),
+                         reviewer = "analyst", launch = FALSE)
+    shiny::testServer(app, {
+        expect_false(has_others)
+        before <- rv_queue()
+        session$setInputs(queue_mode = "others", rebuild = 1)
+        expect_identical(rv_queue(), before)
+        expect_match(rv_queue_note(), "Nobody else")
+        session$setInputs(mode = "flag", filter = "others")
+        expect_length(table_rows(), 0L)
+    })
+})
+
+test_that("an identifier is escaped where the table writes it as HTML", {
+    skip_if_not_installed("reactable")
+    # A pair_id holding a double quote ended the attribute it was written
+    # into, and the verdict was then filed against half an identifier.
+    for (js in list(fast.string:::.inspect_js_decision(),
+                    fast.string:::.inspect_js_comment())) {
+        js <- as.character(js)
+        expect_true(grepl("&quot;", js, fixed = TRUE))
+        expect_true(grepl("&amp;", js, fixed = TRUE))
+        expect_false(grepl("data-fs-id=\\\"' + id +", js, fixed = TRUE))
+    }
+    # Such a pair is still one the server knows by its whole name.
+    out <- scored()
+    out$pair_id[1L] <- "E1 \"the first\"|C1 <b>&amp;"
+    skip_if_not_installed("shiny")
+    path <- tempfile(fileext = ".json")
+    app <- rLink_inspect(out, decisions = path, reviewer = "a",
+                         launch = FALSE)
+    shiny::testServer(app, {
+        session$setInputs(fs_decision = list(
+            pair_id = out$pair_id[1L], decision = "include", nonce = 1))
+        expect_identical(rv_decisions()[[out$pair_id[1L]]], "include")
+        save_now()
+    })
+    expect_identical(read_decisions(path)$decisions$pair_id, out$pair_id[1L])
+})

@@ -119,9 +119,93 @@
          runs = list(), thresholds = list(), decisions = list())
 }
 
-.review_encode <- function(obj)
+.review_json <- function(obj)
     as.character(jsonlite::toJSON(obj, auto_unbox = TRUE, pretty = TRUE,
                                   digits = NA, null = "null", na = "null"))
+
+# Each of several events as text, indented as it sits in the document: an
+# element of an array that is itself one level in.
+#
+# They are encoded together and the text taken apart afterwards, because a
+# call to jsonlite costs more than the event it encodes: one call per event
+# made opening a long review slower than it had been. A string in JSON cannot
+# hold a line break, so a line that is exactly two spaces and a brace can
+# only be where an element of the array opens or closes. Anything that does
+# not come apart that way -- an event that is not an object -- is encoded on
+# its own instead.
+.review_json_each <- function(events) {
+    one <- function(e) paste0("    ", gsub("\n", "\n    ", .review_json(e),
+                                           fixed = TRUE))
+    if (length(events) < 2L || !is.null(names(events)))
+        return(vapply(events, one, ""))
+    lines <- strsplit(.review_json(events), "\n", fixed = TRUE)[[1L]]
+    opens <- which(lines == "  {")
+    closes <- which(lines == "  }," | lines == "  }")
+    if (length(opens) != length(events) || length(closes) != length(events) ||
+        any(closes < opens) || any(opens[-1L] != closes[-length(closes)] + 1L))
+        return(vapply(events, one, ""))
+    lines[closes] <- "  }"
+    body <- lines[seq.int(opens[1L], closes[length(closes)])]
+    group <- rep(seq_along(opens), closes - opens + 1L)
+    unname(vapply(split(paste0("  ", body), group), paste, "",
+                  collapse = "\n"))
+}
+
+# The file as text.
+#
+# jsonlite walks a nested list one element at a time, and a decision event is
+# a dozen of them: about half a millisecond each. The app saves two seconds
+# after anything changes, and it saved by encoding every event the file had
+# ever held -- so a review five thousand verdicts in spent two seconds of
+# every save re-encoding the first 4,999, with the app frozen while it did,
+# and one twenty thousand in spent nine.
+#
+# An event never changes once it is written: that is what makes the log
+# append-only. So each is encoded once, the text kept in `cache` under its
+# `event_id`, and a save encodes only what is new and joins the rest. The
+# text is the same, byte for byte, as encoding the whole object in one go --
+# each event is still encoded by jsonlite, and only laid into its place in
+# the document by hand -- which a test holds it to.
+#
+# `cache` is an environment that lives as long as the session does. Without
+# one every event is encoded, as before.
+.review_encode <- function(obj, cache = NULL) {
+    events <- obj$decisions
+    if (is.null(cache) || !is.list(events) || !length(events) ||
+        !is.null(names(events)))
+        return(.review_json(obj))
+    if (is.null(cache$json)) cache$json <- new.env(parent = emptyenv())
+    ids <- vapply(events, function(e) {
+        id <- if (is.list(e)) e[["event_id"]]
+        if (is.character(id) && length(id) == 1L && !is.na(id) &&
+            nzchar(id)) id else NA_character_
+    }, "")
+    text <- rep(NA_character_, length(events))
+    known <- !is.na(ids) & !duplicated(ids)
+    if (any(known)) {
+        held <- mget(ids[known], envir = cache$json,
+                     ifnotfound = list(NA_character_))
+        text[known] <- unlist(held, use.names = FALSE)
+    }
+    fresh <- which(is.na(text))
+    if (length(fresh)) {
+        text[fresh] <- .review_json_each(events[fresh])
+        for (k in fresh[known[fresh]])
+            assign(ids[k], text[k], envir = cache$json)
+    }
+    shell <- obj
+    shell$decisions <- list()
+    doc <- .review_json(shell)
+    slot <- "\n  \"decisions\": []"
+    at <- gregexpr(slot, doc, fixed = TRUE)[[1L]]
+    # A top-level key is the only thing that can follow a line break and two
+    # spaces, so this is the slot or it is nothing; anything else is not a
+    # document this knows how to lay events into.
+    if (length(at) != 1L || at < 1L) return(.review_json(obj))
+    paste0(substr(doc, 1L, at - 1L), "\n  \"decisions\": [\n",
+           paste(text, collapse = ",\n"), "\n  ]",
+           substr(doc, at + nchar(slot), nchar(doc)))
+}
 
 # simplifyVector = FALSE is not optional. With simplification a one-element
 # array parses to a different R shape than a two-element one, so code written
@@ -134,9 +218,9 @@
 # used to be. Windows refuses the rename when the file is open elsewhere, hence
 # the copy fallback, and if both fail the message names the temporary file so
 # the work is recoverable.
-.review_write <- function(obj, path) {
+.review_write <- function(obj, path, cache = NULL) {
     obj$updated <- .review_now()
-    json <- .review_encode(obj)
+    json <- .review_encode(obj, cache)
     folder <- dirname(path)
     if (!dir.exists(folder))
         stop(sprintf("Cannot write the review: there is no directory `%s`.",
@@ -196,18 +280,22 @@
 # Runs are not events. A run's `ended` legitimately advances every time the
 # session saves again, so a run with an id already in the file replaces it
 # rather than being discarded as a duplicate -- which is what `key` is for.
+#
+# The keys of each side are read once and compared as two vectors. Looking
+# each event of one side up among the other's, one at a time, rebuilt the
+# lookup for every event: two and a half seconds to merge twenty thousand
+# events with themselves, which is what every save of a long review did.
 .review_merge <- function(old, new) {
+    keys <- function(x, key)
+        vapply(x, function(e) .review_one(e, key, ""), "")
     union_by <- function(a, b, key) {
         if (!length(a)) return(b)
         if (!length(b)) return(a)
-        seen <- vapply(a, function(e) .review_one(e, key, ""), "")
-        c(a, Filter(function(e) !(.review_one(e, key, "") %in% seen), b))
+        c(a, b[!keys(b, key) %in% keys(a, key)])
     }
     replace_by <- function(a, b, key) {
         if (!length(a)) return(b)
-        fresh <- vapply(b, function(e) .review_one(e, key, ""), "")
-        kept <- Filter(function(e) !(.review_one(e, key, "") %in% fresh), a)
-        c(kept, b)
+        c(a[!keys(a, key) %in% keys(b, key)], b)
     }
     out <- old
     out$runs <- replace_by(old$runs, new$runs, "run_id")
@@ -284,22 +372,24 @@
     held <- effective[!is.na(effective$decision) &
                       effective$decision != "undecided", , drop = FALSE]
     if (!nrow(held)) return(empty)
-    split_by <- split(seq_len(nrow(held)), held$pair_id)
-    rows <- lapply(names(split_by), function(id) {
-        at <- split_by[[id]]
-        verdicts <- held$decision[at]
-        if (length(unique(verdicts)) < 2L) return(NULL)
-        o <- order(held$reviewer[at])
-        data.frame(pair_id = id, n_reviewers = length(at),
-                   reviewers = paste(held$reviewer[at][o], collapse = ", "),
-                   decisions = paste(verdicts[o], collapse = ", "),
-                   stringsAsFactors = FALSE)
-    })
-    rows <- Filter(Negate(is.null), rows)
-    if (!length(rows)) return(empty)
-    out <- do.call(rbind, rows)
-    rownames(out) <- NULL
-    out
+    # Pair by pair, reviewers in order within each. Found by comparing every
+    # verdict with the first one filed for its pair, over the whole table at
+    # once: a data frame built for each pair in turn was most of the time it
+    # took to read a long review back.
+    held <- held[order(held$pair_id, held$reviewer), , drop = FALSE]
+    opens <- !duplicated(held$pair_id)
+    pair <- cumsum(opens)
+    split_pairs <- unique(pair[held$decision != held$decision[opens][pair]])
+    if (!length(split_pairs)) return(empty)
+    held <- held[pair %in% split_pairs, , drop = FALSE]
+    pair <- pair[pair %in% split_pairs]
+    joined <- function(v) unname(vapply(split(v, pair), paste, "",
+                                        collapse = ", "))
+    data.frame(pair_id = held$pair_id[!duplicated(pair)],
+               n_reviewers = as.integer(tabulate(match(pair, split_pairs))),
+               reviewers = joined(held$reviewer),
+               decisions = joined(held$decision),
+               stringsAsFactors = FALSE)
 }
 
 

@@ -24,6 +24,10 @@ this chapter is the toolbox underneath it, for the cases where you want to
 drive each stage yourself. @sec-workflow takes a messy pair of files all
 the way through, including the standardising and the decision.
 
+For `rLink()` itself --- worked from the simplest useful call up to a
+staged production linkage of people, field by field --- see @sec-rlink,
+and @sec-rlink-inspect for reviewing the pairs it cannot settle.
+
 | Stage | Functions |
 |---|---|
 | Blocking **and** scoring in one call | `rLink()` |

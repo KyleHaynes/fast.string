@@ -315,6 +315,96 @@ people_files <- function(n_enrol = 20000, overlap = 0.6, seed = 20260101) {
     claims <- claims[shuffled, ]
     rownames(claims) <- NULL
 
+    # --- contact details --------------------------------------------------
+    # Drawn last, and only from values already fixed above, so that adding
+    # them left every other column of both files exactly as it was: each
+    # sample() here comes after every other one in the function, so no
+    # earlier draw moved.
+    #
+    # Phone and email behave differently from a name in a linkage, and that
+    # is the point of having them. They are *near-identifiers*: when two
+    # records agree on a mobile number they are almost certainly the same
+    # person, so agreement is worth far more than it is on a surname. But
+    # they are missing far more often, they go stale, and a household shares
+    # a landline -- so disagreement says much less. A comparator on them
+    # should be exact-or-missing, and the missing has to be kept distinct
+    # from the disagreeing.
+    digits <- function(k, n) vapply(seq_len(k), function(i)
+        paste(sample(0:9, n, TRUE), collapse = ""), "")
+
+    # A mobile for most people, a landline for the rest. The landline is
+    # drawn per *address*, not per person, so the people sharing a household
+    # share it -- which is exactly the false match a phone number invites.
+    household <- paste(person$number, person$street, person$postcode)
+    hh <- match(household, unique(household))
+    hh_landline <- paste0("0", sample(2:8, length(unique(household)), TRUE),
+                          " ", digits(length(unique(household)), 4), " ",
+                          digits(length(unique(household)), 4))
+    mobile <- paste0("04", digits(n, 2), " ", digits(n, 3), " ",
+                     digits(n, 3))
+    is_mobile <- runif(n) < 0.72
+    person_phone <- ifelse(is_mobile, mobile, hh_landline[hh])
+    person_phone[runif(n) < 0.08] <- NA_character_      # never collected
+
+    # given.surname@provider, with the punctuation a real address loses and
+    # a disambiguating number on some of them.
+    local_part <- paste0(tolower(person$given_name), ".",
+                         gsub("[^a-z]", "", tolower(person$surname)))
+    tagged <- runif(n) < 0.3
+    local_part[tagged] <- paste0(local_part[tagged],
+                                 substr(format(person$dob[tagged], "%Y"), 3, 4))
+    provider <- sample(c("example.com", "example.net", "example.org",
+                         "mail.example.com"), n, TRUE,
+                       prob = c(0.5, 0.25, 0.15, 0.1))
+    person_email <- paste0(local_part, "@", provider)
+    person_email[runif(n) < 0.18] <- NA_character_      # never collected
+
+    enrol$phone <- person_phone
+    enrol$email <- person_email
+
+    # The claims side: the same contact details for the same people, then
+    # the usual damage. `src` is the person each claims row is about, NA for
+    # the people the enrolment file has never seen.
+    src <- claims_person[shuffled]
+    c_phone <- person_phone[src]
+    c_email <- person_email[src]
+    fresh <- is.na(src)
+    if (any(fresh)) {
+        k <- sum(fresh)
+        c_phone[fresh] <- paste0("04", digits(k, 2), " ", digits(k, 3), " ",
+                                 digits(k, 3))
+        c_email[fresh] <- paste0("person", digits(k, 5), "@example.com")
+    }
+    g <- runif(m)
+    # Written without spaces, or with the country code: the same number,
+    # spelled differently. This is what fdigits() is for.
+    c_phone[g < 0.30] <- gsub(" ", "", c_phone[g < 0.30], fixed = TRUE)
+    plus <- which(g >= 0.30 & g < 0.40 & !is.na(c_phone))
+    c_phone[plus] <- paste0("+61 ", substring(gsub(" ", "", c_phone[plus]), 2))
+    # Changed number, and never collected at all.
+    moved_phone <- which(g >= 0.40 & g < 0.52)
+    c_phone[moved_phone] <- paste0("04", digits(length(moved_phone), 2), " ",
+                                   digits(length(moved_phone), 3), " ",
+                                   digits(length(moved_phone), 3))
+    c_phone[g >= 0.52 & g < 0.74] <- NA_character_
+    # Email: a different provider for the same local part, a typed address,
+    # and the usual silence.
+    h <- runif(m)
+    swap_provider <- which(h < 0.12 & !is.na(c_email))
+    c_email[swap_provider] <- paste0(sub("@.*$", "", c_email[swap_provider]),
+                                     "@", sample(c("example.net",
+                                                   "example.org"),
+                                                 length(swap_provider), TRUE))
+    c_email[h >= 0.12 & h < 0.16] <- NA_character_
+    # Case and stray whitespace, as typed into a form.
+    mixed <- which(h >= 0.16 & h < 0.34 & !is.na(c_email))
+    c_email[mixed] <- sub("^(.)", "\\U\\1", c_email[mixed], perl = TRUE)
+    padded <- which(h >= 0.34 & h < 0.40 & !is.na(c_email))
+    c_email[padded] <- paste0(" ", c_email[padded], " ")
+    # The claims system writes a blank rather than a null.
+    claims$contact_phone <- ifelse(is.na(c_phone), "", c_phone)
+    claims$contact_email <- ifelse(is.na(c_email), "", c_email)
+
     list(
         enrol = enrol,
         claims = claims,

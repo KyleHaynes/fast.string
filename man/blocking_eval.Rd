@@ -4,7 +4,7 @@
 \alias{blocking_eval}
 \title{Score a blocking scheme against a known truth}
 \usage{
-blocking_eval(candidates, truth, n_1, n_2 = NULL)
+blocking_eval(candidates, truth, n_1 = NULL, n_2 = NULL)
 }
 \arguments{
 \item{candidates}{The candidate pairs, as \code{\link[=block_pairs]{block_pairs()}},
@@ -14,7 +14,9 @@ list or matrix of two index vectors. Column names are read as
 
 \item{truth}{The pairs that really match, in the same form.}
 
-\item{n_1}{Number of records in the first file.}
+\item{n_1}{Number of records in the first file. May be left out when
+\code{candidates} is an \code{\link[=rLink]{rLink()}} result, which records how many records it
+was made from and whether they were one file or two.}
 
 \item{n_2}{Number of records in the second file, or \code{NULL} (the default)
 for deduplication within one file, where the comparison space is

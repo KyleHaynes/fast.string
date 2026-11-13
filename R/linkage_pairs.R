@@ -151,15 +151,21 @@ sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
     x_codes <- y_codes <- vector("list", length(xs))
     n_codes <- integer(length(xs))
     n_x <- length(xs[[1L]])
-    # Exact blocking only ever compares codes for equality, so any 1..K
-    # labelling of the distinct keys will do and the radix sort of what can
-    # be millions of distinct keys is skipped. The sorted neighbourhood does
-    # need the rank, because it pairs codes that are near each other.
-    ordered <- half_window > 0L
+    # One half-window for every pass, or one each: rLink() mixes exact passes
+    # with sorted neighbourhoods, and the pair generator has always taken a
+    # half-window per pass.
+    if (!length(half_window) %in% c(1L, length(xs)))
+        stop("There must be one half-window, or one per key.")
+    half <- rep_len(as.integer(half_window), length(xs))
     for (k in seq_along(xs)) {
         all <- if (dedupe) xs[[k]] else c(xs[[k]], ys[[k]])
         u <- unique(all[!is.na(all)])
-        if (ordered) u <- sort(u, method = "radix")
+        # Exact blocking only ever compares codes for equality, so any 1..K
+        # labelling of the distinct keys will do and the radix sort of what
+        # can be millions of distinct keys is skipped. The sorted
+        # neighbourhood does need the rank, because it pairs codes that are
+        # near each other.
+        if (half[k] > 0L) u <- sort(u, method = "radix")
         # One table built and probed once over both sides, rather than one
         # per side; chmatch() hashes R's cached strings by address.
         codes <- if (is.character(all) && is.character(u))
@@ -169,8 +175,7 @@ sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
             codes[n_x + seq_along(ys[[k]])]
         n_codes[k] <- length(u)
     }
-    list(x = x_codes, y = y_codes, n = n_codes,
-         half = rep(as.integer(half_window), length(xs)), dedupe = dedupe,
+    list(x = x_codes, y = y_codes, n = n_codes, half = half, dedupe = dedupe,
          n_x = n_x)
 }
 
@@ -180,9 +185,11 @@ sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
 # same whichever slice is asked for, because it is a property of the keys.
 .candidate_run <- function(codes, max_block_size, nthreads, from = 0,
                            to = codes$n_x, warn = TRUE) {
+    # One limit for every key, or one each; 1e18 stands for "none".
+    cap <- as.numeric(max_block_size)
+    cap[!is.finite(cap)] <- 1e18
     res <- fast_candidate_pairs_impl(
-        codes$x, codes$y, codes$n, codes$half, codes$dedupe,
-        if (is.finite(max_block_size)) max_block_size else 1e18,
+        codes$x, codes$y, codes$n, codes$half, codes$dedupe, cap,
         .as_nthreads(nthreads), from, to
     )
     if (warn && res$skipped_blocks > 0)
@@ -203,16 +210,25 @@ sorted_neighbourhood <- function(x, y = NULL, window = 3L, nthreads = NULL) {
 .candidate_bound <- function(codes) {
     bound <- numeric(codes$n_x)
     for (k in seq_along(codes$x)) {
-        counts <- tabulate(codes$y[[k]], codes$n[k])
-        cum <- c(0, cumsum(as.numeric(counts)))
-        code <- codes$x[[k]]
-        lo <- pmax(1L, code - codes$half[k])
-        hi <- pmin(codes$n[k], code + codes$half[k])
-        partners <- cum[hi + 1L] - cum[lo]
+        partners <- .candidate_window(codes, k)[codes$x[[k]]]
+        # A record with no key in this pass has no partners in it.
         partners[is.na(partners)] <- 0
         bound <- bound + partners
     }
     bound
+}
+
+# For each distinct key of pass `k`, how many y records hold a key within the
+# pass's window of it -- the partners of any x record with that key. With a
+# half-window of 0 that is the y records sharing the key. Deduplicating, the
+# y records are the x records, so a record counts among its own partners.
+.candidate_window <- function(codes, k) {
+    n <- codes$n[k]
+    counts <- as.numeric(tabulate(codes$y[[k]], n))
+    if (codes$half[k] == 0L) return(counts)
+    cum <- c(0, cumsum(counts))
+    at <- seq_len(n)
+    cum[pmin(n, at + codes$half[k]) + 1L] - cum[pmax(1L, at - codes$half[k])]
 }
 
 # Half-open (from, to] ranges of x records holding about `target` candidate
