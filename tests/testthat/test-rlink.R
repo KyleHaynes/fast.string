@@ -39,6 +39,14 @@ claims <- function() data.frame(
     stringsAsFactors = FALSE
 )
 
+# Links a file to itself on purpose. These tests want the self-pairs, which
+# are the very thing rLink() warns about when it is handed the same data
+# twice, so that one warning is taken as read.
+itself <- function(code) withCallingHandlers(code, warning = function(w) {
+    if (grepl("same data", conditionMessage(w)))
+        invokeRestart("muffleWarning")
+})
+
 test_that("rLink() reproduces a brute-force link", {
     a <- enrol()
     b <- claims()
@@ -94,21 +102,22 @@ test_that("the pass grammar reads list() as passes and c() as terms", {
 
 test_that("a missing key term pairs with nothing unless match_missing", {
     a <- data.frame(k = c("X", NA, ""), stringsAsFactors = FALSE)
-    expect_identical(nrow(rLink(a, a, block_1 = list(k))), 1L)
+    expect_identical(nrow(itself(rLink(a, a, block_1 = list(k)))), 1L)
     # "" is in na_strings, so both missing rows share one key.
-    expect_identical(nrow(rLink(a, a, block_1 = list(k),
-                                match_missing = TRUE)), 5L)
-    expect_identical(nrow(rLink(a, a, block_1 = list(k),
-                                na_strings = character())), 2L)
+    expect_identical(nrow(itself(rLink(a, a, block_1 = list(k),
+                                match_missing = TRUE))), 5L)
+    expect_identical(nrow(itself(rLink(a, a, block_1 = list(k),
+                                na_strings = character()))), 2L)
 
     # A missing value in any one term makes the whole pass key missing.
     m <- data.frame(s = c("SMITH", "JONES"), t = c(NA, NA),
                     stringsAsFactors = FALSE)
-    expect_identical(nrow(rLink(m, m, block_1 = list(list(s, t)))), 0L)
+    expect_identical(
+        nrow(itself(rLink(m, m, block_1 = list(list(s, t))))), 0L)
     # With match_missing the terms stay distinct, so SMITH does not reach
     # JONES through their shared blank.
-    expect_identical(nrow(rLink(m, m, block_1 = list(list(s, t)),
-                                match_missing = TRUE)), 2L)
+    expect_identical(nrow(itself(rLink(m, m, block_1 = list(list(s, t)),
+                                match_missing = TRUE))), 2L)
 })
 
 test_that("a value that looks like a sentinel survives untouched", {
@@ -116,7 +125,7 @@ test_that("a value that looks like a sentinel survives untouched", {
     # the data and stripped it afterwards with grepl("^1colname"), which
     # destroyed any real value of that shape.
     a <- data.frame(x = c("1x1", "1x2"), stringsAsFactors = FALSE)
-    out <- rLink(a, a, block_1 = list(x), match_missing = TRUE)
+    out <- itself(rLink(a, a, block_1 = list(x), match_missing = TRUE))
     expect_identical(sort(unique(c(out$x_1, out$x_2))), c("1x1", "1x2"))
 })
 
@@ -124,12 +133,13 @@ test_that("key terms are joined without colliding", {
     # Joined with "~", c("A~B", "C") and c("A", "B~C") shared a key.
     tl <- data.frame(p = c("A~B", "A"), q = c("C", "B~C"),
                      stringsAsFactors = FALSE)
-    expect_identical(nrow(rLink(tl, tl, block_1 = list(list(p, q)))), 2L)
+    expect_identical(
+        nrow(itself(rLink(tl, tl, block_1 = list(list(p, q))))), 2L)
     # The separator actually used is rejected in the data rather than hoped
     # against.
     sep <- data.frame(p = c("A\u001fB", "A"), q = c("C", "B"),
                       stringsAsFactors = FALSE)
-    expect_error(rLink(sep, sep, block_1 = list(list(p, q))),
+    expect_error(itself(rLink(sep, sep, block_1 = list(list(p, q)))),
                  "control character")
 })
 
@@ -325,7 +335,8 @@ test_that("carried columns keep their values and classes", {
     expect_s3_class(out$grp_1, "factor")
     # force_upper_case affects the scores, never the columns returned.
     low <- data.frame(s = c("smith", "smith"), stringsAsFactors = FALSE)
-    expect_identical(unique(rLink(low, low, block_1 = list(s))$s_1), "smith")
+    expect_identical(
+        unique(itself(rLink(low, low, block_1 = list(s)))$s_1), "smith")
 })
 
 test_that("keep selects the carried columns", {
@@ -783,11 +794,11 @@ test_that("na_strings and upper-casing leave a typed column alone", {
     a <- data.frame(k = "x", flag = TRUE, n = 0)
     seen <- NULL
     spy <- function(a, b) { seen <<- a; 1 }
-    rLink(a, a, block_1 = list(k), compare = list(s = spy(I(flag))),
-          na_strings = c("", "TRUE", "0"))
+    itself(rLink(a, a, block_1 = list(k), compare = list(s = spy(I(flag))),
+          na_strings = c("", "TRUE", "0")))
     expect_identical(seen, TRUE)
-    rLink(a, a, block_1 = list(k), compare = list(s = spy(I(n))),
-          na_strings = c("", "TRUE", "0"))
+    itself(rLink(a, a, block_1 = list(k), compare = list(s = spy(I(n))),
+          na_strings = c("", "TRUE", "0")))
     expect_identical(seen, 0)
 })
 
@@ -812,11 +823,16 @@ with_slices <- function(size, code) {
     code
 }
 
-# The columns only: `timings` differs by design and `filter` is what is under
-# test.
+# The columns only: `timings` differs by design, `filter` is what is under
+# test, and `blocking` counts what a filter kept, which a subset made
+# afterwards cannot know.
 bare <- function(x) {
     x <- as.data.frame(x)
-    for (nm in c("timings", "filter")) attr(x, nm) <- NULL
+    for (nm in c("timings", "filter", "blocking", "exclude"))
+        attr(x, nm) <- NULL
+    # How many pairs each comparator was run on is about the run, not the
+    # pairs: a filtered run scores fewer and returns the same table.
+    if (!is.null(attr(x, "compare"))) attr(x, "compare")$n_scored <- NULL
     x
 }
 
@@ -831,7 +847,16 @@ test_that("filter gives what scoring everything and subsetting would", {
                  filter = sn >= 0.9 & gn >= 0.8)
     expect_identical(bare(got), bare(want))
     expect_s3_class(got, "fs_pairs")
-    expect_identical(attr(got, "compare"), attr(all, "compare"))
+    # The same comparators, described the same way; only how many pairs each
+    # was run on differs, because `gn` never saw the pairs `sn` had dropped.
+    described <- function(x) {
+        cmp <- attr(x, "compare")
+        cmp[setdiff(names(cmp), "n_scored")]
+    }
+    expect_identical(described(got), described(all))
+    expect_equal(attr(all, "compare")$n_scored, rep(nrow(all), 2L))
+    expect_equal(attr(got, "compare")$n_scored,
+                 c(nrow(all), sum(all$sn >= 0.9, na.rm = TRUE)))
 
     f <- attr(got, "filter")
     expect_identical(f$rule, "sn >= 0.9 & gn >= 0.8")
@@ -983,8 +1008,10 @@ test_that("skipped blocks are reported once, however many slices", {
 
 test_that("a filter that cannot be used says why", {
     a <- bigger(seed = 14)
+    # A rule may stand without `compare`, but not one about a score that
+    # nothing produces.
     expect_error(rLink(a, block_1 = list(yr), filter = gn > 0.5),
-                 "needs `compare`")
+                 "could not be evaluated.*gn")
     expect_error(rLink(a, block_1 = list(yr),
                        compare = list(gn = jaro_winkler(g)), filter = nope > 1),
                  "could not be evaluated.*nope")
@@ -1171,4 +1198,621 @@ test_that("summary() says what a filter removed", {
     expect_identical(s$filter$n_kept, nrow(out))
     expect_output(print(s), "Kept by `filter` (gn >= 0.9)", fixed = TRUE)
     expect_null(summary(rLink(a, block_1 = list(yr)))$filter)
+})
+
+
+# --- the blocking report -----------------------------------------------------
+
+test_that("the blocking report counts what each pass will do and did", {
+    a <- bigger(seed = 31)
+    b <- bigger(seed = 32)
+    for (dedupe in c(FALSE, TRUE)) {
+        d2 <- if (dedupe) NULL else b
+        out <- rLink(a, d2, block_1 = list(first = list(yr, s), g, near = s),
+                     block_method = c("exact", "exact", "sorted_neighbourhood"),
+                     keep = character())
+        report <- attr(out, "blocking")
+        expect_s3_class(report, "fs_blocking")
+        p <- report$passes
+        expect_identical(p$label, c("first", "", "near"))
+        expect_identical(p$key_1, c("yr, s", "g", "s"))
+        expect_identical(p$method,
+                         c("exact", "exact", "sorted_neighbourhood"))
+        expect_identical(p$window, c(NA, NA, 3L))
+        # What a pass is expected to give is what it gives when run alone.
+        alone <- c(
+            nrow(rLink(a, d2, block_1 = list(list(yr, s)), keep = character())),
+            nrow(rLink(a, d2, block_1 = list(g), keep = character())),
+            nrow(rLink(a, d2, block_1 = list(s), keep = character(),
+                       block_method = "sorted_neighbourhood")))
+        expect_equal(p$n_expected, alone)
+        # And what it found is what `pass` says it found.
+        expect_equal(p$n_pairs, as.numeric(tabulate(out$pass, 3L)))
+        expect_equal(p$n_kept, p$n_pairs)
+        expect_identical(p$n_missing_1, c(0L, sum(is.na(a$g)), 0L))
+        expect_identical(p$n_missing_2, if (dedupe) rep(NA_integer_, 3L) else
+            c(0L, sum(is.na(b$g)), 0L))
+        expect_identical(attr(out, "n_records"), c(nrow(a), nrow(a)))
+    }
+})
+
+test_that("the report names the largest blocks as block_key would", {
+    a <- data.frame(s = c("X", "X", "X", "Y", "Y", "Z"),
+                    d = as.Date("2020-01-01") + c(0, 0, 0, 1, 1, 2),
+                    stringsAsFactors = FALSE)
+    report <- rLink(a, block_1 = list(s, d, list(s, d)), dry_run = TRUE)
+    big <- report$largest
+    # A block of one record makes no pair, so `Z` is not among them.
+    expect_identical(big$key[big$pass == 1L], c("X", "Y"))
+    expect_identical(big$key[big$pass == 2L], c("2020-01-01", "2020-01-02"))
+    expect_identical(big$key[big$pass == 3L],
+                     c("X|2020-01-01", "Y|2020-01-02"))
+    expect_equal(big$pairs[big$pass == 1L], c(3, 1))
+    expect_equal(big$n_1[big$pass == 1L], c(3, 2))
+    expect_true(all(is.na(big$n_2)))
+    expect_equal(report$passes$largest_block, c(3, 3, 3))
+
+    # Linking, a block is counted on both sides.
+    b <- data.frame(s = c("X", "Y", "Y", "Q"), stringsAsFactors = FALSE)
+    big <- rLink(a, b, block_1 = list(s), dry_run = TRUE)$largest
+    expect_identical(big$key, c("Y", "X"))
+    expect_equal(big$n_1, c(2, 3))
+    expect_equal(big$n_2, c(2, 1))
+    expect_equal(big$pairs, c(4, 3))
+})
+
+test_that("dry_run returns the report and makes no pairs", {
+    a <- bigger(seed = 33)
+    b <- bigger(seed = 34)
+    plan <- rLink(a, b, block_1 = list(yr, soundex(s)), dry_run = TRUE)
+    out <- rLink(a, b, block_1 = list(yr, soundex(s)), keep = character())
+    done <- attr(out, "blocking")
+    expect_s3_class(plan, "fs_blocking")
+    expect_true(all(is.na(plan$passes$n_pairs)))
+    expect_identical(plan$passes$n_expected, done$passes$n_expected)
+    expect_identical(plan$largest, done$largest)
+    expect_identical(plan$n_records, c(600L, 600L))
+    expect_output(print(plan), "Expected up to")
+    expect_output(print(done), "Found")
+    # Every argument is still checked.
+    expect_error(rLink(a, b, block_1 = list(yr), dry_run = TRUE,
+                       compare = list(jaro_winkler(s), jaro_winkler(s))),
+                 "Two comparators")
+    expect_error(rLink(a, b, block_1 = list(nope), dry_run = TRUE), "nope")
+    expect_error(rLink(a, b, dry_run = TRUE,
+                       pairs = data.frame(x_index = 1L, y_index = 1L)),
+                 "dry_run")
+})
+
+test_that("max_pairs stops a run before it generates anything", {
+    a <- bigger(seed = 35)
+    msg <- tryCatch(rLink(a, block_1 = list(big = sex), max_pairs = 1000),
+                    error = conditionMessage)
+    expect_match(msg, "more than `max_pairs` (1,000)", fixed = TRUE)
+    expect_match(msg, "Pass 1 (big)", fixed = TRUE)
+    expect_match(msg, "largest block, `[FM]`")
+    n <- nrow(rLink(a, block_1 = list(sex), keep = character()))
+    # Exactly at the limit is allowed.
+    expect_identical(nrow(rLink(a, block_1 = list(sex), keep = character(),
+                                max_pairs = n)), n)
+    expect_error(rLink(a, block_1 = list(sex), max_pairs = n - 1),
+                 "max_pairs")
+    expect_error(rLink(a, block_1 = list(sex), max_pairs = "lots"),
+                 "single number")
+})
+
+
+# --- a method per pass --------------------------------------------------------
+
+test_that("each pass can have its own method and window", {
+    a <- bigger(seed = 36)
+    b <- bigger(seed = 37)
+    out <- rLink(a, b, block_1 = list(list(yr, g), s),
+                 block_method = c("exact", "sorted_neighbourhood"),
+                 window = 3, keep = character())
+    key <- function(d) ifelse(is.na(d$g), NA, paste(d$yr, d$g))
+    first <- block_pairs(key(a), key(b))
+    second <- sorted_neighbourhood(a$s, b$s, window = 3)
+    id <- function(p) paste(p$x_index, p$y_index)
+    second <- second[!id(second) %in% id(first), ]
+    want <- rbind(data.frame(first[1:2], pass = 1L),
+                  data.frame(second[1:2], pass = 2L))
+    want <- want[order(want$x_index, want$y_index), ]
+    expect_identical(out$index_1, want$x_index)
+    expect_identical(out$index_2, want$y_index)
+    expect_identical(out$pass, want$pass)
+
+    # A window per pass says the same thing: a window of 1 is exact.
+    wide <- rLink(a, b, block_1 = list(list(yr, g), s),
+                  block_method = "sorted_neighbourhood", window = c(1, 3),
+                  keep = character())
+    expect_identical(wide$index_1, out$index_1)
+    expect_identical(wide$index_2, out$index_2)
+    expect_identical(wide$pass, out$pass)
+
+    expect_error(rLink(a, b, block_1 = list(s, yr),
+                       block_method = c("exact", "exact", "exact")),
+                 "one per blocking pass")
+    expect_error(rLink(a, b, block_1 = list(s, yr),
+                       block_method = "sorted_neighbourhood",
+                       window = c(3, 3, 3)), "one per blocking pass")
+    expect_error(rLink(a, b, block_1 = list(s), block_method = "nearby"),
+                 "block_method")
+    # A method that is not one is not quietly dropped from a list of them.
+    expect_error(rLink(a, b, block_1 = list(s, yr),
+                       block_method = c("exact", "nearby")), "block_method")
+})
+
+test_that("two methods written out are not mistaken for the default", {
+    # c("exact", "sorted_neighbourhood") is also the default value of the
+    # argument, which match.arg() reads as "nothing chosen".
+    a <- enrol()
+    b <- claims()
+    out <- rLink(a, b, block_1 = list(dob, surname),
+                 block_method = c("exact", "sorted_neighbourhood"))
+    expect_identical(attr(out, "blocking")$passes$method,
+                     c("exact", "sorted_neighbourhood"))
+    expect_gt(nrow(out), nrow(rLink(a, b, block_1 = list(dob, surname))))
+})
+
+test_that("max_block_size reaches the exact passes of a mixed run", {
+    a <- bigger(seed = 38)
+    expect_warning(
+        out <- rLink(a, block_1 = list(sex, s), keep = character(),
+                     block_method = c("exact", "sorted_neighbourhood"),
+                     max_block_size = 10),
+        "Skipped 2 blocks")
+    expect_true(all(out$pass == 2L))
+    p <- attr(out, "blocking")$passes
+    expect_identical(p$n_skipped, c(2L, 0L))
+    expect_equal(p$n_expected[1L], 0)
+    # With nothing to act on it says so, rather than being dropped.
+    expect_warning(
+        rLink(a, block_1 = list(s), block_method = "sorted_neighbourhood",
+              max_block_size = 10, keep = character()),
+        "applies to exact passes")
+})
+
+
+# --- filter, without scores and before them ----------------------------------
+
+test_that("a rule that reads no score needs no compare", {
+    a <- bigger(seed = 39)
+    b <- bigger(seed = 40)
+    all <- rLink(a, b, block_1 = list(yr, soundex(s)))
+    got <- rLink(a, b, block_1 = list(yr, soundex(s)),
+                 filter = sex_1 == sex_2 & pass == 1)
+    expect_identical(bare(got), bare(all[sex_1 == sex_2 & pass == 1]))
+    f <- attr(got, "filter")
+    expect_identical(f$before_scoring, "sex_1 == sex_2 & pass == 1")
+    expect_equal(f$n_candidates, nrow(all))
+    expect_equal(f$n_scored, nrow(got))
+    # What the filter left is counted per pass.
+    expect_equal(attr(got, "blocking")$passes$n_kept, c(nrow(got), 0))
+})
+
+test_that("the part of a rule that reads no score is applied before scoring", {
+    a <- bigger(seed = 41)
+    b <- bigger(seed = 42)
+    run <- function(...) rLink(
+        a, b, block_1 = list(yr, soundex(s)),
+        compare = list(sn = jaro_winkler(s), gn = jaro_winkler(g)), ...)
+    all <- run()
+    want <- all[sex_1 == sex_2 & sn >= 0.9 & (gn >= 0.8 | pass == 2)]
+    for (size in c(1e7, 500, 1)) {
+        got <- with_slices(size, run(
+            filter = sn >= 0.9 & (sex_1 == sex_2 & (gn >= 0.8 | pass == 2))))
+        expect_identical(bare(got), bare(want))
+    }
+    f <- attr(got, "filter")
+    expect_identical(f$before_scoring, "sex_1 == sex_2")
+    expect_equal(f$n_candidates, nrow(all))
+    expect_equal(f$n_scored, sum(all$sex_1 == all$sex_2))
+    expect_lt(f$n_scored, f$n_candidates)
+
+    # Nothing can be taken out of an `|`.
+    whole <- run(filter = sn >= 0.9 | sex_1 == sex_2)
+    expect_true(is.na(attr(whole, "filter")$before_scoring))
+    expect_equal(attr(whole, "filter")$n_scored, nrow(all))
+    expect_identical(bare(whole), bare(all[sn >= 0.9 | sex_1 == sex_2]))
+
+    # A score named as a string is still a score, and waits for it.
+    late <- run(filter = .data[["sn"]] >= 0.9 & sex_1 == sex_2)
+    expect_identical(attr(late, "filter")$before_scoring, "sex_1 == sex_2")
+    expect_identical(bare(late), bare(all[sn >= 0.9 & sex_1 == sex_2]))
+
+    # A pair the early part cannot decide is dropped, as it always was.
+    a$sex[1:50] <- NA
+    all <- run()
+    got <- run(filter = sex_1 == sex_2 & sn >= 0.9)
+    expect_identical(bare(got), bare(all[which(sex_1 == sex_2 & sn >= 0.9)]))
+})
+
+test_that("verbose reports a sliced run", {
+    a <- bigger(seed = 46)
+    expect_message(
+        with_slices(500, rLink(a, block_1 = list(yr), verbose = TRUE,
+                               compare = list(gn = jaro_winkler(g)),
+                               filter = sex_1 == sex_2 & gn >= 0.9)),
+        "scored")
+})
+
+
+# --- staged linkage -----------------------------------------------------------
+
+test_that("exclude leaves out pairs, by pair_id or by row", {
+    a <- bigger(seed = 43)
+    b <- bigger(seed = 44)
+    run <- function(...) rLink(
+        a, b, block_1 = list(yr, soundex(s)),
+        compare = list(sn = jaro_winkler(s)), ...)
+    all <- run()
+    done <- all[sn == 1]
+    want <- all[sn < 1]
+    expect_gt(nrow(done), 0L)
+
+    by_id <- run(exclude = done$pair_id)
+    expect_identical(bare(by_id), bare(want))
+    expect_identical(attr(by_id, "exclude"), list(
+        n_given = nrow(done), n_unknown = 0L,
+        n_excluded = as.numeric(nrow(done))))
+    # The pass still found them; they are only not in the table.
+    p <- attr(by_id, "blocking")$passes
+    expect_equal(sum(p$n_pairs), nrow(all))
+    expect_equal(sum(p$n_kept), nrow(want))
+
+    expect_identical(bare(run(exclude = done)), bare(want))
+    expect_identical(
+        bare(run(exclude = data.frame(x_index = done$index_1,
+                                      y_index = done$index_2))),
+        bare(want))
+
+    # With a filter, and in slices.
+    cut <- with_slices(200, run(exclude = done$pair_id, filter = sn >= 0.8))
+    expect_gt(attr(cut, "filter")$n_slices, 1L)
+    expect_identical(bare(cut), bare(want[sn >= 0.8]))
+
+    # Blocked another way, with one file in another order: the identifiers
+    # still find them, which row numbers would not.
+    o <- rev(seq_len(nrow(a)))
+    other <- function(...) rLink(
+        a[o, ], b, block_1 = list(soundex(s)), keep = character(), ...)
+    expect_identical(sort(other(exclude = done$pair_id)$pair_id),
+                     sort(setdiff(other()$pair_id, done$pair_id)))
+
+    # Identifiers that are not there are ignored, and counted.
+    odd <- run(exclude = c("nope|nope", "R0001", NA, done$pair_id[1L]))
+    expect_identical(attr(odd, "exclude")$n_unknown, 3L)
+    expect_identical(nrow(odd), nrow(all) - 1L)
+})
+
+test_that("an exclude that cannot be trusted is refused", {
+    a <- bigger(seed = 43)
+    b <- bigger(seed = 44)
+    done <- rLink(a, b, block_1 = list(list(yr, s, g)), keep = character())
+    # Row numbers from files of another size.
+    expect_error(rLink(a[-1L, ], b, block_1 = list(yr), exclude = done),
+                 "do not belong")
+    expect_error(rLink(a, b, block_1 = list(yr),
+                       exclude = data.frame(index_1 = 601L, index_2 = 1L)),
+                 "do not belong")
+    expect_error(rLink(a, b, block_1 = list(yr), exclude = 1:3),
+                 "character vector of `pair_id`s")
+    expect_error(rLink(a, b, block_1 = list(yr), exclude = "R0001|R0002",
+                       pair_id = NULL), "numbers its pairs")
+    expect_error(rLink(a, b, block_1 = list(yr),
+                       exclude = data.frame(a = 1, b = 2)), "index columns")
+    b$frame_id[2L] <- b$frame_id[1L]
+    expect_error(rLink(a, b, block_1 = list(yr), exclude = "R0001|R0002"),
+                 "does not identify records uniquely")
+})
+
+test_that("exclude reads a deduplicated pair either way round", {
+    a <- bigger(200, seed = 45)
+    all <- rLink(a, block_1 = list(yr), keep = character())
+    drop <- all[1:50]
+    left <- all$pair_id[-(1:50)]
+    flipped <- vapply(strsplit(drop$pair_id, "|", fixed = TRUE),
+                      function(p) paste(rev(p), collapse = "|"), "")
+    expect_identical(rLink(a, block_1 = list(yr), keep = character(),
+                           exclude = flipped)$pair_id, left)
+    swapped <- data.frame(index_1 = drop$index_2, index_2 = drop$index_1)
+    expect_identical(rLink(a, block_1 = list(yr), keep = character(),
+                           exclude = swapped)$pair_id, left)
+})
+
+test_that("rLink_unmatched() gives the records no pair reaches", {
+    a <- enrol()
+    b <- claims()
+    # Only SMITH agrees exactly.
+    out <- rLink(a, b, block_1 = list(surname),
+                 compare = list(gn = jaro_winkler(given)))
+    expect_identical(rLink_unmatched(out), 2:4)
+    expect_identical(rLink_unmatched(out, side = 2), 2:3)
+    # The record counts survive a subset, even one that keeps nothing.
+    expect_identical(rLink_unmatched(out[gn > 2]), 1:4)
+    # Deduplicating, a record on either side of a pair has been reached.
+    dup <- rLink(a, block_1 = list(soundex(surname)))
+    expect_identical(rLink_unmatched(dup), 2:3)
+    # Other suffixes.
+    sfx <- rLink(a, b, block_1 = list(surname), suffixes = c(".x", ".y"))
+    expect_identical(rLink_unmatched(sfx, side = 2), 2:3)
+
+    plain <- data.frame(x_index = c(1L, 3L), y_index = c(2L, 2L))
+    expect_error(rLink_unmatched(plain), "`n` is needed")
+    expect_identical(rLink_unmatched(plain, n = 4), c(2L, 4L))
+    expect_identical(rLink_unmatched(plain, side = 2, n = 3), c(1L, 3L))
+    expect_identical(rLink_unmatched(plain, side = 1:2, n = 4), 4L)
+    expect_error(rLink_unmatched(plain, side = 3, n = 4), "`side`")
+    expect_error(rLink_unmatched(plain, n = 2), "outside")
+    expect_error(rLink_unmatched(data.frame(a = 1, b = 2), n = 2),
+                 "index columns")
+})
+
+test_that("the same data twice is warned about, unless block_2 says why", {
+    a <- enrol()
+    expect_warning(rLink(a, a, block_1 = list(surname)), "same data")
+    # One file blocked on two different fields is the reason to do it.
+    d <- data.frame(id = 1:3, surname = c("LEE", "KHAN", "SMITH"),
+                    maiden = c("KHAN", NA, "LEE"), stringsAsFactors = FALSE)
+    out <- expect_silent(rLink(d, d, block_1 = list(surname),
+                               block_2 = list(maiden),
+                               filter = index_1 != index_2,
+                               keep = character()))
+    expect_identical(out$index_1, c(1L, 2L))
+    expect_identical(out$index_2, c(3L, 1L))
+})
+
+# --- scoring in stages, and comparators handed the index ------------------
+
+test_that("a comparator scores the same handed the index or the strings", {
+    a <- bigger(seed = 61)
+    b <- bigger(seed = 62)
+    a$s[c(3, 40)] <- NA
+    b$g[7] <- ""
+    # The same comparators twice: by name, which rLink() hands the records
+    # and the pairs' indices, and wrapped in a function of the caller's,
+    # which is handed one string per pair as any function always was.
+    wrap <- function(f, ...) function(x, y) f(x, y, ...)
+    jw <- wrap(jaro_winkler)
+    lv <- wrap(levenshtein)
+    lu <- wrap(levenshtein, use_bytes = FALSE)
+    jc <- wrap(jaccard_index, q = 2)
+    fz <- wrap(fuzz_ratio)
+    tk <- wrap(jaro_winkler_tokens)
+    for (dedupe in c(FALSE, TRUE)) {
+        run <- function(...) rLink(
+            a, if (!dedupe) b, block_1 = list(yr, soundex(s)), ...,
+            keep = character(), pair_id = NULL)
+        native <- run(compare = list(
+            jw = jaro_winkler(s), lv = levenshtein(g),
+            lu = levenshtein(s, use_bytes = FALSE),
+            jc = jaccard_index(s, q = 2), fz = fuzz_ratio(g),
+            tk = jaro_winkler_tokens(s), x = jaro_winkler(s | g)))
+        plain <- run(compare = list(
+            jw = jw(s), lv = lv(g), lu = lu(s), jc = jc(s), fz = fz(g),
+            tk = tk(s), x = jw(s | g)))
+        for (nm in c("jw", "lv", "lu", "jc", "fz", "tk", "x"))
+            expect_identical(native[[nm]], plain[[nm]], info = nm)
+        expect_gt(nrow(native), 1000)
+    }
+})
+
+test_that("an indexed comparator reads text that is not ASCII", {
+    a <- data.frame(k = 1, s = c("ZOË", "JOSÉ", "SMITH", NA,
+                                 "MÜLLER"), stringsAsFactors = FALSE)
+    b <- data.frame(k = 1, s = c("ZOE", "JOSE", "MÜLLER",
+                                 enc2native("JOSÉ")),
+                    stringsAsFactors = FALSE)
+    latin <- b
+    latin$s[3] <- iconv("MÜLLER", "UTF-8", "latin1")
+    wrap <- function(f, ...) function(x, y) f(x, y, ...)
+    # Each comparator's own scale, so that what is compared is what the
+    # comparator returned and not how it was then rescaled.
+    for (second in list(b, latin)) {
+        run <- function(...) rLink(a, second, block_1 = k, normalise = FALSE,
+                                   force_upper_case = FALSE, ...)
+        native <- run(compare = list(
+            jw = jaro_winkler(s, use_bytes = FALSE),
+            lv = levenshtein(s, use_bytes = FALSE),
+            lb = levenshtein(s), fz = fuzz_ratio(s)))
+        plain <- run(compare = list(
+            jw = wrap(jaro_winkler, use_bytes = FALSE)(s),
+            lv = wrap(levenshtein, use_bytes = FALSE)(s),
+            lb = wrap(levenshtein)(s), fz = wrap(fuzz_ratio)(s)))
+        for (nm in c("jw", "lv", "lb", "fz"))
+            expect_identical(native[[nm]], plain[[nm]], info = nm)
+        # An accent is one edit counted in characters and two in bytes.
+        zoe <- native$index_1 == 1 & native$index_2 == 1
+        expect_equal(native$lv[zoe], 1)
+        expect_equal(native$lb[zoe], 2)
+        same <- native$index_1 == 5 & native$index_2 == 3
+        expect_equal(native$lv[same], 0)
+    }
+})
+
+test_that("each part of a rule is applied as soon as its scores exist", {
+    a <- bigger(seed = 63)
+    b <- bigger(seed = 64)
+    run <- function(...) rLink(
+        a, b, block_1 = list(yr, soundex(s)),
+        compare = list(gn = jaro_winkler(g), sn = jaro_winkler(s),
+                       lv = levenshtein(s)), ...)
+    all <- run()
+    want <- all[which(sex_1 == sex_2 & sn >= 0.9 & gn >= 0.8)]
+    for (size in c(1, 700, 1e7)) {
+        got <- with_slices(size, run(
+            filter = sn >= 0.9 & sex_1 == sex_2 & gn >= 0.8))
+        expect_identical(bare(got), bare(want))
+    }
+    # In one slice: `sn` is asked for first, so it is scored first, whatever
+    # the order of `compare`; `gn` sees only the pairs it left; and `lv`,
+    # which no part of the rule reads, is scored for the pairs that were kept
+    # and no others.
+    n <- stats::setNames(attr(got, "compare")$n_scored,
+                         attr(got, "compare")$score)
+    same_sex <- which(all$sex_1 == all$sex_2)
+    expect_equal(n[["sn"]], length(same_sex))
+    expect_equal(n[["gn"]], sum(all$sn[same_sex] >= 0.9, na.rm = TRUE))
+    expect_equal(n[["lv"]], nrow(want))
+    expect_equal(attr(got, "filter")$n_scored, length(same_sex))
+    # The columns come out in the order `compare` gave them.
+    expect_identical(names(got), names(all))
+
+    # The order the parts are written in changes what is scored first and
+    # nothing else.
+    other <- run(filter = gn >= 0.8 & sn >= 0.9 & sex_1 == sex_2)
+    expect_identical(bare(other), bare(want))
+    expect_equal(attr(other, "compare")$n_scored[1L], length(same_sex))
+
+    # A part that reads two scores waits for both; nothing comes out of `|`.
+    both <- run(filter = (sn >= 0.9 | gn >= 0.95) & lv >= 0.9)
+    expect_identical(bare(both),
+                     bare(all[which((sn >= 0.9 | gn >= 0.95) & lv >= 0.9)]))
+    n <- attr(both, "compare")$n_scored
+    expect_equal(n[3L], nrow(all))
+    expect_lt(n[1L], nrow(all))
+    expect_equal(n[1L], n[2L])
+
+    # A part that drops few pairs is not worth a pass over everything held
+    # for the slice, so the pairs it drops stay until a later part settles
+    # them: the comparators after it run on all of them, and the answer is
+    # the same.
+    mild <- run(filter = lv >= 0.1 & sn >= 0.9 & gn >= 0.8)
+    expect_gt(mean(all$lv >= 0.1), 2 / 3)
+    expect_identical(bare(mild),
+                     bare(all[which(lv >= 0.1 & sn >= 0.9 & gn >= 0.8)]))
+    n <- stats::setNames(attr(mild, "compare")$n_scored,
+                         attr(mild, "compare")$score)
+    expect_equal(n[["lv"]], nrow(all))
+    expect_equal(n[["sn"]], nrow(all))
+    expect_lt(n[["gn"]], nrow(all))
+    # Nothing at all is dropped, and nothing is lost either.
+    every <- run(filter = lv >= 0 & sn >= 0)
+    expect_identical(bare(every), bare(all[which(lv >= 0 & sn >= 0)]))
+})
+
+test_that("a part that reaches a score it does not name is read last", {
+    a <- bigger(seed = 65)
+    b <- bigger(seed = 66)
+    run <- function(...) rLink(
+        a, b, block_1 = list(yr, soundex(s)),
+        compare = list(sn = jaro_winkler(s), gn = jaro_winkler(g)), ...)
+    all <- run()
+    want <- all[which(sn >= 0.9 & gn >= 0.8 & sex_1 == sex_2)]
+    # Neither part names its score, so both look as if they could be read
+    # before anything is scored. They cannot, and are not an error for it.
+    first <- "sn"
+    second <- quote(gn >= 0.8)
+    for (size in c(1e7, 300)) {
+        got <- with_slices(size, run(
+            filter = get(first) >= 0.9 & sex_1 == sex_2 & eval(second)))
+        expect_identical(bare(got), bare(want))
+    }
+    expect_true(is.na(attr(got, "filter")$before_scoring))
+    expect_equal(attr(got, "compare")$n_scored, rep(nrow(all), 2L))
+    # `.data[[name]]` is no such case: the name is read when the rule is
+    # captured, so the score is seen and waited for like any other.
+    got <- run(filter = .data[[first]] >= 0.9 & sex_1 == sex_2 & gn >= 0.8)
+    expect_identical(bare(got), bare(want))
+    expect_identical(attr(got, "filter")$before_scoring, "sex_1 == sex_2")
+    expect_lt(attr(got, "compare")$n_scored[2L], nrow(all))
+    # A name that is nothing at all is still the caller's mistake.
+    expect_error(run(filter = sn >= 0.9 & gnn >= 0.8),
+                 "could not be evaluated.*gnn.*`sn`, `gn`")
+    nowhere <- "zz"
+    expect_error(run(filter = .data[[nowhere]] >= 0.9),
+                 "could not be evaluated")
+})
+
+test_that("exclude tells a pair from the records in it", {
+    a <- data.frame(frame_id = paste0("a", 1:4), k = 1,
+                    stringsAsFactors = FALSE)
+    b <- data.frame(frame_id = paste0("b", 1:4), k = 1,
+                    stringsAsFactors = FALSE)
+    # Records 1 and 2 of each file are in an excluded pair, but only two of
+    # the four pairs among them are excluded.
+    out <- rLink(a, b, block_1 = k, exclude = c("a1|b2", "a2|b1"),
+                 keep = character())
+    expect_identical(nrow(out), 14L)
+    expect_false(any(c("a1|b2", "a2|b1") %in% out$pair_id))
+    expect_true(all(c("a1|b1", "a2|b2", "a1|b3", "a3|b2") %in% out$pair_id))
+    expect_equal(attr(out, "exclude")$n_excluded, 2)
+    # Excluding everything leaves nothing, and nothing to score.
+    none <- rLink(a, b, block_1 = k, exclude = rLink(a, b, block_1 = k),
+                  compare = list(s = jaro_winkler(frame_id)))
+    expect_identical(nrow(none), 0L)
+    expect_equal(attr(none, "exclude")$n_excluded, 16)
+})
+
+test_that("pairs takes an earlier result, to score it again", {
+    a <- bigger(seed = 67)
+    b <- bigger(seed = 68)
+    first <- rLink(a, b, block_1 = list(yr, soundex(s)),
+                   compare = list(sn = jaro_winkler(s)),
+                   filter = sn >= 0.9, keep = character())
+    again <- rLink(a, b, pairs = first,
+                   compare = list(gn = jaro_winkler(g)), keep = "g")
+    expect_identical(again$index_1, first$index_1)
+    expect_identical(again$index_2, first$index_2)
+    expect_identical(again$pass, first$pass)
+    expect_identical(again$pair_id, first$pair_id)
+    expect_identical(again$gn, jaro_winkler(a$g[first$index_1],
+                                            b$g[first$index_2]))
+    # Under the suffixes it was made with, and after a subset.
+    odd <- rLink(a, b, block_1 = list(yr), suffixes = c(".x", ".y"),
+                 keep = character())
+    part <- odd[seq(1, nrow(odd), by = 7)]
+    back <- rLink(a, b, pairs = part, suffixes = c(".x", ".y"),
+                  keep = character())
+    expect_identical(back$index.x, part$index.x)
+    expect_identical(back$index.y, part$index.y)
+    # Row numbers are about the files they were made from.
+    expect_error(rLink(a[-1, ], b, pairs = first), "600 and 600.*599 and 600")
+    expect_error(rLink(a, b, pairs = data.frame(nope = 1L)), "`x_index`")
+})
+
+test_that("max_block_size can be set pass by pass", {
+    set.seed(69)
+    n <- 300
+    a <- data.frame(k1 = sample(1:40, n, TRUE), k2 = sample(1:5, n, TRUE))
+    b <- data.frame(k1 = sample(1:40, n, TRUE), k2 = sample(1:5, n, TRUE))
+    id <- function(i, j) paste(i, j)
+    loose <- block_pairs(a$k1, b$k1)
+    capped <- suppressWarnings(block_pairs(a$k1, b$k1, max_block_size = 14))
+    second <- block_pairs(a$k2, b$k2)
+    expect_lt(nrow(capped), nrow(loose))
+    # The first pass is capped and the second is not.
+    expect_warning(
+        out <- rLink(a, b, block_1 = list(k1, k2),
+                     max_block_size = c(14, Inf), keep = character()),
+        "Skipped")
+    expect_setequal(id(out$index_1, out$index_2),
+                    union(id(capped$x_index, capped$y_index),
+                          id(second$x_index, second$y_index)))
+    p <- attr(out, "blocking")$passes
+    expect_gt(p$n_skipped[1L], 0)
+    expect_identical(p$n_skipped[2L], 0L)
+    expect_equal(p$n_expected, c(nrow(capped), nrow(second)))
+    expect_equal(sum(out$pass == 1L), nrow(capped))
+    # The other way round caps the second and leaves the first whole.
+    other <- suppressWarnings(rLink(a, b, block_1 = list(k1, k2),
+                                    max_block_size = c(Inf, 14),
+                                    keep = character()))
+    expect_identical(id(other$index_1, other$index_2),
+                     id(loose$x_index, loose$y_index))
+    # One value still means every pass, and a dry run counts the same.
+    plan <- rLink(a, b, block_1 = list(k1, k2), max_block_size = c(14, Inf),
+                  dry_run = TRUE)
+    expect_equal(plan$passes$n_expected, p$n_expected)
+    expect_error(rLink(a, b, block_1 = list(k1, k2),
+                       max_block_size = c(1, 2, 3)),
+                 "one per blocking pass")
+    expect_error(rLink(a, b, block_1 = list(k1, k2),
+                       max_block_size = c(5, NA)), "at least 1")
+    expect_warning(
+        rLink(a, b, block_1 = list(k1, k2),
+              block_method = c("exact", "sorted_neighbourhood"),
+              max_block_size = c(Inf, 10), keep = character()),
+        "pass 2 is a sorted neighbourhood")
 })

@@ -55,6 +55,7 @@ data.frame(names, entity = cluster_pairs(p, n = length(names)))
 Other record linkage pair functions:
 \code{\link[=block_pairs]{block_pairs()}},
 \code{\link[=rLink]{rLink()}},
+\code{\link[=rLink_unmatched]{rLink_unmatched()}},
 \code{\link[=select_greedy]{select_greedy()}},
 \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}}
 }

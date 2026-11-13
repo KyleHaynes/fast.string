@@ -952,7 +952,9 @@ linkage_eval <- function(predicted, truth, n_pairs = NULL, ordered = TRUE) {
 #'   list or matrix of two index vectors. Column names are read as
 #'   [linkage_eval()] reads them.
 #' @param truth The pairs that really match, in the same form.
-#' @param n_1 Number of records in the first file.
+#' @param n_1 Number of records in the first file. May be left out when
+#'   `candidates` is an [rLink()] result, which records how many records it
+#'   was made from and whether they were one file or two.
 #' @param n_2 Number of records in the second file, or `NULL` (the default)
 #'   for deduplication within one file, where the comparison space is
 #'   `n_1 * (n_1 - 1) / 2` and pairs are unordered.
@@ -971,7 +973,19 @@ linkage_eval <- function(predicted, truth, n_pairs = NULL, ordered = TRUE) {
 #' truth <- data.frame(x_index = c(1L, 2L, 3L, 4L), y_index = c(1L, 2L, 3L, 4L))
 #' blocking_eval(candidates, truth, n_1 = 5, n_2 = 5)
 #' @export
-blocking_eval <- function(candidates, truth, n_1, n_2 = NULL) {
+blocking_eval <- function(candidates, truth, n_1 = NULL, n_2 = NULL) {
+    # An rLink() result knows how many records it was made from and whether
+    # they were one file or two, so neither has to be said again.
+    if (is.null(n_1)) {
+        held <- attr(candidates, "n_records")
+        if (is.null(held))
+            stop(paste0("`n_1` is needed: `candidates` does not record how ",
+                        "many records it was made from, as an `rLink()` ",
+                        "result does."), call. = FALSE)
+        n_1 <- held[1L]
+        if (is.null(n_2) && !isTRUE(attr(candidates, "dedupe")))
+            n_2 <- held[2L]
+    }
     ordered <- !is.null(n_2)
     c_pairs <- .as_pair_set(candidates, "candidates", ordered)
     t_pairs <- .as_pair_set(truth, "truth", ordered)

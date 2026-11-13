@@ -266,6 +266,7 @@ this off with \code{options(fast.string.reminders = FALSE)}.
 \itemize{
 \item \code{\link[=select_greedy]{select_greedy()}} - one-to-one links, best weight first
 \item \code{\link[=cluster_pairs]{cluster_pairs()}} - entity IDs from matched pairs
+\item \code{\link[=rLink_unmatched]{rLink_unmatched()}} - records that no pair reaches
 \item \code{\link[=linkage_eval]{linkage_eval()}} - precision, recall and F-measure
 \item \code{\link[=blocking_eval]{blocking_eval()}} - reduction ratio, pairs completeness
 }

@@ -33,14 +33,23 @@ class CodepointSnapshot {
 public:
     CodepointSnapshot(const Rcpp::StringVector& input,
                       const char* argument_name)
-        : owner_(input), size_(static_cast<std::size_t>(input.size())),
-          sources_(size_), views_(size_) {
+        : owner_(input), size_(static_cast<std::size_t>(input.size())) {
         if (ALTREP(static_cast<SEXP>(input))) {
-            Rcpp::CharacterVector materialized(input.size());
-            for (R_xlen_t i = 0; i < input.size(); ++i)
-                SET_STRING_ELT(materialized, i, STRING_ELT(input, i));
-            owner_ = materialized;
+            // `source[index]` that was never built: decode the source once
+            // per record and lay the views out by the index.
+            if (resolve_indexed(input, argument_name)) return;
+            const SEXP expanded = expanded_indexed_strings(input);
+            if (expanded != R_NilValue) {
+                owner_ = expanded;
+            } else {
+                Rcpp::CharacterVector materialized(input.size());
+                for (R_xlen_t i = 0; i < input.size(); ++i)
+                    SET_STRING_ELT(materialized, i, STRING_ELT(input, i));
+                owner_ = materialized;
+            }
         }
+        sources_.resize(size_);
+        views_.resize(size_);
         const SEXP* atoms = static_cast<const SEXP*>(DATAPTR_RO(owner_));
         const SEXP na = NA_STRING;
         std::size_t total = 0;
@@ -182,6 +191,28 @@ private:
         }
     };
 
+    // An indexed vector, decoded once per record of its source. A source
+    // holding a string that cannot be read as Unicode is left to the
+    // ordinary path: that is an error only if a pair reaches the string, and
+    // the message has to give its place among the pairs, both of which are
+    // decided there.
+    bool resolve_indexed(SEXP input, const char* argument_name) {
+        IndexedStrings ix;
+        if (!indexed_strings(input, ix)) return false;
+        std::unique_ptr<CodepointSnapshot> base;
+        try {
+            base.reset(new CodepointSnapshot(
+                Rcpp::StringVector(ix.source), argument_name));
+        } catch (Rcpp::exception&) {
+            return false;
+        }
+        views_.resize(size_);
+        gather_indexed(base->data(), base->size(), ix, views_.data(),
+                       CodepointView{nullptr, 0, true, true});
+        base_ = std::move(base);
+        return true;
+    }
+
     static bool is_ascii(SEXP value, const char* data, std::size_t size) {
 #if R_VERSION >= R_Version(4, 5, 0)
         (void)data; (void)size;
@@ -207,6 +238,9 @@ private:
     std::vector<Source> sources_;
     std::unique_ptr<std::uint32_t[]> codepoints_;
     std::vector<CodepointView> views_;
+    // Set for an indexed vector only: the decoded source the views point
+    // into.
+    std::unique_ptr<CodepointSnapshot> base_;
 };
 
 #endif // FAST_STRING_CODEPOINT_SNAPSHOT_H

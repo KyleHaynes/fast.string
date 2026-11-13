@@ -68,6 +68,7 @@ Other record linkage pair functions:
 \code{\link[=block_pairs]{block_pairs()}},
 \code{\link[=cluster_pairs]{cluster_pairs()}},
 \code{\link[=rLink]{rLink()}},
+\code{\link[=rLink_unmatched]{rLink_unmatched()}},
 \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}}
 }
 \concept{record linkage pair functions}

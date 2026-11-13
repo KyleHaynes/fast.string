@@ -205,10 +205,11 @@
             tf_adjust          = "weight a rare value more heavily"
         ),
         "Resolve & assess" = list(
-            select_greedy = "one-to-one links, best weight first",
-            cluster_pairs = "entity IDs from matched pairs",
-            linkage_eval  = "precision, recall and F-measure",
-            blocking_eval = "reduction ratio, pairs completeness"
+            select_greedy   = "one-to-one links, best weight first",
+            cluster_pairs   = "entity IDs from matched pairs",
+            rLink_unmatched = "records that no pair reaches",
+            linkage_eval    = "precision, recall and F-measure",
+            blocking_eval   = "reduction ratio, pairs completeness"
         ),
         "Review & thresholds" = list(
             threshold_sweep = "links and conflicts by cut-off",

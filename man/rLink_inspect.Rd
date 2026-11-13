@@ -227,6 +227,28 @@ Reopening a file restores \strong{your own} verdicts and comments. Another
 reviewer's are shown against each pair but never filled in for you: a QA
 pass that opens pre-answered is not a check. Who else judged what, and
 where you and they disagree, is then in \code{\link[=read_decisions]{read_decisions()}}\verb{$disagreements}.
+
+The file is saved two seconds after anything changes, and again when the
+app closes. A verdict is encoded once and its text kept, so a save costs
+what the new verdicts cost and not what the whole file does: the
+twenty-thousandth is saved as quickly as the first.
+}
+
+\section{A second look}{
+
+The usual check on a review is a second person going over the first
+one's verdicts, and the queue --- the pairs nearest the cut --- is where
+the first reviewer worked without being a list of what they decided. When
+the file holds somebody else's verdicts on these pairs:
+\itemize{
+\item \strong{Rebuild the queue} offers \emph{the pairs another reviewer judged}, which
+puts exactly those on screen. Their verdict and comment are on each
+pair, beside the table; yours starts blank.
+\item The header counts how many of those earlier verdicts you have gone over
+and on how many the two of you differ.
+\item \emph{Show > judged by another reviewer} and \emph{Show > where I and another
+reviewer disagree} list them, the second being the pairs to talk about.
+}
 }
 
 \section{Limits}{

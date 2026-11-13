@@ -915,6 +915,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fast_indexed_strings_impl
+SEXP fast_indexed_strings_impl(SEXP source, SEXP index, int nthreads);
+RcppExport SEXP _fast_string_fast_indexed_strings_impl(SEXP sourceSEXP, SEXP indexSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type source(sourceSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type index(indexSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_indexed_strings_impl(source, index, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fast_levenshtein_impl
 NumericVector fast_levenshtein_impl(const StringVector& a, const StringVector& b, int nthreads, bool use_bytes);
 RcppExport SEXP _fast_string_fast_levenshtein_impl(SEXP aSEXP, SEXP bSEXP, SEXP nthreadsSEXP, SEXP use_bytesSEXP) {
@@ -1206,8 +1219,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // fast_candidate_pairs_impl
-List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes, const IntegerVector& n_codes, const IntegerVector& half_windows, bool dedupe, double max_block, int nthreads, double x_from_, double x_to_);
-RcppExport SEXP _fast_string_fast_candidate_pairs_impl(SEXP x_codesSEXP, SEXP y_codesSEXP, SEXP n_codesSEXP, SEXP half_windowsSEXP, SEXP dedupeSEXP, SEXP max_blockSEXP, SEXP nthreadsSEXP, SEXP x_from_SEXP, SEXP x_to_SEXP) {
+List fast_candidate_pairs_impl(const List& x_codes, const List& y_codes, const IntegerVector& n_codes, const IntegerVector& half_windows, bool dedupe, const NumericVector& max_blocks, int nthreads, double x_from_, double x_to_);
+RcppExport SEXP _fast_string_fast_candidate_pairs_impl(SEXP x_codesSEXP, SEXP y_codesSEXP, SEXP n_codesSEXP, SEXP half_windowsSEXP, SEXP dedupeSEXP, SEXP max_blocksSEXP, SEXP nthreadsSEXP, SEXP x_from_SEXP, SEXP x_to_SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -1216,11 +1229,11 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const IntegerVector& >::type n_codes(n_codesSEXP);
     Rcpp::traits::input_parameter< const IntegerVector& >::type half_windows(half_windowsSEXP);
     Rcpp::traits::input_parameter< bool >::type dedupe(dedupeSEXP);
-    Rcpp::traits::input_parameter< double >::type max_block(max_blockSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type max_blocks(max_blocksSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     Rcpp::traits::input_parameter< double >::type x_from_(x_from_SEXP);
     Rcpp::traits::input_parameter< double >::type x_to_(x_to_SEXP);
-    rcpp_result_gen = Rcpp::wrap(fast_candidate_pairs_impl(x_codes, y_codes, n_codes, half_windows, dedupe, max_block, nthreads, x_from_, x_to_));
+    rcpp_result_gen = Rcpp::wrap(fast_candidate_pairs_impl(x_codes, y_codes, n_codes, half_windows, dedupe, max_blocks, nthreads, x_from_, x_to_));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1234,6 +1247,22 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const IntegerVector& >::type j(jSEXP);
     Rcpp::traits::input_parameter< int >::type n(nSEXP);
     rcpp_result_gen = Rcpp::wrap(fast_cluster_pairs_impl(i, j, n));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fast_edit_scale_impl
+NumericVector fast_edit_scale_impl(const NumericVector& score, const IntegerVector& len_a, const IntegerVector& len_b, const IntegerVector& xi, const IntegerVector& yi, int nthreads);
+RcppExport SEXP _fast_string_fast_edit_scale_impl(SEXP scoreSEXP, SEXP len_aSEXP, SEXP len_bSEXP, SEXP xiSEXP, SEXP yiSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type score(scoreSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type len_a(len_aSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type len_b(len_bSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type xi(xiSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type yi(yiSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fast_edit_scale_impl(score, len_a, len_b, xi, yi, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1759,6 +1788,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_fuzzy_top_n_impl", (DL_FUNC) &_fast_string_fast_fuzzy_top_n_impl, 10},
     {"_fast_string_fast_hash_impl", (DL_FUNC) &_fast_string_fast_hash_impl, 6},
     {"_fast_string_fast_fold_digest_impl", (DL_FUNC) &_fast_string_fast_fold_digest_impl, 5},
+    {"_fast_string_fast_indexed_strings_impl", (DL_FUNC) &_fast_string_fast_indexed_strings_impl, 3},
     {"_fast_string_fast_levenshtein_impl", (DL_FUNC) &_fast_string_fast_levenshtein_impl, 4},
     {"_fast_string_fast_levenshtein_matrix_impl", (DL_FUNC) &_fast_string_fast_levenshtein_matrix_impl, 4},
     {"_fast_string_fast_osa_distance_impl", (DL_FUNC) &_fast_string_fast_osa_distance_impl, 4},
@@ -1781,6 +1811,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fast_string_fast_value_frequency_impl", (DL_FUNC) &_fast_string_fast_value_frequency_impl, 3},
     {"_fast_string_fast_candidate_pairs_impl", (DL_FUNC) &_fast_string_fast_candidate_pairs_impl, 9},
     {"_fast_string_fast_cluster_pairs_impl", (DL_FUNC) &_fast_string_fast_cluster_pairs_impl, 3},
+    {"_fast_string_fast_edit_scale_impl", (DL_FUNC) &_fast_string_fast_edit_scale_impl, 6},
     {"_fast_string_fast_minhash_pairs_impl", (DL_FUNC) &_fast_string_fast_minhash_pairs_impl, 11},
     {"_fast_string_fast_any_impl", (DL_FUNC) &_fast_string_fast_any_impl, 6},
     {"_fast_string_fast_extract_any_impl", (DL_FUNC) &_fast_string_fast_extract_any_impl, 6},
@@ -1815,7 +1846,9 @@ static const R_CallMethodDef CallEntries[] = {
     {NULL, NULL, 0}
 };
 
+void fast_string_init_indexed_strings(DllInfo* dll);
 RcppExport void R_init_fast_string(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
+    fast_string_init_indexed_strings(dll);
 }

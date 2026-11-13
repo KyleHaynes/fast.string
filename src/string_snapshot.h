@@ -10,6 +10,7 @@
 #include <limits>
 #include <memory>
 #include <vector>
+#include "indexed_strings.h"
 
 // Immutable byte view consumed by worker threads. A null data pointer is
 // reserved for NA; empty non-NA strings retain their ordinary CHAR() pointer.
@@ -88,10 +89,18 @@ public:
           views_(new StringView[static_cast<std::size_t>(input.size())]),
           total_bytes_(0) {
         if (ALTREP(static_cast<SEXP>(input))) {
-            Rcpp::CharacterVector materialized(input.size());
-            for (R_xlen_t i = 0; i < input.size(); ++i)
-                SET_STRING_ELT(materialized, i, STRING_ELT(input, i));
-            owner_ = materialized;
+            // `source[index]` that was never built: resolve the source and
+            // lay its views out by the index. See indexed_strings.h.
+            if (resolve_indexed(input, text)) return;
+            const SEXP expanded = expanded_indexed_strings(input);
+            if (expanded != R_NilValue) {
+                owner_ = expanded;
+            } else {
+                Rcpp::CharacterVector materialized(input.size());
+                for (R_xlen_t i = 0; i < input.size(); ++i)
+                    SET_STRING_ELT(materialized, i, STRING_ELT(input, i));
+                owner_ = materialized;
+            }
         }
 
         // Resolve the ordinary STRSXP pointer array once on the main thread;
@@ -137,13 +146,18 @@ public:
     // Main-thread only: whether element i is presented translated to UTF-8
     // rather than as its own CHAR() bytes.
     bool translated(std::size_t i) const {
-        return !views_[i].is_na() && views_[i].data != CHAR(atoms_[i]);
+        return !views_[i].is_na() && views_[i].data != CHAR(charsxp(i));
     }
 
     // Main-thread-only access for result finalisation paths that can reuse an
     // unchanged CHARSXP. Never call this accessor from Worker::operator().
     SEXP charsxp(std::size_t i) const {
-        return atoms_[i];
+        if (index_ == nullptr) return atoms_[i];
+        const int k = index_[i];
+        if (k == NA_INTEGER || k < 1 ||
+            static_cast<std::size_t>(k) > base_->size())
+            return NA_STRING;
+        return base_->charsxp(static_cast<std::size_t>(k) - 1);
     }
 
     const StringView* data() const noexcept { return views_.get(); }
@@ -151,6 +165,32 @@ public:
     std::uint64_t total_bytes() const noexcept { return total_bytes_; }
 
 private:
+    // The views of an indexed vector, without building it: the source is
+    // resolved once per record and the views are then laid out per pair, in
+    // parallel. Out of line for the reason resolve_utf8() is.
+    //
+    // In the utf8 mode the snapshot also reports whether any string is
+    // non-ASCII or marked "bytes", and those are properties of the strings
+    // the index actually reaches, not of every record. Rather than decide
+    // them per pair, a source that is not plain ASCII is left to the
+    // ordinary path, which expands the vector and reads it as it always
+    // has.
+#if defined(__GNUC__)
+    __attribute__((noinline))
+#endif
+    bool resolve_indexed(SEXP input, SnapshotText text) {
+        IndexedStrings ix;
+        if (!indexed_strings(input, ix)) return false;
+        std::unique_ptr<StringSnapshot> base(
+            new StringSnapshot(Rcpp::StringVector(ix.source), text));
+        if (base->any_non_ascii() || base->any_bytes()) return false;
+        total_bytes_ = gather_indexed(base->data(), base->size(), ix,
+                                      views_.get(), StringView{nullptr, 0});
+        index_ = ix.index;
+        base_ = std::move(base);
+        return true;
+    }
+
     // The SnapshotText::utf8 pass, kept out of line so the constructor's raw
     // loop -- the hot path of every other parallel function -- stays as small
     // as it was (inlining this pass into it doubled the raw pass's time).
@@ -242,6 +282,10 @@ private:
     std::uint64_t total_bytes_;
     bool any_non_ascii_ = false;
     bool any_bytes_ = false;
+    // Set for an indexed vector only: the snapshot of its source, and the
+    // index into it.
+    std::unique_ptr<StringSnapshot> base_;
+    const int* index_ = nullptr;
 #if R_VERSION < R_Version(4, 5, 0)
     int native_utf8_ = -1;  // cached l10n_info()[["UTF-8"]]
 #endif

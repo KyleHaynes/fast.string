@@ -26,6 +26,9 @@ rLink(
   nthreads = NULL,
   verbose = FALSE,
   filter = NULL,
+  exclude = NULL,
+  dry_run = FALSE,
+  max_pairs = Inf,
   block = NULL
 )
 }
@@ -45,25 +48,39 @@ inputs name or store the same information differently (\code{dob} as a \code{Dat
 in one and \code{"DDMMYYYY"} text in the other). Must have as many passes as
 \code{block_1}, each with the same number of terms; a pass given as \code{NULL}
 reuses \code{block_1}'s. By default \code{block_1}'s own expressions are evaluated
-against \code{data_2}. An error when deduplicating, as there is no \code{data_2}.}
+against \code{data_2}. An error when deduplicating, as there is no \code{data_2}:
+to block one file on two different fields, a surname against a maiden
+name, give the file as both inputs and drop the self-pairs with
+\code{filter = index_1 != index_2}.}
 
 \item{compare}{A list of comparator calls, as described above. \code{NULL}
 returns the candidate pairs unscored.}
 
 \item{pairs}{Optional candidate pairs to score instead of blocking: any
 data frame with \code{x_index} and \code{y_index} columns, such as the result of
-\code{\link[=minhash_pairs]{minhash_pairs()}}, \code{\link[=fuzzy_within]{fuzzy_within()}} or \code{\link[=tfidf_top_n]{tfidf_top_n()}}. Supply this or
-\code{block_1}, not both.}
+\code{\link[=minhash_pairs]{minhash_pairs()}}, \code{\link[=fuzzy_within]{fuzzy_within()}} or \code{\link[=tfidf_top_n]{tfidf_top_n()}}, or an earlier
+\code{rLink()} result, whose pairs are then scored again --- the way to run a
+costly comparator over only the pairs a cheap run kept. Only the pairs
+are read, and a result made from files of another size is an error.
+Supply this or \code{block_1}, not both.}
 
 \item{block_method}{\code{"exact"} (the default) requires keys to be equal, via
 \code{\link[=block_pairs]{block_pairs()}}. \code{"sorted_neighbourhood"} also pairs records whose keys
-are near each other in sorted order, via \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}}.}
+are near each other in sorted order, via \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}}. One
+value for every pass, or one per pass.}
 
-\item{window}{Window width for \code{block_method = "sorted_neighbourhood"}; an
-odd positive integer, \code{3} by default.}
+\item{window}{Window width of a sorted-neighbourhood pass; an odd positive
+integer, \code{3} by default. One value for every such pass, or one per pass,
+in which case the entries of exact passes are not read. Not read at all
+when every pass is exact.}
 
-\item{max_block_size}{Blocks holding more records than this are skipped,
-with a warning saying how many. \code{Inf} (the default) keeps every block.}
+\item{max_block_size}{Blocks holding more records than this (from both
+inputs together) are skipped, with a warning saying how many and a count
+per pass in the blocking report. \code{Inf} (the default) keeps every block.
+One value for every pass, or one per pass, as \code{c(Inf, 500)} to cap the
+second pass and leave the first whole. Applies to exact passes only: a
+sorted neighbourhood has no blocks to skip, and a warning says so when
+there is nothing for it to act on.}
 
 \item{match_missing}{Whether records missing a key term can pair with each
 other. See \emph{Missing values}.}
@@ -101,11 +118,24 @@ columns.}
 \item{nthreads}{Positive integer per-call thread cap, or \code{NULL} to use the
 RcppParallel default. \code{1} forces serial execution.}
 
-\item{verbose}{Whether to print per-stage timings and the pairs found.
+\item{verbose}{Whether to print the pairs each pass is expected to give,
+what each comparator was found to return, the pairs found and the time
+taken, with a progress bar when a \code{filter} cuts the run into slices.
 Timings are returned either way, as \code{attr(out, "timings")}.}
 
-\item{filter}{Optional rule saying which scored pairs to keep, such as
-\code{sn >= 0.85 & gn >= 0.8}. Needs \code{compare}. See \emph{Filtering while scoring}.}
+\item{filter}{Optional rule saying which pairs to keep, such as
+\code{sn >= 0.85 & gn >= 0.8} or \code{sex_1 == sex_2}. See \emph{Filtering while
+scoring}.}
+
+\item{exclude}{Optional pairs to leave out: a character vector of
+\code{pair_id}s, or a data frame of pairs by row number, such as an earlier
+result. See \emph{Staged linkage}.}
+
+\item{dry_run}{\code{TRUE} returns the blocking report without generating any
+pairs. See \emph{Checking the blocking}.}
+
+\item{max_pairs}{Stop, before generating any, if the blocking is expected
+to give more candidate pairs than this. \code{Inf} (the default) never stops.}
 
 \item{block}{Former name of \code{block_1}, still accepted. Give one or the
 other, not both.}
@@ -117,8 +147,17 @@ A \code{data.table}, also classed \code{fs_pairs} so that \code{\link[=summary]{
 number), \code{index_1} and \code{index_2} (row numbers into \code{data_1} and \code{data_2},
 suffixed as \code{suffixes} says), \code{pass}, \code{block_key} (when blocking and
 \code{block_key = TRUE}), the carried columns under both suffixes, and one
-column per comparator. Attributes \code{timings} and \code{compare} describe the
-run, and \code{filter} what a \code{filter} removed.
+column per comparator.
+
+Its attributes describe the run, and survive \code{[}, \code{\link[=order]{order()}} and
+\code{\link[=head]{head()}}: \code{timings} (seconds per stage), \code{compare} (what each score is,
+which way it runs and how many pairs it was scored for), \code{blocking} (what each pass did; absent when
+\code{pairs} was given), \code{n_records} (the records in each input), \code{dedupe}
+(whether they were one file), and \code{filter} and \code{exclude} (what each
+removed, when given).
+
+With \code{dry_run = TRUE}, the blocking report alone: a list of class
+\code{fs_blocking} holding \code{passes}, \code{largest}, \code{n_records} and \code{dedupe}.
 }
 \description{
 Finds candidate record pairs by blocking, scores each pair with any number
@@ -141,13 +180,53 @@ agrees on the key of any one pass, and each pair is reported once, with
 \code{c()} separates the \emph{terms} joined into one key, so the pass above requires
 the same Soundex of surname \emph{and} the same date of birth. Passes may have
 different numbers of terms. A single expression, or a \code{c()} of column
-names, is one pass.
+names, is one pass. A pass may be given a name, as in
+\code{list(name = list(soundex(surname), dob), born = dob)}, and the blocking
+report and \code{\link[=summary]{summary()}} then call it that.
 
 Expressions see the data first and the calling environment behind it, so
 \code{soundex(surname, nthreads = my_threads)} resolves \code{my_threads} from the
 caller. \code{.data$x} and \code{.env$x} disambiguate a column that shares a name
 with a local variable, and \verb{!!} builds a specification programmatically.
+
+Every pass requires its keys to be equal unless \code{block_method} says
+otherwise. \code{block_method} and \code{window} each take one value for every pass
+or one value per pass, so a strict pass and a forgiving one run together:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{block_1      = list(list(soundex(surname), dob), surname),
+block_method = c("exact", "sorted_neighbourhood"),
+window       = 5
+}\if{html}{\out{</div>}}
 }
+\section{Checking the blocking}{
+
+Blocking decides what the rest of the run costs and what it can find, and
+it is where a linkage usually goes wrong: one key that half the file
+shares, or a pass that most records have no key for. Every blocked result
+therefore carries a report, \code{attr(out, "blocking")}, which prints as a
+table and holds
+\itemize{
+\item \code{passes}, one row per pass: the key as written for each input, the
+records with no key (\code{n_missing_1}, \code{n_missing_2}), the distinct keys,
+the records in the largest block, the blocks \code{max_block_size} skipped,
+the pairs the pass was expected to give (\code{n_expected}), the candidates
+it was the first to find (\code{n_pairs}) and how many of those are in the
+result (\code{n_kept}, smaller after a \code{filter} or an \code{exclude});
+\item \code{largest}, the five keys of each pass that make the most pairs, with
+the records each side holds. A placeholder such as \code{"UNKNOWN"} or
+\code{"0000"} at the top of this table belongs in \code{na_strings}.
+}
+
+\code{dry_run = TRUE} returns that report and stops: the keys are built and
+every argument is checked, but no pair is generated, so a call can be
+tried on the full files in the time it takes to read them. \code{max_pairs}
+is the same check made automatically --- a run expected to exceed it stops
+before generating anything, naming the pass and the block responsible.
+Before a run the passes can only be added up, and a pair that two passes
+find is counted in both, so with several passes \code{n_expected} totals to an
+upper bound.
+}
+
 \section{Missing values}{
 
 A record whose key is missing pairs with nothing, which is what makes
@@ -183,7 +262,9 @@ A score column takes its name from the list element; unnamed elements fall
 back to \verb{<column>_<comparator>}, so \code{jaro_winkler(given_name)} becomes
 \code{given_name_jaro_winkler}. \code{nthreads} reaches a comparator only when it
 declares that argument, so plain functions of two arguments are safe to
-supply.
+supply. This package's own comparators are also the fastest to use here:
+they are handed each record's string once, however many pairs the record
+is in, where a function of your own is handed one string per pair.
 
 \strong{Columns named differently in the two inputs} are compared by writing
 \code{left | right}: the expression to the left of the \code{|} is evaluated against
@@ -243,6 +324,27 @@ suffix, so \code{sex_1 == sex_2} is as good a rule as one about a score. A pair
 for which it gives \code{NA} --- a score that could not be computed --- is
 dropped.
 
+A rule need not mention a score, and then needs no \code{compare} either:
+\code{filter = sex_1 == sex_2} on its own is a condition on the candidates that
+no blocking key could express, such as \code{abs(yob_1 - yob_2) <= 1}.
+
+Where a rule joins several conditions with \code{&}, each is applied as soon as
+the scores it reads exist, and a comparator only ever sees the pairs still
+in the running when its turn comes. In
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{filter = sex_1 == sex_2 & sn >= 0.85 & gn >= 0.8
+}\if{html}{\out{</div>}}
+
+the first condition reads no score, so it is applied before anything is
+scored; \code{sn} is then scored for the pairs whose sex agrees; \code{gn} is scored
+only for the pairs that passed both; and a comparator the rule does not
+name is scored last, for the pairs that were kept. The comparators run in
+the order the rule asks for them, whatever order \code{compare} lists them in,
+so the condition written first is the one that should drop the most for
+the least: a cheap comparator with a firm cut-off ahead of a costly one.
+\code{attr(out, "compare")$n_scored} says how many pairs each comparator was
+run on. Nothing is taken out of an \code{|}, which needs all of its scores.
+
 The result is the same table as scoring everything and subsetting it, and
 is much cheaper to get. Candidates are generated, scored and thinned a
 slice of the records at a time, so the full candidate set never exists at
@@ -253,10 +355,48 @@ table. A slice holds about ten million candidates; set
 \code{options(fast.string.rlink_slice_pairs = )} to trade memory for fewer
 slices.
 
-What was removed is recorded in \code{attr(out, "filter")}: the rule, the number
-of candidates scored and the number kept. A filtered table is no longer the
-candidate set, so \code{\link[=blocking_eval]{blocking_eval()}} on it measures the blocking and the
-filter together.
+All of this rests on the rule being about one pair at a time. A condition
+that sets a pair against the others, such as \code{sn >= median(sn)}, is
+answered over whichever pairs happen to be in hand when it is asked, which
+is not every candidate; subset the result for that instead.
+
+What was removed is recorded in \code{attr(out, "filter")}: the rule, the part
+of it applied before scoring (\code{before_scoring}), and the number of
+candidates found (\code{n_candidates}), scored by any comparator (\code{n_scored})
+and kept (\code{n_kept}). A filtered table is no longer the candidate set, so
+\code{\link[=blocking_eval]{blocking_eval()}} on it measures the blocking and the filter together.
+}
+
+\section{Staged linkage}{
+
+A large linkage is rarely one run. The usual shape is a strict pass whose
+links can be accepted without review, then a looser one over what is left,
+and two arguments keep the second from repeating the first.
+
+\code{exclude} names pairs to leave out. They are dropped as soon as they are
+found, before scoring, so pairs already settled cost nothing the second
+time. Given as a character vector they are read as \code{pair_id}s and found
+again through the identifier columns, which is what makes them safe to
+carry between runs: the files may have been re-ordered, added to or cut
+down since, and an identifier that is no longer there is simply not
+matched. Given as a data frame --- an earlier result, say --- they are read
+as row numbers, which mean the same records only against the same data, so
+a table made from files of a different size is an error.
+\code{attr(out, "exclude")} records how many were given, how many named records
+that are not there, and how many candidates were left out.
+
+\code{\link[=rLink_unmatched]{rLink_unmatched()}} is the other half: the records no accepted link
+reaches, which are the ones worth a second run.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{first <- rLink(enrol, claims, block_1 = list(list(surname, dob)),
+               compare = list(gn = jaro_winkler(given)))
+links <- first[gn >= 0.95]
+again <- rLink(enrol[rLink_unmatched(links), ],
+               claims[rLink_unmatched(links, side = 2), ],
+               block_1 = list(soundex(surname), dob),
+               compare = list(sn = jaro_winkler(surname),
+                              gn = jaro_winkler(given)))
+}\if{html}{\out{</div>}}
 }
 
 \section{Pair identifiers}{
@@ -393,6 +533,10 @@ nrow(rLink(enrol4, claims, block_1 = list(surname),
 # `max_block_size` skips blocks too big to be worth comparing
 nrow(rLink(enrol, claims, block_1 = list(fsubstr(surname, 1, 1)),
            max_block_size = 2))
+# One limit per pass caps a loose pass and leaves a strict one whole
+nrow(rLink(enrol, claims,
+           block_1 = list(dob, fsubstr(surname, 1, 1)),
+           max_block_size = c(Inf, 2)))
 
 # `pairs` scores candidates found some other way instead of blocking
 rLink(enrol, claims,
@@ -412,7 +556,51 @@ kept <- rLink(enrol, claims,
               filter  = sn >= 0.85 & dob_1 == dob_2,
               keep    = c("surname", "given"))
 kept[, c("surname_1", "surname_2", "sn", "gn")]
-unlist(attr(kept, "filter")[c("n_candidates", "n_kept")])
+# The half of the rule about `dob` reads no score, so it was applied
+# first and only the four pairs it left were ever scored.
+unlist(attr(kept, "filter")[c("n_candidates", "n_scored", "n_kept")])
+# `sn` is what the rest of the rule asks for, so it was scored for those
+# four; `gn`, which the rule does not read, only for the pairs kept.
+attr(kept, "compare")[, c("score", "n_scored")]
+
+# `pairs` takes an earlier result, to score its pairs again: here a
+# second comparator, for the pairs the first run kept.
+rLink(enrol, claims, pairs = kept,
+      compare = list(lev = levenshtein(given)),
+      keep = "given")
+
+# A rule that reads no score needs no `compare`: it is a condition on the
+# candidates that no blocking key could express.
+rLink(enrol, claims,
+      block_1 = list(fsubstr(surname, 1, 1)),
+      filter  = abs(as.numeric(dob_1 - dob_2)) <= 31,
+      keep    = "dob")
+
+# --- checking the blocking --------------------------------------------
+# `dry_run = TRUE` builds the keys and stops: what each pass would do,
+# and not one pair. The passes are named here, and each has its own
+# method -- surname and date of birth exactly, or surnames that sort
+# next to each other.
+plan <- rLink(enrol, claims,
+              block_1      = list(strict = list(soundex(surname), dob),
+                                  near   = surname),
+              block_method = c("exact", "sorted_neighbourhood"),
+              dry_run      = TRUE)
+plan
+plan$passes[, c("label", "method", "n_expected")]
+
+# The same report rides on every result, with what was found filled in.
+# `near` expected six pairs and was the first to find two: the rest had
+# already been found by `strict`.
+both <- rLink(enrol, claims,
+              block_1      = list(strict = list(soundex(surname), dob),
+                                  near   = surname),
+              block_method = c("exact", "sorted_neighbourhood"))
+attr(both, "blocking")$passes[, c("label", "n_expected", "n_pairs")]
+summary(both)
+
+# `max_pairs` stops a run that would be too large, before it starts
+try(rLink(enrol, claims, block_1 = list(1), max_pairs = 10))
 
 # Numbers and dates are compared as numbers and dates: numeric_compare()
 # and date_compare() get the column as it is stored, and a comparator of
@@ -451,6 +639,24 @@ again <- rLink(enrol, claims,
                keep    = character())
 intersect(ided$pair_id, again$pair_id)
 
+# --- staged linkage ---------------------------------------------------
+# Accept the close pairs of the first run as links...
+links <- ided[sn >= 0.95]
+
+# ...and `exclude` leaves them out of the next, however it is blocked.
+# They are named by `pair_id`, so they are found through the identifiers
+# rather than by where the records happen to sit.
+rLink(enrol, claims,
+      block_1 = list(soundex(surname)),
+      compare = list(sn = jaro_winkler(surname)),
+      pair_id = c("id", "ref"),
+      exclude = links$pair_id,
+      keep    = character())
+
+# rLink_unmatched() is the records no link reaches: the residue that a
+# looser second run is for.
+enrol[rLink_unmatched(links), ]
+
 # Deduplicating one file, then turning the matches into entity IDs
 dup <- rLink(enrol, block_1 = list(soundex(surname)),
              compare = list(jaro_winkler(given)))
@@ -460,12 +666,14 @@ cluster_pairs(dup$index_1[dup$given_jaro_winkler > 0.8],
 \seealso{
 \code{\link[=block_pairs]{block_pairs()}} and \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}} for the candidate
 pairs alone, \code{\link[=cluster_pairs]{cluster_pairs()}} to turn matched pairs into entity
-identifiers, and \code{\link[=minhash_pairs]{minhash_pairs()}}, \code{\link[=fuzzy_within]{fuzzy_within()}} and \code{\link[=tfidf_top_n]{tfidf_top_n()}}
-for similarity-based candidates to pass as \code{pairs}.
+identifiers, \code{\link[=rLink_unmatched]{rLink_unmatched()}} for the records no pair reaches, and
+\code{\link[=minhash_pairs]{minhash_pairs()}}, \code{\link[=fuzzy_within]{fuzzy_within()}} and \code{\link[=tfidf_top_n]{tfidf_top_n()}} for
+similarity-based candidates to pass as \code{pairs}.
 
 Other record linkage pair functions:
 \code{\link[=block_pairs]{block_pairs()}},
 \code{\link[=cluster_pairs]{cluster_pairs()}},
+\code{\link[=rLink_unmatched]{rLink_unmatched()}},
 \code{\link[=select_greedy]{select_greedy()}},
 \code{\link[=sorted_neighbourhood]{sorted_neighbourhood()}}
 }
