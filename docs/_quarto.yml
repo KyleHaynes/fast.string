@@ -32,6 +32,10 @@ book:
         - uc-link.qmd
         - uc-metrics.qmd
         - uc-privacy.qmd
+    - part: "The rLink workflow"
+      chapters:
+        - 08-rlink.qmd
+        - 09-rlink-inspect.qmd
     - part: "Under the hood"
       chapters:
         - 03-theory.qmd

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="generator" content="quarto-1.10.19">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>10&nbsp; A worked record-linkage pipeline – fast.string</title>
+<title>12&nbsp; A worked record-linkage pipeline – fast.string</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -279,7 +279,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./04-record-linkage-workflow.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./04-record-linkage-workflow.html"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -387,52 +387,75 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
- <span class="menu-text">Under the hood</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">The rLink workflow</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  <a href="./08-rlink.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Linking people with <code>rLink()</code></span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  <a href="./09-rlink-inspect.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Clerical review with <code>rLink_inspect()</code></span></span></a>
   </div>
 </li>
       </ul>
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
- <span class="menu-text">Reference</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Under the hood</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
   </div>
 </li>
       </ul>
@@ -445,10 +468,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
    
   <ul>
-<li><a href="#the-two-files" id="toc-the-two-files" class="nav-link active" data-scroll-target="#the-two-files"><span class="header-section-number">10.1</span> The two files</a></li>
-  <li><a href="#sec-wf-profile" id="toc-sec-wf-profile" class="nav-link" data-scroll-target="#sec-wf-profile"><span class="header-section-number">10.2</span> Step 1: profile before you match</a></li>
+<li><a href="#the-two-files" id="toc-the-two-files" class="nav-link active" data-scroll-target="#the-two-files"><span class="header-section-number">12.1</span> The two files</a></li>
+  <li><a href="#sec-wf-profile" id="toc-sec-wf-profile" class="nav-link" data-scroll-target="#sec-wf-profile"><span class="header-section-number">12.2</span> Step 1: profile before you match</a></li>
   <li>
-<a href="#sec-wf-standardise" id="toc-sec-wf-standardise" class="nav-link" data-scroll-target="#sec-wf-standardise"><span class="header-section-number">10.3</span> Step 2: standardise, field by field</a>
+<a href="#sec-wf-standardise" id="toc-sec-wf-standardise" class="nav-link" data-scroll-target="#sec-wf-standardise"><span class="header-section-number">12.3</span> Step 2: standardise, field by field</a>
   <ul class="collapse">
 <li><a href="#the-name-field" id="toc-the-name-field" class="nav-link" data-scroll-target="#the-name-field">The name field</a></li>
   <li><a href="#the-date-of-birth" id="toc-the-date-of-birth" class="nav-link" data-scroll-target="#the-date-of-birth">The date of birth</a></li>
@@ -458,26 +481,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#the-standardised-files" id="toc-the-standardised-files" class="nav-link" data-scroll-target="#the-standardised-files">The standardised files</a></li>
   </ul>
 </li>
-  <li><a href="#sec-wf-block" id="toc-sec-wf-block" class="nav-link" data-scroll-target="#sec-wf-block"><span class="header-section-number">10.4</span> Step 3: block, and know what each pass buys you</a></li>
+  <li><a href="#sec-wf-block" id="toc-sec-wf-block" class="nav-link" data-scroll-target="#sec-wf-block"><span class="header-section-number">12.4</span> Step 3: block, and know what each pass buys you</a></li>
   <li>
-<a href="#sec-wf-score" id="toc-sec-wf-score" class="nav-link" data-scroll-target="#sec-wf-score"><span class="header-section-number">10.5</span> Step 4: score each candidate, field by field</a>
+<a href="#sec-wf-score" id="toc-sec-wf-score" class="nav-link" data-scroll-target="#sec-wf-score"><span class="header-section-number">12.5</span> Step 4: score each candidate, field by field</a>
   <ul class="collapse">
 <li><a href="#which-fields-actually-carry-information" id="toc-which-fields-actually-carry-information" class="nav-link" data-scroll-target="#which-fields-actually-carry-information">Which fields actually carry information</a></li>
   </ul>
 </li>
   <li>
-<a href="#sec-wf-decide" id="toc-sec-wf-decide" class="nav-link" data-scroll-target="#sec-wf-decide"><span class="header-section-number">10.6</span> Step 5: decide, and admit ambiguity</a>
+<a href="#sec-wf-decide" id="toc-sec-wf-decide" class="nav-link" data-scroll-target="#sec-wf-decide"><span class="header-section-number">12.6</span> Step 5: decide, and admit ambiguity</a>
   <ul class="collapse">
 <li><a href="#one-to-one-links" id="toc-one-to-one-links" class="nav-link" data-scroll-target="#one-to-one-links">One-to-one links</a></li>
   </ul>
 </li>
-  <li><a href="#sec-wf-entities" id="toc-sec-wf-entities" class="nav-link" data-scroll-target="#sec-wf-entities"><span class="header-section-number">10.7</span> Step 6: entity identifiers</a></li>
-  <li><a href="#sec-wf-evaluate" id="toc-sec-wf-evaluate" class="nav-link" data-scroll-target="#sec-wf-evaluate"><span class="header-section-number">10.8</span> Step 7: what it cost, and what the fast versions bought</a></li>
+  <li><a href="#sec-wf-entities" id="toc-sec-wf-entities" class="nav-link" data-scroll-target="#sec-wf-entities"><span class="header-section-number">12.7</span> Step 6: entity identifiers</a></li>
+  <li><a href="#sec-wf-evaluate" id="toc-sec-wf-evaluate" class="nav-link" data-scroll-target="#sec-wf-evaluate"><span class="header-section-number">12.8</span> Step 7: what it cost, and what the fast versions bought</a></li>
   </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/04-record-linkage-workflow.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./04-record-linkage-workflow.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></a></li></ol></nav><div class="quarto-title">
-<h1 class="title"><span id="sec-workflow" class="quarto-section-identifier"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></h1>
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-theory.html">Under the hood</a></li><li class="breadcrumb-item"><a href="./04-record-linkage-workflow.html"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></a></li></ol></nav><div class="quarto-title">
+<h1 class="title"><span id="sec-workflow" class="quarto-section-identifier"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></h1>
 </div>
 
 
@@ -542,8 +565,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-<section id="the-two-files" class="level2" data-number="10.1"><h2 data-number="10.1" class="anchored" data-anchor-id="the-two-files">
-<span class="header-section-number">10.1</span> The two files</h2>
+<section id="the-two-files" class="level2" data-number="12.1"><h2 data-number="12.1" class="anchored" data-anchor-id="the-two-files">
+<span class="header-section-number">12.1</span> The two files</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">files</span>  <span class="op">&lt;-</span> <span class="fu">people_files</span><span class="op">(</span>n_enrol <span class="op">=</span> <span class="fl">50000</span>, overlap <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span></span>
 <span><span class="va">enrol</span>  <span class="op">&lt;-</span> <span class="va">files</span><span class="op">$</span><span class="va">enrol</span></span>
@@ -594,8 +617,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>One name field holding <code>"SURNAME, Title Given Middle"</code> in title case, with doubled and trailing spaces. The date of birth as <code>"DD/MM/YYYY"</code> text. Sex spelled out, sometimes <code>"Unknown"</code>, sometimes blank. The address as one free-text line with a unit prefix and an abbreviated street type. And a <em>numeric</em> postcode, so every Northern Territory postcode has lost its leading zero.</p>
-</section><section id="sec-wf-profile" class="level2" data-number="10.2"><h2 data-number="10.2" class="anchored" data-anchor-id="sec-wf-profile">
-<span class="header-section-number">10.2</span> Step 1: profile before you match</h2>
+</section><section id="sec-wf-profile" class="level2" data-number="12.2"><h2 data-number="12.2" class="anchored" data-anchor-id="sec-wf-profile">
+<span class="header-section-number">12.2</span> Step 1: profile before you match</h2>
 <p>The fastest way to be wrong about a column is to assume you know its shape. <code>string_shape()</code> collapses each value to a character-class pattern, so the distinct <em>formats</em> in a column are a <code><a href="https://rdrr.io/r/base/table.html">table()</a></code> away:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sort.html">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="fu">string_shape</span><span class="op">(</span><span class="va">claims</span><span class="op">$</span><span class="va">date_of_birth</span><span class="op">)</span><span class="op">)</span>, decreasing <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -624,8 +647,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>About one date of birth in forty-five is 1 January — far more than the 1-in-365 a real population gives. That is the placeholder a clerk types when the date is unknown, and a blocking pass on the exact date would build one huge useless block out of it. <a href="#sec-wf-block" class="quarto-xref"><span class="quarto-unresolved-ref">sec-wf-block</span></a> caps it, and a real project would set those dates to <code>NA</code> instead.</p>
-</section><section id="sec-wf-standardise" class="level2" data-number="10.3"><h2 data-number="10.3" class="anchored" data-anchor-id="sec-wf-standardise">
-<span class="header-section-number">10.3</span> Step 2: standardise, field by field</h2>
+</section><section id="sec-wf-standardise" class="level2" data-number="12.3"><h2 data-number="12.3" class="anchored" data-anchor-id="sec-wf-standardise">
+<span class="header-section-number">12.3</span> Step 2: standardise, field by field</h2>
 <p>The goal is one data frame per file with the same column names, the same types and the same spelling conventions. Every line below is vectorised over the whole column.</p>
 <section id="the-name-field" class="level3"><h3 class="anchored" data-anchor-id="the-name-field">The name field</h3>
 <p><code>fupper()</code> and <code>fsquish()</code> first, so nothing downstream has to think about case or whitespace again; then <code>fsplit_field()</code> on the comma; then <code>freplace_tokens()</code> to drop the titles. <code>freplace_tokens()</code> matches whole tokens from a dictionary in one pass, so <code>"DR"</code> goes and <code>"DRUMMOND"</code> stays — which a <code>gsub("DR", "", ...)</code> would not manage.</p>
@@ -838,8 +861,8 @@ raw           F     M     U
  $ postcode      : chr  "3087" "3013" ...</code></pre>
 </div>
 </div>
-</section></section><section id="sec-wf-block" class="level2" data-number="10.4"><h2 data-number="10.4" class="anchored" data-anchor-id="sec-wf-block">
-<span class="header-section-number">10.4</span> Step 3: block, and know what each pass buys you</h2>
+</section></section><section id="sec-wf-block" class="level2" data-number="12.4"><h2 data-number="12.4" class="anchored" data-anchor-id="sec-wf-block">
+<span class="header-section-number">12.4</span> Step 3: block, and know what each pass buys you</h2>
 <p>Comparing every enrolment record with every claim is 1,500,000,000 pairs. Blocking compares only the records that agree on some key. One key misses every true match with an error <em>in that key</em>, so a linkage runs several passes with keys that fail in different ways:</p>
 <table class="caption-top table">
 <colgroup>
@@ -929,8 +952,8 @@ pass 4       3691       1165 0.316</code></pre>
 </div>
 </div>
 <p>Pass 1 does most of the work at a very high yield. Pass 2 is the expensive one — it is the only pass that survives a transposed day and month, and it pays for that with most of the candidates. Passes 3 and 4 add the records whose surname or date of birth is simply wrong. This table is the blocking design’s justification; a pass that adds no true pairs should be deleted, and a pass with a very low yield is the one to tighten first.</p>
-</section><section id="sec-wf-score" class="level2" data-number="10.5"><h2 data-number="10.5" class="anchored" data-anchor-id="sec-wf-score">
-<span class="header-section-number">10.5</span> Step 4: score each candidate, field by field</h2>
+</section><section id="sec-wf-score" class="level2" data-number="12.5"><h2 data-number="12.5" class="anchored" data-anchor-id="sec-wf-score">
+<span class="header-section-number">12.5</span> Step 4: score each candidate, field by field</h2>
 <p>A single similarity over a concatenated name hides which field disagreed. Score each field separately and keep the columns, so a reviewer can see <em>why</em> a pair scored what it did. <code>rLink()</code> puts each score next to the pair of columns it scores:</p>
 <p>A date of birth deserves better than equal-or-not. The errors it actually carries are a transposed day and month, a year out by one, and the 1 January placeholder — so grade it, and let the weight apply to the grade:</p>
 <div class="cell">
@@ -1119,8 +1142,8 @@ postcode              0.901            0.021     3.74</code></pre>
 </div>
 <p><code>pmax(surname, surname_key)</code> is the “either kind of agreement will do” idiom: the Jaro-Winkler score, or 1 if the two fingerprints are identical, whichever is kinder. The same for the two given-name comparators.</p>
 <p>Hand weights are fine for a first pass as long as they are written down and swept (below). On real data, estimate them: <code>fastLink</code> and <code>reclin2</code> fit Fellegi-Sunter weights, including the conditional-independence and blocking subtleties this section only gestures at.</p>
-</section></section><section id="sec-wf-decide" class="level2" data-number="10.6"><h2 data-number="10.6" class="anchored" data-anchor-id="sec-wf-decide">
-<span class="header-section-number">10.6</span> Step 5: decide, and admit ambiguity</h2>
+</section></section><section id="sec-wf-decide" class="level2" data-number="12.6"><h2 data-number="12.6" class="anchored" data-anchor-id="sec-wf-decide">
+<span class="header-section-number">12.6</span> Step 5: decide, and admit ambiguity</h2>
 <p>Look at the two score distributions before picking a threshold. If they overlap, no single cut-off is right and the overlap is the review queue.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb67"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">qs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.001</span>, <span class="fl">0.01</span>, <span class="fl">0.05</span>, <span class="fl">0.25</span>, <span class="fl">0.5</span><span class="op">)</span></span>
@@ -1231,8 +1254,8 @@ different   0.815 0.780 0.710 0.667 0.63</code></pre>
            29719.0000            29708.0000                0.9999 </code></pre>
 </div>
 </div>
-</section></section><section id="sec-wf-entities" class="level2" data-number="10.7"><h2 data-number="10.7" class="anchored" data-anchor-id="sec-wf-entities">
-<span class="header-section-number">10.7</span> Step 6: entity identifiers</h2>
+</section></section><section id="sec-wf-entities" class="level2" data-number="12.7"><h2 data-number="12.7" class="anchored" data-anchor-id="sec-wf-entities">
+<span class="header-section-number">12.7</span> Step 6: entity identifiers</h2>
 <p>Downstream work wants one identifier per person, not a list of pairs. <code>cluster_pairs()</code> takes the transitive closure of the accepted pairs; offset the second file’s indices so both files share one numbering:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb83"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">n1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">enrol_std</span><span class="op">)</span></span>
@@ -1264,8 +1287,8 @@ different   0.815 0.780 0.710 0.667 0.63</code></pre>
 [3] "e1564331a3a4b0c9267cdcd25af29890a494e678a788b2352549337e36c4ceb4"</code></pre>
 </div>
 </div>
-</section><section id="sec-wf-evaluate" class="level2" data-number="10.8"><h2 data-number="10.8" class="anchored" data-anchor-id="sec-wf-evaluate">
-<span class="header-section-number">10.8</span> Step 7: what it cost, and what the fast versions bought</h2>
+</section><section id="sec-wf-evaluate" class="level2" data-number="12.8"><h2 data-number="12.8" class="anchored" data-anchor-id="sec-wf-evaluate">
+<span class="header-section-number">12.8</span> Step 7: what it cost, and what the fast versions bought</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb89"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>enrol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">enrol_std</span><span class="op">)</span>, claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">claims_std</span><span class="op">)</span>,</span>
 <span>  true_pairs <span class="op">=</span> <span class="fu">true_pair_count</span><span class="op">(</span><span class="va">files</span><span class="op">)</span>,</span>
@@ -1777,12 +1800,12 @@ different   0.815 0.780 0.710 0.667 0.63</code></pre>
   });
   </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
       <a href="./03-theory.html" class="pagination-link" aria-label="Algorithms under the hood">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span>
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
       <a href="./05-function-reference.html" class="pagination-link" aria-label="Function reference">
-        <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Function reference</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Function reference</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

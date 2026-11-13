@@ -388,7 +388,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
- <span class="menu-text">Under the hood</span></a>
+ <span class="menu-text">The rLink workflow</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -396,14 +396,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  <a href="./08-rlink.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Linking people with <code>rLink()</code></span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  <a href="./09-rlink-inspect.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Clerical review with <code>rLink_inspect()</code></span></span></a>
   </div>
 </li>
       </ul>
@@ -411,7 +411,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
- <span class="menu-text">Reference</span></a>
+ <span class="menu-text">Under the hood</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -419,20 +419,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">
 <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
   </div>
 </li>
       </ul>
@@ -495,6 +518,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <strong>Cluster</strong> the matched pairs into entities.</li>
 </ol>
 <p><a href="#sec-rlink-link"><code>rLink()</code></a> does steps 2 and 3 in one call. The rest of this chapter is the toolbox underneath it, for the cases where you want to drive each stage yourself. <a href="#sec-workflow" class="quarto-xref"><span class="quarto-unresolved-ref">sec-workflow</span></a> takes a messy pair of files all the way through, including the standardising and the decision.</p>
+<p>For <code>rLink()</code> itself — worked from the simplest useful call up to a staged production linkage of people, field by field — see <a href="#sec-rlink" class="quarto-xref"><span class="quarto-unresolved-ref">sec-rlink</span></a>, and <a href="#sec-rlink-inspect" class="quarto-xref"><span class="quarto-unresolved-ref">sec-rlink-inspect</span></a> for reviewing the pairs it cannot settle.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 50%">
@@ -573,11 +597,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 2  C004667          Majan,  Wei Gaboll    30/03/2017   Male
 3  C004718       Sanor,  Holor Tekoson    20/09/1977 Female
 4  C013920       Thompspn, Maria Sarah    09/08/1989 Female
-                     address_line postcode
-1     399 Queen Ln, Footscray VIC     3093
-2  376 Flinders Ave, Richmond VIC      842
-3   85 King Street, Brunswick VIC     3193
-4 U15/433 Forest St, St Kilda VIC     3095</code></pre>
+                     address_line postcode contact_phone
+1     399 Queen Ln, Footscray VIC     3093              
+2  376 Flinders Ave, Richmond VIC      842  0494 989 121
+3   85 King Street, Brunswick VIC     3193  03 2336 4436
+4 U15/433 Forest St, St Kilda VIC     3095    0485670230
+            contact_email
+1 person98084@example.net
+2   wei.majan@example.net
+3                        
+4 person11269@example.com</code></pre>
 </div>
 </div>
 <p>The claims file is the awkward one, and awkward in all the usual ways: the whole name in one <code>"SURNAME, Title Given Middle"</code> field in title case with doubled and trailing spaces, the date of birth as <code>"DD/MM/YYYY"</code> text, sex spelled out (and sometimes blank), the address as one line with abbreviated street types and a unit prefix, and a <em>numeric</em> postcode, so <code>0823</code> arrived as <code>823</code>.</p>
@@ -681,7 +710,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 4      sex         &lt;anonymous&gt;            sex            sex similarity
 5  address jaro_winkler_tokens street_address street_address similarity
 6   suburb        jaro_winkler         suburb         suburb similarity
-7 postcode         &lt;anonymous&gt;       postcode       postcode similarity</code></pre>
+7 postcode         &lt;anonymous&gt;       postcode       postcode similarity
+  direction n_scored
+1    higher    34282
+2    higher    34282
+3    higher    34282
+4    higher    34282
+5    higher    34282
+6    higher    34282
+7    higher    34282</code></pre>
 </div>
 </div>
 <p><strong>Comparators see text.</strong> Every comparison column is converted to character first, so a <code>Date</code> reaches the comparator as <code>"YYYY-MM-DD"</code>. Exact agreement therefore just works, but a <em>tolerance</em> needs the date back:</p>
@@ -712,19 +749,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/attr.html">attr</a></span><span class="op">(</span><span class="va">cand</span>, <span class="st">"timings"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>      stage      seconds
-1  validate 0.0001611710
-2      keys 0.0544037819
-3     pairs 0.0099649429
-4    attach 0.0612440109
-5   surname 0.0031449795
-6     given 0.0063190460
-7       dob 0.0052978992
-8       sex 0.0038709641
-9   address 0.0095129013
-10   suburb 0.0027101040
-11 postcode 0.0687429905
-12 assemble 0.0002880096
-13    total 0.2268030643</code></pre>
+1  validate 0.0002470016
+2      keys 0.0460438728
+3     pairs 0.0229949951
+4    report 0.0070211887
+5   surname 0.0024619102
+6     given 0.0061559677
+7       dob 0.0045349598
+8       sex 0.0037920475
+9   address 0.0095169544
+10   suburb 0.0018458366
+11 postcode 0.0017890930
+12   attach 0.0106129646
+13  pair_id 0.0001280308
+14 assemble 0.0002920628
+15    total 0.1216619015</code></pre>
 </div>
 </div>
 <section id="read-the-pass-table-before-you-trust-the-design" class="level3"><h3 class="anchored" data-anchor-id="read-the-pass-table-before-you-trust-the-design">Read the pass table before you trust the design</h3>
@@ -1178,13 +1217,13 @@ pairs_per_1k    0.1     0.1    0.1    0.2        0.1</code></pre>
 <span>  merged <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code> records entities   merged 
-   35000    24767    10233 </code></pre>
+   35000    24763    10237 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb83"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span>cluster_size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tabulate.html">tabulate</a></span><span class="op">(</span><span class="va">entity</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>cluster_size
-    1     2     3     4     5     6     7     8     9    10    11    12    13 
-19713  2485  1248   676   325   158    83    33    29     8     3     1     5 </code></pre>
+    1     2 
+14526 10237 </code></pre>
 </div>
 </div>
 <p>Chaining is the risk, and it is visible right there. The stacked extract holds each shared person exactly twice, so a perfect deduplication would leave clusters of size 1 and 2 only. The clusters of eight and thirteen are not people recorded thirteen times; they are chains, where A matched B, B matched C, and nothing ever compared A with C. Three defences, in order of how much work they are:</p>
@@ -1223,7 +1262,7 @@ pairs_per_1k    0.1     0.1    0.1    0.2        0.1</code></pre>
 <span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   1.30    0.04    1.07 </code></pre>
+   1.21    0.09    0.81 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb87"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>records_a <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">big_enrol</span><span class="op">)</span>, records_b <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">big_std</span><span class="op">)</span>,</span>
 <span>  pairs_possible <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">big_enrol</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">big_std</span><span class="op">)</span>,</span>

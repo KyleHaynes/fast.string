@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.19">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>10&nbsp; Clerical review with rLink_inspect() – fast.string</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./03-theory.html" rel="next">
+<link href="./08-rlink.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-81839be11d7c0a433e0d81da47f36f61.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-6f0e10586235980e3f1c17895143fc2e.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-81839be11d7c0a433e0d81da47f36f61.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-d587337f1b67c02bc0fa53c7f6cf1ddf.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-5200ca5851dd7ad788d12405348fdff5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-d587337f1b67c02bc0fa53c7f6cf1ddf.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light"><script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script><style>html{ scroll-behavior: smooth; }</style>
+</head>
+<body class="nav-sidebar docked quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top"><nav class="quarto-secondary-nav"><div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./08-rlink.html">The rLink workflow</a></li><li class="breadcrumb-item"><a href="./09-rlink-inspect.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Clerical review with <code>rLink_inspect()</code></span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav></header><!-- content --><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto"><div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">fast.string</a> 
+        <div class="sidebar-tools-main tools-wide">
+    <a href="https://github.com/KyleHaynes/fast.string" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">Getting started</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-about.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">About fast.string</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-quickstart.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Quickstart</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">Use cases</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-clean.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Clean and standardise text</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-extract.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Find, flag and extract</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-profile.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Profile and validate columns</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-link.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Match, deduplicate and link records</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Choose a string metric</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uc-privacy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pseudonymise identifiers</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">The rLink workflow</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-rlink.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Linking people with <code>rLink()</code></span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-rlink-inspect.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Clerical review with <code>rLink_inspect()</code></span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">Under the hood</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-record-linkage-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">A worked record-linkage pipeline</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">
+<li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-function-reference.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Function reference</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Benchmarks at scale</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-troubleshooting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Troubleshooting &amp; FAQ</span></span></a>
+  </div>
+</li>
+      </ul>
+</li>
+    </ul>
+</div>
+</nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+<li><a href="#sec-inspect-example" id="toc-sec-inspect-example" class="nav-link active" data-scroll-target="#sec-inspect-example"><span class="header-section-number">10.1</span> A worked example</a></li>
+  <li><a href="#sec-inspect-open" id="toc-sec-inspect-open" class="nav-link" data-scroll-target="#sec-inspect-open"><span class="header-section-number">10.2</span> Opening the review</a></li>
+  <li><a href="#sec-inspect-cut" id="toc-sec-inspect-cut" class="nav-link" data-scroll-target="#sec-inspect-cut"><span class="header-section-number">10.3</span> Choosing the cut</a></li>
+  <li><a href="#sec-inspect-queue" id="toc-sec-inspect-queue" class="nav-link" data-scroll-target="#sec-inspect-queue"><span class="header-section-number">10.4</span> Which pairs to look at</a></li>
+  <li><a href="#sec-inspect-judge" id="toc-sec-inspect-judge" class="nav-link" data-scroll-target="#sec-inspect-judge"><span class="header-section-number">10.5</span> Judging pairs</a></li>
+  <li>
+<a href="#sec-inspect-file" id="toc-sec-inspect-file" class="nav-link" data-scroll-target="#sec-inspect-file"><span class="header-section-number">10.6</span> What gets written</a>
+  <ul class="collapse">
+<li><a href="#applying-them" id="toc-applying-them" class="nav-link" data-scroll-target="#applying-them">Applying them</a></li>
+  </ul>
+</li>
+  <li><a href="#sec-inspect-pairid" id="toc-sec-inspect-pairid" class="nav-link" data-scroll-target="#sec-inspect-pairid"><span class="header-section-number">10.7</span> Why <code>pair_id</code> decides whether any of this survives</a></li>
+  <li><a href="#sec-inspect-weights" id="toc-sec-inspect-weights" class="nav-link" data-scroll-target="#sec-inspect-weights"><span class="header-section-number">10.8</span> Weights, and reviewing on one number instead of five</a></li>
+  <li><a href="#sec-inspect-headless" id="toc-sec-inspect-headless" class="nav-link" data-scroll-target="#sec-inspect-headless"><span class="header-section-number">10.9</span> Running it without a browser</a></li>
+  <li>
+<a href="#argument-reference" id="toc-argument-reference" class="nav-link" data-scroll-target="#argument-reference"><span class="header-section-number">10.10</span> Argument reference</a>
+  <ul class="collapse">
+<li><a href="#limits-worth-knowing" id="toc-limits-worth-knowing" class="nav-link" data-scroll-target="#limits-worth-knowing">Limits worth knowing</a></li>
+  </ul>
+</li>
+  <li><a href="#see-also" id="toc-see-also" class="nav-link" data-scroll-target="#see-also"><span class="header-section-number">10.11</span> See also</a></li>
+  </ul><div class="toc-actions"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/09-rlink-inspect.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./08-rlink.html">The rLink workflow</a></li><li class="breadcrumb-item"><a href="./09-rlink-inspect.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Clerical review with <code>rLink_inspect()</code></span></a></li></ol></nav><div class="quarto-title">
+<h1 class="title"><span id="sec-rlink-inspect" class="quarto-section-identifier"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Clerical review with <code>rLink_inspect()</code></span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header><p><a href="08-rlink.html" class="quarto-xref"><span>Chapter 9</span></a> ends with a table of scored pairs and a threshold. For the pairs well above the cut and well below it, that is the whole decision. For the pairs <em>near</em> it, it is not a decision at all — it is a coin toss dressed up as a number, and on a person linkage those pairs are where the married names, the nicknames, the twins and the father-and-son-with-the-same-name live.</p>
+<p><code>rLink_inspect()</code> is the step between scoring pairs and believing the result. It opens the candidates in a browser, lets you move the cut and see what moves with it, lets you accept or reject individual pairs against the evidence, and writes <strong>every judgement, with a comment, to an append-only JSON file</strong> that somebody else can read back, disagree with, and replay.</p>
+<p>That file is the point. An afternoon of expert judgement that exists only in the analyst’s head is not a reproducible linkage; the same afternoon written down against stable pair identifiers is.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu">rLink</span><span class="op">(</span><span class="va">hospital</span>, <span class="va">registry</span>, block_1 <span class="op">=</span> <span class="va">...</span>, compare <span class="op">=</span> <span class="va">...</span><span class="op">)</span></span>
+<span><span class="va">out</span>   <span class="op">&lt;-</span> <span class="fu">rLink_inspect</span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span>                       <span class="co"># choose a cut, judge the rest</span></span>
+<span><span class="va">out</span>                                                 <span class="co"># prints the R to reproduce it</span></span>
+<span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu">apply_decisions</span><span class="op">(</span><span class="va">pairs</span>, <span class="st">"rLink_decisions.json"</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="sec-inspect-example" class="level2" data-number="10.1"><h2 data-number="10.1" class="anchored" data-anchor-id="sec-inspect-example">
+<span class="header-section-number">10.1</span> A worked example</h2>
+<p>Two small files, built so that every row on screen is a case a reviewer would actually recognise: a hospital admissions extract and a cancer registry notification file.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">hospital</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    frame_id    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"HOS-%04d"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">14</span><span class="op">)</span>,</span>
+<span>    given_name  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARGARET"</span>, <span class="st">"ROBERT"</span>, <span class="st">"THI MINH"</span>, <span class="st">"WILLIAM"</span>, <span class="st">"ELENI"</span>,</span>
+<span>                    <span class="st">"JENNIFER"</span>, <span class="st">"SIOSAIA"</span>, <span class="st">"PRIYA"</span>, <span class="st">"DAVID"</span>, <span class="st">"SOPHIE"</span>,</span>
+<span>                    <span class="st">"ROBERT"</span>, <span class="st">"MOHAMMED"</span>, <span class="st">"KATERINA"</span>, <span class="st">"LUCY"</span><span class="op">)</span>,</span>
+<span>    middle_name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARY"</span>, <span class="st">"JOHN"</span>, <span class="cn">NA</span>, <span class="st">"HENRY"</span>, <span class="cn">NA</span>, <span class="st">"ANNE"</span>, <span class="cn">NA</span>, <span class="st">"DEVI"</span>,</span>
+<span>                    <span class="st">"ALAN"</span>, <span class="cn">NA</span>, <span class="st">"JAMES"</span>, <span class="cn">NA</span>, <span class="st">"MARIA"</span>, <span class="st">"GRACE"</span><span class="op">)</span>,</span>
+<span>    surname     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"O'BRIEN"</span>, <span class="st">"SMITH"</span>, <span class="st">"NGUYEN"</span>, <span class="st">"WILLIAMS"</span>, <span class="st">"PAPADOPOULOS"</span>,</span>
+<span>                    <span class="st">"TAYLOR"</span>, <span class="st">"TUIVAI"</span>, <span class="st">"PATEL"</span>, <span class="st">"ANDERSON"</span>, <span class="st">"WATSON-BROWN"</span>,</span>
+<span>                    <span class="st">"SMITH"</span>, <span class="st">"EL-MASRI"</span>, <span class="st">"DE SILVA"</span>, <span class="st">"MURPHY"</span><span class="op">)</span>,</span>
+<span>    dob         <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1948-11-02"</span>, <span class="st">"1979-07-23"</span>, <span class="st">"1962-03-14"</span>,</span>
+<span>                            <span class="st">"1990-06-08"</span>, <span class="st">"1955-01-30"</span>, <span class="st">"1971-09-19"</span>,</span>
+<span>                            <span class="st">"1986-12-01"</span>, <span class="st">"1993-04-27"</span>, <span class="st">"1964-02-29"</span>,</span>
+<span>                            <span class="st">"1999-08-15"</span>, <span class="st">"1979-12-23"</span>, <span class="st">"1958-05-06"</span>,</span>
+<span>                            <span class="st">"1946-10-11"</span>, <span class="st">"2001-01-01"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    sex         <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"F"</span>, <span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"F"</span>, <span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"M"</span>, <span class="st">"F"</span>,</span>
+<span>                    <span class="st">"M"</span>, <span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"F"</span><span class="op">)</span>,</span>
+<span>    address     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"14 HIGH STREET"</span>, <span class="st">"9 KING STREET"</span>, <span class="st">"88 GYMPIE ROAD"</span>,</span>
+<span>                    <span class="st">"3/22 VICTORIA PARADE"</span>, <span class="st">"61 CHURCH TERRACE"</span>,</span>
+<span>                    <span class="st">"140 COLLINS STREET"</span>, <span class="st">"7 LOGAN ROAD"</span>, <span class="st">"12 RIVER CRESCENT"</span>,</span>
+<span>                    <span class="st">"205 FLINDERS LANE"</span>, <span class="st">"4 BEACH AVENUE"</span>,</span>
+<span>                    <span class="st">"52 WICKHAM TERRACE"</span>, <span class="st">"77 STANLEY COURT"</span>,</span>
+<span>                    <span class="st">"16 FOREST DRIVE"</span>, <span class="st">"31 PARK PLACE"</span><span class="op">)</span>,</span>
+<span>    postcode    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"3121"</span>, <span class="st">"4000"</span>, <span class="st">"4032"</span>, <span class="st">"3065"</span>, <span class="st">"3181"</span>, <span class="st">"3000"</span>, <span class="st">"4102"</span>,</span>
+<span>                    <span class="st">"3122"</span>, <span class="st">"3000"</span>, <span class="st">"3182"</span>, <span class="st">"4059"</span>, <span class="st">"3053"</span>, <span class="st">"3124"</span>, <span class="st">"3072"</span><span class="op">)</span>,</span>
+<span>    phone       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"0412 345 678"</span>, <span class="st">"07 3210 4455"</span>, <span class="st">"0433 221 900"</span>,</span>
+<span>                    <span class="st">"03 9417 8820"</span>, <span class="st">"0400 112 334"</span>, <span class="st">"03 9654 1122"</span>,</span>
+<span>                    <span class="st">"0455 909 118"</span>, <span class="st">"0421 773 640"</span>, <span class="st">"03 9600 7001"</span>,</span>
+<span>                    <span class="st">"0477 310 225"</span>, <span class="st">"0455 882 017"</span>, <span class="st">"03 9347 5512"</span>,</span>
+<span>                    <span class="st">"0402 660 118"</span>, <span class="st">"0466 201 773"</span><span class="op">)</span>,</span>
+<span>    email       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"m.obrien@example.com"</span>, <span class="st">"rob.smith@example.net"</span>,</span>
+<span>                    <span class="st">"minh.nguyen@example.com"</span>, <span class="st">"w.williams@example.org"</span>,</span>
+<span>                    <span class="st">"eleni.p@example.com"</span>, <span class="st">"jen.taylor@example.net"</span>,</span>
+<span>                    <span class="st">"s.tuivai@example.com"</span>, <span class="st">"priya.patel@example.com"</span>,</span>
+<span>                    <span class="st">"d.anderson@example.org"</span>, <span class="st">"sophie.wb@example.com"</span>,</span>
+<span>                    <span class="st">"robert.smith79@example.net"</span>, <span class="st">"m.elmasri@example.com"</span>,</span>
+<span>                    <span class="st">"k.desilva@example.com"</span>, <span class="st">"lucy.murphy@example.net"</span><span class="op">)</span>,</span>
+<span>    stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">registry</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>    frame_id    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"REG-%04d"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">13</span><span class="op">)</span>,</span>
+<span>    given_name  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARGARET"</span>, <span class="st">"BOB"</span>, <span class="st">"MINH"</span>, <span class="st">"BILL"</span>, <span class="st">"HELEN"</span>, <span class="st">"JENNIFER"</span>,</span>
+<span>                    <span class="st">"SIOSAIA"</span>, <span class="st">"PRIYA"</span>, <span class="st">"DAVE"</span>, <span class="st">"SOPHIE"</span>, <span class="st">"MOHAMED"</span>,</span>
+<span>                    <span class="st">"KATERINA"</span>, <span class="st">"LUCY"</span><span class="op">)</span>,</span>
+<span>    middle_name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"MARY"</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="st">"HENRY"</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="st">"PAULO"</span>, <span class="st">"DEVI"</span>, <span class="cn">NA</span>,</span>
+<span>                    <span class="st">"ROSE"</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="st">"GRACE"</span><span class="op">)</span>,</span>
+<span>    surname     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"OBRIEN"</span>, <span class="st">"SMITH"</span>, <span class="st">"NGUYEN"</span>, <span class="st">"WILIAMS"</span>, <span class="st">"PAPADOPOULOS"</span>,</span>
+<span>                    <span class="st">"HARRIS"</span>, <span class="st">"TUIVAI"</span>, <span class="st">"PATEL"</span>, <span class="st">"ANDERSON"</span>, <span class="st">"WATSON BROWN"</span>,</span>
+<span>                    <span class="st">"EL MASRI"</span>, <span class="st">"DE SILVA"</span>, <span class="st">"MURPHY"</span><span class="op">)</span>,</span>
+<span>    dob         <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1948-11-02"</span>, <span class="st">"1979-07-23"</span>, <span class="st">"1962-03-14"</span>,</span>
+<span>                            <span class="st">"1990-06-08"</span>, <span class="st">"1955-01-30"</span>, <span class="st">"1971-09-19"</span>,</span>
+<span>                            <span class="st">"1986-12-01"</span>, <span class="st">"1993-04-27"</span>, <span class="st">"1964-02-29"</span>,</span>
+<span>                            <span class="st">"1999-08-15"</span>, <span class="st">"1958-05-06"</span>, <span class="st">"1946-11-10"</span>,</span>
+<span>                            <span class="st">"2001-01-01"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    sex         <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"F"</span>, <span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"F"</span>, <span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"M"</span>,</span>
+<span>                    <span class="st">"F"</span>, <span class="st">"U"</span><span class="op">)</span>,</span>
+<span>    address     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"14 HIGH ST"</span>, <span class="st">"9 KING ST"</span>, <span class="st">"88 GYMPIE RD"</span>,</span>
+<span>                    <span class="st">"22 VICTORIA PDE"</span>, <span class="st">"61 CHURCH TCE"</span>, <span class="st">"140 COLLINS ST"</span>,</span>
+<span>                    <span class="st">"7 LOGAN RD"</span>, <span class="st">"12 RIVER CRES"</span>, <span class="st">"19 SWANSTON ST"</span>,</span>
+<span>                    <span class="st">"4 BEACH AVE"</span>, <span class="st">"77 STANLEY CT"</span>, <span class="st">"16 FORREST DR"</span>,</span>
+<span>                    <span class="st">"31 PARK PL"</span><span class="op">)</span>,</span>
+<span>    postcode    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"3121"</span>, <span class="st">"4000"</span>, <span class="st">"4032"</span>, <span class="st">"3065"</span>, <span class="st">"3181"</span>, <span class="st">"3000"</span>, <span class="st">"4102"</span>,</span>
+<span>                    <span class="st">"3122"</span>, <span class="st">"3000"</span>, <span class="st">"3182"</span>, <span class="st">"3053"</span>, <span class="st">"3124"</span>, <span class="st">"3072"</span><span class="op">)</span>,</span>
+<span>    phone       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"0412 345 678"</span>, <span class="st">"07 3210 4455"</span>, <span class="st">""</span>, <span class="st">"03 9417 8820"</span>,</span>
+<span>                    <span class="st">"0400 112 334"</span>, <span class="st">"03 9654 1122"</span>, <span class="st">"0455 909 118"</span>,</span>
+<span>                    <span class="st">"0421 773 640"</span>, <span class="st">"03 9600 7001"</span>, <span class="st">"0477 310 225"</span>,</span>
+<span>                    <span class="st">"03 9347 5512"</span>, <span class="st">"0402 660 118"</span>, <span class="st">"0466 201 773"</span><span class="op">)</span>,</span>
+<span>    email       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"m.obrien@example.com"</span>, <span class="st">"rob.smith@example.net"</span>, <span class="st">""</span>,</span>
+<span>                    <span class="st">"w.williams@example.org"</span>, <span class="st">"eleni.p@example.com"</span>,</span>
+<span>                    <span class="st">"jennifer.harris@example.net"</span>, <span class="st">"s.tuivai@example.com"</span>,</span>
+<span>                    <span class="st">"priya.patel@example.com"</span>, <span class="st">""</span>, <span class="st">"sophie.wb@example.com"</span>,</span>
+<span>                    <span class="st">"m.elmasri@example.com"</span>, <span class="st">"k.desilva@example.com"</span>,</span>
+<span>                    <span class="st">"lucy.murphy@example.net"</span><span class="op">)</span>,</span>
+<span>    stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Block on the surname code and the <strong>year</strong> of birth, so a wrong day or month cannot hide a pair, with a second pass on the full date so that a married name is still reachable. Then score the fields <em>separately</em>: a clerical reviewer needs to see which field disagreed, not one number.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu">rLink</span><span class="op">(</span></span>
+<span>    <span class="va">hospital</span>, <span class="va">registry</span>,</span>
+<span>    block_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>name_year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>, <span class="fu">format_date</span><span class="op">(</span><span class="va">dob</span>, <span class="st">"y"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                   dob_only  <span class="op">=</span> <span class="va">dob</span><span class="op">)</span>,</span>
+<span>    compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>surname <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>                   given   <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">given_name</span><span class="op">)</span>,</span>
+<span>                   dob     <span class="op">=</span> <span class="fu">date_compare</span><span class="op">(</span><span class="va">dob</span><span class="op">)</span>,</span>
+<span>                   address <span class="op">=</span> <span class="fu">jaro_winkler_tokens</span><span class="op">(</span><span class="va">address</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"given_name"</span>, <span class="st">"surname"</span>, <span class="st">"dob"</span>, <span class="st">"sex"</span>, <span class="st">"address"</span>, <span class="st">"postcode"</span>,</span>
+<span>             <span class="st">"phone"</span>, <span class="st">"email"</span><span class="op">)</span>,</span>
+<span>    block_key <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">pairs</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"pair_id"</span>, <span class="st">"given_name_1"</span>, <span class="st">"given_name_2"</span>, <span class="st">"surname_1"</span>,</span>
+<span>          <span class="st">"surname_2"</span>, <span class="st">"surname"</span>, <span class="st">"given"</span>, <span class="st">"dob"</span>, <span class="st">"address"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              pair_id given_name_1 given_name_2    surname_1    surname_2
+               &lt;char&gt;       &lt;char&gt;       &lt;char&gt;       &lt;char&gt;       &lt;char&gt;
+ 1: HOS-0001|REG-0001     MARGARET     MARGARET      O'BRIEN       OBRIEN
+ 2: HOS-0002|REG-0002       ROBERT          BOB        SMITH        SMITH
+ 3: HOS-0003|REG-0003     THI MINH         MINH       NGUYEN       NGUYEN
+ 4: HOS-0004|REG-0004      WILLIAM         BILL     WILLIAMS      WILIAMS
+ 5: HOS-0005|REG-0005        ELENI        HELEN PAPADOPOULOS PAPADOPOULOS
+ 6: HOS-0006|REG-0006     JENNIFER     JENNIFER       TAYLOR       HARRIS
+ 7: HOS-0007|REG-0007      SIOSAIA      SIOSAIA       TUIVAI       TUIVAI
+ 8: HOS-0008|REG-0008        PRIYA        PRIYA        PATEL        PATEL
+ 9: HOS-0009|REG-0009        DAVID         DAVE     ANDERSON     ANDERSON
+10: HOS-0010|REG-0010       SOPHIE       SOPHIE WATSON-BROWN WATSON BROWN
+11: HOS-0011|REG-0002       ROBERT          BOB        SMITH        SMITH
+12: HOS-0012|REG-0011     MOHAMMED      MOHAMED     EL-MASRI     EL MASRI
+13: HOS-0013|REG-0012     KATERINA     KATERINA     DE SILVA     DE SILVA
+14: HOS-0014|REG-0013         LUCY         LUCY       MURPHY       MURPHY
+      surname     given        dob   address
+        &lt;num&gt;     &lt;num&gt;      &lt;num&gt;     &lt;num&gt;
+ 1: 0.9571429 1.0000000 1.00000000 0.9407407
+ 2: 1.0000000 0.5000000 1.00000000 0.9407407
+ 3: 1.0000000 0.4166667 1.00000000 0.9666667
+ 4: 0.9708333 0.7261905 1.00000000 0.9074074
+ 5: 1.0000000 0.8666667 1.00000000 0.9284848
+ 6: 0.5555556 1.0000000 1.00000000 0.9500000
+ 7: 1.0000000 1.0000000 1.00000000 0.9600000
+ 8: 1.0000000 1.0000000 1.00000000 0.9666667
+ 9: 1.0000000 0.8483333 1.00000000 0.4833333
+10: 0.9666667 1.0000000 1.00000000 0.9611111
+11: 1.0000000 0.5000000 0.02915728 0.4275794
+12: 0.9333333 0.9750000 1.00000000 0.9571429
+13: 1.0000000 1.0000000 0.50000000 0.9355556
+14: 1.0000000 1.0000000 1.00000000 0.9466667</code></pre>
+</div>
+</div>
+<p>Fourteen candidates, and no threshold settles them. Look at what is there:</p>
+<ul>
+<li>
+<code>HOS-0006 | REG-0006</code> — <strong>JENNIFER TAYLOR</strong> against <strong>JENNIFER HARRIS</strong>. Everything agrees except the surname, which scores 0.556. A married name, and no comparator will ever say so.</li>
+<li>
+<code>HOS-0002 | REG-0002</code> — <strong>ROBERT SMITH</strong> against <strong>BOB SMITH</strong>. The given name scores 0.5 and the pair is a link anyway.</li>
+<li>
+<code>HOS-0011 | REG-0002</code> — <strong>ROBERT SMITH</strong> against <strong>BOB SMITH</strong> again, but the hospital’s <em>other</em> Robert Smith: born five months earlier, in a different suburb, on a different phone. The two name scores are identical to the pair above — 1.000 and 0.500 — so on names alone these two pairs cannot be told apart, and whichever rule accepts one accepts the other.</li>
+<li>
+<code>HOS-0004 | REG-0004</code> — <strong>WILLIAM HENRY WILLIAMS</strong> against <strong>BILL HENRY WILIAMS</strong>: a nickname <em>and</em> a typo at once.</li>
+</ul>
+<p>A cut on the name scores that accepts the second of those accepts the third. The evidence that separates them — a five-month gap in the date of birth, a different suburb, a different phone — is all on the screen, and none of it is in the one number a threshold reads. That is the problem the rest of this chapter is about.</p>
+</section><section id="sec-inspect-open" class="level2" data-number="10.2"><h2 data-number="10.2" class="anchored" data-anchor-id="sec-inspect-open">
+<span class="header-section-number">10.2</span> Opening the review</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">rLink_inspect</span><span class="op">(</span></span>
+<span>    <span class="va">pairs</span>,</span>
+<span>    threshold <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>surname <span class="op">=</span> <span class="fl">0.92</span>, given <span class="op">=</span> <span class="fl">0.80</span>, dob <span class="op">=</span> <span class="fl">0.90</span>, address <span class="op">=</span> <span class="fl">0.80</span><span class="op">)</span>,</span>
+<span>    band      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.75</span>, <span class="fl">0.95</span><span class="op">)</span>,</span>
+<span>    reasons   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"married name"</span>, <span class="st">"nickname"</span>, <span class="st">"transposed date"</span>,</span>
+<span>                  <span class="st">"same name, different person"</span><span class="op">)</span>,</span>
+<span>    decisions <span class="op">=</span> <span class="st">"cancer_registry_review.json"</span></span>
+<span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="fig-inspect-review" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-inspect-review-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="images/rlink-inspect-review.png" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-inspect-review-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.1: The review screen. Scores carry a colour gradient — dark means more like a match — the table is grouped into <em>in scope</em> and <em>out of scope</em>, and the pane on the right is the pair in focus.
+</figcaption></figure>
+</div>
+<p>Six things on that screen are worth knowing about.</p>
+<p><strong>The header counts everything, not what is on screen.</strong> <code>9 of 14 in scope (7 by the cut, 2 forced in, 0 forced out)</code> breaks the total into what the threshold gave and what a person overruled, because those are different kinds of fact and only the second needs defending. <code>9 clean 1:1</code> and <code>0 contested</code> say what the scope does to the <em>records</em> — a record claimed by two links is the failure mode a pair-level precision number hides.</p>
+<p><strong>Out of scope rows are dimmed, not hidden.</strong> A false negative you cannot see is a false negative you will not find.</p>
+<p><strong>The pane on the right is the pair.</strong> Compared fields first, each with the value either file held, the score it earned, and <em>what differs between the two values highlighted</em>. In <a href="#fig-inspect-review" class="quarto-xref">Figure&nbsp;<span>10.1</span></a> the whole of <code>TAYLOR</code> and <code>HARRIS</code> is lit up, because nothing in them matches; on the line below, only the <code>REET</code> of <code>140 COLLINS STREET</code> is, because the rest survives the abbreviation to <code>140 COLLINS ST</code>. One dropped letter reads very differently from a different word, and the highlighting is what makes that visible without reading character by character. Then every other carried column, because somebody deciding whether two records are one person reads the address, the phone and the email as well as the fields that happen to have been scored. This is the single reason to pass a generous <code>keep</code> to <code>rLink()</code> when a review is coming.</p>
+<p><strong>Below the fields: the other candidates for the same two records.</strong> Whether a pair is a link is rarely a question about that pair alone; it is whether it is the best candidate its records have. Each rival is one click away, and where there are none the pane says so — <em>“No other candidate for either record”</em>, which is itself worth knowing, and is what <a href="#fig-inspect-review" class="quarto-xref">Figure&nbsp;<span>10.1</span></a> reports for this pair. For <code>HOS-0011 | REG-0002</code> it would instead list <code>HOS-0002 | REG-0002</code>, which is the entire basis for rejecting it.</p>
+<p><strong>A judgement beats the threshold, both ways.</strong> The cut decides the pairs nobody looks at. Marking a pair a link brings it into scope <em>though its scores failed</em>; marking one not a link takes it out <em>though they passed</em>. That is what a threshold is for — a way of not having to look at a million pairs, not a verdict. In <a href="#fig-inspect-review" class="quarto-xref">Figure&nbsp;<span>10.1</span></a> the JENNIFER TAYLOR / HARRIS pair carries an orange marker down its left edge and the pane says <strong>judged a link, overriding the cut</strong>.</p>
+<p><strong>The stock <code>reasons</code> are bound to the number keys.</strong> <code>1</code> files “married name” as the comment on the pair in focus. Over a few thousand verdicts that is the difference between comments that get written and comments that do not.</p>
+</section><section id="sec-inspect-cut" class="level2" data-number="10.3"><h2 data-number="10.3" class="anchored" data-anchor-id="sec-inspect-cut">
+<span class="header-section-number">10.3</span> Choosing the cut</h2>
+<p>One slider and one numeric box per score, kept in step, so a cut can be dragged or typed exactly. Beyond <code>all</code> and <code>any</code>, a rule can be written out — <code>surname &gt;= 0.9 | (surname &gt;= 0.8 &amp; given &gt;= 0.95)</code> — checked as you type, stored with the threshold, and re-applied by <code>apply_decisions()</code>.</p>
+<div id="fig-inspect-sweep" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-inspect-sweep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="images/rlink-inspect-sweep.png" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-inspect-sweep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.2: The threshold sweep, and per-row scope labels with grouping turned off. Each row of the sweep is a cut-off; clicking one moves that score’s cut there.
+</figcaption></figure>
+</div>
+<p>The <strong>Threshold sweep</strong> panel answers the question a threshold is actually about. For every candidate cut-off of one score it reports how many pairs survive, how many records each side links, how many links are cleanly one-to-one, and how many records end up <strong>contested</strong> — claimed by more than one link. You almost never know the truth; you always know when a cut-off starts producing records that two different people claim.</p>
+<p>The same evidence is available at the console, which is where it belongs for a scripted run:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">threshold_sweep</span><span class="op">(</span><span class="va">pairs</span>, <span class="st">"surname"</span><span class="op">)</span><span class="op">[</span></span>
+<span>    , <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"threshold"</span>, <span class="st">"n_pairs"</span>, <span class="st">"n_one_to_one"</span>, <span class="st">"n_conflict_1"</span>, <span class="st">"n_conflict_2"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  threshold n_pairs n_one_to_one n_conflict_1 n_conflict_2
+1 1.0000000       9            7            0            1
+2 0.9708333      10            8            0            1
+3 0.9666667      11            9            0            1
+4 0.9571429      12           10            0            1
+5 0.9333333      13           11            0            1
+6 0.5555556      14           12            0            1</code></pre>
+</div>
+</div>
+<p>Read the <code>n_conflict_2</code> column: it is <strong>1 at every cut-off, including the strictest</strong>. <code>REG-0002</code> is claimed by both Robert Smith pairs, and both score a flat 1.000 on surname, so no cut on this score will ever separate them — tightening it only throws away good links while the conflict survives. The sweep says that without being told the answer, and what it is saying is <em>stop moving this slider and go and look.</em></p>
+<p><strong>Suggest a cut</strong> reads that sweep and proposes the last cut-off that buys more clean one-to-one links than it does contested records, and says so in a sentence. Clicking a row of the sweep table moves that score’s cut there, so the evidence and the control are the same object.</p>
+<p>Which score the sweep is about is chosen in the sidebar. That matters: it is the second and third fields, not the first, where a reviewer has least idea where the cut belongs.</p>
+</section><section id="sec-inspect-queue" class="level2" data-number="10.4"><h2 data-number="10.4" class="anchored" data-anchor-id="sec-inspect-queue">
+<span class="header-section-number">10.4</span> Which pairs to look at</h2>
+<p>A threshold is a way of <em>not</em> having to look at every pair. Three features are about choosing which ones to look at instead.</p>
+<p><strong>The review band</strong> is a range of one score — <code>band = c(0.75, 0.95)</code> above, or the two boxes in the sidebar — inside which a cut cannot be trusted and a person has to look. The header counts the pairs in it, how many have been judged and how many are left, which is the review’s progress bar. <em>Show &gt; in the review band, undecided</em> lists what is left. The cut still decides any pair nobody gets to.</p>
+<p><strong>The queue</strong> is the <code>max_pairs</code> pairs put on screen (20,000 by default), chosen by <code>review_order()</code>. It opens as the pairs nearest the cut — the ones a threshold cannot settle — and <strong>Rebuild the queue</strong> draws it again around the cut as it now stands, or around the band, or as an audit sample. Pairs already judged stay in it wherever the cut has gone.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># The same ordering at the console: the pairs a cut of 0.92 on the surname</span></span>
+<span><span class="co"># settles least confidently come first, and the settled ones come last.</span></span>
+<span><span class="va">pairs</span><span class="op">$</span><span class="va">pair_id</span><span class="op">[</span><span class="fu">review_order</span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">surname</span>, threshold <span class="op">=</span> <span class="fl">0.92</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "HOS-0012|REG-0011" "HOS-0001|REG-0001" "HOS-0010|REG-0010"
+ [4] "HOS-0004|REG-0004" "HOS-0002|REG-0002" "HOS-0003|REG-0003"
+ [7] "HOS-0005|REG-0005" "HOS-0007|REG-0007" "HOS-0008|REG-0008"
+[10] "HOS-0009|REG-0009" "HOS-0011|REG-0002" "HOS-0013|REG-0012"
+[13] "HOS-0014|REG-0013" "HOS-0006|REG-0006"</code></pre>
+</div>
+</div>
+<p>Note where the married-name pair lands: <strong>last</strong>. It is 0.36 below the cut, so by distance it is the most settled pair in the file — and it is also the one the cut gets most wrong. Distance from a cut is a good way to find the pairs a threshold cannot settle; it is not a way to find the pairs a threshold settles <em>wrongly</em>. That is what the review band and the audit sample are for.</p>
+<p><strong>The audit sample</strong> answers the other question a linkage is always asked: of the pairs the cut lets through <em>unseen</em>, how many are wrong? It is a fixed sample of them — the ones whose identifiers hash smallest, so it is the same sample whoever opens the review, and drawing it does not disturb the random number stream. Judge it and the header estimates the false-link rate with a 95% interval.</p>
+<p>The band and the audit are both filed alongside a recorded threshold, because <em>“0.82”</em> and <em>“0.82, having looked at everything between 0.75 and 0.95 and found three wrong links in a sample of 200”</em> are different claims.</p>
+</section><section id="sec-inspect-judge" class="level2" data-number="10.5"><h2 data-number="10.5" class="anchored" data-anchor-id="sec-inspect-judge">
+<span class="header-section-number">10.5</span> Judging pairs</h2>
+<p>Three buttons and a comment box on every row, and the same on the pair beside the table. Ctrl-click (cmd-click) marks rows, shift-click marks a range, and the marked set is judged in one action — which is how a block of obvious links is dealt with without 200 clicks. Marks follow the <em>pair</em>, not the row position, so they survive sorting, filtering and paging.</p>
+<p>The whole review can be done from the keyboard, which is most of what makes a few thousand verdicts bearable:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Key</th>
+<th></th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>j</code> <code>k</code>, or the arrows</td>
+<td>the next and the previous pair, turning the page at either end</td>
+</tr>
+<tr class="even">
+<td>
+<code>y</code> <code>n</code>
+</td>
+<td>a link, not a link — then on to the next pair nobody has judged</td>
+</tr>
+<tr class="odd">
+<td><code>u</code></td>
+<td>undecided again</td>
+</tr>
+<tr class="even">
+<td><code>x</code></td>
+<td>mark or unmark the pair in focus</td>
+</tr>
+<tr class="odd">
+<td><code>c</code></td>
+<td>write a comment (<code>Esc</code> to come back)</td>
+</tr>
+<tr class="even">
+<td>
+<code>1</code> to <code>9</code>
+</td>
+<td>file one of the stock <code>reasons</code> as the comment</td>
+</tr>
+<tr class="odd">
+<td><code>Ctrl+Z</code></td>
+<td>take the last action back</td>
+</tr>
+<tr class="even">
+<td><code>?</code></td>
+<td>show this list</td>
+</tr>
+</tbody>
+</table>
+<p>Taking an action back is itself recorded. The log is append-only, and a verdict reached and then withdrawn is a different history from one never reached. A comment is saved as it is typed, so closing the tab loses nothing.</p>
+<p>Because an override is a decision somebody has to defend, it is reported as one rather than folded into the total: the scope cell says <strong>forced in</strong> or <strong>forced out</strong> where the judgement contradicts the cut and <strong>confirmed</strong> where it agrees (both visible in <a href="#fig-inspect-sweep" class="quarto-xref">Figure&nbsp;<span>10.2</span></a>); those rows carry a marker down their left edge; the header breaks the total into what the cut gave and what was forced either way; and <em>Show &gt; overriding the cut</em> lists exactly that set — which is the page to re-read before a linkage is signed off.</p>
+</section><section id="sec-inspect-file" class="level2" data-number="10.6"><h2 data-number="10.6" class="anchored" data-anchor-id="sec-inspect-file">
+<span class="header-section-number">10.6</span> What gets written</h2>
+<p>Closing with <strong>Finish and close</strong> returns a <code>read_decisions()</code> object, so <code>out</code> holds the whole review. The same file can be read back at any time by anyone:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># This chapter cannot click anything, so here is the file as it stands the</span></span>
+<span><span class="co"># moment the review opens: the run recorded, the opening cut recorded, and</span></span>
+<span><span class="co"># nobody has judged a pair yet. `launch = FALSE` is what makes that</span></span>
+<span><span class="co"># reproducible -- the file is written either way.</span></span>
+<span><span class="va">review_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"cancer_registry_review.json"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html">unlink</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">review_file</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="va">review_file</span>, <span class="st">".bak"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html">invisible</a></span><span class="op">(</span><span class="fu">rLink_inspect</span><span class="op">(</span></span>
+<span>    <span class="va">pairs</span>, decisions <span class="op">=</span> <span class="va">review_file</span>, reviewer <span class="op">=</span> <span class="st">"a.analyst"</span>,</span>
+<span>    threshold <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>surname <span class="op">=</span> <span class="fl">0.92</span>, given <span class="op">=</span> <span class="fl">0.80</span>, dob <span class="op">=</span> <span class="fl">0.90</span>, address <span class="op">=</span> <span class="fl">0.80</span><span class="op">)</span>,</span>
+<span>    band <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.75</span>, <span class="fl">0.95</span><span class="op">)</span>, launch <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>    reasons <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"married name"</span>, <span class="st">"nickname"</span>, <span class="st">"transposed date"</span>,</span>
+<span>                <span class="st">"same name, different person"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">held</span> <span class="op">&lt;-</span> <span class="fu">read_decisions</span><span class="op">(</span><span class="va">review_file</span><span class="op">)</span></span>
+<span><span class="va">held</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>── Pair decisions ──────────────────────────────────────────────────────────────
+File: C:/Users/kyleh/AppData/Local/Temp/Rtmpi4YLwo/cancer_registry_review.json
+1 session, 0 decision events
+
+Sessions
+  reviewer                  started n_pairs n_shown truncated
+ a.analyst 2026-11-12T19:19:02.917Z      14      14     FALSE
+
+Thresholds accepted
+  2026-11-12T19:19:02.917Z by a.analyst: surname &gt;= 0.92 &amp; given &gt;= 0.8 &amp; dob &gt;= 0.9 &amp; address &gt;= 0.8
+      Given to rLink_inspect() when the review was opened.
+
+── Put this in your script ─────────────────────────────────────────────────────
+# Re-open this review, decisions and all:
+rLink_inspect(pairs, decisions = "C:/Users/kyleh/AppData/Local/Temp/Rtmpi4YLwo/cancer_registry_review.json")
+
+# Apply it, adding `link` and `link_reason` columns:
+pairs &lt;- apply_decisions(pairs, "C:/Users/kyleh/AppData/Local/Temp/Rtmpi4YLwo/cancer_registry_review.json")</code></pre>
+</div>
+</div>
+<p>A <code>read_decisions()</code> object holds four things, and each is there for a different reader:</p>
+<p><code>$runs</code> — one row per review session: who, when, on what data, with which package and R version, and a fingerprint of the pair set and the scores. If the data has moved under a set of decisions, this is what says so.</p>
+<p><code>$thresholds</code> — every cut that was <em>accepted</em>, with the note the reviewer typed, the rule in force, and the effect it had (pairs, clean one-to-one links, contested records on each side). A threshold with a reason attached is an audit trail; a threshold in a script is a magic number.</p>
+<p><code>$decisions</code> — one row per reviewer per pair: the verdict, the comment, and the scores the pair had <em>at the moment it was judged</em>. That last part matters when the comparators are later changed.</p>
+<p><code>$disagreements</code> — where two reviewers judged the same pair differently. This is the whole reason the file is append-only: a second reviewer’s session is <strong>added</strong> to it, never written over it. Reopening a file restores <em>your own</em> verdicts and comments, and shows another reviewer’s against each pair without filling them in for you — a QA pass that opens pre-answered is not a check.</p>
+<p>Printing the object ends with the R needed to reproduce and apply exactly these decisions, ready to paste into the script.</p>
+<section id="applying-them" class="level3"><h3 class="anchored" data-anchor-id="applying-them">Applying them</h3>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">decided</span> <span class="op">&lt;-</span> <span class="fu">apply_decisions</span><span class="op">(</span><span class="va">pairs</span>, <span class="va">review_file</span><span class="op">)</span></span>
+<span><span class="va">decided</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"pair_id"</span>, <span class="st">"surname"</span>, <span class="st">"given"</span>, <span class="st">"link"</span>, <span class="st">"link_reason"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              pair_id   surname     given   link     link_reason
+               &lt;char&gt;     &lt;num&gt;     &lt;num&gt; &lt;lgcl&gt;          &lt;char&gt;
+ 1: HOS-0001|REG-0001 0.9571429 1.0000000   TRUE       threshold
+ 2: HOS-0002|REG-0002 1.0000000 0.5000000  FALSE below threshold
+ 3: HOS-0003|REG-0003 1.0000000 0.4166667  FALSE below threshold
+ 4: HOS-0004|REG-0004 0.9708333 0.7261905  FALSE below threshold
+ 5: HOS-0005|REG-0005 1.0000000 0.8666667   TRUE       threshold
+ 6: HOS-0006|REG-0006 0.5555556 1.0000000  FALSE below threshold
+ 7: HOS-0007|REG-0007 1.0000000 1.0000000   TRUE       threshold
+ 8: HOS-0008|REG-0008 1.0000000 1.0000000   TRUE       threshold
+ 9: HOS-0009|REG-0009 1.0000000 0.8483333  FALSE below threshold
+10: HOS-0010|REG-0010 0.9666667 1.0000000   TRUE       threshold
+11: HOS-0011|REG-0002 1.0000000 0.5000000  FALSE below threshold
+12: HOS-0012|REG-0011 0.9333333 0.9750000   TRUE       threshold
+13: HOS-0013|REG-0012 1.0000000 1.0000000  FALSE below threshold
+14: HOS-0014|REG-0013 1.0000000 1.0000000   TRUE       threshold</code></pre>
+</div>
+</div>
+<p>Nobody judged anything in this file, so every verdict above is the recorded threshold’s — and it is worth reading as an indictment of thresholds. Seven of the fourteen are refused, and six of those seven are true links:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead><tr class="header">
+<th>Pair</th>
+<th>Refused on</th>
+<th>What it really is</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>HOS-0002 REG-0002</code></td>
+<td>
+<code>given</code> 0.50</td>
+<td>
+<code>ROBERT</code> / <code>BOB</code> — a nickname</td>
+</tr>
+<tr class="even">
+<td><code>HOS-0003 REG-0003</code></td>
+<td>
+<code>given</code> 0.42</td>
+<td>
+<code>THI MINH</code> / <code>MINH</code> — a dropped name element</td>
+</tr>
+<tr class="odd">
+<td><code>HOS-0004 REG-0004</code></td>
+<td>
+<code>given</code> 0.73</td>
+<td>
+<code>WILLIAM</code> / <code>BILL</code>, and a typo in the surname</td>
+</tr>
+<tr class="even">
+<td><code>HOS-0006 REG-0006</code></td>
+<td>
+<code>surname</code> 0.56</td>
+<td>
+<code>TAYLOR</code> / <code>HARRIS</code> — a married name</td>
+</tr>
+<tr class="odd">
+<td><code>HOS-0009 REG-0009</code></td>
+<td>
+<code>address</code> 0.48</td>
+<td>they moved</td>
+</tr>
+<tr class="even">
+<td><code>HOS-0013 REG-0012</code></td>
+<td>
+<code>dob</code> 0.50</td>
+<td>
+<code>1946-10-11</code> / <code>1946-11-10</code> — transposed</td>
+</tr>
+<tr class="odd">
+<td><code>HOS-0011 REG-0002</code></td>
+<td>
+<code>dob</code> 0.03, <code>address</code> 0.43, <code>given</code> 0.50</td>
+<td>correctly refused: a different Robert Smith</td>
+</tr>
+</tbody>
+</table>
+<p>Every one of the six mistakes has the same shape: a single field disagrees for a reason that is not evidence against identity, and every other field agrees. The one correct refusal is right for a good reason — two <em>other</em> fields, the date of birth and the address, carry evidence the names do not.</p>
+<p>And that is the trap. The obvious fix is to loosen the <code>given</code> cut, but <code>HOS-0002 | REG-0002</code> (a link) and <code>HOS-0011 | REG-0002</code> (not one) score <strong>identically</strong> on both name fields — 1.000 and 0.500. No cut on a name score can ever accept the first and refuse the second. Separating them has to come from somewhere else: another field, a weight that combines them (<a href="#sec-inspect-weights" class="quarto-xref"><span>Section 10.8</span></a>), or a person.</p>
+<p><code>apply_decisions()</code> resolves the threshold and the per-pair judgements in the same order the app displayed them: the recorded threshold decides every pair nobody looked at, and a per-pair verdict overrides it either way. <strong>The counts on screen are therefore the counts the next run produces</strong> — a reviewer can include a pair the cut threw out and watch the header agree with them.</p>
+<p>It adds a <code>link</code> column and a <code>link_reason</code> saying why each pair is or is not a link: the threshold, or a named reviewer’s verdict.</p>
+</section></section><section id="sec-inspect-pairid" class="level2" data-number="10.7"><h2 data-number="10.7" class="anchored" data-anchor-id="sec-inspect-pairid">
+<span class="header-section-number">10.7</span> Why <code>pair_id</code> decides whether any of this survives</h2>
+<p>Decisions are filed against <code>pair_id</code>. They find their pairs again after <code>rLink()</code> is re-run with different blocking <strong>if and only if</strong> <code>pair_id</code> was built from record identifiers rather than row numbers.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># The same two files, blocked completely differently</span></span>
+<span><span class="va">again</span> <span class="op">&lt;-</span> <span class="fu">rLink</span><span class="op">(</span><span class="va">hospital</span>, <span class="va">registry</span>,</span>
+<span>               block_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu">soundex</span><span class="op">(</span><span class="va">given_name</span><span class="op">)</span>, <span class="va">postcode</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>               compare <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>surname <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">surname</span><span class="op">)</span>,</span>
+<span>                              given   <span class="op">=</span> <span class="fu">jaro_winkler</span><span class="op">(</span><span class="va">given_name</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>               keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>first_run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span>, second_run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">again</span><span class="op">)</span>,</span>
+<span>  shared_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sets.html">intersect</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">pair_id</span>, <span class="va">again</span><span class="op">$</span><span class="va">pair_id</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  married_name_pair_still_named <span class="op">=</span></span>
+<span>      <span class="st">"HOS-0006|REG-0006"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html">intersect</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">pair_id</span>, <span class="va">again</span><span class="op">$</span><span class="va">pair_id</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                    first_run                    second_run 
+                           14                             8 
+                   shared_ids married_name_pair_still_named 
+                            8                             1 </code></pre>
+</div>
+</div>
+<p>The second run finds a different, smaller set of candidates, and the pairs it shares with the first still carry the same names. So the verdict “married name, this is a link”, recorded against <code>HOS-0006|REG-0006</code>, still finds its pair. Row numbers would not have survived: <code>index_1</code> and <code>index_2</code> mean whatever the inputs happened to contain that day.</p>
+<p>The app says so itself when it cannot promise this: open it on pairs whose <code>pair_id</code> is a sequence number and a banner appears saying the decisions will not find their pairs again. If you intend to review a linkage, give <code>rLink()</code> a <code>pair_id</code> — see <a href="08-rlink.html#sec-rlink-pairid" class="quarto-xref"><span>Section 9.5</span></a>.</p>
+</section><section id="sec-inspect-weights" class="level2" data-number="10.8"><h2 data-number="10.8" class="anchored" data-anchor-id="sec-inspect-weights">
+<span class="header-section-number">10.8</span> Weights, and reviewing on one number instead of five</h2>
+<p>With <code>rLink_weights()</code> the cut is on the <strong>match probability</strong> alone, the field scores become the evidence behind it, and the pair pane also reports how many bits each field contributed to the weight. For a linkage with six or eight comparators that is a far easier review: one slider, and an explanation per pair of where the number came from.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">scored</span> <span class="op">&lt;-</span> <span class="fu">rLink_weights</span><span class="op">(</span><span class="va">pairs</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="va">scored</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">weight</span><span class="op">)</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"pair_id"</span>, <span class="st">"surname"</span>, <span class="st">"given"</span>, <span class="st">"dob"</span>, <span class="st">"weight"</span>, <span class="st">"probability"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>     <span class="fl">5</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             pair_id   surname given   dob   weight probability
+              &lt;char&gt;     &lt;num&gt; &lt;num&gt; &lt;num&gt;    &lt;num&gt;       &lt;num&gt;
+1: HOS-0006|REG-0006 0.5555556     1   1.0 64.31631           1
+2: HOS-0013|REG-0012 1.0000000     1   0.5 63.50895           1
+3: HOS-0001|REG-0001 0.9571429     1   1.0 35.26695           1
+4: HOS-0010|REG-0010 0.9666667     1   1.0 35.26695           1
+5: HOS-0007|REG-0007 1.0000000     1   1.0 33.36006           1</code></pre>
+</div>
+</div>
+<p>Fourteen pairs is far too few to fit a Fellegi-Sunter model — every probability here comes out at 1, which is what overfitting looks like, and <a href="08-rlink.html" class="quarto-xref"><span>Chapter 9</span></a> fits one on 34,000 candidates instead. But the <em>ordering</em> is already saying something true: the married-name pair ranks <strong>first</strong>. The model has worked out from the data that surname disagreement is common among matches and that agreement on everything else is rare among non-matches, which is precisely the judgement a reviewer makes by hand in <a href="#fig-inspect-review" class="quarto-xref">Figure&nbsp;<span>10.1</span></a>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">rLink_inspect</span><span class="op">(</span><span class="va">scored</span>, threshold <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>probability <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span>,</span>
+<span>              band <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.2</span>, <span class="fl">0.95</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section><section id="sec-inspect-headless" class="level2" data-number="10.9"><h2 data-number="10.9" class="anchored" data-anchor-id="sec-inspect-headless">
+<span class="header-section-number">10.9</span> Running it without a browser</h2>
+<p><code>launch</code> defaults to <code><a href="https://rdrr.io/r/base/interactive.html">interactive()</a></code>, so the decisions file is still written — and an unwritable path still fails loudly — when the call is made from a script or a test. With <code>launch = FALSE</code> the <code>shiny.appobj</code> comes back invisibly, to be run or inspected later.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">built</span> <span class="op">&lt;-</span> <span class="fu">rLink_inspect</span><span class="op">(</span><span class="va">pairs</span>, decisions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"qa.json"</span><span class="op">)</span>,</span>
+<span>                       launch <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/class.html">class</a></span><span class="op">(</span><span class="va">built</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "shiny.appobj"</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/basename.html">basename</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html">list.files</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html">tempdir</a></span><span class="op">(</span><span class="op">)</span>, pattern <span class="op">=</span> <span class="st">"qa.json$"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "qa.json"</code></pre>
+</div>
+</div>
+<p>The file is written as soon as the app is built, with the opening threshold if one was given, so a bad path is an error now rather than after an hour of review, and the file records that this data was opened even if nothing was decided.</p>
+</section><section id="argument-reference" class="level2" data-number="10.10"><h2 data-number="10.10" class="anchored" data-anchor-id="argument-reference">
+<span class="header-section-number">10.10</span> Argument reference</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead><tr class="header">
+<th>Argument</th>
+<th>What it is for</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>x</code></td>
+<td>Candidate pairs: an <code>rLink()</code> result, or any frame with <code>index_1</code>/<code>index_2</code> or <code>x_index</code>/<code>y_index</code>.</td>
+</tr>
+<tr class="even">
+<td><code>decisions</code></td>
+<td>Path to the JSON file. Read and appended to when it exists, created when it does not.</td>
+</tr>
+<tr class="odd">
+<td><code>reviewer</code></td>
+<td>Who is reviewing. Defaults to the logged-in user; every decision is attributed to it.</td>
+</tr>
+<tr class="even">
+<td><code>scores</code></td>
+<td>Score columns to threshold. <code>NULL</code> reads them from <code>attr(x, "compare")</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>threshold</code></td>
+<td>Named starting cuts, e.g.&nbsp;<code>c(surname = 0.92)</code>. Recorded in the file as an accepted threshold.</td>
+</tr>
+<tr class="even">
+<td><code>band</code></td>
+<td>Review band on the first score: the range a person has to look at.</td>
+</tr>
+<tr class="odd">
+<td><code>reasons</code></td>
+<td>Up to nine stock comments, bound to the number keys.</td>
+</tr>
+<tr class="even">
+<td><code>max_pairs</code></td>
+<td>Most rows on screen, <code>20000</code> by default. Every count is still computed over all pairs.</td>
+</tr>
+<tr class="odd">
+<td><code>page_size</code></td>
+<td>Rows per page, 5 to 1000.</td>
+</tr>
+<tr class="even">
+<td><code>order_by</code></td>
+<td>
+<code>"review"</code> (nearest the cut first), <code>"score"</code>, or <code>"input"</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>font_size</code></td>
+<td>Base font in pixels, adjustable in the app.</td>
+</tr>
+<tr class="even">
+<td><code>launch</code></td>
+<td>Whether to run the app. Defaults to <code><a href="https://rdrr.io/r/base/interactive.html">interactive()</a></code>.</td>
+</tr>
+</tbody>
+</table>
+<section id="limits-worth-knowing" class="level3"><h3 class="anchored" data-anchor-id="limits-worth-knowing">Limits worth knowing</h3>
+<p>At most <code>max_pairs</code> rows go on screen; the analysis still reads every pair, and the app says so. reactable draws every row of a page, so <code>page_size</code> is capped at 1000 — there is deliberately no “show all rows”, because at these sizes it would lock the browser tab rather than show you anything. The threshold sweep is drawn over at most 200 cut-offs, placed at quantiles of the score once it has more distinct values than that. Columns are reordered and hidden by dragging them between the Shown and Hidden lists in the sidebar, because reactable cannot drag a table header.</p>
+<p>The app needs <code>shiny</code>, <code>reactable</code>, <code>jsonlite</code>, <code>bslib</code> and <code>sortable</code>, all of which are <code>Suggests</code>.</p>
+</section></section><section id="see-also" class="level2" data-number="10.11"><h2 data-number="10.11" class="anchored" data-anchor-id="see-also">
+<span class="header-section-number">10.11</span> See also</h2>
+<ul>
+<li>
+<a href="08-rlink.html" class="quarto-xref"><span>Chapter 9</span></a> — producing the pairs, and why <code>pair_id</code> and a generous <code>keep</code> matter before a review.</li>
+<li>
+<code>read_decisions()</code> — reading the file back; <code>apply_decisions()</code> — applying it.</li>
+<li>
+<code>threshold_sweep()</code> — the sweep at the console.</li>
+<li>
+<code>review_order()</code> — the ordering the queue uses.</li>
+<li>
+<code>rLink_weights()</code> — a single match probability to review on.</li>
+</ul>
+
+
+</section></main><!-- /main --><script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><nav class="page-navigation"><div class="nav-page nav-page-previous">
+      <a href="./08-rlink.html" class="pagination-link" aria-label="Linking people with `rLink()`">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Linking people with <code>rLink()</code></span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./03-theory.html" class="pagination-link" aria-label="Algorithms under the hood">
+        <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Algorithms under the hood</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer"><div class="nav-footer">
+    <div class="nav-footer-left">
+<p>fast.string — PCRE2 + prepared literal search + RcppParallel for R</p>
+</div>   
+    <div class="nav-footer-center">
+      &nbsp;
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/KyleHaynes/fast.string/edit/main/09-rlink-inspect.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/KyleHaynes/fast.string/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+<p>Built with Quarto</p>
+</div>
+  </div>
+</footer>
+
+
+<script src="site_libs/quarto-html/zenscroll-min.js"></script>
+</body></html>

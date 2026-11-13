@@ -1,0 +1,936 @@
+# Linking people with `rLink()` {#sec-rlink}
+
+```{r}
+#| label: setup
+#| include: false
+source("_setup.R")
+source("_people.R")
+```
+
+@sec-uc-link introduces `rLink()` alongside the rest of the linkage
+toolbox. This chapter is about `rLink()` itself, worked from the simplest
+call that does anything useful up to a staged production linkage, on the
+one problem the function was written for: deciding which records are the
+same **person**.
+
+Person linkage has a shape of its own. The fields are a name --- split
+into first, middle and last in one system and not split at all in the
+next --- a date of birth, an address, a postcode, a phone number, an
+email address and a sex or gender code. Each of them fails in its own
+way, and the whole craft of the thing is knowing which failure you are
+looking at:
+
+| Field | How it goes wrong | What that means for the link |
+|---|---|---|
+| Surname | Marriage, hyphenation, lost apostrophes, transliteration, typing | Common, and *not* random: a disagreement is weak evidence against |
+| Given name | Nicknames, initials, order swapped with the middle name | Same; `ROBERT`/`BOB` is not a typing error |
+| Middle name | Simply not collected, or collapsed into the given-name field | Missing far more often than wrong |
+| Date of birth | Day/month transposed, a year out, `1 January` placeholders | Strong evidence, but the placeholders will ruin a block |
+| Address | People move. Abbreviations, unit prefixes, free-text additions | Agreement is strong; disagreement says almost nothing |
+| Postcode | Leading zeros lost to a numeric column | A cheap, high-value blocking key once it is zero-padded |
+| Phone | Shared by a household, re-used, reformatted, stale | Agreement is very strong, disagreement very weak |
+| Email | Keeps a maiden name for years; case and whitespace | The same: agreement is near-proof, absence is routine |
+| Sex / gender | `M`/`F`/`U` against `Male`/`Female`/`Unknown`/blank | Nearly free, and useful mostly as a *filter* |
+
+The recurring lesson is in the last column. For a near-identifier ---
+phone, email, address --- **agreement and disagreement are not mirror
+images**, and a missing value is a third thing again, not a
+disagreement. Most of the advanced material below is about building
+comparisons that respect that.
+
+## The smallest useful call {#sec-rlink-basic}
+
+Two tiny files: five people in one, and four of the same five, recorded
+differently, in the other.
+
+```{r}
+#| label: basic-data
+hospital <- data.frame(
+    frame_id   = c("HOS-01", "HOS-02", "HOS-03", "HOS-04", "HOS-05"),
+    first_name = c("MARGARET", "ROBERT", "THI MINH", "WILLIAM", "ELENI"),
+    last_name  = c("O'BRIEN", "SMITH", "NGUYEN", "WILLIAMS", "PAPADOPOULOS"),
+    dob        = as.Date(c("1948-11-02", "1979-07-23", "1962-03-14",
+                           "1990-06-08", "1955-01-30")),
+    postcode   = c("3121", "4000", "4032", "3065", "3181")
+)
+registry <- data.frame(
+    frame_id   = c("REG-A", "REG-B", "REG-C", "REG-D"),
+    first_name = c("MARGARET", "BOB", "MINH", "BILL"),
+    last_name  = c("OBRIEN", "SMITH", "NGUYEN", "WILIAMS"),
+    dob        = as.Date(c("1948-11-02", "1979-07-23", "1962-03-14",
+                           "1990-06-08")),
+    postcode   = c("3121", "4000", "4032", "3065")
+)
+```
+
+`rLink()` needs two things: **where to look** (`block_1`) and **what to
+measure** (`compare`).
+
+```{r}
+#| label: basic-call
+pairs <- rLink(
+    hospital, registry,
+    block_1 = list(dob),
+    compare = list(last  = jaro_winkler(last_name),
+                   first = jaro_winkler(first_name))
+)
+pairs[, c("pair_id", "last_name_1", "last_name_2",
+          "first_name_1", "first_name_2", "last", "first")]
+```
+
+Four things happened that are worth naming, because everything later in
+this chapter is a variation on them.
+
+**`block_1` is where to look.** Comparing every record with every other
+record is quadratic and almost all of it is wasted. Blocking on `dob`
+says: only ever compare two people born on the same day. That is four
+comparisons here instead of twenty.
+
+**`compare` is what to measure.** Each element is a comparator call whose
+first argument is the column to compare. The score column is named after
+the list element --- `last`, `first` --- and an unnamed element falls
+back to `<column>_<comparator>`.
+
+**Both are ordinary R expressions evaluated against the data.** Nothing
+was prepared beforehand. `soundex(last_name)` or `fsubstr(postcode, 1, 2)`
+would have worked exactly as well as a bare column name, in either
+argument.
+
+**1 always means an exact match.** `jaro_winkler()` already returns 1 for
+identical strings, but `levenshtein()` returns 0 and the RapidFuzz
+`fuzz_*()` scorers return 100. `rLink()` probes each comparator and
+converts, so you never have to remember which way a metric runs:
+
+```{r}
+#| label: basic-orientation
+rLink(hospital, registry, block_1 = list(dob),
+      compare = list(lev = levenshtein(last_name)))$lev
+```
+
+What it decided is recorded on the result, and is worth reading once per
+project:
+
+```{r}
+#| label: basic-compare-attr
+attr(pairs, "compare")
+```
+
+### Deduplicating one file
+
+With one data frame and no second, `rLink()` finds the duplicates inside
+it: pairs come back with `index_1 < index_2`, and no record is paired
+with itself.
+
+```{r}
+#| label: basic-dedupe
+intake <- data.frame(
+    first_name = c("JENNIFER", "JEN", "DAVID", "DAVE", "PRIYA"),
+    last_name  = c("TAYLOR", "TAYLOR", "ANDERSON", "ANDERSEN", "PATEL"),
+    dob        = as.Date(c("1971-09-19", "1971-09-19", "1964-02-29",
+                           "1964-02-29", "1993-04-27"))
+)
+rLink(intake, block_1 = list(dob),
+      compare = list(last = jaro_winkler(last_name)))[
+          , c("index_1", "index_2", "last_name_1", "last_name_2", "last")]
+```
+
+## Blocking, properly {#sec-rlink-blocking}
+
+Blocking decides what the run costs and what it is *able* to find. A
+true pair that no pass puts in the same block can never be recovered, no
+matter how good the comparators are. It is where a linkage usually goes
+wrong, so `rLink()` makes it inspectable.
+
+From here on the two files are the full ones from
+`docs/_people.R`: an enrolment extract and a claims extract holding the
+same people, recorded by two systems that agree about nothing except who
+the people are.
+
+```{r}
+#| label: files
+files  <- people_files(n_enrol = 20000, overlap = 0.6)
+enrol  <- files$enrol
+claims <- files$claims
+
+str(enrol[1:2, ], vec.len = 2)
+claims[1:3, ]
+```
+
+The claims file needs standardising before anything can be compared with
+it --- the name is one `"SURNAME, Title Given Middle"` field, the date of
+birth is `"DD/MM/YYYY"` text, the postcode is numeric so `0823` arrived
+as `823`. @sec-uc-link does this field by field; here it is in one block.
+
+```{r}
+#| label: standardise
+titles        <- c("MR", "MRS", "MS", "MISS", "DR", "PROF")
+street_abbrev <- c("ST", "RD", "AVE", "CT", "PL", "TCE", "PDE", "CRES", "DR", "LN")
+street_full   <- c("STREET", "ROAD", "AVENUE", "COURT", "PLACE", "TERRACE",
+                   "PARADE", "CRESCENT", "DRIVE", "LANE")
+
+name <- fsquish(fupper(claims$patient_name))
+rest <- fsquish(freplace_tokens(ftrimws(fsplit_field(name, ",", 2)),
+                                titles, rep("", length(titles))))
+addr <- fgsub("^U[0-9]+/", "", fupper(claims$address_line))
+
+claims_std <- data.frame(
+    claim_id       = claims$claim_id,
+    given_name     = fsplit_field(rest, " ", 1),
+    middle_name    = fsplit_field(rest, " ", 2),
+    surname        = ftrimws(fsplit_field(name, ",", 1)),
+    dob            = fas.Date(claims$date_of_birth, format = "dmy"),
+    sex            = c(Male = "M", Female = "F", Unknown = "U")[claims$gender],
+    street_address = fsquish(freplace_tokens(ftrimws(fsplit_field(addr, ",", 1)),
+                                             street_abbrev, street_full)),
+    suburb         = ftrimws(fgsub(" VIC$", "", fsplit_field(addr, ",", 2))),
+    postcode       = fpad(as.character(claims$postcode), 4, pad = "0"),
+    phone          = claims$contact_phone,
+    email          = claims$contact_email,
+    stringsAsFactors = FALSE
+)
+claims_std$sex[is.na(claims_std$sex)] <- "U"
+
+enrol$street_address <- fsquish(paste(enrol$number, enrol$street,
+                                      enrol$street_type))
+head(claims_std, 3)
+```
+
+### Check the blocking before you run it
+
+`dry_run = TRUE` builds every key, checks every argument, and stops
+without generating a single pair. On real files this takes about as long
+as reading them, which means a blocking design can be argued about before
+anyone waits an hour for it.
+
+```{r}
+#| label: dry-run
+plan <- rLink(
+    enrol, claims_std,
+    block_1 = list(
+        surname_dob   = list(soundex(surname), dob),
+        surname_year  = list(soundex(surname), format_date(dob, "y")),
+        given_dob     = list(soundex(given_name), dob),
+        name_postcode = list(soundex(surname), fsubstr(given_name, 1, 1),
+                             postcode)
+    ),
+    dry_run = TRUE
+)
+plan
+```
+
+Two columns in that report earn their keep immediately.
+
+`n_expected` is what each pass would cost. Summed over passes it is an
+upper bound, because a pair two passes both find is counted twice ---
+but it is the number that tells you whether a design is affordable.
+
+`largest` names the five keys per pass that generate the most pairs. A
+placeholder sitting at the top of that table --- `"UNKNOWN"`, `"0000"`,
+a `1 January` date --- is a key that half the file shares, and it belongs
+in `na_strings` or behind a `max_block_size`, not in a block.
+
+```{r}
+#| label: dry-run-largest
+head(plan$largest, 6)
+```
+
+`max_pairs` is the same check, made automatically. A run expected to
+exceed it stops before generating anything, naming the pass and the block
+responsible:
+
+```{r}
+#| label: max-pairs
+#| error: true
+rLink(enrol, claims_std, block_1 = list(sex), max_pairs = 1e6)
+```
+
+### Several passes, and why
+
+A pair is a candidate if it agrees on the key of **any one** pass. Each
+pair is reported once, and `pass` records the first pass that found it.
+Inside a pass, `list()` joins terms into one key, so
+`list(soundex(surname), dob)` requires the same surname code **and** the
+same date of birth.
+
+That structure is how you cover the error modes one at a time. The design
+above reads:
+
+- `surname_dob` --- the workhorse. Survives spelling, not a wrong date.
+- `surname_year` --- survives a transposed day and month, which the first
+  pass cannot. This is the expensive one.
+- `given_dob` --- survives a *married surname*, where the registered name
+  is gone entirely and no amount of string comparison will find it.
+- `name_postcode` --- survives a wrong date of birth, as long as they
+  have not moved.
+
+No single key could do any two of those. That is what multiple passes are
+for, and the whole art is adding the pass that covers an error you can
+show exists, not the pass that feels thorough.
+
+Because these files come with a known truth, each pass can be audited:
+
+```{r}
+#| label: run-and-audit
+cand <- rLink(
+    enrol, claims_std,
+    block_1 = list(
+        surname_dob   = list(soundex(surname), dob),
+        surname_year  = list(soundex(surname), format_date(dob, "y")),
+        given_dob     = list(soundex(given_name), dob),
+        name_postcode = list(soundex(surname), fsubstr(given_name, 1, 1),
+                             postcode)
+    ),
+    compare = list(
+        surname  = jaro_winkler(surname),
+        given    = jaro_winkler_tokens(given_name),
+        dob      = date_compare(dob),
+        address  = jaro_winkler_tokens(street_address),
+        postcode = (function(a, b) as.numeric(a == b))(postcode)
+    ),
+    pair_id = c("enrol_id", "claim_id"),
+    keep = c("given_name", "surname", "dob", "sex", "street_address",
+             "postcode", "phone", "email")
+)
+
+truth <- same_person(files, cand$index_1, cand$index_2)
+cbind(candidates = table(pass = cand$pass),
+      true_pairs = tapply(truth, cand$pass, sum),
+      yield      = round(tapply(truth, cand$pass, mean), 3))
+
+c(true_pairs_in_data = true_pair_count(files),
+  found_by_blocking  = sum(truth),
+  pairs_compared     = nrow(cand),
+  pairs_possible     = as.numeric(nrow(enrol)) * nrow(claims_std))
+```
+
+Read that table as a cost sheet. `surname_dob` is almost pure signal: it
+finds nearly every match at a yield around 0.99. `surname_year` is the
+opposite --- roughly two thirds of all the candidates, at a yield of
+about 0.03 --- because dropping the day and month from the key makes the
+blocks fifty times bigger. It is still worth having: it is the only pass
+that survives a transposed date of birth, and the few hundred pairs it
+alone contributes are exactly the ones the other three cannot reach. But
+it is the first pass to tighten if the run gets too big, and the one to
+point at when someone asks where the time went.
+
+### Missing keys never pair
+
+A record whose key is missing pairs with nothing. That is what makes it
+safe to block on an incomplete field: the records with no date of birth
+simply do not appear in the passes that use it, rather than colliding
+into one enormous block of `NA`.
+
+With the default `match_missing = FALSE`, a missing value in *any* term
+makes the whole key for that pass missing. `na_strings` lists the text
+that counts as missing --- `""` by default, which is what makes the
+blank phone numbers in the claims file behave like absences rather than
+like a value everybody shares.
+
+```{r}
+#| label: match-missing
+a <- data.frame(surname = c("SMITH", NA, "JONES"))
+b <- data.frame(surname = c("SMITH", NA))
+c(default = nrow(rLink(a, b, block_1 = list(surname))),
+  match_missing = nrow(rLink(a, b, block_1 = list(surname),
+                             match_missing = TRUE)))
+```
+
+`match_missing = TRUE` treats "missing" as a value in its own right. It
+is occasionally what you want, and almost never what you want on a
+near-identifier: two people with no recorded phone number have nothing in
+common.
+
+### `block_2`, when the files disagree about shape
+
+`block_2` gives the second file its own expressions, pass for pass, for
+when the same information is stored differently:
+
+```{r}
+#| label: block-2
+raw <- claims
+raw$dob_text <- raw$date_of_birth               # "DD/MM/YYYY"
+raw$surname_raw <- ftrimws(fsplit_field(fsquish(fupper(raw$patient_name)),
+                                        ",", 1))
+
+head(rLink(enrol, raw,
+           block_1 = list(list(soundex(surname), format(dob, "%d/%m/%Y"))),
+           block_2 = list(list(soundex(surname_raw), dob_text)),
+           compare = list(sn = jaro_winkler(surname | surname_raw)),
+           keep    = c("surname", "surname_raw"))[, -1], 3)
+```
+
+`surname | surname_raw` is the same idea in `compare`: the left of the
+`|` is evaluated against `data_1`, the right against `data_2`. Either
+side can be any expression, so `soundex(family_name) | surname_code`
+works too. Such an element has no single column to name itself after, so
+it must be given a name.
+
+### The sorted neighbourhood, for keys that differ at the end
+
+An exact key cannot put `SMITH` and `SMITHE` together.
+`block_method = "sorted_neighbourhood"` sorts the distinct keys and pairs
+records within `(window - 1) / 2` places of each other as well as those
+with equal keys. Methods are set per pass, so a strict pass and a
+forgiving one run in the same call:
+
+```{r}
+#| label: sn
+mixed <- rLink(
+    enrol, claims_std,
+    block_1      = list(strict = list(soundex(surname), dob),
+                        near   = surname),
+    block_method = c("exact", "sorted_neighbourhood"),
+    window       = 3,
+    compare      = list(sn = jaro_winkler(surname)),
+    keep         = character()
+)
+attr(mixed, "blocking")$passes[, c("label", "method", "n_expected", "n_pairs")]
+```
+
+The window also pairs unrelated alphabetical neighbours, by design. It
+belongs in a pass whose candidates are then scored, never on its own.
+
+## Comparing person fields {#sec-rlink-compare}
+
+Any function of two character vectors is a comparator, so the choice of
+metric is a one-word edit. What matters is matching the metric to the way
+the field fails.
+
+### Names
+
+A surname is a short string with substitutions and omissions:
+`jaro_winkler()` is the standard, and `editex()` costs phonetic
+substitutions (`PH`/`F`, `C`/`K`) less. A given-name field that may hold
+a middle name, an initial, or the words in another order is a *token*
+problem, not an edit-distance one:
+
+```{r}
+#| label: name-metrics
+a <- c("JOHN PAUL", "MARY JANE", "ROBERT", "LI WEI")
+b <- c("PAUL JOHN", "MARY J", "BOB", "WEI LI")
+data.frame(a, b,
+           jaro_winkler = round(jaro_winkler(a, b), 3),
+           tokens       = round(jaro_winkler_tokens(a, b), 3),
+           monge_elkan  = round(monge_elkan(a, b), 3))
+```
+
+The token comparators win decisively where the *words* moved
+(`JOHN PAUL`/`PAUL JOHN`, `LI WEI`/`WEI LI`), which is the failure plain
+Jaro-Winkler cannot see at all --- 0.407 for two identical names in the
+other order. Where a word is merely abbreviated (`MARY JANE`/`MARY J`)
+plain Jaro-Winkler does fine, and the tokens buy nothing. Pick the
+comparator for the error you have.
+
+No string metric recovers `ROBERT`/`BOB`: all three score it 0.5, and
+they are right to --- the strings really are that different. Nicknames
+are a lookup problem, and `freplace_tokens()` against a nickname table
+*before* linking is worth more than any comparator choice.
+
+**First / middle / last against given / last.** Two systems often split
+names differently, and the usual mistake is to compare the fields that
+happen to share a name. Compare the *information* instead: build one
+comparable field on each side with `|`.
+
+```{r}
+#| label: name-shapes
+# enrol has given / middle / surname; this extract has only given / surname,
+# with the middle name folded into the given-name field where it was known.
+folded <- claims_std
+folded$given_all <- fsquish(paste(folded$given_name,
+                                  ifelse(is.na(folded$middle_name), "",
+                                         folded$middle_name)))
+
+head(rLink(
+    enrol, folded,
+    block_1 = list(list(soundex(surname), dob)),
+    compare = list(
+        surname = jaro_winkler(surname),
+        # left of `|` is evaluated against enrol, right against folded
+        given   = jaro_winkler_tokens(
+            fsquish(paste(given_name, ifelse(is.na(middle_name), "",
+                                             middle_name))) | given_all)
+    ),
+    keep = character())[, c("pair_id", "surname", "given")], 4)
+```
+
+### Dates of birth
+
+A string comparator is handed text whatever the column holds, which is
+what makes `jaro_winkler(dob)` work on a `Date` at all. But a date is not
+a string: 1 January and 2 January are one day apart, not two characters
+apart. `date_compare()` is handed the column as it is stored:
+
+```{r}
+#| label: date-compare
+d1 <- as.Date(c("1985-03-14", "1985-03-14", "1985-03-14", "1985-03-14"))
+d2 <- as.Date(c("1985-03-14", "1985-03-15", "1985-04-14", "1986-03-14"))
+data.frame(d1, d2,
+           string = round(jaro_winkler(as.character(d1), as.character(d2)), 3),
+           dates  = round(date_compare(d1, d2), 3))
+```
+
+A transposed day and month is a different error again, and it is worth
+its own flag rather than a tolerance --- `14/03` against `03/14` is six
+months apart, which no distance will forgive:
+
+```{r}
+#| label: dob-transposed
+transposed <- function(a, b) {
+    pa <- date_parts(a); pb <- date_parts(b)
+    as.numeric(pa$year == pb$year & pa$day == pb$month &
+               pa$month == pb$day & pa$day != pa$month)
+}
+swapped <- rLink(enrol, claims_std,
+                 block_1 = list(list(soundex(surname), format_date(dob, "y"))),
+                 compare = list(dob  = date_compare(dob),
+                                swap = transposed(I(dob)),
+                                sn   = jaro_winkler(surname)),
+                 keep = character())
+sum(swapped$swap == 1)
+```
+
+`I()` is what asks for the column as it is stored rather than as text.
+`numeric_compare()` and `date_compare()` do it for you; a comparator of
+your own asks for it explicitly.
+
+### Near-identifiers: phone, email, address
+
+Here is the point this chapter keeps returning to. For a phone number,
+agreement is near-proof and disagreement is almost no evidence at all,
+because people change numbers and households share them. Scoring one with
+`jaro_winkler()` is actively harmful: it produces a confident-looking 0.6
+for two completely different numbers.
+
+Build the comparison to say the three things that can actually be true
+--- *agrees*, *disagrees*, *not known* --- and let the missing value stay
+missing:
+
+```{r}
+#| label: near-identifier
+# Compare digits only, so "0412 345 678", "0412345678" and "+61 412 345 678"
+# are the same number; NA where either side is blank, which is not the same
+# fact as a disagreement.
+same_phone <- function(a, b) {
+    da <- fgsub("[^0-9]", "", a); db <- fgsub("[^0-9]", "", b)
+    da <- fgsub("^61", "0", da);  db <- fgsub("^61", "0", db)
+    out <- as.numeric(da == db)
+    out[!nzchar(da) | !nzchar(db) | is.na(da) | is.na(db)] <- NA_real_
+    out
+}
+same_email <- function(a, b) {
+    la <- flower(ftrimws(a)); lb <- flower(ftrimws(b))
+    out <- as.numeric(la == lb)
+    out[!nzchar(la) | !nzchar(lb) | is.na(la) | is.na(lb)] <- NA_real_
+    out
+}
+
+contact <- rLink(
+    enrol, claims_std,
+    block_1 = list(list(soundex(surname), format_date(dob, "y"))),
+    compare = list(sn    = jaro_winkler(surname),
+                   phone = same_phone(phone),
+                   email = same_email(email)),
+    keep = character()
+)
+sapply(contact[, c("phone", "email")],
+       function(v) c(agree = sum(v == 1, na.rm = TRUE),
+                     disagree = sum(v == 0, na.rm = TRUE),
+                     not_known = sum(is.na(v))))
+```
+
+Most pairs cannot be judged on contact details at all, which is exactly
+why a *missing* score must not be collapsed into a zero. The pairs where
+the phone or the email does agree, though, are as close to certain as
+this kind of work gets:
+
+```{r}
+#| label: near-identifier-worth
+truth_c <- same_person(files, contact$index_1, contact$index_2)
+round(c(
+    phone_agrees = mean(truth_c[which(contact$phone == 1)]),
+    email_agrees = mean(truth_c[which(contact$email == 1)]),
+    phone_differs = mean(truth_c[which(contact$phone == 0)]),
+    overall = mean(truth_c)), 3)
+```
+
+A pair whose phone numbers agree is a match essentially always, and one
+whose emails agree very nearly so --- against a base rate of about a
+third. That is an enormous amount of evidence from a field most people
+never think to compare, and it costs one exact test.
+
+Be careful reading the other direction, though. Disagreement looks
+informative here (7.5% against a 32% base rate) partly because this
+simulator only reassigns a number for one matched person in eight. Real
+contact data goes stale faster, and real households share landlines, so
+on a live file the gap between *disagrees* and *not known* is narrower
+than this. The safe design is the one above either way: score agreement,
+and let non-agreement be `NA` rather than a confident zero.
+
+An address behaves the same way, with the extra wrinkle that it is
+multi-word and abbreviated, so it wants a token comparator rather than an
+exact test. Sex is the cheapest field of all, and it is most useful not
+as a score but as a condition --- see `filter`, below.
+
+### Everything else
+
+`numeric_compare()` for ages and amounts, `compare_levels()` to cut a
+continuous score into agreement levels for a Fellegi-Sunter model, and
+any function of your own:
+
+```{r}
+#| label: other-compare
+enrol_a  <- cbind(enrol, age = as.numeric(Sys.Date() - enrol$dob) / 365.25)
+claims_a <- cbind(claims_std,
+                  age = as.numeric(Sys.Date() - claims_std$dob) / 365.25)
+head(rLink(enrol_a, claims_a,
+           block_1 = list(list(soundex(surname), postcode)),
+           compare = list(age   = numeric_compare(age, scale = 2),
+                          years = (function(a, b) abs(a - b))(I(age))),
+           keep = character())[, c("age", "years")], 4)
+```
+
+A distance with no upper bound, like `years`, cannot be put on a 0--1
+scale; it is returned as it is and recorded as lower-is-a-match, and
+every later step reads that off `attr(x, "compare")`.
+
+## Filtering while scoring {#sec-rlink-filter}
+
+Blocking is deliberately generous, so most candidates are not matches and
+get thrown away the moment they are scored. `filter` does the throwing
+away *inside* `rLink()`:
+
+```{r}
+#| label: filter
+kept <- rLink(
+    enrol, claims_std,
+    block_1 = list(list(soundex(surname), format_date(dob, "y"))),
+    compare = list(sn = jaro_winkler(surname),
+                   gn = jaro_winkler_tokens(given_name)),
+    filter  = sn >= 0.85 & gn >= 0.80 & (sex_1 == sex_2 | sex_1 == "U" | sex_2 == "U"),
+    pair_id = c("enrol_id", "claim_id"),
+    keep    = c("surname", "given_name", "sex")
+)
+unlist(attr(kept, "filter")[c("n_candidates", "n_scored", "n_kept")])
+```
+
+The rule is an ordinary R expression giving `TRUE` for the pairs to keep.
+It can name any score, `pass`, and any column of either input under its
+suffix. Three properties make it more than a convenience:
+
+**Conditions that read no score are applied first.** The `sex` clause
+above needs no comparator, so it runs before scoring and the comparators
+never see the pairs it drops. The order you write the conditions in makes
+no difference; the result is identical to scoring everything and
+subsetting.
+
+**The expensive columns are built only for survivors.** `pair_id` above
+all --- R takes about a second to make a million new strings, whoever
+asks it to --- and then the carried columns.
+
+**The 2^31 candidate-pair ceiling goes away.** Pairs are generated,
+scored and thinned a slice at a time, so the full candidate set never
+exists at once; only the pairs kept have to fit in one table.
+
+A rule that mentions no score needs no `compare` at all, which makes
+`filter` a way to express a candidate condition that no blocking key
+could:
+
+```{r}
+#| label: filter-no-compare
+nrow(rLink(enrol, claims_std,
+           block_1 = list(list(soundex(surname), fsubstr(given_name, 1, 1))),
+           filter  = abs(as.numeric(dob_1 - dob_2)) <= 31,
+           keep    = character()))
+```
+
+## Identifying pairs, so a judgement survives {#sec-rlink-pairid}
+
+`pair_id` identifies each pair. By default it is `"<id_1>|<id_2>"` built
+from the `frame_id` column of each input, and it falls back to numbering
+the pairs when either input has no such column. Two different names are
+given as `pair_id = c("enrol_id", "claim_id")`.
+
+This matters more than it looks. An identifier built from the records is
+**stable**: the same two records give the same `pair_id` whatever
+blocking found them. A row number is not.
+
+```{r}
+#| label: pair-id
+run_a <- rLink(enrol, claims_std,
+               block_1 = list(list(soundex(surname), dob)),
+               compare = list(sn = jaro_winkler(surname)),
+               pair_id = c("enrol_id", "claim_id"), keep = character())
+run_b <- rLink(enrol, claims_std,
+               block_1 = list(list(soundex(given_name), dob)),
+               compare = list(sn = jaro_winkler(surname)),
+               pair_id = c("enrol_id", "claim_id"), keep = character())
+c(run_a = nrow(run_a), run_b = nrow(run_b),
+  same_pairs = length(intersect(run_a$pair_id, run_b$pair_id)))
+```
+
+Every clerical judgement recorded in @sec-rlink-inspect is filed against
+this column, which is the only reason those judgements still apply after
+the blocking is changed and the linkage re-run. An identifier containing
+`"|"` is an error rather than an ambiguous key, and missing or repeated
+identifiers raise a warning saying how many.
+
+Building it is the slowest thing `rLink()` does on a large result.
+`filter` avoids it for the pairs it drops; `pair_id = NULL` avoids it
+altogether, for a run whose pairs will be thresholded and clustered but
+never reviewed. `attr(x, "timings")` reports it as its own stage:
+
+```{r}
+#| label: timings
+attr(cand, "timings")
+```
+
+## Deciding, and what comes after {#sec-rlink-decide}
+
+`rLink()` stops at scored pairs. Turning those into links is a separate
+decision, and the package gives you three ways to make it.
+
+### Hand weights
+
+Defensible when the fields are few and the project can justify the
+numbers:
+
+```{r}
+#| label: hand-weights
+cand$score <- with(cand,
+    (3 * surname + 2 * given + 2 * dob + address + postcode) / 9)
+truth <- same_person(files, cand$index_1, cand$index_2)
+qs <- c(0.01, 0.05, 0.5, 0.95)
+round(rbind(same_person = quantile(cand$score[truth], qs),
+            different   = quantile(cand$score[!truth], qs)), 3)
+```
+
+### A Fellegi-Sunter model
+
+`rLink_weights()` estimates how much each field's agreement is actually
+worth, by EM, from the candidate pairs themselves --- no truth set
+needed. It replaces the guesswork above with a `weight` in bits and a
+`probability`, and it can adjust for term frequency so that agreeing on a
+rare surname counts for more than agreeing on `SMITH`.
+
+```{r}
+#| label: weights
+scored <- rLink_weights(cand, tf = "surname")
+head(scored[order(-weight),
+            c("surname", "given", "dob", "weight", "probability")], 4)
+attr(scored, "model")$fit
+```
+
+```{r}
+#| label: weights-check
+round(c(
+    precision_at_0.9 = mean(truth[scored$probability > 0.9]),
+    recall_at_0.9    = sum(truth & scored$probability > 0.9) /
+                       true_pair_count(files)), 4)
+```
+
+### What a cut-off would do, without a truth set
+
+`threshold_sweep()` reports, for each candidate cut-off, how many pairs
+survive, how many are cleanly one-to-one, and how many records end up
+contested --- which is the signal you have when nobody knows the answer.
+
+```{r}
+#| label: sweep
+threshold_sweep(scored, "probability",
+                thresholds = c(0.5, 0.9, 0.99, 0.999))[
+    , c("threshold", "n_pairs", "n_one_to_one", "n_conflict_1", "n_conflict_2")]
+```
+
+### One-to-one resolution, and entities
+
+If each person can appear at most once in each file, say so.
+`select_greedy()` keeps each record's best partner and drops the rest,
+which removes most of the chaining risk before clustering:
+
+```{r}
+#| label: greedy
+links <- scored[scored$probability > 0.9]
+best  <- select_greedy(links$index_1, links$index_2, links$weight)
+c(accepted = nrow(links), one_to_one = sum(best),
+  precision = round(mean(truth[scored$probability > 0.9][best]), 4))
+```
+
+```{r}
+#| label: cluster
+one <- links[best]
+entity <- cluster_pairs(one$index_1, one$index_2 + nrow(enrol),
+                        n = nrow(enrol) + nrow(claims_std))
+table(cluster_size = tabulate(entity))
+```
+
+## Staged linkage {#sec-rlink-staged}
+
+A large linkage is rarely one run. The usual shape is a strict pass whose
+links nobody needs to look at, then a looser pass over what is left, and
+two arguments keep the second from repeating the first.
+
+**`exclude`** names pairs to leave out. They are dropped as soon as they
+are found, before scoring, so pairs already settled cost nothing the
+second time. Given as a character vector they are read as `pair_id`s and
+found again through the identifier columns --- which is what makes them
+safe to carry between runs, since the files may have been re-ordered,
+added to or cut down in between.
+
+**`rLink_unmatched()`** is the other half: the records that no accepted
+link reaches, which are the ones a second run is for.
+
+```{r}
+#| label: staged
+# Stage 1: strict. Same surname code and full date of birth, names close.
+stage1 <- rLink(
+    enrol, claims_std,
+    block_1 = list(list(soundex(surname), dob)),
+    compare = list(sn = jaro_winkler(surname),
+                   gn = jaro_winkler_tokens(given_name)),
+    filter  = sn >= 0.95 & gn >= 0.90,
+    pair_id = c("enrol_id", "claim_id"), keep = character()
+)
+
+# Stage 2: looser, over the records stage 1 did not reach, and explicitly
+# not re-examining anything stage 1 already settled.
+left_1 <- rLink_unmatched(stage1, side = 1, n = nrow(enrol))
+left_2 <- rLink_unmatched(stage1, side = 2, n = nrow(claims_std))
+
+stage2 <- rLink(
+    enrol[left_1, ], claims_std[left_2, ],
+    block_1 = list(list(soundex(given_name), dob),
+                   list(soundex(surname), postcode)),
+    compare = list(sn = jaro_winkler(surname),
+                   gn = jaro_winkler_tokens(given_name),
+                   ad = jaro_winkler_tokens(street_address)),
+    filter  = sn >= 0.80 | ad >= 0.90,
+    pair_id = c("enrol_id", "claim_id"), keep = character()
+)
+
+c(stage1_links = nrow(stage1),
+  enrol_left = length(left_1), claims_left = length(left_2),
+  stage2_candidates = nrow(stage2))
+```
+
+```{r}
+#| label: staged-precision
+round(c(
+    stage1_precision = mean(same_person(files, stage1$index_1, stage1$index_2)),
+    stage1_recall    = sum(same_person(files, stage1$index_1,
+                                       stage1$index_2)) /
+                       true_pair_count(files)), 4)
+```
+
+Stage 1 is perfectly precise on this data, and that is the point: those
+links never need a human. Stage 2 is where the judgement is, and
+@sec-rlink-inspect is about making that judgement recordable.
+
+One trap in that code. Stage 2 was run on *subsets*, so its `index_1`
+and `index_2` are positions in `enrol[left_1, ]` and
+`claims_std[left_2, ]`, not in the original files --- `left_1[index_1]`
+converts them back. This is precisely why a stable `pair_id` is worth
+having: it means the same thing in both stages, so the two results stack
+without any index arithmetic at all.
+
+The same two arguments also express "re-run with better blocking, but do
+not ask me about the pairs I have already ruled on":
+
+```{r}
+#| label: exclude
+again <- rLink(enrol, claims_std,
+               block_1 = list(list(soundex(surname), postcode)),
+               compare = list(sn = jaro_winkler(surname)),
+               pair_id = c("enrol_id", "claim_id"),
+               exclude = stage1$pair_id,
+               keep    = character())
+unlist(attr(again, "exclude"))
+```
+
+## Candidates from somewhere else {#sec-rlink-pairs}
+
+`pairs` scores candidates found any other way, instead of blocking: any
+data frame with `x_index` and `y_index`, which is the shape
+`minhash_pairs()`, `fuzzy_within()` and `tfidf_top_n()` all return. It is
+the escape hatch for when no key is good enough --- long free-text
+addresses, organisation names, anything where the useful signal is spread
+across the whole string.
+
+```{r}
+#| label: pairs-arg
+near <- tfidf_top_n(claims_std$street_address[1:200],
+                    enrol$street_address, top_n = 2)
+head(rLink(enrol, claims_std[1:200, ],
+           pairs   = data.frame(x_index = near$table_index,
+                                y_index = near$query_index),
+           compare = list(ad = jaro_winkler_tokens(street_address),
+                          sn = jaro_winkler(surname)),
+           keep    = "street_address")[, -1], 4)
+```
+
+## At scale
+
+The whole thing on ten times the data, with `keep = character()` so that
+nothing but the indices and the scores is carried:
+
+```{r}
+#| label: scale
+big <- people_files(n_enrol = 200000, overlap = 0.6)
+nm <- fsquish(fupper(big$claims$patient_name))
+rs <- fsquish(freplace_tokens(ftrimws(fsplit_field(nm, ",", 2)),
+                              titles, rep("", length(titles))))
+big_std <- data.frame(
+    given_name = fsplit_field(rs, " ", 1),
+    surname    = ftrimws(fsplit_field(nm, ",", 1)),
+    dob        = fas.Date(big$claims$date_of_birth, format = "dmy"),
+    postcode   = fpad(as.character(big$claims$postcode), 4, pad = "0"),
+    stringsAsFactors = FALSE)
+
+system.time(
+    out <- rLink(big$enrol, big_std,
+        block_1 = list(list(soundex(surname), dob),
+                       list(soundex(given_name), dob),
+                       list(soundex(surname), fsubstr(given_name, 1, 1),
+                            postcode)),
+        compare = list(surname = jaro_winkler(surname),
+                       given   = jaro_winkler_tokens(given_name),
+                       dob     = date_compare(dob)),
+        keep = character())
+)
+c(records_1 = nrow(big$enrol), records_2 = nrow(big_std),
+  pairs_possible = as.numeric(nrow(big$enrol)) * nrow(big_std),
+  pairs_compared = nrow(out),
+  blocking_recall = round(sum(same_person(big, out$index_1, out$index_2)) /
+                          true_pair_count(big), 4))
+```
+
+## Argument reference
+
+| Argument | What it is for |
+|---|---|
+| `data_1`, `data_2` | The inputs. One alone deduplicates. Never modified. |
+| `block_1`, `block_2` | Blocking passes, as R expressions. `block_2` for when the files store it differently. |
+| `compare` | Comparator calls. `NULL` returns unscored candidates. |
+| `pairs` | Candidates from elsewhere, instead of `block_1`. |
+| `block_method`, `window` | `"exact"` or `"sorted_neighbourhood"`, per pass. |
+| `max_block_size` | Skip blocks bigger than this, with a warning and a per-pass count. |
+| `match_missing`, `na_strings` | Whether missing keys pair; what counts as missing. |
+| `force_upper_case` | Upper-case keys and comparison values. Never changes the columns returned. |
+| `normalise` | Convert scores so 1 means an exact match. |
+| `keep` | Columns to carry. `NULL` is all, `character()` is none. |
+| `pair_id` | Identifier column(s) to build `pair_id` from. |
+| `block_key` | Add the readable `block_key` column. `FALSE` saves one string per pair. |
+| `suffixes`, `score_position` | How the output is laid out. |
+| `filter` | Keep only matching pairs, cheaply, while scoring. |
+| `exclude` | Pairs to leave out, by `pair_id` or by row number. |
+| `dry_run`, `max_pairs` | Check the blocking without running it; stop a run that is too big. |
+| `nthreads`, `verbose` | Thread cap; progress and diagnostics. |
+
+And on the result: `attr(x, "blocking")`, `attr(x, "compare")`,
+`attr(x, "timings")`, `attr(x, "filter")`, `attr(x, "exclude")`,
+`attr(x, "n_records")` and `attr(x, "dedupe")`. All of them survive `[`,
+`order()` and `head()`.
+
+```{r}
+#| label: summary
+summary(cand)
+```
