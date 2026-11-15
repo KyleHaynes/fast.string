@@ -15,7 +15,10 @@ the exact checkout being measured.
 ## Installation
 
 ```r
+# From source.
 remotes::install_github("KyleHaynes/fast.string")
+# Compiled.
+install.packages("fast.string", repos = "https://kylehaynes.github.io/fast.string")
 ```
 
 That compiles 28 C++ translation units, which takes a few minutes. On Windows
