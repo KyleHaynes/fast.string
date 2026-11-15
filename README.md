@@ -15,8 +15,24 @@ the exact checkout being measured.
 ## Installation
 
 ```r
+# From source.
 remotes::install_github("KyleHaynes/fast.string")
+# Compiled.
+install.packages("fast.string", repos = "https://kylehaynes.github.io/fast.string")
 ```
+
+That compiles 28 C++ translation units, which takes a few minutes. On Windows
+there is a pre-built binary of the current `main` instead, rebuilt by CI on
+every push. Match the asset to your R minor version (`getRversion()`):
+
+```r
+install.packages(
+    "https://github.com/KyleHaynes/fast.string/releases/download/win-latest/fast.string-win-R4.6.zip",
+    repos = NULL, type = "win.binary")
+```
+
+This route does not resolve dependencies, so on a first install get them
+first: `install.packages(c("cli", "data.table", "Rcpp", "RcppParallel", "rlang"))`.
 
 ## What it's for
 
