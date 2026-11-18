@@ -1766,15 +1766,19 @@ rLink <- function(data_1,
         term <- data.table::chmatch(all, values)
         if (is.null(code)) {
             code <- term
-            top <- length(values)
+            top <- as.double(length(values))
             next
         }
-        if (top * length(values) >= 2^52) return(NULL)
-        joint <- (code - 1) * length(values) + term
+        # Doubles, not integers: a real file reaches more than 2^31
+        # distinct combinations long before it reaches the 2^52 that a
+        # double holds exactly, and integer arithmetic would overflow to
+        # NA first --- which made the guard itself the error.
+        if (top * as.double(length(values)) >= 2^52) return(NULL)
+        joint <- (as.double(code) - 1) * length(values) + term
         seen <- unique(joint)
         seen <- seen[!is.na(seen)]
         code <- match(joint, seen)
-        top <- length(seen)
+        top <- as.double(length(seen))
     }
     list(x = code[seq_len(n_1)],
          y = if (!is.null(text_2)) code[n_1 + seq_along(text_2[[1L]])],

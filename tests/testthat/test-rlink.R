@@ -1816,3 +1816,26 @@ test_that("max_block_size can be set pass by pass", {
               max_block_size = c(Inf, 10), keep = character()),
         "pass 2 is a sorted neighbourhood")
 })
+
+test_that("a key of more than 2^31 combinations is still coded", {
+    # The guard on .rlink_key_codes() allows any combination a double holds
+    # exactly, up to 2^52, but used to compute the product in integers: two
+    # terms of 100,000 and 50,000 distinct values overflowed to NA and the
+    # guard itself raised "missing value where TRUE/FALSE needed".
+    n <- 100000L
+    a <- sprintf("a%06d", seq_len(n))
+    b <- sprintf("b%05d", seq_len(n) %% 50000L)
+    perm <- rev(seq_len(n))
+    coded <- expect_no_warning(
+        fast.string:::.rlink_key_codes(
+            parts_1 = list(a, b),
+            parts_2 = list(a[perm], b[perm]),
+            pass = 1L, upper = FALSE, na_strings = character(),
+            match_missing = FALSE, nthreads = 1L))
+    expect_false(is.null(coded))
+    expect_equal(anyNA(coded$x), FALSE)
+    # a is unique, so a record's key is shared by exactly its own row on the
+    # other side -- the permutation says which row that is.
+    expect_equal(coded$y, coded$x[perm])
+    expect_equal(length(unique(coded$x)), n)
+})
