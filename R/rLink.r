@@ -102,6 +102,16 @@
 #' they are handed each record's string once, however many pairs the record
 #' is in, where a function of your own is handed one string per pair.
 #'
+#' **Where the functions come from.** Every expression here --- in `compare`,
+#' in `block_1` and `block_2`, and in `filter` --- is evaluated where you
+#' wrote it, so it can name your own functions. The functions of this package
+#' need no such introduction: a name the call uses which your environment
+#' cannot see, and this package exports, is taken from the package, so
+#' `fast.string::rLink(compare = list(jaro_winkler(surname)))` is a complete
+#' call whether or not `library(fast.string)` has been run. Only a name that
+#' is missing is filled in this way, so your own `soundex()`, or another
+#' attached package's, is still the one that is used.
+#'
 #' **Columns named differently in the two inputs** are compared by writing
 #' `left | right`: the expression to the left of the `|` is evaluated against
 #' `data_1` and the one to the right against `data_2`, as `cross` is above.
@@ -1329,6 +1339,9 @@ rLink <- function(data_1,
     for (i in seq_along(scores)) assign(score_names[i], scores[[i]], envir = env)
     mask <- rlang::new_data_mask(env)
     mask$.data <- rlang::as_data_pronoun(mask)
+    quo <- rlang::new_quosure(
+        rlang::quo_get_expr(quo),
+        .rlink_fn_env(rlang::quo_get_expr(quo), rlang::quo_get_env(quo)))
     hit <- tryCatch(rlang::eval_tidy(quo, mask), error = function(cnd)
         stop(sprintf(paste0(
             "`filter` could not be evaluated: %s\nIt can name %s`pass`, and ",
@@ -1487,6 +1500,65 @@ rLink <- function(data_1,
 .rlink_is_call_to <- function(e, fns)
     is.call(e) && is.name(e[[1L]]) && as.character(e[[1L]]) %in% fns
 
+# Every name `e` calls as a function, innermost calls included. Used to find
+# the ones the caller's environment cannot see.
+.rlink_called_names <- function(e, out = character()) {
+    if (!is.call(e)) return(out)
+    head <- e[[1L]]
+    if (is.name(head)) out <- c(out, as.character(head))
+    for (i in seq_along(e)[-1L]) {
+        a <- e[[i]]
+        if (!missing(a) && is.call(a))
+            out <- unique(.rlink_called_names(a, out))
+    }
+    unique(out)
+}
+
+# The environment a term, comparator or rule is evaluated in.
+#
+# An expression in `block_1`, `compare` or `filter` is the caller's code, so
+# it is evaluated in the caller's environment -- that is what lets it name
+# the caller's own helper functions. But `fast.string::rLink()` is a
+# complete call on its own, and `soundex(surname)` or
+# `jaro_winkler_tokens(given)` inside it then named a function the caller's
+# environment cannot see unless library(fast.string) had also been run:
+# blocking failed with "could not find function" and a comparator with the
+# unhelpful "does not name a function".
+#
+# So: any name the expression *calls*, which the caller cannot find and this
+# package exports, is bound in a child environment in front of the caller's.
+# Only names that are missing there are bound, so nothing the caller can
+# already see is ever shadowed, and an expression that needs no help is
+# evaluated in exactly the environment it was written in.
+.rlink_fn_env <- function(e, env, ns = .rlink_namespace()) {
+    nms <- .rlink_called_names(e)
+    if (!length(nms) || is.null(ns)) return(env)
+    exported <- .rlink_ns_exports(ns)
+    need <- character()
+    for (nm in nms) {
+        if (!nm %in% exported) next
+        if (!is.null(get0(nm, envir = env, mode = "function"))) next
+        if (!is.null(get0(nm, envir = ns, mode = "function",
+                          inherits = FALSE)))
+            need <- c(need, nm)
+    }
+    if (!length(need)) return(env)
+    out <- new.env(parent = env)
+    for (nm in need) assign(nm, get(nm, envir = ns), envir = out)
+    out
+}
+
+# NULL when this file was sourced rather than installed, and then every
+# function of the package is in the caller's search path already.
+.rlink_namespace <- function() {
+    ns <- topenv(environment(.rlink_fn_env))
+    if (isNamespace(ns)) ns else NULL
+}
+
+# A plain environment stands in for the namespace in the tests.
+.rlink_ns_exports <- function(ns)
+    if (isNamespace(ns)) getNamespaceExports(ns) else ls(ns)
+
 # The grammar: a top-level list() separates passes, and list()/c() inside a
 # pass separates the terms joined into one key. Anything else is one pass. A
 # c() at the top level is one pass of several terms, which is how the
@@ -1580,6 +1652,7 @@ rLink <- function(data_1,
         return(mask[[e]])
     }
     shown <- paste(deparse(e), collapse = " ")
+    env <- .rlink_fn_env(e, env)
     v <- tryCatch(rlang::eval_tidy(rlang::new_quosure(e, env), data = mask),
                   error = function(cnd)
                       .rlink_note(probs, "%s: %s - %s", where, shown,
@@ -2255,7 +2328,7 @@ rLink <- function(data_1,
 .rlink_compare <- function(quo, taken) {
     if (rlang::quo_is_null(quo)) return(list())
     expr <- rlang::quo_get_expr(quo)
-    env <- rlang::quo_get_env(quo)
+    env_0 <- rlang::quo_get_env(quo)
     elems <- if (.rlink_is_call_to(expr, "list")) as.list(expr)[-1L]
              else list(expr)
     nms <- names(elems)
@@ -2276,10 +2349,13 @@ rLink <- function(data_1,
                 "e.g. `list(my_score = (function(a, b) a == b)(postcode))`."),
                 i), call. = FALSE)
         fn_expr <- e[[1L]]
-        fn <- tryCatch(eval(fn_expr, env), error = function(cnd) NULL)
+        # The comparator may be one of this package's, which `env` can only
+        # see if library(fast.string) was run; .rlink_fn_env() puts the ones
+        # it is missing in front of it, as it does for a blocking term.
+        env <- .rlink_fn_env(e, env_0)
+        fn <- tryCatch(eval(fn_expr, env), error = function(cnd) cnd)
         if (!is.function(fn))
-            stop(sprintf("Element %d of `compare` does not name a function.",
-                         i), call. = FALSE)
+            stop(.rlink_not_a_function(i, fn_expr, fn, env), call. = FALSE)
         label <- if (is.name(fn_expr)) as.character(fn_expr)
                  else if (.rlink_is_call_to(fn_expr, c("::", ":::")))
                      as.character(fn_expr[[3L]])
@@ -2350,6 +2426,41 @@ rLink <- function(data_1,
             "output. Give that comparator another name."), clash[1L]),
             call. = FALSE)
     out
+}
+
+# Why the head of a `compare` element is not a function. The message used to
+# be "Element 1 of `compare` does not name a function.", which was the same
+# sentence for a typo, for a column name written where a comparator belongs,
+# and for a comparator of a package that was not loaded -- the three things
+# this is ever hit for, and the only part worth saying.
+.rlink_not_a_function <- function(i, fn_expr, fn, env) {
+    shown <- paste(deparse(fn_expr), collapse = " ")
+    at <- sprintf("Element %d of `compare` is `%s(...)`", i, shown)
+    form <- paste0("A comparator call is the function first and then the ",
+                   "column it compares, as in `jaro_winkler(surname)`.")
+    if (is.name(fn_expr)) {
+        nm <- as.character(fn_expr)
+        found <- tryCatch(get0(nm, envir = env), error = function(cnd) NULL)
+        if (is.null(found)) {
+            ns <- .rlink_namespace()
+            hint <- if (!is.null(ns) && nm %in% .rlink_ns_exports(ns))
+                sprintf(paste0(
+                    " It is one of this package's, so run ",
+                    "library(fast.string), or write it as ",
+                    "`fast.string::%s(...)`."), nm)
+            else " Check the spelling."
+            return(sprintf(paste0(
+                "%s, and there is no function `%s` where `compare` was ",
+                "written.%s"), at, nm, hint))
+        }
+        return(sprintf("%s, but `%s` is a %s, not a function. %s",
+                       at, nm, class(found)[1L], form))
+    }
+    if (inherits(fn, "condition"))
+        return(sprintf("%s, and evaluating `%s` gave an error - %s. %s",
+                       at, shown, conditionMessage(fn), form))
+    sprintf("%s, but `%s` is a %s, not a function. %s", at, shown,
+            class(fn)[1L], form)
 }
 
 .rlink_col_name <- function(e) {

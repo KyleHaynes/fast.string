@@ -499,6 +499,23 @@ two populations EM finds are the two blocking passes.
 
 ## Bug fixes
 
+* **`fast.string::rLink()` could not name this package's own functions.**
+  The expressions in `block_1`, `block_2`, `compare` and `filter` are the
+  caller's code and are evaluated where the caller wrote them, so
+  `compare = list(jaro_winkler_tokens(given))` or
+  `block_1 = list(soundex(surname))` needed `library(fast.string)` as well as
+  the `fast.string::` on the call --- without it, blocking failed with "could
+  not find function" and a comparator with the unhelpful "does not name a
+  function". A function the call names, which the caller's environment cannot
+  see and this package exports, is now resolved from the package itself. Only
+  names that are missing there are filled in, so a function of the caller's
+  own, or of another attached package, still wins as it did before.
+* **"Element 1 of `compare` does not name a function" did not say why.** It
+  was the same sentence for a typo, for a column name written where the
+  comparator belongs, and for a comparator whose package was not loaded. The
+  message now names what it found instead --- nothing at all, a character
+  vector, an error while evaluating --- and, for one of this package's
+  functions, says to attach it.
 * **`numeric_compare()` inside `rLink(compare = )` was an error**, and
   `date_compare()` there was reported as "direction not detected". `rLink()`
   turned every compared column into text before handing it over, so

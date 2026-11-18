@@ -1839,3 +1839,59 @@ test_that("a key of more than 2^31 combinations is still coded", {
     expect_equal(coded$y, coded$x[perm])
     expect_equal(length(unique(coded$x)), n)
 })
+
+
+# --- the functions a call names ---------------------------------------------
+
+# `fast.string::rLink(compare = list(jaro_winkler(v)))` is one call, so it
+# has to work on its own: the comparator and the blocking terms are the
+# caller's code, but the functions in them are this package's and the caller
+# need not have attached it to name them.
+#
+# An environment whose parent is baseenv() is the test for that: it can see
+# nothing of the package, exactly as a session that never ran
+# library(fast.string).
+test_that("a call resolves this package's functions without library()", {
+    a <- data.frame(frame_id = c("A", "B"), v = c("SMITH", "SMITH"),
+                    stringsAsFactors = FALSE)
+    bare <- new.env(parent = baseenv())
+    bare$a <- a
+    expect_null(get0("jaro_winkler", envir = bare, mode = "function"))
+    out <- eval(quote(fast.string::rLink(
+        a,
+        block_1 = list(soundex(v)),
+        compare = list(s = jaro_winkler(v)),
+        filter  = s == 1)), bare)
+    expect_identical(nrow(out), 1L)
+    expect_equal(out$s, 1)
+})
+
+test_that("a caller's own function of the same name still wins", {
+    a <- data.frame(frame_id = c("A", "B"), v = c("SMITH", "SMITH"),
+                    stringsAsFactors = FALSE)
+    bare <- new.env(parent = baseenv())
+    bare$a <- a
+    # Not a comparator at all: it answers 0.5 whatever it is given, which no
+    # comparator of this package would.
+    bare$jaro_winkler <- function(x, y, ...) rep(0.5, length(x))
+    out <- eval(quote(fast.string::rLink(a, block_1 = list(v),
+                                         compare = list(s = jaro_winkler(v)))),
+                bare)
+    expect_equal(out$s, 0.5)
+})
+
+test_that("a comparator that is not a function says why", {
+    a <- data.frame(frame_id = c("A", "B"), v = c("SMITH", "SMITH"),
+                    stringsAsFactors = FALSE)
+    # A typo: no such function anywhere.
+    expect_error(rLink(a, block_1 = list(v),
+                       compare = list(s = jaro_winklr(v))),
+                 "no function `jaro_winklr`")
+    # A column name written where the comparator belongs, and the same name
+    # holding something that is not a function.
+    expect_error(rLink(a, block_1 = list(v), compare = list(s = v(v))),
+                 "no function `v`")
+    v <- "SMITH"
+    expect_error(rLink(a, block_1 = list("v"), compare = list(s = v(v))),
+                 "is a character, not a function")
+})
