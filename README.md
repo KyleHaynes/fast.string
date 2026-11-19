@@ -23,13 +23,23 @@ install.packages("fast.string", repos = "https://kylehaynes.github.io/fast.strin
 
 That compiles 28 C++ translation units, which takes a few minutes. On Windows
 there is a pre-built binary of the current `main` instead, rebuilt by CI on
-every push. Match the asset to your R minor version (`getRversion()`):
+every push. Assets are named `fast.string_<package version>-<R minor>.zip`;
+match the R minor version to your own (`getRversion()`):
 
 ```r
+# R 4.6.x
 install.packages(
-    "https://github.com/KyleHaynes/fast.string/releases/download/win-latest/fast.string-win-R4.6.zip",
+    "https://github.com/KyleHaynes/fast.string/releases/download/win-latest/fast.string_0.3.0-4.6.zip",
+    repos = NULL, type = "win.binary")
+
+# R 4.5.x
+install.packages(
+    "https://github.com/KyleHaynes/fast.string/releases/download/win-latest/fast.string_0.3.0-4.5.zip",
     repos = NULL, type = "win.binary")
 ```
+
+The [`win-latest` release](https://github.com/KyleHaynes/fast.string/releases/tag/win-latest)
+lists the assets actually on offer if the package version has moved on.
 
 This route does not resolve dependencies, so on a first install get them
 first: `install.packages(c("cli", "data.table", "Rcpp", "RcppParallel", "rlang"))`.

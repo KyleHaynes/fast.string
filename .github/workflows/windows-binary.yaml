@@ -7,6 +7,24 @@
 # A Windows binary is tied to the minor version of R it was built against --
 # R looks for `bin/windows/contrib/4.6` and refuses a 4.5 build -- so there
 # is one asset per supported minor version, named after it.
+#
+# The asset name is not free-form. `install.packages(<url>, repos = NULL,
+# type = "win.binary")` works out the package name from the file name alone,
+# in `utils:::.install.winbinary`:
+#
+#     pkgnames <- sub("[.]zip$", "", basename(pkgs))
+#     pkgnames <- sub("_[0-9.-]+$", "", pkgnames)
+#
+# and then looks for that name as the top-level directory inside the zip. So
+# everything after the first `_` has to be digits, dots and dashes: an R in
+# it (`fast.string-win-R4.6.zip`) leaves the whole string as the package
+# name and the install dies with
+#
+#     cannot open compressed file 'fast.string-win-R4.6/DESCRIPTION'
+#
+# Hence `fast.string_<pkg version>-<R minor>.zip`, e.g.
+# `fast.string_0.3.0-4.6.zip`, which reduces to `fast.string` and matches the
+# directory `R CMD INSTALL --build` puts in the zip.
 name: windows-binary
 
 on:
@@ -32,6 +50,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Create or refresh the win-latest pre-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -40,17 +60,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          version=$(sed -n 's/^Version: *//p' DESCRIPTION | tr -d '\r')
           notes=$(cat <<EOF
           Pre-built Windows binaries of the current \`main\`, so you do not have to
           compile the C++ yourself.
 
           Built from [\`${SHA:0:7}\`](https://github.com/${REPO}/commit/${SHA}).
 
-          Pick the asset matching your R minor version (\`getRversion()\`), then:
+          Assets are named \`fast.string_<package version>-<R minor>.zip\`. Pick the
+          one matching your R minor version (\`getRversion()\`), then:
 
           \`\`\`r
           install.packages(
-              "https://github.com/${REPO}/releases/download/win-latest/fast.string-win-R4.6.zip",
+              "https://github.com/${REPO}/releases/download/win-latest/fast.string_${version}-4.6.zip",
               repos = NULL, type = "win.binary")
           \`\`\`
 
@@ -81,7 +103,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        r: ['release', 'oldrel-1']
+        # Each supported R minor version is pinned here rather than being
+        # reached at through `oldrel-N`, which slides down a version every
+        # time R puts out a new minor and would silently drop a build people
+        # are installing. Two entries must never resolve to the same minor:
+        # they would then race to upload the same asset. When R 4.7 ships,
+        # add '4.6' here -- 'release' will have moved on to 4.7 by then.
+        r: ['release', '4.5']
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -123,24 +151,38 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rminor=$(Rscript -e 'cat(sub("[.][^.]*$", "", getRversion()))')
-          version=$(Rscript -e 'cat(as.character(read.dcf("DESCRIPTION")[1, "Version"]))')
+          # Trim the patch level in the shell, not in an `Rscript -e` regex.
+          # On Windows, Rscript hands the expression to the command shell,
+          # which eats the `^` out of a character class, so the obvious
+          # `sub("[.][^.]*$", "", getRversion())` quietly returned the whole
+          # "4.6.2" and the asset got named after the patch version.
+          rfull=$(Rscript -e 'cat(as.character(getRversion()))')
+          rminor=${rfull%.*}
+          version=$(sed -n 's/^Version: *//p' DESCRIPTION | tr -d '\r')
+          echo "R $rfull -> minor $rminor, package version $version"
+          # See the note at the top of this file: everything after the first
+          # `_` has to be digits, dots and dashes, or install.packages()
+          # cannot work the package name out of the URL.
+          zipname="fast.string_${version}-${rminor}.zip"
           mkdir -p dist
-          cp "fast.string_${version}.zip" "dist/fast.string-win-R${rminor}.zip"
+          cp "fast.string_${version}.zip" "dist/${zipname}"
           cp "fast.string_${version}.tar.gz" "dist/fast.string_${version}.tar.gz"
-          echo "rminor=$rminor" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          {
+            echo "rminor=$rminor"
+            echo "version=$version"
+            echo "zipname=$zipname"
+          } >> "$GITHUB_OUTPUT"
           ls -l dist
 
       # Downloadable from the run page as well, which is handy for a build
       # off a branch or a dispatch that should not touch the release.
       - uses: actions/upload-artifact@v4
         with:
-          name: fast.string-win-R${{ steps.name.outputs.rminor }}
+          name: fast.string-R${{ steps.name.outputs.rminor }}
           path: dist/*
           retention-days: 30
 
-      - name: Attach to the rolling release
+      - name: Attach the binary to the rolling release
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -149,7 +191,21 @@ jobs:
         run: |
           set -euo pipefail
           gh release upload win-latest --repo "$REPO" --clobber \
-            "dist/fast.string-win-R${{ steps.name.outputs.rminor }}.zip" \
+            "dist/${{ steps.name.outputs.zipname }}"
+
+      # The source tarball is identical from every job in the matrix, so only
+      # one of them may upload it. Two concurrent uploads of one asset name
+      # get rejected with an HTTP 404 from the uploads API and fail the job,
+      # which is how this workflow broke even though both builds succeeded.
+      - name: Attach the source tarball to the rolling release
+        if: github.ref == 'refs/heads/main' && matrix.r == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload win-latest --repo "$REPO" --clobber \
             "dist/fast.string_${{ steps.name.outputs.version }}.tar.gz"
 
       - name: Install line for this build
@@ -160,7 +216,7 @@ jobs:
             echo
             echo '```r'
             echo 'install.packages('
-            echo "    \"https://github.com/${{ github.repository }}/releases/download/win-latest/fast.string-win-R${{ steps.name.outputs.rminor }}.zip\","
+            echo "    \"https://github.com/${{ github.repository }}/releases/download/win-latest/${{ steps.name.outputs.zipname }}\","
             echo '    repos = NULL, type = "win.binary")'
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
